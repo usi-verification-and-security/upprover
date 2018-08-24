@@ -1089,6 +1089,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     return this->assertion_holds_(assertion, false);
 }
 
+#endif // PRODUCE_PROOF
+
 void core_checkert::slice_target(partitioning_target_equationt & equation) {
     auto before = current_time();
     statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
@@ -1113,5 +1115,3 @@ bool core_checkert::refineSSA(symex_assertion_sumt & symex, const std::list<call
     }
     return verified;
 }
-
-#endif

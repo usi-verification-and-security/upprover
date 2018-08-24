@@ -148,7 +148,6 @@ void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
   // KE : interpolant adjustments/remove var indices shall come here
   itp.setInterpolant(ptref);
 }
-#endif
 
 /*******************************************************************\
 
@@ -165,7 +164,6 @@ Function: smtcheck_opensmt2t::get_interpolant
  * KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
  *      if the code is too long split to the method - extract_itp, which is now commented (its body).
 \*******************************************************************/
-#ifdef PRODUCE_PROOF 
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants) const
 {   
   assert(ready_to_interpolate);
@@ -722,6 +720,14 @@ void smtcheck_opensmt2t::get_non_linears_rec(PTRef ptref, std::set<PTRef> & res,
     }
 }
 
+void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
+    auto smt_itp = dynamic_cast<smt_itpt*>(interpolant);
+    if(!smt_itp){
+        throw std::logic_error{"SMT decider got propositional interpolant!"};
+    }
+    generalize_summary(*smt_itp, common_symbols);
+}
+
 void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols)
 {
     // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
@@ -908,12 +914,4 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
 
         return tmp;
     }
-}
-
-void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
-    auto smt_itp = dynamic_cast<smt_itpt*>(interpolant);
-    if(!smt_itp){
-        throw std::logic_error{"SMT decider got propositional interpolant!"};
-    }
-    generalize_summary(*smt_itp, common_symbols);
 }

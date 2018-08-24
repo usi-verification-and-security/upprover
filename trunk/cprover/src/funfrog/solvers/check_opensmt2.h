@@ -82,8 +82,6 @@ public:
         return const_literal(val);
     }
 
-    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
-
     //  Mapping from variable indices to their PTRefs in OpenSMT
     std::vector<PTRef> ptrefs;
   
@@ -122,6 +120,10 @@ public:
     /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
+
+#ifdef PRODUCE_PROOF
+    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+#endif //PRODUCE_PROOF
 
 protected:
   // Common Data members
@@ -163,6 +165,9 @@ protected:
 
     // Can we interpolate?
   bool ready_to_interpolate;
+
+    void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
+                                          std::vector<PTRef> &interpolants) const;
 #endif
   
   unsigned random_seed;
@@ -184,9 +189,6 @@ protected:
 #endif 
   
     void insert_top_level_formulas();
-
-    void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
-            std::vector<PTRef> &interpolants) const;
 
     // Initialize the OpenSMT context
     virtual void initializeSolver(const char*)=0;

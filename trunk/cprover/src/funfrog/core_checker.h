@@ -37,8 +37,10 @@ public:
   void initialize();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
 
+#ifdef PRODUCE_PROOF
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
+#endif // PRODUCE_PROOF
 
 protected:
     const goto_modelt & goto_model;

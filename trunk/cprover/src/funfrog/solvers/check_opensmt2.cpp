@@ -144,6 +144,20 @@ void check_opensmt2t::insert_top_level_formulas() {
     pushed_formulas = top_level_formulas.size();
 }
 
+
+void check_opensmt2t::convert(const std::vector<literalt> &bv, vec<PTRef> &args)
+{
+    for(const auto & lit : bv) {
+        // we never use 'unused_var_no' (cnf.cpp)
+        assert(lit.var_no()!=literalt::unused_var_no());
+
+        PTRef var = literalToPTRef(lit);
+        args.push(var);
+    }
+}
+
+#ifdef PRODUCE_PROOF
+
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
                                                       std::vector<PTRef> & interpolants) const {
     SimpSMTSolver& solver = osmt->getSolver();
@@ -160,13 +174,4 @@ void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vec
     }
 }
 
-void check_opensmt2t::convert(const std::vector<literalt> &bv, vec<PTRef> &args)
-{
-    for(const auto & lit : bv) {
-        // we never use 'unused_var_no' (cnf.cpp)
-        assert(lit.var_no()!=literalt::unused_var_no());
-
-        PTRef var = literalToPTRef(lit);
-        args.push(var);
-    }
-}
+#endif

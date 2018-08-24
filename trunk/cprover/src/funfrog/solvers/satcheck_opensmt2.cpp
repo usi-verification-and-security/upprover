@@ -170,6 +170,97 @@ bool satcheck_opensmt2t::can_interpolate() const
 {
   return ready_to_interpolate;
 }
+
+void satcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
+    auto prop_itp = dynamic_cast<prop_itpt*>(interpolant);
+    if(!prop_itp){
+        throw std::logic_error{"SAT decider got non-propositional interpolant!"};
+    }
+    generalize_summary(*prop_itp, common_symbols);
+}
+
+void satcheck_opensmt2t::generalize_summary(prop_itpt & prop_itp, const std::vector<symbol_exprt> & symbols) {
+    prop_itp.get_symbol_mask().clear();
+    if (prop_itp.is_trivial()) {
+        return;
+    }
+    auto & bv_converter = this->get_bv_converter();
+    auto totalVars = prop_itp.get_no_variables();
+    auto originalVars = prop_itp.get_no_original_variables();
+    auto isTseitinVariable = [totalVars, originalVars](literalt lit){
+        (void)totalVars; // for compilation warning in Release mode
+        assert(lit.var_no() < totalVars);
+        return lit.var_no() >= originalVars;
+    };
+    std::unordered_map<literalt::var_not, literalt::var_not> renaming;
+
+    // Fill the renaming table
+    unsigned cannon_var_no = 1;
+//    unsigned current_symbol_idx = 0;
+    // do not forget to increment current_symbol
+    for (auto const & symbol : symbols) {
+        auto const & bv = bv_converter.convert_bv(symbol);
+        for(auto lit : bv){
+//            MB: it can happen that some of the interface symbols were never converted, e.g. because of some optimizations
+//            assert(lit.var_no() < originalVars);
+            assert(!lit.sign()); // Can it be negated literal?
+            renaming[lit.var_no()] = cannon_var_no++;
+        }
+    }
+    const auto new_original_vars = cannon_var_no;
+    const auto & const_renaming = renaming;
+    // Do the renaming itself
+
+    for (auto & clause : prop_itp.get_clauses()) {
+        for (auto & lit : clause) {
+            if(const_renaming.find(lit.var_no()) != const_renaming.end()) // literal from interface symbol
+            {
+                lit.set(const_renaming.at(lit.var_no()), lit.sign());
+            }
+            else // literal NOT from interface symbol, should be literal corresponding to Tseitin encoding
+            {
+                if(!isTseitinVariable(lit)){ // it is not Tseiting variable
+                    // this can happen e.g. when function works with pointers
+                    // this interpolant cannot be generalized in meaningful way
+//                    warning() << "Propositional interpolant contained variables it should not caontain\n" << eom;
+                    prop_itp.set_trivial();
+                    return;
+                }
+                else // it is Tseitin variable
+                {
+                    assert(lit.var_no() < prop_itp.get_no_variables());
+                    literalt renamed{cannon_var_no++, lit.sign()};
+                    renaming[lit.var_no()] = renamed.var_no();
+                    lit = renamed;
+                }
+            }
+        }
+    }
+
+    const literalt root_literal = prop_itp.get_root_literal();
+    const auto root_literal_var = root_literal.var_no();
+    if(const_renaming.find(root_literal_var) != const_renaming.end()){
+        prop_itp.set_root_literal(literalt{const_renaming.at(root_literal_var), root_literal.sign()});
+    }
+    else{
+        assert(false);
+        throw std::logic_error{"Root literal of propositional interpolant is unknown variable!"};
+    }
+
+//  std::cout << "_cannon_vars: " << cannon_var_no << std::endl;
+//  std::cout << "_no_vars: " << _no_variables << std::endl;
+//  std::cout << "_no_orig_vars: " << _no_orig_variables << std::endl;
+    prop_itp.set_no_variables(cannon_var_no);
+    prop_itp.set_no_original_variables(new_original_vars);
+
+    // TODO: we should probaly not consider used symbols at all
+    auto & symbol_mask = prop_itp.get_symbol_mask();
+    symbol_mask.reserve(symbols.size());
+    for (unsigned i = 0; i < symbols.size(); ++i) {
+        symbol_mask.push_back(true);
+    }
+}
+
 #endif // PRODUCE_PROOF
 
 /*******************************************************************\
@@ -534,88 +625,6 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
     this->l_set_to_true(new_root_literal);
 }
 
-void satcheck_opensmt2t::generalize_summary(prop_itpt & prop_itp, const std::vector<symbol_exprt> & symbols) {
-    prop_itp.get_symbol_mask().clear();
-    if (prop_itp.is_trivial()) {
-        return;
-    }
-    auto & bv_converter = this->get_bv_converter();
-    auto totalVars = prop_itp.get_no_variables();
-    auto originalVars = prop_itp.get_no_original_variables();
-    auto isTseitinVariable = [totalVars, originalVars](literalt lit){
-        (void)totalVars; // for compilation warning in Release mode
-        assert(lit.var_no() < totalVars);
-        return lit.var_no() >= originalVars;
-    };
-    std::unordered_map<literalt::var_not, literalt::var_not> renaming;
-
-    // Fill the renaming table
-    unsigned cannon_var_no = 1;
-//    unsigned current_symbol_idx = 0;
-    // do not forget to increment current_symbol
-    for (auto const & symbol : symbols) {
-        auto const & bv = bv_converter.convert_bv(symbol);
-        for(auto lit : bv){
-//            MB: it can happen that some of the interface symbols were never converted, e.g. because of some optimizations
-//            assert(lit.var_no() < originalVars);
-            assert(!lit.sign()); // Can it be negated literal?
-            renaming[lit.var_no()] = cannon_var_no++;
-        }
-    }
-    const auto new_original_vars = cannon_var_no;
-    const auto & const_renaming = renaming;
-    // Do the renaming itself
-
-    for (auto & clause : prop_itp.get_clauses()) {
-        for (auto & lit : clause) {
-            if(const_renaming.find(lit.var_no()) != const_renaming.end()) // literal from interface symbol
-            {
-                lit.set(const_renaming.at(lit.var_no()), lit.sign());
-            }
-            else // literal NOT from interface symbol, should be literal corresponding to Tseitin encoding
-            {
-                if(!isTseitinVariable(lit)){ // it is not Tseiting variable
-                    // this can happen e.g. when function works with pointers
-                    // this interpolant cannot be generalized in meaningful way
-//                    warning() << "Propositional interpolant contained variables it should not caontain\n" << eom;
-                    prop_itp.set_trivial();
-                    return;
-                }
-                else // it is Tseitin variable
-                    {
-                    assert(lit.var_no() < prop_itp.get_no_variables());
-                    literalt renamed{cannon_var_no++, lit.sign()};
-                    renaming[lit.var_no()] = renamed.var_no();
-                    lit = renamed;
-                }
-            }
-        }
-    }
-
-    const literalt root_literal = prop_itp.get_root_literal();
-    const auto root_literal_var = root_literal.var_no();
-    if(const_renaming.find(root_literal_var) != const_renaming.end()){
-        prop_itp.set_root_literal(literalt{const_renaming.at(root_literal_var), root_literal.sign()});
-    }
-    else{
-        assert(false);
-        throw std::logic_error{"Root literal of propositional interpolant is unknown variable!"};
-    }
-
-//  std::cout << "_cannon_vars: " << cannon_var_no << std::endl;
-//  std::cout << "_no_vars: " << _no_variables << std::endl;
-//  std::cout << "_no_orig_vars: " << _no_orig_variables << std::endl;
-    prop_itp.set_no_variables(cannon_var_no);
-    prop_itp.set_no_original_variables(new_original_vars);
-
-    // TODO: we should probaly not consider used symbols at all
-    auto & symbol_mask = prop_itp.get_symbol_mask();
-    symbol_mask.reserve(symbols.size());
-    for (unsigned i = 0; i < symbols.size(); ++i) {
-        symbol_mask.push_back(true);
-    }
-}
-
 void satcheck_opensmt2t::set_variable_name(literalt a, const std::string & name) {
     while(lits_names.size() <= a.var_no()){
         lits_names.emplace_back("");
@@ -627,14 +636,6 @@ void satcheck_opensmt2t::set_variable_name(literalt a, const std::string & name)
 
 literalt satcheck_opensmt2t::new_variable() {
     return cnft::new_variable();
-}
-
-void satcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
-    auto prop_itp = dynamic_cast<prop_itpt*>(interpolant);
-    if(!prop_itp){
-        throw std::logic_error{"SAT decider got non-propositional interpolant!"};
-    }
-    generalize_summary(*prop_itp, common_symbols);
 }
 
 bool satcheck_opensmt2t::is_overapprox_encoding() const {
