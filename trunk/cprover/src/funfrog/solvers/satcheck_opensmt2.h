@@ -10,6 +10,7 @@ Author: Grigory Fedyukovich
 #define CPROVER_SATCHECK_OPENSMT2_H
 
 #include <vector>
+#include <memory>
 
 #include <solvers/sat/cnf.h>
 #include <util/threeval.h>
@@ -45,7 +46,7 @@ public:
           case decision_proceduret::resultt::D_ERROR:
               throw "Error during solving!";
       }
-  }
+    }
 
   bool is_overapproximating() const override {return false;}
 
@@ -117,6 +118,8 @@ public:
 #endif
   
   const std::string& get_last_var() { return id_str; }
+  
+  literalt new_variable() override;
 
 protected:
   // Use in the convert from SSA -> SMT-prop encoding
@@ -141,10 +144,6 @@ protected:
   void setup_proof_transformation();
 
 #endif
-public:
-    literalt new_variable() override;
-
-protected:
 
     std::vector<std::string> lits_names;
 

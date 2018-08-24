@@ -15,7 +15,7 @@ protected:
         auto res =  bv_pointerst::convert_symbol(expr);
         assert(res.size() == boolbv_width(expr.type()));
         auto name = id2string(expr.get(ID_identifier));
-        for(auto i = 0; i < res.size(); ++i){
+        for(auto i = 0; i < (int)res.size(); ++i){
             prop.set_variable_name(res[i], name + "_B" + std::to_string(i));
         }
         return res;
