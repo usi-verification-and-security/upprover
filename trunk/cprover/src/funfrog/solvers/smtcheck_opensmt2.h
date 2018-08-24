@@ -86,7 +86,8 @@ public:
 
   void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
 
-  set<PTRef> get_non_linears(); // Common to all, needed only if there are summaries!
+  std::set<PTRef> get_non_linears();
+  void get_non_linears_rec(PTRef current_ptref, std::set<PTRef> & res, std::set<PTRef> & seen); // TODO: use one template for these recursion calls
 #endif
 
   /* The data: lhs, original function data */
@@ -95,8 +96,12 @@ public:
   /* End of unsupported data for refinement info and data */
 
   // Common to all
-  std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
+  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
+  void get_vars_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const;
   std::string getSimpleHeader(); // Get all the declarations without the variables
+  std::set<PTRef> get_constants() const;
+  void get_constants_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const; // TODO: use one template for these recursion calls
+
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
 
@@ -104,8 +109,6 @@ public:
   virtual std::string getStringSMTlibDatatype(const typet& type)=0;
   SRef getSMTlibDatatype(const exprt& expr);
   virtual SRef getSMTlibDatatype(const typet& type)=0;
-
-  void init_unsupported_counter() { unsupported2var=0; } // KE: only for re-init solver use. Once we have pop in OpenSMT, please discard.
 
   virtual exprt get_value(const exprt &expr) override;
 
@@ -151,8 +154,8 @@ protected:
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
-  static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
-    std::map<std::string,SymRef> decl_uninterperted_func;
+  unsigned unsupported2var = 0; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
+  std::map<std::string,SymRef> decl_uninterperted_func;
 
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 

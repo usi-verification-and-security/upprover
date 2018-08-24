@@ -11,6 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 #include "smt_itp.h"
 #include "../utils/naming_helpers.h"
+#include <funfrog/utils/containers_utils.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -25,8 +26,6 @@ using namespace std;
 
 #include <iostream>
 #endif
-
-unsigned smtcheck_opensmt2t::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
 
 // Free all resources related to OpenSMT2
 void smtcheck_opensmt2t::freeSolver()
@@ -328,8 +327,6 @@ bool smtcheck_opensmt2t::solve() {
     // Results from Solver
     if (r == s_True) {
         return true;
-    } else if (r == s_False && has_unsupported_vars()) {
-        // skip 
     } else if (r == s_False) {
 #ifdef PRODUCE_PROOF       
         ready_to_interpolate = true;
@@ -353,16 +350,28 @@ Function: smtcheck_opensmt2t::getVars
  Purpose: get all the vars to create later on the counter example path
 
 \*******************************************************************/
-std::set<PTRef>* smtcheck_opensmt2t::getVars()
+set<PTRef> smtcheck_opensmt2t::getVars() const
 {
-    std::set<PTRef>* ret = new std::set<PTRef>();
+    std::set<PTRef> ret;
+    std::set<PTRef> seen;
     for(const PTRef ptref : ptrefs)
     {
-        if ((logic->isVar(ptref)) && (ret->count(ptref) < 1))
-            ret->insert(ptref);
+        get_vars_rec(ptref, ret, seen);
     }
-
     return ret;
+}
+
+void smtcheck_opensmt2t::get_vars_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen) const {
+    if (contains(seen, ptref)) { return; }
+    if (logic->isVar(ptref)) {
+        res.insert(ptref);
+    }
+    seen.insert(ptref);
+    // recurs on children
+    auto const & pterm = logic->getPterm(ptref);
+    for (auto i = 0; i < pterm.size(); ++i) {
+        get_vars_rec(pterm[i], res, seen);
+    }
 }
 
 /*******************************************************************\
@@ -380,9 +389,6 @@ Function: smtcheck_opensmt2t::getSimpleHeader
 \*******************************************************************/
 std::string smtcheck_opensmt2t::getSimpleHeader()
 {
-    // Never add twice the same declare
-    std::set<PTRef>* was = new std::set<PTRef>();
-
     // This code if works, replace the remove variable section
     //std::stringstream dump_functions;
     //logic->dumpFunctions(dump_functions);
@@ -420,29 +426,43 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
         ret += line + "\n";
     }
 
-    // Add constants:
-    for(const PTRef ptref : ptrefs)
-    {
-        if ((logic->isConstant(ptref)) && (was->count(ptref) < 1)
-                && !logic->isFalse(ptref) && !logic->isTrue(ptref))
-        {
-            char* name = logic->printTerm(ptref);
-            std::string line(name);
-            free(name); name=NULL;
-            
-            if (line.compare("0") == 0) 
-                continue;
-            if (line.compare("(- 1)") == 0) 
-                continue;
+    auto constants = get_constants();
+    for (const PTRef ptref : constants) {
+        std::string line{logic->printTerm(ptref)};
 
-            ret += "(declare-const " + std::string(line) + " () " 
-                        + std::string(logic->getSortName(logic->getSortRef(ptref))) + ")\n";
-            was->insert(ptref);
-        }
+        if (line.compare("0") == 0)
+            continue;
+        if (line.compare("(- 1)") == 0)
+            continue;
+        ret += "(declare-const " + line + " () "
+               + std::string(logic->getSortName(logic->getSortRef(ptref))) + ")\n";
     }
-    
     // Return the list of declares
     return ret;
+}
+
+std::set<PTRef> smtcheck_opensmt2t::get_constants() const{
+    std::set<PTRef> res;
+    std::set<PTRef> seen;
+
+    for(const PTRef ptref : ptrefs)
+    {
+        get_constants_rec(ptref, res, seen);
+    }
+    return res;
+}
+
+void smtcheck_opensmt2t::get_constants_rec(PTRef ptref, std::set<PTRef>& res, std::set<PTRef>& seen) const {
+    if (contains(seen, ptref)) { return; } // already processed
+    if (logic->isConstant(ptref) && !logic->isTrue(ptref) && !logic->isFalse(ptref)) {
+        res.insert(ptref);
+    }
+    seen.insert(ptref);
+    // recurse on children
+    auto const & pterm = logic->getPterm(ptref);
+    for (auto i = 0; i < pterm.size(); ++i) {
+        get_constants_rec(pterm[i], res, seen);
+    }
 }
 
 /*******************************************************************\
@@ -760,7 +780,7 @@ SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
 #ifdef PRODUCE_PROOF
 
 // Returns all literals that are non-linear expressions
-set<PTRef> smtcheck_opensmt2t::get_non_linears()
+std::set<PTRef> smtcheck_opensmt2t::get_non_linears()
 {
     std::set<PTRef> ret;
     
@@ -768,20 +788,26 @@ set<PTRef> smtcheck_opensmt2t::get_non_linears()
     if (!can_have_non_linears()) return ret;
     
     // Go over all expressions and search for / or *
-    std::set<PTRef> was;
+    std::set<PTRef> seen;
     for(const PTRef ptref : ptrefs)
     {
-        if ((was.count(ptref) < 1) && (ret.count(ptref) < 1) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref)))
-        {
-            if (is_non_linear_operator(ptref))
-            {
-                ret.insert(ptref);
-            }
-        }
-        was.insert(ptref);
+        get_non_linears_rec(ptref, ret, seen);
     }
-
     return ret;
+}
+
+void smtcheck_opensmt2t::get_non_linears_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen){
+    if (!contains(seen, ptref) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref))) {
+        if (is_non_linear_operator(ptref)){
+            res.insert(ptref);
+        }
+    }
+    seen.insert(ptref);
+    // recurse on children
+    auto const & pterm = logic->getPterm(ptref);
+    for(auto i = 0; i < pterm.size(); ++i){
+        get_non_linears_rec(pterm[i], res, seen);
+    }
 }
 
 void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols)

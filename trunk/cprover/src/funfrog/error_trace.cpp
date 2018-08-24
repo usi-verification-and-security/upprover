@@ -328,14 +328,14 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &de
     // try to refine these expr - Need to find a better solution
     {
         Logic *logic = decider.getLogic();
-        std::set<PTRef>* vars = smt_decider.getVars();
+        auto vars = smt_decider.getVars();
         //std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
         //std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
         // violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
-        for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
+        for(const PTRef ptref : vars)
         {
             // Print the var and its value
-            char* name = logic->printTerm(*iter);
+            char* name = logic->printTerm(ptref);
             std::string curr (name);
             if (curr.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
                 isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
@@ -356,9 +356,6 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &de
     #endif
             free(name);
         }
-
-        // Clear all vars list before quit
-        vars->clear(); delete vars;
     }
 
     if (isOverAppox != error_tracet::isOverAppoxt::SPURIOUS)
