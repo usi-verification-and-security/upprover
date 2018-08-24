@@ -58,10 +58,6 @@ void unsupported_operationst::store_new_unsupported_var(const exprt& expr, std::
     
     // Add the abstracted expression
     unsupported_info_items.push_back(std::pair<std::string, exprt> (var, expr)); // PTRef sometimes turn into 0
-        
-    #ifdef DEBUG_LATTICE // Debug only - in if for better performance     
-    cout << "**** Saved function as a candidate for lattice refinement (" << var << ") \n";
-    #endif
 }
 
 // Skip these functions and never try to refine these

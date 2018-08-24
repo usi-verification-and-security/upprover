@@ -981,7 +981,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
-    // TODO: figure out how to avoid dynamic casts
     auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{initialize__euf_solver()};
     auto & uf_solver = *uf_solver_ptr;
 
