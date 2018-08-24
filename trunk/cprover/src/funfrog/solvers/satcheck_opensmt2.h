@@ -89,7 +89,7 @@ public:
 
   virtual bool has_is_in_conflict() const override { return true; }
 
-  virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+  void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
 
   const boolbvt & get_bv_converter() const {return *boolbv_convert;}
   boolbvt & get_bv_converter() {return *boolbv_convert;}

@@ -257,7 +257,7 @@ const partitiont* partitioning_target_equationt::find_target_partition(
 
  \*******************************************************************/
 void partitioning_target_equationt::fill_partition_ids(
-		partition_idt partition_id, fle_part_idst& part_ids) {
+		partition_idt partition_id, expr_idst& part_ids) {
 
     partitiont& partition = partitions[partition_id];
     if (partition.is_stub()) {

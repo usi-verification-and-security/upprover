@@ -13,6 +13,8 @@ Author: Ondrej Sery
 #include <funfrog/solvers/itp_fwd.h>
 #include "funfrog/solvers/interpolating_solver_fwd.h"
 
+class symbol_exprt;
+
 class interpolating_solvert
 {
 public:
@@ -23,7 +25,7 @@ public:
   // next call of new_partition() will be part of this partition.
   //
   // returns a unique partition id
-  virtual fle_part_idt new_partition()=0;
+  virtual expr_idt new_partition()=0;
 
   virtual void set_certify(int r)=0;
 
@@ -37,7 +39,14 @@ public:
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const=0;
+
+  virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+
 #endif
+
+  virtual void close_partition() = 0;
+
+  virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
 };
 
 #endif

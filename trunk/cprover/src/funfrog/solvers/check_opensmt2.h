@@ -16,7 +16,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/interpolating_solver.h"
 #include "funfrog/interface/solver/solver.h"
 
-class literalt;
+//class literalt;  //SA: Is not this declaration redundant?
 class exprt;
 
 // Cache of already visited interpolant ptrefs
@@ -92,13 +92,13 @@ public:
     std::vector<PTRef> ptrefs;
   
 
-    void set_random_seed(unsigned int i);
+    void set_random_seed(unsigned int i)override;
 
-    unsigned get_random_seed() { return random_seed; }
+    unsigned get_random_seed() override { return random_seed; }
 
-  virtual  void set_verbosity(int r) { verbosity = r; }
+    void set_verbosity(int r) override { verbosity = r; }
   
-  virtual  void set_certify(int r) override { certify = r; }
+    void set_certify(int r) override { certify = r; }
   
     bool read_formula_from_file(std::string fileName) // KE: Sepideh, this shall be renamed according to the new interface
     { return mainSolver->readFormulaFromFile(fileName.c_str()); }
@@ -110,25 +110,24 @@ public:
   
     virtual bool is_overapprox_encoding() const = 0;
 
-    fle_part_idt new_partition() override;
+    expr_idt new_partition() override;
 
-    void close_partition();
+    void close_partition() override;
 
     virtual bool is_overapproximating() const = 0;
 
-    virtual bool is_assignment_true(literalt a) const = 0;
+   // virtual bool is_assignment_true(literalt a) const = 0; //SA: moved to the interface class solvert
 
-    virtual exprt get_value(const exprt &expr) = 0;
+   // virtual exprt get_value(const exprt &expr) = 0;  //SA: moved to the interface class solvert
 
-    virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
-
+    //virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0; //SA: moved to interface interpolating_solver
 
     /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
 
 #ifdef PRODUCE_PROOF
-    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+    //virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0; //SA:moved to interface
 
     void set_reduction(bool do_reduction) { reduction = do_reduction; }
     void set_reduction_graph(unsigned int _reduction_graph) { reduction_graph = _reduction_graph; }

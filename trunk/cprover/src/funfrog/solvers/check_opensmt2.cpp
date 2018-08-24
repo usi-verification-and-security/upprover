@@ -114,7 +114,7 @@ Function: opensmt2t::new_partition
  next call of new_partition() will be part of this partition.
 
 \*******************************************************************/
-fle_part_idt check_opensmt2t::new_partition() {
+expr_idt check_opensmt2t::new_partition() {
     // Finish the previous partition if any
     if (!last_partition_closed) {
         assert(partition_count != 0);

@@ -7,8 +7,8 @@
 
 #include <vector>
 
-typedef int fle_part_idt;
-typedef std::vector<fle_part_idt> fle_part_idst;
-typedef std::vector<fle_part_idst> interpolation_taskt;
+typedef int expr_idt;
+typedef std::vector<expr_idt> expr_idst;
+typedef std::vector<expr_idst> interpolation_taskt;
 
 #endif //HIFROG_INTERPOLATING_SOLVER_FWD_H
