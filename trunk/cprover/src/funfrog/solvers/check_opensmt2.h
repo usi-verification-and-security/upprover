@@ -26,7 +26,13 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class check_opensmt2t :  public interpolating_solvert, public solvert
 {
 public:
-  check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops);
+    check_opensmt2t();
+    check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops) : check_opensmt2t()
+    {
+        set_reduction(_reduction);
+        set_reduction_graph(_reduction_graph);
+        set_reduction_loops(_reduction_loops);
+    }
 
     virtual ~check_opensmt2t();
 
@@ -123,7 +129,25 @@ public:
 
 #ifdef PRODUCE_PROOF
     virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+
+    void set_reduction(bool do_reduction) { reduction = do_reduction; }
+    void set_reduction_graph(unsigned int _reduction_graph) { reduction_graph = _reduction_graph; }
+    void set_reduction_loops(unsigned int _reduction_loops) { reduction_loops = _reduction_loops; }
+
+    void set_prop_itp_alg(ItpAlgorithm itp) {itp_algorithm = itp;}
+
+    // TODO: move these options to appropriate suclasses
+    void set_lra_itp_alg(ItpAlgorithm lra_itp) {itp_lra_algorithm = lra_itp;}
+    void set_uf_itp_alg(ItpAlgorithm uf_itp) {itp_euf_algorithm = uf_itp;}
+    void set_lra_factor(std::string factor) {itp_lra_factor = std::move(factor);}
+
 #endif //PRODUCE_PROOF
+
+#ifdef DISABLE_OPTIMIZATIONS
+    void set_dump_query(bool f);
+    void set_dump_pre_query(bool f);
+    void set_dump_query_name(const string& n);
+#endif // DISABLE_OPTIMIZATIONS
 
 protected:
   // Common Data members
@@ -148,15 +172,12 @@ protected:
     // boundary index for top_level_formulas that has been pushed to solver already
     unsigned pushed_formulas;
   
-#ifdef PRODUCE_PROOF   
-  // 1 - stronger, 2 - weaker (GF: not working at the moment)
-  int proof_trans;
-
+#ifdef PRODUCE_PROOF
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
   ItpAlgorithm itp_algorithm;
   ItpAlgorithm itp_euf_algorithm;
   ItpAlgorithm itp_lra_algorithm;
-  const char * itp_lra_factor;
+  std::string itp_lra_factor;
 
   // OpenSMT2 Params
   bool reduction;
@@ -184,8 +205,7 @@ protected:
   std::string pre_queries_file_name;
 
   // Code for init these options
-  void set_dump_query(bool f);
-  void set_dump_query_name(const string& n);
+
 #endif 
   
     void insert_top_level_formulas();

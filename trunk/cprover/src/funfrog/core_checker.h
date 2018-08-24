@@ -14,6 +14,11 @@
 #include <util/options.h>
 #include <util/ui_message.h>
 #include <goto-programs/goto_model.h>
+#include <funfrog/solvers/smtcheck_opensmt2_uf.h>
+#include <funfrog/solvers/smtcheck_opensmt2_cuf.h>
+#include <funfrog/solvers/smtcheck_opensmt2_lra.h>
+#include <funfrog/solvers/smtcheck_opensmt2_lia.h>
+#include <funfrog/solvers/satcheck_opensmt2.h>
 #include "subst_scenario.h"
 
 class smt_assertion_no_partitiont;
@@ -56,11 +61,11 @@ protected:
 
   void initialize_solver();
   void initialize_solver_options(check_opensmt2t* _decider);
-  check_opensmt2t* initialize__euf_solver();
-  check_opensmt2t* initialize__cuf_solver();
-  check_opensmt2t* initialize__lra_solver();
-  check_opensmt2t* initialize__lia_solver();
-  check_opensmt2t* initialize__prop_solver();
+  smtcheck_opensmt2t_uf * initialize__euf_solver();
+  smtcheck_opensmt2t_cuf * initialize__cuf_solver();
+  smtcheck_opensmt2t_lra * initialize__lra_solver();
+  smtcheck_opensmt2t_lia * initialize__lia_solver();
+  satcheck_opensmt2t * initialize__prop_solver();
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
@@ -87,6 +92,8 @@ protected:
     void slice_target(partitioning_target_equationt&);
     bool prepareSSA(symex_assertion_sumt& symex);
     bool refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine);
+
+    bool is_option_set(std::string const & o) { return !options.get_option(o).empty();}
 
 };
 

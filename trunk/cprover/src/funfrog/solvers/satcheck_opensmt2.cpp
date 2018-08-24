@@ -16,7 +16,7 @@ Author: Grigory Fedyukovich
 #endif
 
 satcheck_opensmt2t::satcheck_opensmt2t(const char * name, const namespacet & ns)
-        : check_opensmt2t(false, 3, 2)
+        : check_opensmt2t()
 {
     initializeSolver(name);
     // TODO: move to separate method?

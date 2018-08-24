@@ -13,7 +13,7 @@ class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
   smtcheck_opensmt2t_uf(const char* name) :
-      smtcheck_opensmt2t(false, 3, 2) // Is last always!
+      smtcheck_opensmt2t()
   {
     initializeSolver(name);
   }

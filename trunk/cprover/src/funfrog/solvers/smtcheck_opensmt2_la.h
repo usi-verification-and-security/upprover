@@ -13,7 +13,7 @@ class smtcheck_opensmt2t_la : public smtcheck_opensmt2t
 {
 public:
   smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name) :
-          smtcheck_opensmt2t(false, 3, 2),
+          smtcheck_opensmt2t(),
           type_constraints_level(_type_constraints_level)
   {
   }

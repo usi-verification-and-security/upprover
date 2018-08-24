@@ -1,8 +1,7 @@
 #include "check_opensmt2.h"
 #include <solvers/prop/literal.h>
 
-check_opensmt2t::check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops
-      ) :
+check_opensmt2t::check_opensmt2t() :
       osmt  (nullptr),
       logic (nullptr),
       mainSolver (nullptr),              
@@ -12,10 +11,10 @@ check_opensmt2t::check_opensmt2t(bool _reduction, unsigned int _reduction_graph,
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
       itp_lra_algorithm(itp_lra_alg_strong),
-      itp_lra_factor(nullptr),
-      reduction(_reduction),
-      reduction_graph(_reduction_graph),
-      reduction_loops(_reduction_loops),
+      itp_lra_factor("0"),
+      reduction(false),
+      reduction_graph(3),
+      reduction_loops(2),
 #endif
       random_seed(1),
       verbosity(0),
@@ -56,6 +55,8 @@ void check_opensmt2t::set_dump_query(bool f)
 
   dump_queries = f;
 }
+
+void check_opensmt2t::set_dump_pre_query(bool f) {dump_pre_queries = f;}
 
 void check_opensmt2t::set_dump_query_name(const string& n)
 {

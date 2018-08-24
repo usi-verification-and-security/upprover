@@ -30,6 +30,7 @@
 #include "utils/unsupported_operations.h"
 
 #include <stdio.h>
+#include <memory>
 
 namespace{
     /*******************************************************************\
@@ -122,11 +123,6 @@ void core_checkert::initialize_solver()
     {
         decider = initialize__lia_solver();
         status() << ("Use QF_LIA logic.") << eom;
-    }    
-    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
-    {
-        decider = new satcheck_opensmt2t("prop checker", ns);
-        status() << ("Use propositional logic.") << eom;
     }
     else if (_logic == "prop")
     {
@@ -138,38 +134,50 @@ void core_checkert::initialize_solver()
         error() << ("Unsupported theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
- 
-    initialize_solver_options(decider); // Init all options in the solver
 }
 
 // Generic creation for any solver - euf
-check_opensmt2t* core_checkert::initialize__euf_solver()
+smtcheck_opensmt2t_uf * core_checkert::initialize__euf_solver()
 {
-    return new smtcheck_opensmt2t_uf("uf checker");
-    
+    auto solver = new smtcheck_opensmt2t_uf("uf checker");
+#ifdef PRODUCE_PROOF
+    if (is_option_set("itp-uf-algorithm")) { solver->set_lra_itp_alg({options.get_signed_int_option("itp-uf-algorithm")});}
+#endif
+    initialize_solver_options(solver);
+    return solver;
 }
 
 // Only for OpenSMT solver - cuf
-check_opensmt2t* core_checkert::initialize__cuf_solver()
+smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
-    return new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
+    auto solver =  new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"),
                 options.get_unsigned_int_option("type-byte-constraints"), "cuf checker");
+    initialize_solver_options(solver);
+    return solver;
 }
   
 // Generic creation for any solver - lra
-check_opensmt2t* core_checkert::initialize__lra_solver()
+smtcheck_opensmt2t_lra * core_checkert::initialize__lra_solver()
 {
-    return new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
+    auto solver = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
+#ifdef PRODUCE_PROOF
+    if (is_option_set("itp-lra-algorithm")) { solver->set_lra_itp_alg({options.get_signed_int_option("itp-lra-algorithm")});}
+    if (is_option_set("itp-lra-factor")) { solver->set_lra_factor(options.get_option("itp-lra-factor")); }
+#endif
+    initialize_solver_options(solver);
+    return solver;
 }
 
 // Generic creation for any solver - lra
-check_opensmt2t* core_checkert::initialize__lia_solver()
+smtcheck_opensmt2t_lia * core_checkert::initialize__lia_solver()
 {
-    return new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+    auto solver =  new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+    initialize_solver_options(solver);
+    return solver;
 }
 
 // Only for OpenSMT solver - prop
-check_opensmt2t* core_checkert::initialize__prop_solver()
+satcheck_opensmt2t * core_checkert::initialize__prop_solver()
 {
     if (options.get_bool_option("no-partitions")) {
         error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
@@ -177,7 +185,9 @@ check_opensmt2t* core_checkert::initialize__prop_solver()
     }
 
     // If all OK, create the decider
-    return new satcheck_opensmt2t("prop checker", ns);
+    auto solver =  new satcheck_opensmt2t("prop checker", ns);
+    initialize_solver_options(solver);
+    return solver;
 }
 
 void core_checkert::initialize_solver_options(check_opensmt2t* _decider)
@@ -188,9 +198,22 @@ void core_checkert::initialize_solver_options(check_opensmt2t* _decider)
   if(options.get_unsigned_int_option("random-seed")) 
       _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
 
-#ifdef PRODUCE_PROOF   
+#ifdef PRODUCE_PROOF
+  if (is_option_set("itp-algorithm")) { _decider->set_prop_itp_alg({options.get_signed_int_option("itp-algorithm")}); }
+
   _decider->set_certify(options.get_unsigned_int_option("check-itp"));
-#endif
+  bool do_reduce = options.get_bool_option("reduce-proof");
+  if (do_reduce) {
+      _decider->set_reduction(true);
+      _decider->set_reduction_loops(options.get_unsigned_int_option("reduce-proof-loops"));
+      _decider->set_reduction_graph(options.get_unsigned_int_option("reduce-proof-graph"));
+  }
+#endif // PRODUCE_PROOF
+#ifdef DISABLE_OPTIMIZATIONS
+    _decider->set_dump_query(options.get_bool_option("dump-query"));
+    _decider->set_dump_pre_query(options.get_bool_option("dump-pre-query"));
+    _decider->set_dump_query_name(options.get_option("dump-query-name"));
+#endif // DISABLE_OPTIMIZATIONS
 }
 
 void core_checkert::initialize()
@@ -958,11 +981,12 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
-    smtcheck_opensmt2t_uf uf_solver {"uf checker",
-    };
-    initialize_solver_options(&uf_solver);
+    // TODO: figure out how to avoid dynamic casts
+    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{initialize__euf_solver()};
+    auto & uf_solver = *uf_solver_ptr;
 
-    smt_summary_storet summary_store {&uf_solver};
+
+    smt_summary_storet summary_store {uf_solver_ptr.get()};
     //reading summary by uf
     status() << "\n--Reading UF summary file: " << uf_summary_file_name << eom;
     summary_store.deserialize({uf_summary_file_name});
@@ -1035,9 +1059,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
-    unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
-    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker"};
-    initialize_solver_options(&lra_solver);
+    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{initialize__lra_solver()};
+    auto & lra_solver = *lra_solver_ptr;
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
     omega.set_initial_precision(assertion, has_summary);
@@ -1083,8 +1106,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
     // MB: workaround around assertion_holds_ expecting to have a decider set already
     delete decider;
-    decider = new satcheck_opensmt2t{"prop checker", ns};
-    initialize_solver_options(decider);
+    decider = initialize__prop_solver();
     new_symbol_table.clear();
     return this->assertion_holds_(assertion, false);
 }

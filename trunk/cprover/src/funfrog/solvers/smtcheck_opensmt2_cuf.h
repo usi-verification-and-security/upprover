@@ -17,7 +17,7 @@ class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 public:
   smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name
   ) :
-        smtcheck_opensmt2t(false, 3, 2),
+        smtcheck_opensmt2t(),
         bitwidth(bitwidth),
         type_constraints_level(_type_constraints_level)      
   {
