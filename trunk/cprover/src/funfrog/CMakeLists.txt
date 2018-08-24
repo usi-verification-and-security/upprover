@@ -101,6 +101,7 @@ set(HIFROG_SOURCE_FILES
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
         #reportt.cpp reportt.h
+        utils/time_utils.h
         utils/UnionFind.cpp
         utils/UnionFind.h
         utils/string_utils.h)

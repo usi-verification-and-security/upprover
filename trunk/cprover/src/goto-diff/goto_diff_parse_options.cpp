@@ -16,19 +16,26 @@ Author: Peter Schrammel
 #include <iostream>
 #include <memory>
 
-#include <util/string2int.h>
 #include <util/config.h>
-#include <util/language.h>
-#include <util/options.h>
+#include <util/exit_codes.h>
 #include <util/make_unique.h>
+#include <util/options.h>
+#include <util/version.h>
 
+#include <langapi/language.h>
+
+#include <goto-programs/adjust_float_expressions.h>
 #include <goto-programs/goto_convert_functions.h>
+#include <goto-programs/instrument_preconditions.h>
+#include <goto-programs/mm_io.h>
 #include <goto-programs/remove_function_pointers.h>
+#include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
+#include <goto-programs/remove_skip.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
@@ -37,51 +44,40 @@ Author: Peter Schrammel
 #include <goto-programs/string_instrumentation.h>
 #include <goto-programs/loop_ids.h>
 #include <goto-programs/link_to_library.h>
-#include <goto-programs/remove_java_new.h>
+
+#include <goto-symex/rewrite_union.h>
+
+#include <goto-instrument/cover.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
 #include <langapi/mode.h>
 
-#include <cbmc/version.h>
+#include <ansi-c/cprover_library.h>
+#include <cpp/cprover_library.h>
 
 #include "goto_diff.h"
 #include "syntactic_diff.h"
 #include "unified_diff.h"
 #include "change_impact.h"
 
-goto_diff_parse_optionst::goto_diff_parse_optionst(int argc, const char **argv):
-  parse_options_baset(GOTO_DIFF_OPTIONS, argc, argv),
-  goto_diff_languagest(cmdline, ui_message_handler),
-  ui_message_handler(cmdline, "GOTO-DIFF " CBMC_VERSION),
-  languages2(cmdline, ui_message_handler)
+goto_diff_parse_optionst::goto_diff_parse_optionst(int argc, const char **argv)
+  : parse_options_baset(GOTO_DIFF_OPTIONS, argc, argv),
+    goto_diff_languagest(cmdline, ui_message_handler),
+    ui_message_handler(cmdline, std::string("GOTO-DIFF ") + CBMC_VERSION),
+    languages2(cmdline, ui_message_handler)
 {
 }
 
 ::goto_diff_parse_optionst::goto_diff_parse_optionst(
   int argc,
   const char **argv,
-  const std::string &extra_options):
-  parse_options_baset(GOTO_DIFF_OPTIONS+extra_options, argc, argv),
-  goto_diff_languagest(cmdline, ui_message_handler),
-  ui_message_handler(cmdline, "GOTO-DIFF " CBMC_VERSION),
-  languages2(cmdline, ui_message_handler)
+  const std::string &extra_options)
+  : parse_options_baset(GOTO_DIFF_OPTIONS + extra_options, argc, argv),
+    goto_diff_languagest(cmdline, ui_message_handler),
+    ui_message_handler(cmdline, std::string("GOTO-DIFF ") + CBMC_VERSION),
+    languages2(cmdline, ui_message_handler)
 {
-}
-
-void goto_diff_parse_optionst::eval_verbosity()
-{
-  // this is our default verbosity
-  unsigned int v=messaget::M_STATISTICS;
-
-  if(cmdline.isset("verbosity"))
-  {
-    v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-    if(v>10)
-      v=10;
-  }
-
-  ui_message_handler.set_verbosity(v);
 }
 
 void goto_diff_parse_optionst::get_command_line_options(optionst &options)
@@ -99,7 +95,7 @@ void goto_diff_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("show-vcc", true);
 
   if(cmdline.isset("cover"))
-    options.set_option("cover", cmdline.get_value("cover"));
+    parse_cover_options(cmdline, options);
 
   if(cmdline.isset("mm"))
     options.set_option("mm", cmdline.get_value("mm"));
@@ -122,22 +118,8 @@ void goto_diff_parse_optionst::get_command_line_options(optionst &options)
   if(cmdline.isset("cpp11"))
     config.cpp.set_cpp11();
 
-  if(cmdline.isset("no-simplify"))
-    options.set_option("simplify", false);
-  else
-    options.set_option("simplify", true);
-
-  if(cmdline.isset("all-claims") || // will go away
-     cmdline.isset("all-properties")) // use this one
-    options.set_option("all-properties", true);
-  else
-    options.set_option("all-properties", false);
-
-  if(cmdline.isset("unwind"))
-    options.set_option("unwind", cmdline.get_value("unwind"));
-
-  if(cmdline.isset("depth"))
-    options.set_option("depth", cmdline.get_value("depth"));
+  // all checks supported by goto_check
+  PARSE_OPTIONS_GOTO_CHECK(cmdline, options);
 
   if(cmdline.isset("debug-level"))
     options.set_option("debug-level", cmdline.get_value("debug-level"));
@@ -236,6 +218,8 @@ void goto_diff_parse_optionst::get_command_line_options(optionst &options)
             << " must not be given together" << eom;
     exit(1);
   }
+
+  options.set_option("show-properties", cmdline.isset("show-properties"));
 }
 
 /// invoke main modules
@@ -244,7 +228,7 @@ int goto_diff_parse_optionst::doit()
   if(cmdline.isset("version"))
   {
     std::cout << CBMC_VERSION << '\n';
-    return 0;
+    return CPROVER_EXIT_SUCCESS;
   }
 
   //
@@ -253,20 +237,20 @@ int goto_diff_parse_optionst::doit()
 
   optionst options;
   get_command_line_options(options);
-  eval_verbosity();
+  eval_verbosity(
+    cmdline.get_value("verbosity"), messaget::M_STATISTICS, ui_message_handler);
 
   //
   // Print a banner
   //
-  status() << "GOTO-DIFF version " CBMC_VERSION " "
-           << sizeof(void *)*8 << "-bit "
-           << config.this_architecture() << " "
+  status() << "GOTO-DIFF version " << CBMC_VERSION << " " << sizeof(void *) * 8
+           << "-bit " << config.this_architecture() << " "
            << config.this_operating_system() << eom;
 
   if(cmdline.args.size()!=2)
   {
     error() << "Please provide two programs to compare" << eom;
-    return 6;
+    return CPROVER_EXIT_INCORRECT_TASK;
   }
 
   goto_modelt goto_model1, goto_model2;
@@ -284,7 +268,7 @@ int goto_diff_parse_optionst::doit()
   {
     show_loop_ids(get_ui(), goto_model1);
     show_loop_ids(get_ui(), goto_model2);
-    return true;
+    return CPROVER_EXIT_SUCCESS;
   }
 
   if(
@@ -301,17 +285,13 @@ int goto_diff_parse_optionst::doit()
       get_message_handler(),
       ui_message_handler.get_ui(),
       cmdline.isset("list-goto-functions"));
-    return 0;
+    return CPROVER_EXIT_SUCCESS;
   }
 
   if(cmdline.isset("change-impact") ||
      cmdline.isset("forward-impact") ||
      cmdline.isset("backward-impact"))
   {
-    // Workaround to avoid deps not propagating between return and end_func
-    remove_returns(goto_model1);
-    remove_returns(goto_model2);
-
     impact_modet impact_mode=
       cmdline.isset("forward-impact") ?
       impact_modet::FORWARD :
@@ -324,7 +304,7 @@ int goto_diff_parse_optionst::doit()
       impact_mode,
       cmdline.isset("compact-output"));
 
-    return 0;
+    return CPROVER_EXIT_SUCCESS;
   }
 
   if(cmdline.isset("unified") ||
@@ -334,15 +314,15 @@ int goto_diff_parse_optionst::doit()
     u();
     u.output(std::cout);
 
-    return 0;
+    return CPROVER_EXIT_SUCCESS;
   }
 
-  syntactic_difft sd(goto_model1, goto_model2, get_message_handler());
+  syntactic_difft sd(goto_model1, goto_model2, options, get_message_handler());
   sd.set_ui(get_ui());
   sd();
-  sd.output_functions(std::cout);
+  sd.output_functions();
 
-  return 0;
+  return CPROVER_EXIT_SUCCESS;
 }
 
 int goto_diff_parse_optionst::get_goto_program(
@@ -359,7 +339,7 @@ int goto_diff_parse_optionst::get_goto_program(
         goto_model.symbol_table,
         goto_model.goto_functions,
         languages.get_message_handler()))
-      return 6;
+      return CPROVER_EXIT_INCORRECT_TASK;
 
     config.set(cmdline);
 
@@ -380,7 +360,7 @@ int goto_diff_parse_optionst::get_goto_program(
     if(languages.parse() ||
        languages.typecheck() ||
        languages.final())
-      return 6;
+      return CPROVER_EXIT_INCORRECT_TASK;
 
     // we no longer need any parse trees or language files
     languages.clear_parse();
@@ -392,6 +372,9 @@ int goto_diff_parse_optionst::get_goto_program(
       goto_model.symbol_table,
       goto_model.goto_functions,
       ui_message_handler);
+
+    if(process_goto_program(options, goto_model))
+      return CPROVER_EXIT_INTERNAL_ERROR;
 
     // if we had a second argument then we will handle it next
     if(arg2!="")
@@ -405,48 +388,68 @@ bool goto_diff_parse_optionst::process_goto_program(
   const optionst &options,
   goto_modelt &goto_model)
 {
-  symbol_tablet &symbol_table = goto_model.symbol_table;
-  goto_functionst &goto_functions = goto_model.goto_functions;
-
   try
   {
-    namespacet ns(symbol_table);
-
-    remove_java_new(goto_model, get_message_handler());
-
     // Remove inline assembler; this needs to happen before
     // adding the library.
     remove_asm(goto_model);
 
     // add the library
-    link_to_library(symbol_table, goto_functions, ui_message_handler);
+    status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << eom;
+    link_to_library(
+      goto_model, get_message_handler(), cprover_cpp_library_factory);
+    link_to_library(
+      goto_model, get_message_handler(), cprover_c_library_factory);
 
     // remove function pointers
-    status() << "Function Pointer Removal" << eom;
+    status() << "Removal of function pointers and virtual functions" << eom;
     remove_function_pointers(
-      get_message_handler(),
-      symbol_table,
-      goto_functions,
-      cmdline.isset("pointer-check"));
+      get_message_handler(), goto_model, cmdline.isset("pointer-check"));
 
-    // do partial inlining
-    status() << "Partial Inlining" << eom;
-    goto_partial_inline(goto_functions, ns, ui_message_handler);
+    mm_io(goto_model);
+
+    // instrument library preconditions
+    instrument_preconditions(goto_model);
 
     // remove returns, gcc vectors, complex
-    remove_returns(symbol_table, goto_functions);
-    remove_vector(symbol_table, goto_functions);
-    remove_complex(symbol_table, goto_functions);
+    remove_returns(goto_model);
+    remove_vector(goto_model);
+    remove_complex(goto_model);
+    rewrite_union(goto_model);
 
-    // add failed symbols
-    // needs to be done before pointer analysis
-    add_failed_symbols(symbol_table);
+    // add generic checks
+    status() << "Generic Property Instrumentation" << eom;
+    goto_check(options, goto_model);
+
+    // checks don't know about adjusted float expressions
+    adjust_float_expressions(goto_model);
 
     // recalculate numbers, etc.
-    goto_functions.update();
+    goto_model.goto_functions.update();
 
     // add loop ids
-    goto_functions.compute_loop_numbers();
+    goto_model.goto_functions.compute_loop_numbers();
+
+    // instrument cover goals
+    if(cmdline.isset("cover"))
+    {
+      // remove skips such that trivial GOTOs are deleted and not considered
+      // for coverage annotation:
+      remove_skip(goto_model);
+
+      if(instrument_cover_goals(options, goto_model, get_message_handler()))
+        return true;
+    }
+
+    // label the assertions
+    // This must be done after adding assertions and
+    // before using the argument of the "property" option.
+    // Do not re-label after using the property slicer because
+    // this would cause the property identifiers to change.
+    label_properties(goto_model);
+
+    // remove any skips introduced since coverage instrumentation
+    remove_skip(goto_model);
   }
 
   catch(const char *e)
@@ -461,14 +464,16 @@ bool goto_diff_parse_optionst::process_goto_program(
     return true;
   }
 
-  catch(int)
+  catch(int e)
   {
+    error() << "Numeric exception: " << e << eom;
     return true;
   }
 
   catch(const std::bad_alloc &)
   {
     error() << "Out of memory" << eom;
+    exit(CPROVER_EXIT_INTERNAL_OUT_OF_MEMORY);
     return true;
   }
 
@@ -478,10 +483,10 @@ bool goto_diff_parse_optionst::process_goto_program(
 /// display command line help
 void goto_diff_parse_optionst::help()
 {
-  std::cout <<
-    "\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    "* *           GOTO_DIFF " CBMC_VERSION " - Copyright (C) 2016            * *\n"
+  // clang-format off
+  std::cout << '\n' << banner_string("GOTO_DIFF", CBMC_VERSION) << '\n'
+            <<
+    "* *                  Copyright (C) 2016                     * *\n"
     "* *            Daniel Kroening, Peter Schrammel             * *\n"
     "* *                 kroening@kroening.com                   * *\n"
     "\n"
@@ -492,6 +497,7 @@ void goto_diff_parse_optionst::help()
     "\n"
     "Diff options:\n"
     HELP_SHOW_GOTO_FUNCTIONS
+    HELP_SHOW_PROPERTIES
     " --syntactic                  do syntactic diff (default)\n"
     " -u | --unified               output unified diff\n"
     " --change-impact | \n"
@@ -500,8 +506,14 @@ void goto_diff_parse_optionst::help()
     "  --backward-impact           output unified diff with forward&backward/forward/backward dependencies\n"
     " --compact-output             output dependencies in compact mode\n"
     "\n"
+    "Program instrumentation options:\n"
+    HELP_GOTO_CHECK
+    " --cover CC                   create test-suite with coverage criterion CC\n" // NOLINT(*)
     "Other options:\n"
     " --version                    show version and exit\n"
     " --json-ui                    use JSON-formatted output\n"
+    HELP_FLUSH
+    HELP_TIMESTAMP
     "\n";
+  // clang-format on
 }

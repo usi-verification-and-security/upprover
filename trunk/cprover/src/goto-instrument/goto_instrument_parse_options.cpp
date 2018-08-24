@@ -16,17 +16,17 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <memory>
 
 #include <util/config.h>
+#include <util/exit_codes.h>
+#include <util/json.h>
 #include <util/string2int.h>
 #include <util/unicode.h>
-#include <util/json.h>
-#include <util/exit_codes.h>
+#include <util/version.h>
 
 #include <goto-programs/class_hierarchy.h>
 #include <goto-programs/goto_convert_functions.h>
+#include <goto-programs/remove_calls_no_body.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
-#include <goto-programs/remove_exceptions.h>
-#include <goto-programs/remove_instanceof.h>
 #include <goto-programs/remove_skip.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
@@ -62,57 +62,44 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <analyses/dependence_graph.h>
 #include <analyses/constant_propagator.h>
 #include <analyses/is_threaded.h>
+#include <analyses/local_safe_pointers.h>
 
-#include <cbmc/version.h>
+#include <ansi-c/cprover_library.h>
+#include <cpp/cprover_library.h>
 
-#include "document_properties.h"
-#include "uninitialized.h"
-#include "full_slicer.h"
-#include "reachability_slicer.h"
-#include "show_locations.h"
-#include "points_to.h"
-#include "alignment_checks.h"
-#include "race_check.h"
-#include "nondet_volatile.h"
-#include "interrupt.h"
-#include "mmio.h"
-#include "stack_depth.h"
-#include "nondet_static.h"
-#include "rw_set.h"
-#include "concurrency.h"
-#include "dump_c.h"
-#include "dot.h"
-#include "havoc_loops.h"
-#include "k_induction.h"
-#include "function.h"
-#include "branch.h"
-#include "wmm/weak_memory.h"
-#include "call_sequences.h"
 #include "accelerate/accelerate.h"
-#include "count_eloc.h"
-#include "horn_encoding.h"
-#include "thread_instrumentation.h"
-#include "skip_loops.h"
+#include "alignment_checks.h"
+#include "branch.h"
+#include "call_sequences.h"
 #include "code_contracts.h"
-#include "unwind.h"
+#include "concurrency.h"
+#include "document_properties.h"
+#include "dot.h"
+#include "dump_c.h"
+#include "full_slicer.h"
+#include "function.h"
+#include "havoc_loops.h"
+#include "horn_encoding.h"
+#include "interrupt.h"
+#include "k_induction.h"
+#include "mmio.h"
 #include "model_argc_argv.h"
-#include "undefined_functions.h"
+#include "nondet_static.h"
+#include "nondet_volatile.h"
+#include "points_to.h"
+#include "race_check.h"
+#include "reachability_slicer.h"
 #include "remove_function.h"
+#include "rw_set.h"
+#include "show_locations.h"
+#include "skip_loops.h"
 #include "splice_call.h"
-
-void goto_instrument_parse_optionst::eval_verbosity()
-{
-  unsigned int v=8;
-
-  if(cmdline.isset("verbosity"))
-  {
-    v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-    if(v>10)
-      v=10;
-  }
-
-  ui_message_handler.set_verbosity(v);
-}
+#include "stack_depth.h"
+#include "thread_instrumentation.h"
+#include "undefined_functions.h"
+#include "uninitialized.h"
+#include "unwind.h"
+#include "wmm/weak_memory.h"
 
 /// invoke main modules
 int goto_instrument_parse_optionst::doit()
@@ -129,7 +116,8 @@ int goto_instrument_parse_optionst::doit()
     return CPROVER_EXIT_USAGE_ERROR;
   }
 
-  eval_verbosity();
+  eval_verbosity(
+    cmdline.get_value("verbosity"), messaget::M_STATISTICS, ui_message_handler);
 
   try
   {
@@ -140,43 +128,26 @@ int goto_instrument_parse_optionst::doit()
     instrument_goto_program();
 
     {
-      bool unwind=cmdline.isset("unwind");
-      bool unwindset=cmdline.isset("unwindset");
-      bool unwindset_file=cmdline.isset("unwindset-file");
+      bool unwind_given=cmdline.isset("unwind");
+      bool unwindset_given=cmdline.isset("unwindset");
+      bool unwindset_file_given=cmdline.isset("unwindset-file");
 
-      if(unwindset && unwindset_file)
+      if(unwindset_given && unwindset_file_given)
         throw "only one of --unwindset and --unwindset-file supported at a "
               "time";
 
-      if(unwind || unwindset || unwindset_file)
+      if(unwind_given || unwindset_given || unwindset_file_given)
       {
-        int k=-1;
+        unwindsett unwindset;
 
-        if(unwind)
-          k=std::stoi(cmdline.get_value("unwind"));
+        if(unwind_given)
+          unwindset.parse_unwind(cmdline.get_value("unwind"));
 
-        unwind_sett unwind_set;
+        if(unwindset_file_given)
+          unwindset.parse_unwindset_file(cmdline.get_value("unwindset-file"));
 
-        if(unwindset_file)
-        {
-          std::string us;
-          std::string fn=cmdline.get_value("unwindset-file");
-
-#ifdef _MSC_VER
-          std::ifstream file(widen(fn));
-#else
-          std::ifstream file(fn);
-#endif
-          if(!file)
-            throw "cannot open file "+fn;
-
-          std::stringstream buffer;
-          buffer << file.rdbuf();
-          us=buffer.str();
-          parse_unwindset(us, unwind_set);
-        }
-        else if(unwindset)
-          parse_unwindset(cmdline.get_value("unwindset"), unwind_set);
+        if(unwindset_given)
+          unwindset.parse_unwindset(cmdline.get_value("unwindset"));
 
         bool unwinding_assertions=cmdline.isset("unwinding-assertions");
         bool partial_loops=cmdline.isset("partial-loops");
@@ -203,10 +174,7 @@ int goto_instrument_parse_optionst::doit()
         }
 
         goto_unwindt goto_unwind;
-        goto_unwind(goto_model, unwind_set, k, unwind_strategy);
-
-        goto_model.goto_functions.update();
-        goto_model.goto_functions.compute_loop_numbers();
+        goto_unwind(goto_model, unwindset, unwind_strategy);
 
         if(cmdline.isset("log"))
         {
@@ -233,6 +201,10 @@ int goto_instrument_parse_optionst::doit()
             std::cout << result << '\n';
           }
         }
+
+        // goto_unwind holds references to instructions, only do remove_skip
+        // after having generated the log above
+        remove_skip(goto_model);
       }
     }
 
@@ -257,6 +229,8 @@ int goto_instrument_parse_optionst::doit()
                     << "\n\n";
         }
       }
+
+      return CPROVER_EXIT_SUCCESS;
     }
 
     if(cmdline.isset("show-value-sets"))
@@ -307,6 +281,34 @@ int goto_instrument_parse_optionst::doit()
         std::cout << ">>>> " << it->first << '\n';
         std::cout << ">>>>\n";
         local_bitvector_analysis.output(std::cout, it->second, ns);
+        std::cout << '\n';
+      }
+
+      return CPROVER_EXIT_SUCCESS;
+    }
+
+    if(cmdline.isset("show-local-safe-pointers") ||
+       cmdline.isset("show-safe-dereferences"))
+    {
+      // Ensure location numbering is unique:
+      goto_model.goto_functions.update();
+
+      namespacet ns(goto_model.symbol_table);
+
+      forall_goto_functions(it, goto_model.goto_functions)
+      {
+        local_safe_pointerst local_safe_pointers(ns);
+        local_safe_pointers(it->second.body);
+        std::cout << ">>>>\n";
+        std::cout << ">>>> " << it->first << '\n';
+        std::cout << ">>>>\n";
+        if(cmdline.isset("show-local-safe-pointers"))
+          local_safe_pointers.output(std::cout, it->second.body);
+        else
+        {
+          local_safe_pointers.output_safe_dereferences(
+            std::cout, it->second.body);
+        }
         std::cout << '\n';
       }
 
@@ -509,6 +511,12 @@ int goto_instrument_parse_optionst::doit()
       return CPROVER_EXIT_SUCCESS;
     }
 
+    if(cmdline.isset("print-global-state-size"))
+    {
+      print_global_state_size(goto_model);
+      return CPROVER_EXIT_SUCCESS;
+    }
+
     if(cmdline.isset("list-symbols"))
     {
       show_symbol_table_brief(goto_model, get_ui());
@@ -532,7 +540,7 @@ int goto_instrument_parse_optionst::doit()
        cmdline.isset("show-properties"))
     {
       const namespacet ns(goto_model.symbol_table);
-      show_properties(goto_model, get_ui());
+      show_properties(goto_model, get_message_handler(), get_ui());
       return CPROVER_EXIT_SUCCESS;
     }
 
@@ -681,16 +689,17 @@ int goto_instrument_parse_optionst::doit()
       return 0;
     }
 
-    if(cmdline.isset("class-hierarchy"))
+    if(cmdline.isset("show-class-hierarchy"))
     {
       class_hierarchyt hierarchy;
       hierarchy(goto_model.symbol_table);
       if(cmdline.isset("dot"))
         hierarchy.output_dot(std::cout);
       else
-        hierarchy.output(std::cout);
+        show_class_hierarchy(
+          hierarchy, get_message_handler(), ui_message_handler.get_ui());
 
-      return 0;
+      return CPROVER_EXIT_SUCCESS;
     }
 
     if(cmdline.isset("dot"))
@@ -727,11 +736,14 @@ int goto_instrument_parse_optionst::doit()
       status() << "Performing full inlining" << eom;
       goto_inline(goto_model, get_message_handler());
 
+      status() << "Removing calls to functions without a body" << eom;
+      remove_calls_no_bodyt remove_calls_no_body;
+      remove_calls_no_body(goto_model.goto_functions);
+
       status() << "Accelerating" << eom;
       accelerate_functions(
         goto_model, get_message_handler(), cmdline.isset("z3"));
       remove_skip(goto_model);
-      goto_model.goto_functions.update();
     }
 
     if(cmdline.isset("horn-encoding"))
@@ -833,11 +845,8 @@ void goto_instrument_parse_optionst::do_indirect_call_and_rtti_removal(
     cmdline.isset("pointer-check"));
   status() << "Virtual function removal" << eom;
   remove_virtual_functions(goto_model);
-  status() << "Catch and throw removal" << eom;
-  // This introduces instanceof, so order is important:
-  remove_exceptions(goto_model);
-  status() << "Java instanceof removal" << eom;
-  remove_instanceof(goto_model);
+  status() << "Cleaning inline assembler statements" << eom;
+  remove_asm(goto_model);
 }
 
 /// Remove function pointers that can be resolved by analysing const variables
@@ -984,13 +993,17 @@ void goto_instrument_parse_optionst::instrument_goto_program()
       config.ansi_c.defines.push_back("__CPROVER_CUSTOM_BITVECTOR_ANALYSIS");
 
     // add the library
-    link_to_library(goto_model, get_message_handler());
+    status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << eom;
+    link_to_library(
+      goto_model, get_message_handler(), cprover_cpp_library_factory);
+    link_to_library(
+      goto_model, get_message_handler(), cprover_c_library_factory);
   }
 
   // now do full inlining, if requested
   if(cmdline.isset("inline"))
   {
-    do_indirect_call_and_rtti_removal();
+    do_indirect_call_and_rtti_removal(true);
 
     if(cmdline.isset("show-custom-bitvector-analysis") ||
        cmdline.isset("custom-bitvector-analysis"))
@@ -1001,7 +1014,7 @@ void goto_instrument_parse_optionst::instrument_goto_program()
     }
 
     status() << "Performing full inlining" << eom;
-    goto_inline(goto_model, get_message_handler());
+    goto_inline(goto_model, get_message_handler(), true);
   }
 
   if(cmdline.isset("show-custom-bitvector-analysis") ||
@@ -1048,6 +1061,14 @@ void goto_instrument_parse_optionst::instrument_goto_program()
   else if(cmdline.isset("remove-const-function-pointers"))
   {
     do_remove_const_function_pointers_only();
+  }
+
+  if(cmdline.isset("replace-calls"))
+  {
+    do_indirect_call_and_rtti_removal();
+
+    replace_callst replace_calls;
+    replace_calls(goto_model, cmdline.get_values("replace-calls"));
   }
 
   if(cmdline.isset("function-inline"))
@@ -1109,27 +1130,23 @@ void goto_instrument_parse_optionst::instrument_goto_program()
   if(cmdline.isset("partial-inline"))
   {
     do_indirect_call_and_rtti_removal();
-    do_partial_inlining();
+
+    status() << "Partial inlining" << eom;
+    goto_partial_inline(goto_model, ui_message_handler, 0, true);
 
     goto_model.goto_functions.update();
     goto_model.goto_functions.compute_loop_numbers();
   }
 
-  // now do full inlining, if requested
-  if(cmdline.isset("inline"))
+  if(cmdline.isset("remove-calls-no-body"))
   {
-    do_indirect_call_and_rtti_removal(/*force=*/true);
+    status() << "Removing calls to functions without a body" << eom;
 
-    if(cmdline.isset("show-custom-bitvector-analysis") ||
-       cmdline.isset("custom-bitvector-analysis"))
-    {
-      do_remove_returns();
-      thread_exit_instrumentation(goto_model);
-      mutex_init_instrumentation(goto_model);
-    }
+    remove_calls_no_bodyt remove_calls_no_body;
+    remove_calls_no_body(goto_model.goto_functions);
 
-    status() << "Performing full inlining" << eom;
-    goto_inline(goto_model, get_message_handler(), true);
+    goto_model.goto_functions.update();
+    goto_model.goto_functions.compute_loop_numbers();
   }
 
   if(cmdline.isset("constant-propagator"))
@@ -1217,12 +1234,6 @@ void goto_instrument_parse_optionst::instrument_goto_program()
 
     if(cmdline.isset("mm"))
     {
-      // TODO: move to wmm/weak_mem, and copy goto_functions AFTER some of the
-      // modifications. Do the analysis on the copy, after remove_asm, and
-      // instrument the original (without remove_asm)
-      remove_asm(goto_model);
-      goto_model.goto_functions.update();
-
       std::string mm=cmdline.get_value("mm");
       memory_modelt model;
 
@@ -1242,9 +1253,6 @@ void goto_instrument_parse_optionst::instrument_goto_program()
         /* default: instruments all unsafe pairs */
         inst_strategy=all;
 
-      const unsigned unwind_loops=
-        cmdline.isset("unwind")?
-        unsafe_string2unsigned(cmdline.get_value("unwind")):0;
       const unsigned max_var=
         cmdline.isset("max-var")?
         unsafe_string2unsigned(cmdline.get_value("max-var")):0;
@@ -1292,7 +1300,6 @@ void goto_instrument_parse_optionst::instrument_goto_program()
           goto_model,
           cmdline.isset("scc"),
           inst_strategy,
-          unwind_loops,
           !cmdline.isset("cfg-kill"),
           cmdline.isset("no-dependencies"),
           loops,
@@ -1445,6 +1452,59 @@ void goto_instrument_parse_optionst::instrument_goto_program()
       throw 0;
   }
 
+  if(cmdline.isset("generate-function-body"))
+  {
+    auto generate_implementation = generate_function_bodies_factory(
+      cmdline.get_value("generate-function-body-options"),
+      goto_model.symbol_table,
+      *message_handler);
+    generate_function_bodies(
+      std::regex(cmdline.get_value("generate-function-body")),
+      *generate_implementation,
+      goto_model,
+      *message_handler);
+  }
+
+  // aggressive slicer
+  if(cmdline.isset("aggressive-slice"))
+  {
+    do_indirect_call_and_rtti_removal();
+
+    status() << "Slicing away initializations of unused global variables"
+             << eom;
+    slice_global_inits(goto_model);
+
+    status() << "Performing an aggressive slice" << eom;
+    aggressive_slicert aggressive_slicer(goto_model, get_message_handler());
+
+    if(cmdline.isset("aggressive-slice-call-depth"))
+      aggressive_slicer.call_depth =
+        safe_string2unsigned(cmdline.get_value("aggressive-slice-call-depth"));
+
+    if(cmdline.isset("aggressive-slice-preserve-function"))
+      aggressive_slicer.preserve_functions(
+        cmdline.get_values("aggressive-slice-preserve-function"));
+
+    if(cmdline.isset("property"))
+      aggressive_slicer.user_specified_properties =
+        cmdline.get_values("property");
+
+    if(cmdline.isset("aggressive-slice-preserve-functions-containing"))
+      aggressive_slicer.name_snippets =
+        cmdline.get_values("aggressive-slice-preserve-functions-containing");
+
+    aggressive_slicer.preserve_all_direct_paths =
+      cmdline.isset("aggressive-slice-preserve-all-direct-paths");
+
+    aggressive_slicer.doit();
+
+    status() << "Performing a reachability slice" << eom;
+    if(cmdline.isset("property"))
+      reachability_slicer(goto_model, cmdline.get_values("property"));
+    else
+      reachability_slicer(goto_model);
+  }
+
   // recalculate numbers, etc.
   goto_model.goto_functions.update();
 }
@@ -1452,9 +1512,10 @@ void goto_instrument_parse_optionst::instrument_goto_program()
 /// display command line help
 void goto_instrument_parse_optionst::help()
 {
-  std::cout <<
-    "\n"
-    "* *     Goto-Instrument " CBMC_VERSION " - Copyright (C) 2008-2013       * *\n" // NOLINT(*)
+  // clang-format off
+  std::cout << '\n' << banner_string("Goto-Instrument", CBMC_VERSION) << '\n'
+            <<
+    "* *                Copyright (C) 2008-2013                  * *\n"
     "* *                    Daniel Kroening                      * *\n"
     "* *                 kroening@kroening.com                   * *\n"
     "\n"
@@ -1470,15 +1531,14 @@ void goto_instrument_parse_optionst::help()
     " --dump-cpp                   generate C++ source\n"
     " --dot                        generate CFG graph in DOT format\n"
     " --interpreter                do concrete execution\n"
-    " --count-eloc                 count effective lines of code\n"
-    " --list-eloc                  list full path names of lines containing code\n" // NOLINT(*)
     "\n"
     "Diagnosis:\n"
     " --show-loops                 show the loops in the program\n"
-    " --show-properties            show the properties\n"
-    " --show-symbol-table          show symbol table\n"
+    HELP_SHOW_PROPERTIES
+    " --show-symbol-table          show loaded symbol table\n"
     " --list-symbols               list symbols with type information\n"
     HELP_SHOW_GOTO_FUNCTIONS
+    HELP_GOTO_PROGRAM_STATS
     " --drop-unused-functions      drop functions trivially unreachable from main function\n" // NOLINT(*)
     " --print-internal-representation\n" // NOLINTNEXTLINE(*)
     "                              show verbose internal representation of the program\n"
@@ -1487,12 +1547,15 @@ void goto_instrument_parse_optionst::help()
     " --show-natural-loops         show natural loop heads\n"
     // NOLINTNEXTLINE(whitespace/line_length)
     " --list-calls-args            list all function calls with their arguments\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --print-path-lengths         print statistics about control-flow graph paths\n"
     " --call-graph                 show graph of function calls\n"
     // NOLINTNEXTLINE(whitespace/line_length)
     " --reachable-call-graph       show graph of function calls potentially reachable from main function\n"
-    " --class-hierarchy            show class hierarchy\n"
+    HELP_SHOW_CLASS_HIERARCHY
+    // NOLINTNEXTLINE(whitespace/line_length)
+    " --show-threaded              show instructions that may be executed by more than one thread\n"
+    " --show-local-safe-pointers   show pointer expressions that are trivially dominated by a not-null check\n" // NOLINT(*)
+    " --show-safe-dereferences     show pointer expressions that are trivially dominated by a not-null check\n" // NOLINT(*)
+    "                              *and* used as a dereference operand\n" // NOLINT(*)
     "\n"
     "Safety checks:\n"
     " --no-assertions              ignore user assertions\n"
@@ -1516,9 +1579,10 @@ void goto_instrument_parse_optionst::help()
     " --check-invariant function   instruments invariant checking function\n"
     " --remove-pointers            converts pointer arithmetic to base+offset expressions\n" // NOLINT(*)
     " --splice-call caller,callee  prepends a call to callee in the body of caller\n"  // NOLINT(*)
+    " --undefined-function-is-assume-false\n"
     // NOLINTNEXTLINE(whitespace/line_length)
-    " --undefined-function-is-assume-false\n" // NOLINTNEXTLINE(whitespace/line_length)
     "                              convert each call to an undefined function to assume(false)\n"
+    HELP_REPLACE_FUNCTION_BODY
     "\n"
     "Loop transformations:\n"
     " --k-induction <k>            check loops with k-induction\n"
@@ -1546,6 +1610,17 @@ void goto_instrument_parse_optionst::help()
     " --full-slice                 slice away instructions that don't affect assertions\n" // NOLINT(*)
     " --property id                slice with respect to specific property only\n" // NOLINT(*)
     " --slice-global-inits         slice away initializations of unused global variables\n" // NOLINT(*)
+    " --aggressive-slice           remove bodies of any functions not on the shortest path between\n" // NOLINT(*)
+    "                              the start function and the function containing the property(s)\n" // NOLINT(*)
+    " --aggressive-slice-call-depth <n>\n"
+    "                              used with aggressive-slice, preserves all functions within <n> function calls\n" // NOLINT(*)
+    "                              of the functions on the shortest path\n"
+    " --aggressive-slice-preserve-function <f>\n"
+    "                             force the aggressive slicer to preserve function <f>\n" // NOLINT(*)
+    " --aggressive-slice-preserve-function containing <f>\n"
+    "                              force the aggressive slicer to preserve all functions with names containing <f>\n" // NOLINT(*)
+    "--aggressive-slice-preserve-all-direct-paths \n"
+    "                             force aggressive slicer to preserve all direct paths\n" // NOLINT(*)
     "\n"
     "Further transformations:\n"
     " --constant-propagator        propagate constants and simplify expressions\n" // NOLINT(*)
@@ -1555,18 +1630,23 @@ void goto_instrument_parse_optionst::help()
     " --no-caching                 disable caching of intermediate results during transitive function inlining\n" // NOLINT(*)
     " --log <file>                 log in json format which code segments were inlined, use with --function-inline\n" // NOLINT(*)
     " --remove-function-pointers   replace function pointers by case statement over function calls\n" // NOLINT(*)
+    HELP_REMOVE_CALLS_NO_BODY
     HELP_REMOVE_CONST_FUNCTION_POINTERS
     " --add-library                add models of C library functions\n"
     " --model-argc-argv <n>        model up to <n> command line arguments\n"
     // NOLINTNEXTLINE(whitespace/line_length)
     " --remove-function-body <f>   remove the implementation of function <f> (may be repeated)\n"
+    HELP_REPLACE_CALLS
     "\n"
     "Other options:\n"
     " --no-system-headers          with --dump-c/--dump-cpp: generate C source expanding libc includes\n" // NOLINT(*)
     " --use-all-headers            with --dump-c/--dump-cpp: generate C source with all includes\n" // NOLINT(*)
     " --harness                    with --dump-c/--dump-cpp: include input generator in output\n" // NOLINT(*)
     " --version                    show version and exit\n"
+    HELP_FLUSH
     " --xml-ui                     use XML-formatted output\n"
     " --json-ui                    use JSON-formatted output\n"
+    HELP_TIMESTAMP
     "\n";
+  // clang-format on
 }

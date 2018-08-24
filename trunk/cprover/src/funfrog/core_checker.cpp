@@ -35,6 +35,8 @@
 #include <stdio.h>
 #include "utils/unsupported_operations.h"
 
+#include <langapi/language_util.h>
+
 namespace{
     /*******************************************************************\
 
@@ -361,14 +363,11 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-  absolute_timet initial, final;
-  initial=current_time();
+  auto before=timestamp();
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
-//  assert(options.get_option("logic") == "prop");
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
-  const bool partial_loops = options.get_bool_option("partial-loops");
 
   const auto & const_summary_store = *summary_store;
   auto has_summary = [&const_summary_store](const std::string & function_name){
@@ -393,11 +392,12 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 #endif
   
   call_tree_nodet& summary_info = omega.get_call_tree_root();
+  std::unique_ptr<path_storaget> worklist; 
   symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), summary_info, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
+            *summary_store, get_goto_functions(), summary_info, temp_table,
+            equation, message_handler, goto_program, options, *worklist, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            false, unwind_bound, partial_loops };
+            false, unwind_bound };
 
 //  setup_unwind(symex);
 
@@ -518,7 +518,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
         status() << ("\n---Go to next assertion; claim verified by prop logic ---\n") <<eom;
     }
   }
-  final = current_time();
+  auto after = timestamp();
   omega.get_unwinding_depth();
 
   status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
@@ -526,7 +526,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
   
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -555,13 +555,12 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 \*******************************************************************/
 /*namespace{
     bool is_satisfiable(smtcheck_opensmt2t & decider) {
-        absolute_timet before, after;
-        before=current_time();
+        auto before=timestamp();
         bool is_sat = decider.solve();
-        after=current_time();
-        //solving_time = (after-before);
+        auto after=timestamp();
+        //solving_time = time_gap(after,before);
         //for the report we should have proper method, since status cannot be used here directly
-        status << "SOLVER TIME: " << (after-before) << eom;
+        status << "SOLVER TIME: " << time_gap(after,before) << eom;
         status() << "RESULT: ";
 
         // solve it
@@ -591,8 +590,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-    absolute_timet initial, final;
-    initial = current_time();
+    auto before = timestamp();
  
     // Init the objects:
     const bool no_slicing_option = options.get_bool_option("no-slicing");
@@ -622,12 +620,25 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
-    symex_assertion_sumt symex = symex_assertion_sumt(
-            *summary_store, get_goto_functions(), call_tree_root, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
-            options.get_bool_option("partial-loops"));
-
+    std::unique_ptr<path_storaget> worklist;
+    symex_assertion_sumt symex {
+                *summary_store,
+                get_goto_functions(),
+                call_tree_root,
+                temp_table,
+                equation,
+                message_handler,
+                goto_program,
+                options,
+                *worklist,
+                last_assertion_loc,
+                single_assertion_check,
+                !no_slicing_option,
+                !no_ce_option,
+                true,
+                unwind_bound,
+    };
+    
     smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
@@ -743,7 +754,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     }
     // FINAL REPORT
 
-    final = current_time();
+    auto after = timestamp();
     omega.get_unwinding_depth();
 
     status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
@@ -751,7 +762,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if (omega.get_recursive_total() > 0){
         status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
     }
-    status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+    status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
  
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -783,8 +794,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_smt_no_partition(
         const assertion_infot& assertion)
 {
-  absolute_timet initial, final;
-  initial=current_time();
+  auto before=timestamp();
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
@@ -815,7 +825,16 @@ bool core_checkert::assertion_holds_smt_no_partition(
   }
 #endif
   
-  symex_no_partitiont symex = symex_no_partitiont(ns, temp_table, equation, message_handler, goto_program,!no_slicing_option);
+  std::unique_ptr<path_storaget> worklist;
+  symex_no_partitiont symex { ns, 
+                              temp_table, 
+                              equation, 
+                              message_handler, 
+                              goto_program, 
+                              options, 
+                              *worklist, 
+                              !no_slicing_option,
+  };
   
   setup_unwind(symex);
   
@@ -900,7 +919,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
       }
     }
   }
-  final = current_time();
+  auto after = timestamp();
   omega.get_unwinding_depth();
 
   status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
@@ -908,7 +927,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after, before) << eom;
  
 #ifdef PRODUCE_PROOF 
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -1000,15 +1019,14 @@ Function: core_checkert::extract_interpolants_smt
 void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 {
   //SA & prop is not needed here; the entire class prepare_smt_formulat is useless.
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   
   smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
   equation.extract_interpolants(*decider_smt);
   decider_smt = nullptr;
 
-  after=current_time();
-  status() << "INTERPOLATION TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
   
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
@@ -1034,13 +1052,12 @@ Function: core_checkert::extract_interpolants_prop
 void core_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             prop_conv_solvert& decider_prop, interpolating_solvert& interpolator)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
 
   equation.extract_interpolants(interpolator, decider_prop);
 
-  after=current_time();
-  status() << "INTERPOLATION TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
   
   // Store the summaries
   std::string summary_file;
@@ -1076,27 +1093,8 @@ Function: core_checkert::setup_unwind
 
 void core_checkert::setup_unwind(symex_bmct& symex)
 {
-  const std::string &set=options.get_option("unwindset");
-  unsigned int length=set.length();
-
-  for(unsigned int idx=0; idx<length; idx++)
-  {
-    std::string::size_type next=set.find(",", idx);
-    std::string val=set.substr(idx, next-idx);
-
-    if(val.rfind(":")!=std::string::npos)
-    {
-      std::string id=val.substr(0, val.rfind(":"));
-      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
-      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
-      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
-    }
-    
-    if(next==std::string::npos) break;
-    idx=next;
-  }
-
-  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
+    symex.unwindset.parse_unwind(options.get_option("unwind"));
+    symex.unwindset.parse_unwindset(options.get_option("unwindset"));
 }
 
 /*******************************************************************\
@@ -1389,21 +1387,21 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     namespacet ns{this->symbol_table, temp_table};
     smt_partitioning_target_equationt equation {ns, summary_store, false};
 
+    std::unique_ptr<path_storaget> worklist;
     symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
                                 omega.get_call_tree_root(),
-                                ns,
                                 temp_table,
                                 equation,
                                 message_handler,
                                 goto_program,
+                                options, *worklist,
                                 omega.get_last_assertion_loc(),
                                 omega.is_single_assertion_check(),
                                 !options.get_bool_option("no-slicing"),
                                 !options.get_bool_option("no-error-trace"),
                                 true,
                                 options.get_unsigned_int_option("unwind"),
-                                options.get_bool_option("partial-loops"),
     };
 
     bool assertion_holds = symex.prepare_SSA(assertion);

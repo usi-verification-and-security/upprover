@@ -11,17 +11,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "pointer_offset_size.h"
 
-#include "c_types.h"
-#include "expr.h"
-#include "invariant.h"
 #include "arith_tools.h"
-#include "std_types.h"
-#include "std_expr.h"
-#include "expr_util.h"
-#include "simplify_expr.h"
+#include "c_types.h"
+#include "invariant.h"
 #include "namespace.h"
-#include "symbol.h"
+#include "simplify_expr.h"
 #include "ssa_expr.h"
+#include "std_expr.h"
 
 member_offset_iterator::member_offset_iterator(
   const struct_typet &_type,
@@ -42,11 +38,14 @@ member_offset_iterator &member_offset_iterator::operator++()
     {
       // take the extra bytes needed
       std::size_t w=to_c_bit_field_type(comp.type()).get_width();
-      for(; w>bit_field_bits; ++current.second, bit_field_bits+=8) {}
-      bit_field_bits-=w;
+      bit_field_bits += w;
+      current.second += bit_field_bits / 8;
+      bit_field_bits %= 8;
     }
     else
     {
+      DATA_INVARIANT(
+        bit_field_bits == 0, "padding ensures offset at byte boundaries");
       const typet &subtype=comp.type();
       mp_integer sub_size=pointer_offset_size(subtype, ns);
       if(sub_size==-1)
@@ -235,9 +234,17 @@ mp_integer pointer_offset_bits(
 
     return to_bitvector_type(type).get_width();
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
     return pointer_offset_bits(ns.follow(type), ns);
+  }
+  else if(type.id() == ID_union_tag)
+  {
+    return pointer_offset_bits(ns.follow_tag(to_union_tag_type(type)), ns);
+  }
+  else if(type.id() == ID_struct_tag)
+  {
+    return pointer_offset_bits(ns.follow_tag(to_struct_tag_type(type)), ns);
   }
   else if(type.id()==ID_code)
   {
@@ -287,13 +294,15 @@ exprt member_offset_expr(
     if(it->type().id()==ID_c_bit_field)
     {
       std::size_t w=to_c_bit_field_type(it->type()).get_width();
-      std::size_t bytes;
-      for(bytes=0; w>bit_field_bits; ++bytes, bit_field_bits+=8) {}
-      bit_field_bits-=w;
+      bit_field_bits += w;
+      const std::size_t bytes = bit_field_bits / 8;
+      bit_field_bits %= 8;
       result=plus_exprt(result, from_integer(bytes, result.type()));
     }
     else
     {
+      DATA_INVARIANT(
+        bit_field_bits == 0, "padding ensures offset at byte boundaries");
       const typet &subtype=it->type();
       exprt sub_size=size_of_expr(subtype, ns);
       if(sub_size.is_nil())
@@ -326,8 +335,7 @@ exprt size_of_expr(
     if(size.type()!=sub.type())
       size.make_typecast(sub.type());
 
-    exprt result=mult_exprt(size, sub);
-
+    mult_exprt result(size, sub);
     simplify(result, ns);
 
     return result;
@@ -347,7 +355,7 @@ exprt size_of_expr(
     if(size.type()!=sub.type())
       size.make_typecast(sub.type());
 
-    exprt result=mult_exprt(size, sub);
+    mult_exprt result(size, sub);
     simplify(result, ns);
 
     return result;
@@ -360,7 +368,7 @@ exprt size_of_expr(
 
     const exprt size=from_integer(2, sub.type());
 
-    exprt result=mult_exprt(size, sub);
+    mult_exprt result(size, sub);
     simplify(result, ns);
 
     return result;
@@ -382,13 +390,15 @@ exprt size_of_expr(
       if(it->type().id()==ID_c_bit_field)
       {
         std::size_t w=to_c_bit_field_type(it->type()).get_width();
-        std::size_t bytes;
-        for(bytes=0; w>bit_field_bits; ++bytes, bit_field_bits+=8) {}
-        bit_field_bits-=w;
+        bit_field_bits += w;
+        const std::size_t bytes = bit_field_bits / 8;
+        bit_field_bits %= 8;
         result=plus_exprt(result, from_integer(bytes, result.type()));
       }
       else
       {
+        DATA_INVARIANT(
+          bit_field_bits == 0, "padding ensures offset at byte boundaries");
         const typet &subtype=it->type();
         exprt sub_size=size_of_expr(subtype, ns);
         if(sub_size.is_nil())
@@ -500,9 +510,17 @@ exprt size_of_expr(
       bytes++;
     return from_integer(bytes, size_type());
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
     return size_of_expr(ns.follow(type), ns);
+  }
+  else if(type.id() == ID_union_tag)
+  {
+    return size_of_expr(ns.follow_tag(to_union_tag_type(type)), ns);
+  }
+  else if(type.id() == ID_struct_tag)
+  {
+    return size_of_expr(ns.follow_tag(to_struct_tag_type(type)), ns);
   }
   else if(type.id()==ID_code)
   {

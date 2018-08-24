@@ -17,7 +17,6 @@
 #include <util/symbol.h>
 #include <util/ui_message.h>
 #include <util/options.h>
-#include <util/time_stopping.h>
 
 #include "../assertion_info.h"
 #include "smt_symex_target_equation.h"
@@ -26,18 +25,21 @@ class symex_no_partitiont : public symex_bmct {
 public:
     symex_no_partitiont(
             const namespacet &_ns,
-            symbol_tablet &_new_symbol_table,
+            symbol_tablet &_symbol_table,
             smt_symex_target_equationt &_target,
             message_handlert &_message_handler,
             const goto_programt &_goto_program,
+            const optionst &_options,
+            path_storaget &_path_storage,
             bool _use_slicing=true
           ) :
-          symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
+          symex_bmct(_message_handler, _symbol_table, _target, _options, _path_storage),
           equation(_target),
           goto_program(_goto_program),
           current_assertion(nullptr),
           loc(0),
-          use_slicing(_use_slicing)
+          use_slicing(_use_slicing),
+          new_symbol_table(_symbol_table)        
           {}
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
@@ -78,6 +80,8 @@ private:
     unsigned loc;
 
     bool use_slicing;
+    
+    symbol_tablet new_symbol_table;
     
     bool process_planned(statet &state, const goto_functionst &goto_functions, bool force_check);
 

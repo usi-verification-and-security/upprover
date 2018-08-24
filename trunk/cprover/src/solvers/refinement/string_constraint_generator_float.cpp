@@ -27,8 +27,8 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 exprt get_exponent(
   const exprt &src, const ieee_float_spect &spec)
 {
-  exprt exp_bits=extractbits_exprt(
-    src, spec.f+spec.e-1, spec.f, unsignedbv_typet(spec.e));
+  const extractbits_exprt exp_bits(
+    src, spec.f + spec.e - 1, spec.f, unsignedbv_typet(spec.e));
 
   // Exponent is in biased form (numbers from -128 to 127 are encoded with
   // integer from 0 to 255) we have to remove the bias.
@@ -214,7 +214,7 @@ exprt string_constraint_generatort::add_axioms_for_string_of_float(
   const array_string_exprt integer_part_str =
     fresh_string(index_type, char_type);
   const exprt return_code2 =
-    add_axioms_from_int(integer_part_str, integer_part, 8);
+    add_axioms_for_string_of_int(integer_part_str, integer_part, 8);
 
   return add_axioms_for_concat(res, integer_part_str, fractional_part_str);
 }
@@ -251,7 +251,7 @@ exprt string_constraint_generatort::add_axioms_for_fractional_part(
 
   and_exprt a1(res.axiom_for_length_gt(1),
                res.axiom_for_length_le(max));
-  axioms.push_back(a1);
+  lemmas.push_back(a1);
 
   equal_exprt starts_with_dot(res[0], from_integer('.', char_type));
 
@@ -289,10 +289,10 @@ exprt string_constraint_generatort::add_axioms_for_fractional_part(
   }
 
   exprt a2=conjunction(digit_constraints);
-  axioms.push_back(a2);
+  lemmas.push_back(a2);
 
   equal_exprt a3(int_expr, sum);
-  axioms.push_back(a3);
+  lemmas.push_back(a3);
 
   return from_integer(0, signedbv_typet(32));
 }
@@ -423,8 +423,8 @@ exprt string_constraint_generatort::add_axioms_from_float_scientific_notation(
 
   array_string_exprt string_expr_integer_part =
     fresh_string(index_type, char_type);
-  exprt return_code1 =
-    add_axioms_from_int(string_expr_integer_part, dec_significand_int, 3);
+  exprt return_code1 = add_axioms_for_string_of_int(
+    string_expr_integer_part, dec_significand_int, 3);
   minus_exprt fractional_part(
     dec_significand, floatbv_of_int_expr(dec_significand_int, float_spec));
 
@@ -467,7 +467,7 @@ exprt string_constraint_generatort::add_axioms_from_float_scientific_notation(
   const array_string_exprt exponent_string =
     fresh_string(index_type, char_type);
   const exprt return_code6 =
-    add_axioms_from_int(exponent_string, decimal_exponent, 3);
+    add_axioms_for_string_of_int(exponent_string, decimal_exponent, 3);
 
   // string_expr = concat(string_expr_with_E, exponent_string)
   return add_axioms_for_concat(res, string_expr_with_E, exponent_string);

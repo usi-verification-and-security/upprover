@@ -15,7 +15,7 @@
 #include <goto-symex/goto_symex.h>
 #include "partition_fwd.h"
 #include <queue>
-
+#include <funfrog/summary_store.h>
 //#define DEBUG_PARTITIONING // Debug this class
 
 class goto_programt;
@@ -36,20 +36,19 @@ public:
   symex_assertion_sumt(
           const summary_storet & summary_store,
           const goto_functionst & goto_functions,
-          call_tree_nodet &_summary_info,
-          const namespacet &_ns,
-          symbol_tablet &_new_symbol_table,
+          call_tree_nodet &_root,
+          symbol_tablet &_symbol_table,
           partitioning_target_equationt &_target,
           message_handlert &_message_handler,
           const goto_programt &_goto_program,
+          const optionst &_options,
+          path_storaget &_path_storage,          
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
           bool _use_slicing,
 	  bool _do_guard_expl,
           bool _use_smt,
-          unsigned int _max_unwind,
-          bool partial_loops = false
-          );
+          unsigned int _max_unwind);
           
   virtual ~symex_assertion_sumt() override;
 
@@ -70,7 +69,7 @@ public:
           bool force_check = false);
   
   virtual void symex_step(
-    const goto_functionst &goto_functions,
+    const get_goto_functiont &get_goto_function,
     statet &state) override;
 
   const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
@@ -278,7 +277,7 @@ protected:
     }  
     
     /* Even if dead adds it, else cannot get L1 name later on */
-    if (!new_symbol_table.has_symbol(base_id)) {
+    if (!symex_symbol_table->has_symbol(base_id)) {
         symbolt s;
         s.base_name = base_id;
         s.name = base_id;
@@ -286,7 +285,7 @@ protected:
         s.mode=irep_idt();
         s.location = source_location;
         s.is_thread_local = !is_shared;
-        new_symbol_table.add(s);
+        symex_symbol_table->add(s);
     }
   }
 
@@ -332,6 +331,7 @@ protected:
   // for loop unwinding
   virtual bool get_unwind(
     const symex_targett::sourcet &source,
+    const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
     unsigned unwind) override
   {
     // returns true if we should not continue unwinding
@@ -353,6 +353,14 @@ protected:
     std::set<std::string> _return_vals; // Check for duplicated symbol creation
   #endif
 
+/// The symbol table associated with the goto-program that we're
+  /// executing. This symbol table will not additionally contain objects
+  /// that are dynamically created as part of symbolic execution; the
+  /// names of those object are stored in the symbol table passed as the
+  /// `symex_symbol_table` argument to the `symex_*` methods.
+  // const symbol_tablet &outer_symbol_table; <--- this is a const method in goto_symex.h
+  symbol_tablet* symex_symbol_table;  // We use this to all our dynamic allocations! (as done in bmc.h
+
 private:
 
     std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;
@@ -370,12 +378,12 @@ private:
 
   // this should be used only for artificial symbols that we have created with create_new_artificial_symbol method
   bool knows_artificial_symbol(const irep_idt & symbol_id) const {
-    return new_symbol_table.has_symbol(symbol_id);
+    return symex_symbol_table->has_symbol(symbol_id);
   }
 
   // this should be used only for symbols that we have created with create_new_artificial_symbol method
   const symbolt & get_artificial_symbol(const irep_idt & id){
-    const auto * symbol_p = new_symbol_table.lookup(id);
+    const auto * symbol_p = symex_symbol_table->lookup(id);
     if(symbol_p){
       return *symbol_p;
     }

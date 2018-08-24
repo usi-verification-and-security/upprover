@@ -24,6 +24,8 @@ public:
   {
   }
 
+  virtual ~decision_proceduret();
+
   // get a value from satisfying instance if satisfiable
   // returns nil if not available
   virtual exprt get(const exprt &expr) const=0;
@@ -51,9 +53,6 @@ public:
   {
     return dec_solve();
   }
-
-  // old-style, will go away
-  virtual bool in_core(const exprt &expr);
 
   // return a textual description of the decision procedure
   virtual std::string decision_procedure_text() const=0;

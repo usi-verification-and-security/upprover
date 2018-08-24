@@ -44,7 +44,6 @@ symbolt &cpp_declarator_convertert::convert(
     typet type;
     type.swap(declarator.name().get_sub().back());
     declarator.type().subtype()=type;
-    std::string tmp;
     cpp_typecheck.typecheck_type(type);
     irept name(ID_name);
     name.set(ID_identifier, "("+cpp_type2name(type)+")");
@@ -69,7 +68,8 @@ symbolt &cpp_declarator_convertert::convert(
     scope=&cpp_typecheck.cpp_scopes.current_scope();
 
     // check the declarator-part of the type, in that scope
-    cpp_typecheck.typecheck_type(final_type);
+    if(declarator.value().is_nil() || !cpp_typecheck.has_auto(final_type))
+      cpp_typecheck.typecheck_type(final_type);
   }
 
   is_code=is_code_type(final_type);
@@ -141,8 +141,9 @@ symbolt &cpp_declarator_convertert::convert(
           cpp_typecheck_resolvet::wantt::TYPE,
           cpp_typecheck_fargst());
 
-      if(symbol_expr.id()!=ID_type ||
-         symbol_expr.type().id()!=ID_symbol)
+      if(
+        symbol_expr.id() != ID_type ||
+        symbol_expr.type().id() != ID_symbol_type)
       {
         cpp_typecheck.error().source_location=name.source_location();
         cpp_typecheck.error() << "error: expected type"
@@ -200,7 +201,7 @@ symbolt &cpp_declarator_convertert::convert(
     if(!storage_spec.is_extern())
       symbol.is_extern = false;
 
-    if(declarator.get_bool("#template_case"))
+    if(declarator.get_bool(ID_C_template_case))
       return symbol;
 
     combine_types(declarator.name().source_location(), final_type, symbol);
@@ -258,7 +259,7 @@ void cpp_declarator_convertert::combine_types(
         if(decl_parameter.type()!=symbol_parameter.type())
         {
           // The 'this' parameter of virtual functions mismatches
-          if(i!=0 || !symbol_code_type.get_bool("#is_virtual"))
+          if(i != 0 || !symbol_code_type.get_bool(ID_C_is_virtual))
           {
             cpp_typecheck.error().source_location=source_location;
             cpp_typecheck.error() << "symbol `" << symbol.display_name()
@@ -345,9 +346,6 @@ void cpp_declarator_convertert::handle_initializer(
   {
     // no initial value yet
     symbol.value.swap(value);
-
-    if(is_code && declarator.type().id()!=ID_template)
-      cpp_typecheck.add_method_body(&symbol);
 
     if(!is_code)
       cpp_typecheck.convert_initializer(symbol);
@@ -585,7 +583,7 @@ irep_idt cpp_declarator_convertert::get_pretty_name()
 }
 
 void cpp_declarator_convertert::operator_overloading_rules(
-  const symbolt &symbol)
+  const symbolt &)
 {
 }
 

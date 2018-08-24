@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module:
+Module: Data structures representing statements in a program
 
 Author: Daniel Kroening, kroening@kroening.com
 
@@ -11,19 +11,33 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_UTIL_STD_CODE_H
 
 #include <cassert>
+#include <list>
 
 #include "expr.h"
 #include "expr_cast.h"
 
-/*! \brief A statement in a programming language
-*/
+/// Data structure for representing an arbitrary statement in a program. Every
+/// specific type of statement (e.g. block of statements, assignment,
+/// if-then-else statement...) is represented by a subtype of `codet`.
+/// `codet`s are represented to be subtypes of \ref exprt since statements can
+/// occur in an expression context in C: for example, the assignment `x = y;`
+/// is an expression with return value `y`. For other types of statements in an
+/// expression context, see e.g.
+/// https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html.
+/// To distinguish a `codet` from other [exprts](\ref exprt), we set its
+/// [id()](\ref irept::id) to `ID_code`. To distinguish different types of
+/// `codet`, we use a named sub `ID_statement`.
 class codet:public exprt
 {
 public:
+  DEPRECATED("Use codet(statement) instead")
   codet():exprt(ID_code, typet(ID_code))
   {
   }
 
+  /// \param statement: Specifies the type of the `codet` to be constructed,
+  ///   e.g. `ID_block` for a \ref code_blockt or `ID_assign` for a
+  ///   \ref code_assignt.
   explicit codet(const irep_idt &statement):
     exprt(ID_code, typet(ID_code))
   {
@@ -82,8 +96,8 @@ inline codet &to_code(exprt &expr)
   return static_cast<codet &>(expr);
 }
 
-/*! \brief Sequential composition
-*/
+/// A \ref codet representing sequential composition of program statements.
+/// Each operand represents a statement in the block.
 class code_blockt:public codet
 {
 public:
@@ -102,9 +116,20 @@ public:
       o.push_back(*it);
   }
 
+  void move(codet &code)
+  {
+    move_to_operands(code);
+  }
+
   void add(const codet &code)
   {
     copy_to_operands(code);
+  }
+
+  void add(codet code, const source_locationt &loc)
+  {
+    code.add_source_location() = loc;
+    add(code);
   }
 
   void append(const code_blockt &extra_block);
@@ -161,8 +186,7 @@ inline code_blockt &to_code_block(codet &code)
   return static_cast<code_blockt &>(code);
 }
 
-/*! \brief Skip
-*/
+/// A \ref codet representing a `skip` statement.
 class code_skipt:public codet
 {
 public:
@@ -178,8 +202,10 @@ template<> inline bool can_cast_expr<code_skipt>(const exprt &base)
 
 // there is no to_code_skip, so no validate_expr is provided for code_skipt
 
-/*! \brief Assignment
-*/
+/// A \ref codet representing an assignment in the program.
+/// For example, if an expression `e1` is represented as an \ref exprt `expr1`
+/// and an expression `e2` is represented as an \ref exprt `expr2`, the
+/// assignment `e1 = e2;` can be represented as `code_assignt(expr1, expr2)`.
 class code_assignt:public codet
 {
 public:
@@ -236,11 +262,14 @@ inline code_assignt &to_code_assign(codet &code)
   return static_cast<code_assignt &>(code);
 }
 
-/*! \brief A declaration of a local variable
-*/
+/// A `codet` representing the declaration of a local variable.
+/// For example, if a variable (symbol) `x` is represented as a
+/// \ref symbol_exprt `sym`, then the declaration of this variable can be
+/// represented as `code_declt(sym)`.
 class code_declt:public codet
 {
 public:
+  DEPRECATED("Use code_declt(symbol) instead")
   code_declt():codet(ID_decl)
   {
     operands().resize(1);
@@ -288,11 +317,12 @@ inline code_declt &to_code_decl(codet &code)
   return static_cast<code_declt &>(code);
 }
 
-/*! \brief A removal of a local variable
-*/
+/// A \ref codet representing the removal of a local variable going out of
+/// scope.
 class code_deadt:public codet
 {
 public:
+  DEPRECATED("Use code_deadt(symbol) instead")
   code_deadt():codet(ID_dead)
   {
     operands().resize(1);
@@ -338,11 +368,11 @@ inline code_deadt &to_code_dead(codet &code)
   return static_cast<code_deadt &>(code);
 }
 
-/*! \brief An assumption
-*/
+/// An assumption, which must hold in subsequent code.
 class code_assumet:public codet
 {
 public:
+  DEPRECATED("Use code_assumet(expr) instead")
   code_assumet():codet(ID_assume)
   {
     operands().resize(1);
@@ -384,11 +414,12 @@ inline code_assumet &to_code_assume(codet &code)
   return static_cast<code_assumet &>(code);
 }
 
-/*! \brief An assertion
-*/
+/// A non-fatal assertion, which checks a condition then permits execution to
+/// continue.
 class code_assertt:public codet
 {
 public:
+  DEPRECATED("Use code_assertt(expr) instead")
   code_assertt():codet(ID_assert)
   {
     operands().resize(1);
@@ -430,8 +461,22 @@ inline code_assertt &to_code_assert(codet &code)
   return static_cast<code_assertt &>(code);
 }
 
-/*! \brief An if-then-else
-*/
+/// Create a fatal assertion, which checks a condition and then halts if it does
+/// not hold. Equivalent to `ASSERT(condition); ASSUME(condition)`.
+///
+/// Source level assertions should probably use this, whilst checks that are
+/// normally non-fatal at runtime, such as integer overflows, should use
+/// code_assertt by itself.
+/// \param condition: condition to assert
+/// \param source_location: source location to attach to the generated code;
+///   conventionally this should have `comment` and `property_class` fields set
+///   to indicate the nature of the assertion.
+/// \return A code block that asserts a condition then aborts if it does not
+///    hold.
+code_blockt create_fatal_assertion(
+  const exprt &condition, const source_locationt &source_location);
+
+/// \ref codet representation of an if-then-else statement.
 class code_ifthenelset:public codet
 {
 public:
@@ -502,14 +547,21 @@ inline code_ifthenelset &to_code_ifthenelse(codet &code)
   return static_cast<code_ifthenelset &>(code);
 }
 
-/*! \brief A `switch' instruction
-*/
+/// \ref codet representing a `switch` statement.
 class code_switcht:public codet
 {
 public:
+  DEPRECATED("Use code_switcht(value, body) instead")
   code_switcht():codet(ID_switch)
   {
     operands().resize(2);
+  }
+
+  code_switcht(const exprt &_value, const codet &_body) : codet(ID_switch)
+  {
+    operands().resize(2);
+    value() = _value;
+    body() = _body;
   }
 
   const exprt &value() const
@@ -557,14 +609,21 @@ inline code_switcht &to_code_switch(codet &code)
   return static_cast<code_switcht &>(code);
 }
 
-/*! \brief A `while' instruction
-*/
+/// \ref codet representing a `while` statement.
 class code_whilet:public codet
 {
 public:
+  DEPRECATED("Use code_whilet(cond, body) instead")
   code_whilet():codet(ID_while)
   {
     operands().resize(2);
+  }
+
+  code_whilet(const exprt &_cond, const codet &_body) : codet(ID_while)
+  {
+    operands().resize(2);
+    cond() = _cond;
+    body() = _body;
   }
 
   const exprt &cond() const
@@ -612,14 +671,21 @@ inline code_whilet &to_code_while(codet &code)
   return static_cast<code_whilet &>(code);
 }
 
-/*! \brief A `do while' instruction
-*/
+/// \ref codet representation of a `do while` statement.
 class code_dowhilet:public codet
 {
 public:
+  DEPRECATED("Use code_dowhilet(cond, body) instead")
   code_dowhilet():codet(ID_dowhile)
   {
     operands().resize(2);
+  }
+
+  code_dowhilet(const exprt &_cond, const codet &_body) : codet(ID_dowhile)
+  {
+    operands().resize(2);
+    cond() = _cond;
+    body() = _body;
   }
 
   const exprt &cond() const
@@ -667,8 +733,7 @@ inline code_dowhilet &to_code_dowhile(codet &code)
   return static_cast<code_dowhilet &>(code);
 }
 
-/*! \brief A `for' instruction
-*/
+/// \ref codet representation of a `for` statement.
 class code_fort:public codet
 {
 public:
@@ -743,11 +808,11 @@ inline code_fort &to_code_for(codet &code)
   return static_cast<code_fort &>(code);
 }
 
-/*! \brief A `goto' instruction
-*/
+/// \ref codet representation of a `goto` statement.
 class code_gotot:public codet
 {
 public:
+  DEPRECATED("Use code_gotot(label) instead")
   code_gotot():codet(ID_goto)
   {
   }
@@ -792,13 +857,11 @@ inline code_gotot &to_code_goto(codet &code)
   return static_cast<code_gotot &>(code);
 }
 
-/*! \brief A function call
-
-    The function call instruction has three operands.
-    The first is the expression that is used to store
-    the return value. The second is the function called.
-    The third is a vector of argument values.
-*/
+/// \ref codet representation of a function call statement.
+/// The function call statement has three operands.
+/// The first is the expression that is used to store the return value.
+/// The second is the function called.
+/// The third is a vector of argument values.
 class code_function_callt:public codet
 {
 public:
@@ -862,8 +925,7 @@ inline code_function_callt &to_code_function_call(codet &code)
   return static_cast<code_function_callt &>(code);
 }
 
-/*! \brief Return from a function
-*/
+/// \ref codet representation of a "return from a function" statement.
 class code_returnt:public codet
 {
 public:
@@ -916,11 +978,11 @@ inline code_returnt &to_code_return(codet &code)
   return static_cast<code_returnt &>(code);
 }
 
-/*! \brief A label for branch targets
-*/
+/// \ref codet representation of a label for branch targets.
 class code_labelt:public codet
 {
 public:
+  DEPRECATED("Use code_labelt(label) instead")
   code_labelt():codet(ID_label)
   {
     operands().resize(1);
@@ -983,11 +1045,12 @@ inline code_labelt &to_code_label(codet &code)
   return static_cast<code_labelt &>(code);
 }
 
-/*! \brief A switch-case
-*/
+/// \ref codet representation of a switch-case, i.e.\ a `case` statement within
+/// a `switch`.
 class code_switch_caset:public codet
 {
 public:
+  DEPRECATED("Use code_switch_caset(case_op, code) instead")
   code_switch_caset():codet(ID_switch_case)
   {
     operands().resize(2);
@@ -1052,8 +1115,8 @@ inline code_switch_caset &to_code_switch_case(codet &code)
   return static_cast<code_switch_caset &>(code);
 }
 
-/*! \brief A break for `for' and `while' loops
-*/
+/// \ref codet representation of a `break` statement (within a `for` or `while`
+/// loop).
 class code_breakt:public codet
 {
 public:
@@ -1082,8 +1145,8 @@ inline code_breakt &to_code_break(codet &code)
   return static_cast<code_breakt &>(code);
 }
 
-/*! \brief A continue for `for' and `while' loops
-*/
+/// \ref codet representation of a `continue` statement (within a `for` or
+/// `while` loop).
 class code_continuet:public codet
 {
 public:
@@ -1112,8 +1175,7 @@ inline code_continuet &to_code_continue(codet &code)
   return static_cast<code_continuet &>(code);
 }
 
-/*! \brief An inline assembler statement
-*/
+/// \ref codet representation of an inline assembler statement.
 class code_asmt:public codet
 {
 public:
@@ -1157,11 +1219,12 @@ inline const code_asmt &to_code_asm(const codet &code)
   return static_cast<const code_asmt &>(code);
 }
 
-/*! \brief An expression statement
-*/
+/// \ref codet representation of an expression statement.
+/// It has one operand, which is the expression it stores.
 class code_expressiont:public codet
 {
 public:
+  DEPRECATED("Use code_expressiont(expr) instead")
   code_expressiont():codet(ID_expression)
   {
     operands().resize(1);
@@ -1207,22 +1270,31 @@ inline const code_expressiont &to_code_expression(const codet &code)
   return static_cast<const code_expressiont &>(code);
 }
 
-/*! \brief An expression containing a side effect
-*/
+/// An expression containing a side effect.
+/// Note that unlike most classes in this file, `side_effect_exprt` and its
+/// subtypes are not subtypes of \ref codet, but they inherit directly from
+/// \ref exprt. They do have a `statement` like [codets](\ref codet), but their
+/// [id()](\ref irept::id) is `ID_side_effect`, not `ID_code`.
 class side_effect_exprt:public exprt
 {
 public:
-  explicit side_effect_exprt(const irep_idt &statement):
-    exprt(ID_side_effect)
+  DEPRECATED("Use side_effect_exprt(statement, type, loc) instead")
+  explicit side_effect_exprt(const irep_idt &statement) : exprt(ID_side_effect)
   {
     set_statement(statement);
   }
 
+  DEPRECATED("Use side_effect_exprt(statement, type, loc) instead")
   side_effect_exprt(const irep_idt &statement, const typet &_type):
     exprt(ID_side_effect, _type)
   {
     set_statement(statement);
   }
+
+  side_effect_exprt(
+    const irep_idt &statement,
+    const typet &_type,
+    const source_locationt &loc);
 
   const irep_idt &get_statement() const
   {
@@ -1270,21 +1342,24 @@ inline const side_effect_exprt &to_side_effect_expr(const exprt &expr)
   return static_cast<const side_effect_exprt &>(expr);
 }
 
-/*! \brief A side effect that returns a non-deterministically chosen value
-*/
+/// A \ref side_effect_exprt that returns a non-deterministically chosen value.
 class side_effect_expr_nondett:public side_effect_exprt
 {
 public:
+  DEPRECATED("Use side_effect_expr_nondett(statement, type, loc) instead")
   side_effect_expr_nondett():side_effect_exprt(ID_nondet)
   {
     set_nullable(true);
   }
 
+  DEPRECATED("Use side_effect_expr_nondett(statement, type, loc) instead")
   explicit side_effect_expr_nondett(const typet &_type):
     side_effect_exprt(ID_nondet, _type)
   {
     set_nullable(true);
   }
+
+  side_effect_expr_nondett(const typet &_type, const source_locationt &loc);
 
   void set_nullable(bool nullable)
   {
@@ -1321,16 +1396,54 @@ inline const side_effect_expr_nondett &to_side_effect_expr_nondet(
   return static_cast<const side_effect_expr_nondett &>(side_effect_expr_nondet);
 }
 
-/*! \brief A function call side effect
-*/
+/// A \ref side_effect_exprt representation of a function call side effect.
 class side_effect_expr_function_callt:public side_effect_exprt
 {
 public:
-  side_effect_expr_function_callt():side_effect_exprt(ID_function_call)
+  DEPRECATED(
+    "Use side_effect_expr_function_callt("
+    "function, arguments, type, loc) instead")
+  side_effect_expr_function_callt()
+    : side_effect_exprt(ID_function_call, typet(), source_locationt())
   {
     operands().resize(2);
     op1().id(ID_arguments);
   }
+
+  DEPRECATED(
+    "Use side_effect_expr_function_callt("
+    "function, arguments, type, loc) instead")
+  side_effect_expr_function_callt(
+    const exprt &_function,
+    const exprt::operandst &_arguments)
+    : side_effect_exprt(ID_function_call)
+  {
+    operands().resize(2);
+    op1().id(ID_arguments);
+    function() = _function;
+    arguments() = _arguments;
+  }
+
+  DEPRECATED(
+    "Use side_effect_expr_function_callt("
+    "function, arguments, type, loc) instead")
+  side_effect_expr_function_callt(
+    const exprt &_function,
+    const exprt::operandst &_arguments,
+    const typet &_type)
+    : side_effect_exprt(ID_function_call, _type)
+  {
+    operands().resize(2);
+    op1().id(ID_arguments);
+    function() = _function;
+    arguments() = _arguments;
+  }
+
+  side_effect_expr_function_callt(
+    const exprt &_function,
+    const exprt::operandst &_arguments,
+    const typet &_type,
+    const source_locationt &loc);
 
   exprt &function()
   {
@@ -1378,17 +1491,21 @@ inline const side_effect_expr_function_callt
   return static_cast<const side_effect_expr_function_callt &>(expr);
 }
 
-/*! \brief A side effect that throws an exception
-*/
+/// A \ref side_effect_exprt representation of a side effect that throws an
+/// exception.
 class side_effect_expr_throwt:public side_effect_exprt
 {
 public:
+  DEPRECATED("Use side_effect_expr_throwt(exception_list) instead")
   side_effect_expr_throwt():side_effect_exprt(ID_throw)
   {
   }
 
-  explicit side_effect_expr_throwt(const irept &exception_list):
-    side_effect_exprt(ID_throw)
+  explicit side_effect_expr_throwt(
+    const irept &exception_list,
+    const typet &type,
+    const source_locationt &loc)
+    : side_effect_exprt(ID_throw, type, loc)
   {
     set(ID_exception_list, exception_list);
   }
@@ -1422,12 +1539,12 @@ inline const side_effect_expr_throwt &to_side_effect_expr_throw(
 /// exception_tag1 -> label1
 /// exception_tag2 -> label2
 /// ...
-/// When used in a GOTO program instruction, the corresponding
-/// opcode must be CATCH, and the instruction's `targets` must
+/// When used in a GOTO program statement, the corresponding
+/// opcode must be CATCH, and the statement's `targets` must
 /// be in one-to-one correspondence with the exception tags.
 /// The labels may be unspecified for the case where
-/// there is no corresponding source-language label, in whic
-/// case the GOTO instruction targets must be set at the same
+/// there is no corresponding source-language label, in which
+/// case the GOTO statement targets must be set at the same
 /// time.
 class code_push_catcht:public codet
 {
@@ -1590,8 +1707,7 @@ static inline const code_landingpadt &to_code_landingpad(const codet &code)
   return static_cast<const code_landingpadt &>(code);
 }
 
-/*! \brief A try/catch block
-*/
+/// \ref codet representation of a try/catch block.
 class code_try_catcht:public codet
 {
 public:

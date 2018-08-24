@@ -132,7 +132,6 @@ void full_slicert::operator()(
 
   // remove the skips
   remove_skip(goto_functions);
-  goto_functions.update();
 }
 
 
@@ -572,7 +571,7 @@ void change_impactt::output_change_impact(
     const unsigned mod_flags=
       c_entry==c_i.end() ? SAME : c_entry->second;
 
-    char prefix;
+    char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence
     // modifications
     if(mod_flags==SAME)
@@ -640,7 +639,7 @@ void change_impactt::output_change_impact(
     const unsigned mod_flags=
       c_entry==n_c_i.end() ? SAME : c_entry->second;
 
-    char prefix;
+    char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence
     // modifications
     if(mod_flags==SAME)
@@ -692,7 +691,7 @@ void change_impactt::output_change_impact(
     const unsigned old_mod_flags=
       o_c_entry==o_c_i.end() ? SAME : o_c_entry->second;
 
-    char prefix;
+    char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence
     // modifications
     if(old_mod_flags==SAME)

@@ -221,10 +221,10 @@ public:
 
   #ifdef USE_DSTRING
   typedef std::map<idt, entryt> valuest;
-  typedef std::unordered_set<idt, irep_id_hash> flatten_seent;
-  typedef std::unordered_set<idt, irep_id_hash> gvs_recursion_sett;
-  typedef std::unordered_set<idt, irep_id_hash> recfind_recursion_sett;
-  typedef std::unordered_set<idt, irep_id_hash> assign_recursion_sett;
+  typedef std::unordered_set<idt> flatten_seent;
+  typedef std::unordered_set<idt> gvs_recursion_sett;
+  typedef std::unordered_set<idt> recfind_recursion_sett;
+  typedef std::unordered_set<idt> assign_recursion_sett;
   #else
   typedef std::unordered_map<idt, entryt, string_hash> valuest;
   typedef std::unordered_set<idt, string_hash> flatten_seent;
@@ -395,8 +395,7 @@ protected:
     const entryt&,
     object_mapt&,
     flatten_seent&,
-    unsigned from_function,
-    unsigned from_index) const;
+    unsigned from_function) const;
 
   bool recursive_find(
     const irep_idt &ident,

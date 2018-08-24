@@ -10,7 +10,7 @@ Author: Daniel Poetzl
 #ifndef CPROVER_UTIL_STRING_UTILS_H
 #define CPROVER_UTIL_STRING_UTILS_H
 
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -18,10 +18,10 @@ std::string strip_string(const std::string &s);
 
 void split_string(
   const std::string &s,
-  char delim, // must not be a whitespace character
+  char delim,
   std::vector<std::string> &result,
-  bool strip=false, // strip whitespace from elements
-  bool remove_empty=false); // remove empty elements
+  bool strip = false,
+  bool remove_empty = false);
 
 void split_string(
   const std::string &s,
@@ -29,6 +29,8 @@ void split_string(
   std::string &left,
   std::string &right,
   bool strip=false);
+
+std::vector<std::string> split_string(const std::string &s, char delim);
 
 std::string trim_from_last_delimiter(
   const std::string &s,
@@ -60,5 +62,11 @@ Stream &join_strings(
   }
   return os;
 }
+
+/// Generic escaping of strings; this is not meant to be a particular
+/// programming language.
+std::string escape(const std::string &);
+
+void replace_all(std::string &, const std::string &, const std::string &);
 
 #endif

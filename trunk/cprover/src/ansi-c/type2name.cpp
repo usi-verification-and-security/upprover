@@ -11,16 +11,15 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include "type2name.h"
 
-#include <util/std_types.h>
 #include <util/arith_tools.h>
-#include <util/namespace.h>
-#include <util/symbol.h>
-#include <util/symbol_table.h>
-#include <util/pointer_offset_size.h>
 #include <util/invariant.h>
+#include <util/namespace.h>
+#include <util/pointer_offset_size.h>
+#include <util/std_expr.h>
+#include <util/std_types.h>
+#include <util/symbol_table.h>
 
-typedef std::unordered_map<irep_idt, std::pair<size_t, bool>, irep_id_hash>
-  symbol_numbert;
+typedef std::unordered_map<irep_idt, std::pair<size_t, bool>> symbol_numbert;
 
 static std::string type2name(
   const typet &type,
@@ -182,16 +181,15 @@ static std::string type2name(
     const array_typet &t=to_array_type(type);
     mp_integer size;
     if(t.size().id()==ID_symbol)
-      result+="ARR"+id2string(t.size().get(ID_identifier));
+      result += "ARR" + id2string(to_symbol_expr(t.size()).get_identifier());
     else if(to_integer(t.size(), size))
       result+="ARR?";
     else
       result+="ARR"+integer2string(size);
   }
-  else if(type.id()==ID_symbol ||
-          type.id()==ID_c_enum_tag ||
-          type.id()==ID_struct_tag ||
-          type.id()==ID_union_tag)
+  else if(
+    type.id() == ID_symbol_type || type.id() == ID_c_enum_tag ||
+    type.id() == ID_struct_tag || type.id() == ID_union_tag)
   {
     parent_is_sym_check=true;
     result+=type2name_symbol(type, ns, symbol_number);

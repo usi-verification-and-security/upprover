@@ -66,14 +66,21 @@ def parse_args():
     parser.add_argument('-T', '--tasks', type=str,
                         default='quick',
                         help='Subset of tasks to run (quick, full; ' +
-                             'default: quick; or name of SV-COMP task)')
+                             'default: quick; or regex of SV-COMP task(s))')
+    parser.add_argument('-B', '--code-build', type=str,
+                        default=same_dir('codebuild.yaml'),
+                        help='Non-default CodeBuild template to use')
+    parser.add_argument('-W', '--witness-check', action='store_true',
+                        help='Run witness checks after benchmarking')
 
     args = parser.parse_args()
+
     assert(args.repository.startswith('https://github.com/') or
            args.repository.startswith('https://git-codecommit.'))
     assert(not args.ssh_key or args.ssh_key_name)
     if args.ssh_key:
         assert(os.path.isfile(args.ssh_key))
+    assert(os.path.isfile(args.code_build))
 
     return args
 
@@ -260,24 +267,25 @@ def select_region(session, mode, region, instance_type):
             min_region, min_az, min_price))
 
     # http://aws-ubuntu.herokuapp.com/
-    # 20170919 - Ubuntu 16.04 LTS (xenial) - hvm:ebs-ssd
+    # 20180306 - Ubuntu 16.04 LTS (xenial) - hvm:ebs-ssd
     AMI_ids = {
         "Mappings": {
             "RegionMap": {
-                "ap-northeast-1": {"64": "ami-8422ebe2"},
-                "ap-northeast-2": {"64": "ami-0f6fb461"},
-                "ap-south-1": {"64": "ami-08a5e367"},
-                "ap-southeast-1": {"64": "ami-e6d3a585"},
-                "ap-southeast-2": {"64": "ami-391ff95b"},
-                "ca-central-1": {"64": "ami-e59c2581"},
-                "eu-central-1": {"64": "ami-5a922335"},
-                "eu-west-1": {"64": "ami-17d11e6e"},
-                "eu-west-2": {"64": "ami-e1f2e185"},
-                "sa-east-1": {"64": "ami-a3e39ecf"},
-                "us-east-1": {"64": "ami-d651b8ac"},
-                "us-east-2": {"64": "ami-9686a4f3"},
-                "us-west-1": {"64": "ami-2d5c6d4d"},
-                "us-west-2": {"64": "ami-ecc63a94"}
+                "ap-northeast-1": { "64": "ami-0d74386b" },
+                "ap-northeast-2": { "64": "ami-a414b9ca" },
+                "ap-south-1": { "64": "ami-0189d76e" },
+                "ap-southeast-1": { "64": "ami-52d4802e" },
+                "ap-southeast-2": { "64": "ami-d38a4ab1" },
+                "ca-central-1": { "64": "ami-ae55d2ca" },
+                "eu-central-1": { "64": "ami-7c412f13" },
+                "eu-west-1": { "64": "ami-f90a4880" },
+                "eu-west-2": { "64": "ami-f4f21593" },
+                "eu-west-3": { "64": "ami-0e55e373" },
+                "sa-east-1": { "64": "ami-423d772e" },
+                "us-east-1": { "64": "ami-43a15f3e" },
+                "us-east-2": { "64": "ami-916f59f4" },
+                "us-west-1": { "64": "ami-925144f2" },
+                "us-west-2": { "64": "ami-4e79ed36" }
             }
         }
     }
@@ -345,7 +353,8 @@ def prepare_ebs(session, region, az, ami):
     return snapshots['Snapshots'][0]['SnapshotId']
 
 
-def build(session, repository, commit_id, bucket_name, perf_test_id):
+def build(session, repository, commit_id, bucket_name, perf_test_id,
+        codebuild_file):
     # build the chosen commit in CodeBuild
     logger = logging.getLogger('perf_test')
 
@@ -356,7 +365,7 @@ def build(session, repository, commit_id, bucket_name, perf_test_id):
 
     cfn = session.resource('cloudformation', region_name='us-east-1')
     stack_name = 'perf-test-codebuild-' + perf_test_id
-    with open(same_dir('codebuild.yaml')) as f:
+    with open(codebuild_file) as f:
         CFN_codebuild = f.read()
     stack = cfn.create_stack(
             StackName=stack_name,
@@ -479,10 +488,8 @@ def seed_queue(session, region, queue, task_set):
     elif task_set == 'quick':
         tasks = ['ReachSafety-Loops', 'ReachSafety-BitVectors']
     else:
-        tasks = [task_set]
-
-    for t in tasks:
-        assert(t in set(all_tasks))
+        tasks = [t for t in all_tasks if re.match('^' + task_set + '$', t)]
+        assert(tasks)
 
     for t in tasks:
         response = queue.send_messages(
@@ -492,11 +499,14 @@ def seed_queue(session, region, queue, task_set):
                 ])
         assert(not response.get('Failed'))
 
+    logger.info(region + ': SQS queue seeded with {} jobs'.format(
+        len(tasks) * 2))
+
 
 def run_perf_test(
         session, mode, region, az, ami, instance_type, sqs_arn, sqs_url,
         parallel, snapshot_id, instance_terminated_arn, bucket_name,
-        perf_test_id, price, ssh_key_name):
+        perf_test_id, price, ssh_key_name, witness_check):
     # create an EC2 instance and trigger benchmarking
     logger = logging.getLogger('perf_test')
 
@@ -564,10 +574,15 @@ def run_perf_test(
                 {
                     'ParameterKey': 'SSHKeyName',
                     'ParameterValue': ssh_key_name
+                },
+                {
+                    'ParameterKey': 'WitnessCheck',
+                    'ParameterValue': str(witness_check)
                 }
             ],
             Capabilities=['CAPABILITY_NAMED_IAM'])
 
+    logger.info(region + ': Waiting for completition of ' + stack_name)
     waiter = cfn.meta.client.get_waiter('stack_create_complete')
     waiter.wait(StackName=stack_name)
     asg_name = stack.outputs[0]['OutputValue']
@@ -642,7 +657,7 @@ def main():
         session2 = boto3.session.Session()
         build_future = e.submit(
                 build, session2, args.repository, args.commit_id, bucket_name,
-                perf_test_id)
+                perf_test_id, args.code_build)
         session3 = boto3.session.Session()
         ebs_future = e.submit(prepare_ebs, session3, region, az, ami)
         session4 = boto3.session.Session()
@@ -659,7 +674,7 @@ def main():
             session, args.mode, region, az, ami, args.instance_type,
             sqs_arn, sqs_url, args.parallel, snapshot_id,
             instance_terminated_arn, bucket_name, perf_test_id, price,
-            args.ssh_key_name)
+            args.ssh_key_name, args.witness_check)
 
     return 0
 

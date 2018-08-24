@@ -8,14 +8,19 @@ SRC = armcc_cmdline.cpp \
       cw_mode.cpp \
       gcc_cmdline.cpp \
       gcc_mode.cpp \
+      gcc_version.cpp \
       goto_cc_cmdline.cpp \
       goto_cc_languages.cpp \
       goto_cc_main.cpp \
       goto_cc_mode.cpp \
+      hybrid_binary.cpp \
       ld_cmdline.cpp \
+      ld_mode.cpp \
       linker_script_merge.cpp \
       ms_cl_cmdline.cpp \
       ms_cl_mode.cpp \
+      ms_link_cmdline.cpp \
+      ms_link_mode.cpp \
       # Empty last line
 
 OBJ += ../big-int/big-int$(LIBEXT) \
@@ -24,11 +29,9 @@ OBJ += ../big-int/big-int$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../ansi-c/ansi-c$(LIBEXT) \
       ../cpp/cpp$(LIBEXT) \
-      ../java_bytecode/java_bytecode$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
-      ../miniz/miniz$(OBJEXT) \
       ../json/json$(LIBEXT)
 
 INCLUDES= -I ..

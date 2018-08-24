@@ -95,7 +95,7 @@ void delete_directory_utf16(const std::wstring &path)
 void delete_directory(const std::string &path)
 {
 #ifdef _WIN32
-  delete_directory_utf16(utf8_to_utf16_little_endian(path));
+  delete_directory_utf16(utf8_to_utf16_native_endian(path));
 #else
   DIR *dir=opendir(path.c_str());
   if(dir!=nullptr)
@@ -136,12 +136,35 @@ std::string concat_dir_file(
   const std::string &file_name)
 {
   #ifdef _WIN32
-  return  (file_name.size()>1 &&
-           file_name[0]!='/' &&
-           file_name[1]!=':') ?
-           file_name : directory+"\\"+file_name;
+  return (file_name.size() > 1 && file_name[0] != '/' && file_name[1] == ':') ?
+          file_name : directory + "\\" + file_name;
   #else
   return (!file_name.empty() && file_name[0]=='/') ?
           file_name : directory+"/"+file_name;
   #endif
+}
+
+bool is_directory(const std::string &path)
+{
+  if(path.empty())
+    return false;
+
+#ifdef _WIN32
+
+  auto attributes = ::GetFileAttributesW(widen(path).c_str());
+  if (attributes == INVALID_FILE_ATTRIBUTES)
+    return false;
+  else
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+#else
+
+  struct stat buf;
+
+  if(stat(path.c_str(), &buf)!=0)
+    return false;
+  else
+    return (buf.st_mode & S_IFDIR) != 0;
+
+#endif
 }

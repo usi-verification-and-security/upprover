@@ -10,7 +10,6 @@
 #define CPROVER_PROP_ASSERTION_SUM_H
 
 #include <util/ui_message.h>
-#include <util/time_stopping.h>
 
 class summarization_contextt;
 

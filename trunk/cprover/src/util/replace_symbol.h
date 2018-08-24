@@ -17,11 +17,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "expr.h"
 
+#include <unordered_map>
+
+/// Replace expression or type symbols by an expression or type, respectively.
 class replace_symbolt
 {
 public:
-  typedef std::unordered_map<irep_idt, exprt, irep_id_hash> expr_mapt;
-  typedef std::unordered_map<irep_idt, typet, irep_id_hash> type_mapt;
+  typedef std::unordered_map<irep_idt, exprt> expr_mapt;
+  typedef std::unordered_map<irep_idt, typet> type_mapt;
 
   void insert(const irep_idt &identifier,
                      const exprt &expr)
@@ -77,9 +80,31 @@ public:
     return expr_map.empty() && type_map.empty();
   }
 
+  std::size_t erase(const irep_idt &id)
+  {
+    return expr_map.erase(id) + type_map.erase(id);
+  }
+
+  bool replaces_symbol(const irep_idt &id) const
+  {
+    return expr_map.find(id) != expr_map.end() ||
+           type_map.find(id) != type_map.end();
+  }
+
   replace_symbolt();
   virtual ~replace_symbolt();
 
+  const expr_mapt &get_expr_map() const
+  {
+    return expr_map;
+  }
+
+  expr_mapt &get_expr_map()
+  {
+    return expr_map;
+  }
+
+protected:
   expr_mapt expr_map;
   type_mapt type_map;
 

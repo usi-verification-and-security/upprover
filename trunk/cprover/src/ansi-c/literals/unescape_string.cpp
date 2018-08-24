@@ -23,7 +23,7 @@ static void append_universal_char(
   std::basic_string<unsigned int> value_str(1, value);
 
   // turn into utf-8
-  std::string utf8_value=utf32_to_utf8(value_str);
+  const std::string utf8_value = utf32_native_endian_to_utf8(value_str);
 
   dest.append(utf8_value);
 }
@@ -73,7 +73,7 @@ std::basic_string<T> unescape_string_templ(const std::string &src)
         {
           std::string hex;
 
-          const unsigned digits=(ch=='u')?4:8;
+          const unsigned digits = (ch == 'u') ? 4u : 8u;
           hex.reserve(digits);
 
           for(unsigned count=digits;

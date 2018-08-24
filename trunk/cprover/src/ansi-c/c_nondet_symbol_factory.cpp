@@ -2,7 +2,7 @@
 
 Module: C Nondet Symbol Factory
 
-Author: DiffBlue Limited. All rights reserved.
+Author: Diffblue Ltd.
 
 \*******************************************************************/
 
@@ -11,22 +11,13 @@ Author: DiffBlue Limited. All rights reserved.
 
 #include "c_nondet_symbol_factory.h"
 
-#include <set>
-#include <sstream>
-
 #include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/fresh_symbol.h>
-#include <util/std_types.h>
-#include <util/std_code.h>
-#include <util/std_expr.h>
 #include <util/namespace.h>
-#include <util/pointer_offset_size.h>
-#include <util/prefix.h>
-
-#include <linking/zero_initializer.h>
-
-#include <ansi-c/string_constant.h>
+#include <util/std_expr.h>
+#include <util/std_types.h>
+#include <util/string_constant.h>
 
 #include <goto-programs/goto_functions.h>
 
@@ -44,24 +35,25 @@ static const symbolt &c_new_tmp_symbol(
   const bool static_lifetime,
   const std::string &prefix="tmp")
 {
-  symbolt &tmp_symbol=
-    get_fresh_aux_symbol(type, "", prefix, loc, ID_C, symbol_table);
+  symbolt &tmp_symbol = get_fresh_aux_symbol(
+    type, id2string(loc.get_function()), prefix, loc, ID_C, symbol_table);
   tmp_symbol.is_static_lifetime=static_lifetime;
 
   return tmp_symbol;
 }
 
 /// \param type: Desired type (C_bool or plain bool)
+/// \param loc: source location
 /// \return nondet expr of that type
-static exprt c_get_nondet_bool(const typet &type)
+static exprt c_get_nondet_bool(const typet &type, const source_locationt &loc)
 {
   // We force this to 0 and 1 and won't consider other values
-  return typecast_exprt(side_effect_expr_nondett(bool_typet()), type);
+  return typecast_exprt(side_effect_expr_nondett(bool_typet(), loc), type);
 }
 
 class symbol_factoryt
 {
-  std::vector<symbolt const *> &symbols_created;
+  std::vector<const symbolt *> &symbols_created;
   symbol_tablet &symbol_table;
   const source_locationt &loc;
   const bool assume_non_null;
@@ -69,7 +61,7 @@ class symbol_factoryt
 
 public:
   symbol_factoryt(
-    std::vector<symbolt const *> &_symbols_created,
+    std::vector<const symbolt *> &_symbols_created,
     symbol_tablet &_symbol_table,
     const source_locationt &loc,
     const bool _assume_non_null):
@@ -125,7 +117,7 @@ exprt symbol_factoryt::allocate_object(
   //   <target_expr> = &tmp$<temporary_counter>
   code_assignt assign(target_expr, aoe);
   assign.add_source_location()=loc;
-  assignments.add(assign);
+  assignments.move(assign);
 
   return aoe;
 }
@@ -171,7 +163,7 @@ void symbol_factoryt::gen_nondet_init(
     else
     {
       // Add the following code to assignments:
-      //           IF !(NONDET(_Bool) == FALSE) THEN GOTO <label1>
+      //           IF !NONDET(_Bool) THEN GOTO <label1>
       //           <expr> = <null pointer>
       //           GOTO <label2>
       // <label1>: <expr> = &tmp$<temporary_counter>;
@@ -182,11 +174,11 @@ void symbol_factoryt::gen_nondet_init(
       set_null_inst.add_source_location()=loc;
 
       code_ifthenelset null_check;
-      null_check.cond()=side_effect_expr_nondett(bool_typet());
+      null_check.cond() = side_effect_expr_nondett(bool_typet(), loc);
       null_check.then_case()=set_null_inst;
       null_check.else_case()=non_null_inst;
 
-      assignments.add(null_check);
+      assignments.move(null_check);
     }
   }
   // TODO(OJones): Add support for structs and arrays
@@ -196,13 +188,12 @@ void symbol_factoryt::gen_nondet_init(
     //   <expr> = NONDET(_BOOL);
     // Else add the following code to assignments:
     //   <expr> = NONDET(type);
-    exprt rhs=type.id()==ID_c_bool?
-      c_get_nondet_bool(type):
-      side_effect_expr_nondett(type);
+    exprt rhs = type.id() == ID_c_bool ? c_get_nondet_bool(type, loc)
+                                       : side_effect_expr_nondett(type, loc);
     code_assignt assign(expr, rhs);
     assign.add_source_location()=loc;
 
-    assignments.add(assign);
+    assignments.move(assign);
   }
 }
 
@@ -233,13 +224,15 @@ exprt c_nondet_symbol_factory(
   main_symbol.name=identifier;
   main_symbol.base_name=base_name;
   main_symbol.type=type;
+  main_symbol.location=loc;
+
+  symbol_exprt main_symbol_expr=main_symbol.symbol_expr();
 
   symbolt *main_symbol_ptr;
   bool moving_symbol_failed=symbol_table.move(main_symbol, main_symbol_ptr);
   CHECK_RETURN(!moving_symbol_failed);
 
-  std::vector<symbolt const *> symbols_created;
-  symbol_exprt main_symbol_expr=(*main_symbol_ptr).symbol_expr();
+  std::vector<const symbolt *> symbols_created;
   symbols_created.push_back(main_symbol_ptr);
 
   symbol_factoryt state(
@@ -252,11 +245,11 @@ exprt c_nondet_symbol_factory(
 
   // Add the following code to init_code for each symbol that's been created:
   //   <type> <identifier>;
-  for(symbolt const *symbol_ptr : symbols_created)
+  for(const symbolt * const symbol_ptr : symbols_created)
   {
     code_declt decl(symbol_ptr->symbol_expr());
     decl.add_source_location()=loc;
-    init_code.add(decl);
+    init_code.move(decl);
   }
 
   init_code.append(assignments);
@@ -273,7 +266,7 @@ exprt c_nondet_symbol_factory(
         from_integer(0, index_type())));
     input_code.op1()=symbol_ptr->symbol_expr();
     input_code.add_source_location()=loc;
-    init_code.add(input_code);
+    init_code.move(input_code);
   }
 
   return main_symbol_expr;

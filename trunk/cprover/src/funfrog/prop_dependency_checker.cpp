@@ -11,10 +11,13 @@
 #include <solvers/flattening/bv_pointers.h>
 #include "solvers/satcheck_opensmt2.h"
 
+#include <langapi/language_util.h>
+
 #define VERBOSE false
 
-std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_steps_it c1, SSA_steps_it c2)
+std::pair<bool, timet> prop_dependency_checkert::check_implication(SSA_steps_it c1, SSA_steps_it c2)
 {
+  timet default_t(0.0); // in case of failure 
   try{
 
   std::unique_ptr<prop_conv_solvert> decider;
@@ -35,19 +38,18 @@ std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step
   convert_delta_SSA(*decider, c1, c2);
 
   if (VERBOSE) status() << ("RESULT");
-  time_periodt duration;
-  absolute_timet initial, end;
-  initial=current_time();
+  auto initial=timestamp();
   decision_proceduret::resultt r = (*decider).dec_solve();
-  end=current_time();
-  duration = end - initial;
+  auto end=timestamp();
+  auto duration_out = time_gap(end,initial);
+  timet duration(duration_out);
 #ifdef USE_PERIPLO
 //  // todo
 #else
 delete opensmt;
 #endif
 
-  if (VERBOSE) {status() << ("SOLVER TIME FOR check_implication: ") << duration << eom;}
+  if (VERBOSE) {status() << ("SOLVER TIME FOR check_implication: ") << duration_out << eom;}
 
   // solve it
   switch (r)
@@ -69,17 +71,17 @@ delete opensmt;
   } catch (const std::bad_alloc &e)
   {
     error()  << "smth is wrong: " << e.what()  << eom;
-    return std::make_pair(true, fine_timet(0));
+    return std::make_pair(true, default_t);
   }
   catch (const char* e)
   {
     error() << "\nCaught exception: " << e << eom;
-    return std::make_pair(true, fine_timet(0));
+    return std::make_pair(true, default_t);
   }
   catch (const std::string &s)
   {
     error() << "\nCaught exception: " << s << eom;
-    return std::make_pair(true, fine_timet(0));
+    return std::make_pair(true, default_t);
   }
 }
 
@@ -107,7 +109,7 @@ long prop_dependency_checkert::find_implications()
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
-      std::pair<bool, fine_timet> checkres;
+      std::pair<bool, timet> checkres;
       auto assert2_idx = asserts[j];
       auto assert_2 = SSA_steps[assert2_idx];
       if (compare_assertions(assert1_idx, assert2_idx)
@@ -125,9 +127,9 @@ long prop_dependency_checkert::find_implications()
 
         if (checkres.first == true)
         {
-          true_time = true_time + checkres.second.get_t();
+          true_time = true_time + checkres.second.count();
           if (VERBOSE) {std::cout << "check_implication returned TRUE" << std::endl;}
-          if (checkres.second.get_t() <= impl_timeout)
+          if (checkres.second.count() <= impl_timeout)
           {
             assert_imps[assert1_idx][assert2_idx] = IMP;
             if (VERBOSE)
@@ -153,12 +155,12 @@ long prop_dependency_checkert::find_implications()
         }
         else
         {
-        	false_time = false_time + checkres.second.get_t();
+        	false_time = false_time + checkres.second.count();
         	if (VERBOSE) { status () << "check_implication returned FALSE" << eom;}
         }
-        if (checkres.second.get_t() > impl_timeout)
+        if (checkres.second.count() > impl_timeout)
         {
-        	long exceeding = checkres.second.get_t() - impl_timeout;
+        	long exceeding = checkres.second.count() - impl_timeout;
         	warning () << "Timeout " << (impl_timeout/1000) << "." <<
         	                      (impl_timeout%1000)/10 << " exceeded of " <<
         	                      (exceeding/1000) << "." <<

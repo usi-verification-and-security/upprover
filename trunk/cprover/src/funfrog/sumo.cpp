@@ -82,14 +82,13 @@ int main(int argc, const char** argv) {
     
   } else if (do_optimize) {
     // Try to optimize
-	absolute_timet before, after;
-    before=current_time();
+    auto before=current_time();
   
     // TODO: KE - need to fix this code to work for summary of smt or sat
     function_infot::optimize_all_summaries(summary_store, f_infos);
     
-    after=current_time();
-    std::cerr << "TOTAL OPTIMIZATION TIME: "<< (after-before) << std::endl;
+    auto after=current_time();
+    std::cerr << "TOTAL OPTIMIZATION TIME: "<< time_gap(after,before) << std::endl;
     
     std::ofstream out;
   

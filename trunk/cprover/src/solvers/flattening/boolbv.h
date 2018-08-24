@@ -99,7 +99,7 @@ protected:
   boolbv_mapt map;
 
   // overloading
-  virtual literalt convert_rest(const exprt &expr) override;
+  literalt convert_rest(const exprt &expr) override;
   virtual bool boolbv_set_equality_to_true(const equal_exprt &expr);
 
   // NOLINTNEXTLINE(readability/identifiers)
@@ -133,6 +133,7 @@ protected:
 
   virtual bvt convert_index(const exprt &array, const mp_integer &index);
   virtual bvt convert_index(const index_exprt &expr);
+  virtual bvt convert_bswap(const bswap_exprt &expr);
   virtual bvt convert_byte_extract(const byte_extract_exprt &expr);
   virtual bvt convert_byte_update(const byte_update_exprt &expr);
   virtual bvt convert_constraint_select_one(const exprt &expr);
@@ -144,6 +145,7 @@ protected:
   virtual bvt convert_complex_real(const exprt &expr);
   virtual bvt convert_complex_imag(const exprt &expr);
   virtual bvt convert_lambda(const exprt &expr);
+  virtual bvt convert_let(const let_exprt &);
   virtual bvt convert_array_of(const array_of_exprt &expr);
   virtual bvt convert_union(const union_exprt &expr);
   virtual bvt convert_bv_typecast(const typecast_exprt &expr);
@@ -161,7 +163,7 @@ protected:
   virtual bvt convert_shift(const binary_exprt &expr);
   virtual bvt convert_bitwise(const exprt &expr);
   virtual bvt convert_unary_minus(const unary_exprt &expr);
-  virtual bvt convert_abs(const exprt &expr);
+  virtual bvt convert_abs(const abs_exprt &expr);
   virtual bvt convert_concatenation(const exprt &expr);
   virtual bvt convert_replication(const replication_exprt &expr);
   virtual bvt convert_bv_literals(const exprt &expr);
@@ -174,8 +176,8 @@ protected:
   virtual bvt convert_function_application(
     const function_application_exprt &expr);
 
-  virtual void make_bv_expr(const typet &type, const bvt &bv, exprt &dest);
-  virtual void make_free_bv_expr(const typet &type, exprt &dest);
+  virtual exprt make_bv_expr(const typet &type, const bvt &bv);
+  virtual exprt make_free_bv_expr(const typet &type);
 
   void convert_with(
     const typet &type,
@@ -185,7 +187,6 @@ protected:
     bvt &next_bv);
 
   void convert_with_bv(
-    const typet &type,
     const exprt &op1,
     const exprt &op2,
     const bvt &prev_bv,
@@ -200,7 +201,6 @@ protected:
 
   void convert_with_union(
     const union_typet &type,
-    const exprt &op1,
     const exprt &op2,
     const bvt &prev_bv,
     bvt &next_bv);
@@ -248,7 +248,7 @@ protected:
   void post_process_quantifiers();
 
   typedef std::vector<std::size_t> offset_mapt;
-  void build_offset_map(const struct_typet &src, offset_mapt &dest);
+  offset_mapt build_offset_map(const struct_typet &src);
 
   // strings
   numbering<irep_idt> string_numbering;

@@ -14,13 +14,9 @@ Date: November 2011
 
 #include "nondet_static.h"
 
-#include <util/namespace.h>
-#include <util/std_expr.h>
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
-
 #include <goto-programs/goto_model.h>
-#include <goto-programs/goto_functions.h>
+
+#include <linking/static_lifetime_init.h>
 
 void nondet_static(
   const namespacet &ns,
@@ -46,6 +42,14 @@ void nondet_static(
       if(has_prefix(id2string(sym.get_identifier()), CPROVER_PREFIX))
         continue;
 
+      // any other internal variable such as Java specific?
+      if(
+        ns.lookup(sym.get_identifier())
+          .type.get_bool(ID_C_no_nondet_initialization))
+      {
+        continue;
+      }
+
       // static lifetime?
       if(!ns.lookup(sym.get_identifier()).is_static_lifetime)
         continue;
@@ -54,11 +58,14 @@ void nondet_static(
       if(is_constant_or_has_constant_components(sym.type(), ns))
         continue;
 
-      i_it=init.insert_before(++i_it);
+      const goto_programt::instructiont original_instruction = instruction;
       i_it->make_assignment();
-      i_it->code=code_assignt(sym, side_effect_expr_nondett(sym.type()));
-      i_it->source_location=instruction.source_location;
-      i_it->function=instruction.function;
+      i_it->code = code_assignt(
+        sym,
+        side_effect_expr_nondett(
+          sym.type(), original_instruction.source_location));
+      i_it->source_location = original_instruction.source_location;
+      i_it->function = original_instruction.function;
     }
     else if(instruction.is_function_call())
     {
@@ -75,7 +82,7 @@ void nondet_static(
   const namespacet &ns,
   goto_functionst &goto_functions)
 {
-  nondet_static(ns, goto_functions, CPROVER_PREFIX "initialize");
+  nondet_static(ns, goto_functions, INITIALIZE_FUNCTION);
 
   // update counters etc.
   goto_functions.update();

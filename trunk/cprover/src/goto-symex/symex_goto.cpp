@@ -11,9 +11,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
-#include <cassert>
 #include <algorithm>
 
+#include <util/invariant.h>
+#include <util/pointer_offset_size.h>
 #include <util/std_expr.h>
 
 #include <analyses/dirty.h>
@@ -43,7 +44,8 @@ void goto_symext::symex_goto(statet &state)
 
   target.goto_instruction(state.guard.as_expr(), new_guard, state.source);
 
-  assert(!instruction.targets.empty());
+  DATA_INVARIANT(
+    !instruction.targets.empty(), "goto should have at least one target");
 
   // we only do deterministic gotos for now
   if(instruction.targets.size()!=1)
@@ -57,9 +59,11 @@ void goto_symext::symex_goto(statet &state)
   if(!forward) // backwards?
   {
     // is it label: goto label; or while(cond); - popular in SV-COMP
-    if(goto_target==state.source.pc ||
-       (instruction.incoming_edges.size()==1 &&
-        *instruction.incoming_edges.begin()==goto_target))
+    if(
+      self_loops_to_assumptions &&
+      (goto_target == state.source.pc ||
+       (instruction.incoming_edges.size() == 1 &&
+        *instruction.incoming_edges.begin() == goto_target)))
     {
       // generate assume(false) or a suitable negation if this
       // instruction is a conditional goto
@@ -82,7 +86,7 @@ void goto_symext::symex_goto(statet &state)
     unwind++;
 
     // continue unwinding?
-    if(get_unwind(state.source, unwind))
+    if(get_unwind(state.source, state.call_stack(), unwind))
     {
       // no!
       loop_bound_exceeded(state, new_guard);
@@ -97,6 +101,27 @@ void goto_symext::symex_goto(statet &state)
       symex_transition(state, goto_target, true);
       return; // nothing else to do
     }
+  }
+
+  exprt simpl_state_guard = state.guard.as_expr();
+  do_simplify(simpl_state_guard);
+
+  // No point executing both branches of an unconditional goto.
+  if(
+    new_guard.is_true() && // We have an unconditional goto, AND
+    // either there are no blocks between us and the target in the
+    // surrounding scope
+    (simpl_state_guard.is_true() ||
+     // or there is another block, but we're doing path exploration so
+     // we're going to skip over it for now and return to it later.
+     doing_path_exploration))
+  {
+    DATA_INVARIANT(
+      instruction.targets.size() > 0,
+      "Instruction is an unconditional goto with no target: " +
+        instruction.code.pretty());
+    symex_transition(state, instruction.get_target(), true);
+    return;
   }
 
   goto_programt::const_targett new_state_pc, state_pc;
@@ -126,12 +151,74 @@ void goto_symext::symex_goto(statet &state)
     state_pc=goto_target;
   }
 
+  // Normally the next instruction to execute would be state_pc and we save
+  // new_state_pc for later. But if we're executing from a saved state, then
+  // new_state_pc should be the state that we saved from earlier, so let's
+  // execute that instead.
+  if(state.has_saved_jump_target)
+  {
+    INVARIANT(
+      new_state_pc == state.saved_target,
+      "Tried to explore the other path of a branch, but the next "
+      "instruction along that path is not the same as the instruction "
+      "that we saved at the branch point. Saved instruction is " +
+        state.saved_target->code.pretty() +
+        "\nwe were intending "
+        "to explore " +
+        new_state_pc->code.pretty() +
+        "\nthe "
+        "instruction we think we saw on a previous path exploration is " +
+        state_pc->code.pretty());
+    goto_programt::const_targett tmp = new_state_pc;
+    new_state_pc = state_pc;
+    state_pc = tmp;
+
+    log.debug() << "Resuming from jump target '" << state_pc->source_location
+                << "'" << log.eom;
+  }
+  else if(state.has_saved_next_instruction)
+  {
+    log.debug() << "Resuming from next instruction '"
+                << state_pc->source_location << "'" << log.eom;
+  }
+  else if(doing_path_exploration)
+  {
+    // We should save both the instruction after this goto, and the target of
+    // the goto.
+
+    path_storaget::patht next_instruction(target, state);
+    next_instruction.state.saved_target = state_pc;
+    next_instruction.state.has_saved_next_instruction = true;
+    next_instruction.state.saved_target_is_backwards = !forward;
+
+    path_storaget::patht jump_target(target, state);
+    jump_target.state.saved_target = new_state_pc;
+    jump_target.state.has_saved_jump_target = true;
+    // `forward` tells us where the branch we're _currently_ executing is
+    // pointing to; this needs to be inverted for the branch that we're saving,
+    // so let its truth value for `backwards` be the same as ours for `forward`.
+    jump_target.state.saved_target_is_backwards = forward;
+
+    log.debug() << "Saving next instruction '"
+                << next_instruction.state.saved_target->source_location << "'"
+                << log.eom;
+    log.debug() << "Saving jump target '"
+                << jump_target.state.saved_target->source_location << "'"
+                << log.eom;
+    path_storage.push(next_instruction, jump_target);
+
+    // It is now up to the caller of symex to decide which path to continue
+    // executing. Signal to the caller that states have been pushed (therefore
+    // symex has not yet completed and must be resumed), and bail out.
+    should_pause_symex = true;
+    return;
+  }
+
   // put into state-queue
   statet::goto_state_listt &goto_state_list=
     state.top().goto_state_map[new_state_pc];
 
   goto_state_list.push_back(statet::goto_statet(state));
-  statet::goto_statet &new_state=goto_state_list.back();
 
   symex_transition(state, state_pc, !forward);
 
@@ -163,6 +250,14 @@ void goto_symext::symex_goto(statet &state)
 
       guardt guard;
 
+      log.conditional_output(
+        log.debug(),
+        [this, &new_lhs](messaget::mstreamt &mstream) {
+          mstream << "Assignment to " << new_lhs.get_identifier()
+                  << " [" << pointer_offset_bits(new_lhs.type(), ns) << " bits]"
+                  << messaget::eom;
+        });
+
       target.assignment(
         guard.as_expr(),
         new_lhs, new_lhs, guard_symbol_expr,
@@ -175,17 +270,31 @@ void goto_symext::symex_goto(statet &state)
       state.rename(guard_expr, ns);
     }
 
-    if(forward)
+    if(state.has_saved_jump_target)
     {
-      new_state.guard.add(guard_expr);
-      guard_expr.make_not();
-      state.guard.add(guard_expr);
+      if(forward)
+        state.guard.add(guard_expr);
+      else
+      {
+        guard_expr.make_not();
+        state.guard.add(guard_expr);
+      }
     }
     else
     {
-      state.guard.add(guard_expr);
-      guard_expr.make_not();
-      new_state.guard.add(guard_expr);
+      statet::goto_statet &new_state = goto_state_list.back();
+      if(forward)
+      {
+        new_state.guard.add(guard_expr);
+        guard_expr.make_not();
+        state.guard.add(guard_expr);
+      }
+      else
+      {
+        state.guard.add(guard_expr);
+        guard_expr.make_not();
+        new_state.guard.add(guard_expr);
+      }
     }
   }
 }
@@ -306,9 +415,9 @@ void goto_symext::phi_function(
     const symbolt &symbol=ns.lookup(obj_identifier);
 
     // shared?
-    if(dest_state.atomic_section_id==0 &&
-       dest_state.threads.size()>=2 &&
-       (symbol.is_shared() /*|| (*dest_state.dirty)(symbol.name)*/ ))
+    if(
+      dest_state.atomic_section_id == 0 && dest_state.threads.size() >= 2 &&
+      (symbol.is_shared() || (dest_state.dirty)(symbol.name)))
       continue; // no phi nodes for shared stuff
 
     // don't merge (thread-)locals across different threads, which
@@ -345,10 +454,22 @@ void goto_symext::phi_function(
 
     exprt rhs;
 
+    // Don't add a conditional to the assignment when:
+    //  1. Either guard is false, so we can't follow that branch.
+    //  2. Either identifier is of generation zero, and so hasn't been
+    //     initialized and therefor an invalid target.
     if(dest_state.guard.is_false())
       rhs=goto_state_rhs;
     else if(goto_state.guard.is_false())
       rhs=dest_state_rhs;
+    else if(goto_state.level2_current_count(l1_identifier) == 0)
+    {
+      rhs = dest_state_rhs;
+    }
+    else if(dest_state.level2.current_count(l1_identifier) == 0)
+    {
+      rhs = goto_state_rhs;
+    }
     else
     {
       rhs=if_exprt(diff_guard.as_expr(), goto_state_rhs, dest_state_rhs);
@@ -360,6 +481,14 @@ void goto_symext::phi_function(
     dest_state.record_events=false;
     dest_state.assignment(new_lhs, rhs, ns, true, true);
     dest_state.record_events=record_events;
+
+    log.conditional_output(
+      log.debug(),
+      [this, &new_lhs](messaget::mstreamt &mstream) {
+        mstream << "Assignment to " << new_lhs.get_identifier()
+                << " [" << pointer_offset_bits(new_lhs.type(), ns) << " bits]"
+                << messaget::eom;
+      });
 
     target.assignment(
       true_exprt(),
@@ -410,8 +539,9 @@ void goto_symext::loop_bound_exceeded(
 }
 
 bool goto_symext::get_unwind(
-  const symex_targett::sourcet &source,
-  unsigned unwind)
+  const symex_targett::sourcet &,
+  const goto_symex_statet::call_stackt &,
+  unsigned)
 {
   // by default, we keep going
   return false;

@@ -10,14 +10,14 @@
 
 #include <util/namespace.h>
 #include <util/ui_message.h>
-#include <util/time_stopping.h>
 #include <util/threeval.h>
 
+#include "../utils/time_utils.h"
 #include "../assertion_info.h"
 #include "smt_symex_target_equation.h"
 #include "../partitioning_target_equation.h"
 
-extern time_periodt global_satsolver_time;
+extern timet global_satsolver_time;
 
 class smt_assertion_no_partitiont:public messaget 
 {
@@ -52,7 +52,7 @@ public:
     smt_symex_target_equationt &equation;
     
     // SAT solving time
-    time_periodt solving_time;
+    timet solving_time;
 
     ui_message_handlert &message_handler;
 

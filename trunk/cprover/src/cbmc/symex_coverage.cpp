@@ -13,18 +13,20 @@ Date: March 2016
 
 #include "symex_coverage.h"
 
-#include <iostream>
+#include <chrono>
+#include <ctime>
 #include <fstream>
-#include <sstream>
+#include <iostream>
 
-#include <util/time_stopping.h>
-#include <util/xml.h>
 #include <util/string2int.h>
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
+#include <util/xml.h>
+
+#include <langapi/language_util.h>
 
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/remove_returns.h>
+
+#include <linking/static_lifetime_init.h>
 
 class coverage_recordt
 {
@@ -171,8 +173,6 @@ goto_program_coverage_recordt::goto_program_coverage_recordt(
 
   code_typet sig_type=
     original_return_type(ns.get_symbol_table(), gf_it->first);
-  if(sig_type.is_nil())
-    sig_type=gf_it->second.type;
   xml.set_attribute("signature",
                     from_type(ns, gf_it->first, sig_type));
 
@@ -310,7 +310,7 @@ void symex_coveraget::compute_overall_coverage(
   {
     if(!gf_it->second.body_available() ||
        gf_it->first==goto_functions.entry_point() ||
-       gf_it->first==CPROVER_PREFIX "initialize")
+       gf_it->first == INITIALIZE_FUNCTION)
       continue;
 
     goto_program_coverage_recordt func_cov(ns, gf_it, coverage);
@@ -387,6 +387,10 @@ void symex_coveraget::build_cobertura(
   std::string overall_branch_rate_str=
     rate(overall_cov.branches_covered, overall_cov.branches_total);
 
+  auto now = std::chrono::system_clock::now();
+  auto current_time = std::chrono::time_point_cast<std::chrono::seconds>(now);
+  std::time_t tt = std::chrono::system_clock::to_time_t(current_time);
+
   // <coverage line-rate="0.0" branch-rate="0.0" lines-covered="1"
   //           lines-valid="1" branches-covered="1"
   //           branches-valid="1" complexity="0.0"
@@ -404,7 +408,7 @@ void symex_coveraget::build_cobertura(
   xml_coverage.set_attribute("complexity", "0.0");
   xml_coverage.set_attribute("version", "2.1.1");
   xml_coverage.set_attribute("timestamp",
-                             std::to_string(current_time().get_t()));
+                             std::to_string(tt));
 
   xmlt &packages=xml_coverage.new_element("packages");
 

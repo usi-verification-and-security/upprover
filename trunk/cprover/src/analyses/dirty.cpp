@@ -69,6 +69,18 @@ void dirtyt::find_dirty_address_of(const exprt &expr)
 
 void dirtyt::output(std::ostream &out) const
 {
+  die_if_uninitialized();
   for(const auto &d : dirty)
     out << d << '\n';
+}
+
+/// Analyse the given function with dirtyt if it hasn't been seen before
+/// \param id: function id to analyse
+/// \param function: function to analyse
+void incremental_dirtyt::populate_dirty_for_function(
+  const irep_idt &id, const goto_functionst::goto_functiont &function)
+{
+  auto insert_result = dirty_processed_functions.insert(id);
+  if(insert_result.second)
+    dirty.add_function(function);
 }

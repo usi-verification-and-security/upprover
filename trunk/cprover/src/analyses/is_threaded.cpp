@@ -30,13 +30,11 @@ public:
 
   bool merge(
     const is_threaded_domaint &src,
-    locationt from,
-    locationt to)
+    locationt,
+    locationt)
   {
-    // assert(src.reachable);
-
-    if(!src.reachable)
-      return false;
+    INVARIANT(src.reachable,
+              "Abstract states are only merged at reachable locations");
 
     bool old_reachable=reachable;
     bool old_is_threaded=is_threaded;
@@ -48,17 +46,12 @@ public:
            old_is_threaded!=is_threaded;
   }
 
-  void transform(
-    locationt from,
-    locationt to,
-    ai_baset &ai,
-    const namespacet &ns,
-    ai_domain_baset::edge_typet /*edge_type*/) final override
+  void
+  transform(locationt from, locationt, ai_baset &, const namespacet &)
+    final override
   {
-    // assert(reachable);
-
-    if(!reachable)
-      return;
+    INVARIANT(reachable,
+              "Transformers are only applied at reachable locations");
 
     if(from->is_start_thread())
       is_threaded=true;

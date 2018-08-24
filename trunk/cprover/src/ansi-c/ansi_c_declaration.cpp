@@ -22,12 +22,12 @@ void ansi_c_declaratort::build(irept &src)
 {
   typet *p=static_cast<typet *>(&src);
 
-  // walk down subtype until we hit symbol or "abstract"
+  // walk down subtype until we hit typedef_type, symbol or "abstract"
   while(true)
   {
     typet &t=*p;
 
-    if(t.id()==ID_symbol)
+    if(t.id() == ID_typedef_type || t.id() == ID_symbol)
     {
       set_base_name(t.get(ID_C_base_name));
       add_source_location()=t.source_location();
@@ -150,9 +150,10 @@ void ansi_c_declarationt::to_symbol(
     if(get_is_inline())
       symbol.type.set(ID_C_inlined, true);
 
-    if(config.ansi_c.mode==configt::ansi_ct::flavourt::GCC ||
-       config.ansi_c.mode==configt::ansi_ct::flavourt::APPLE ||
-       config.ansi_c.mode==configt::ansi_ct::flavourt::ARM)
+    if(
+      config.ansi_c.mode == configt::ansi_ct::flavourt::GCC ||
+      config.ansi_c.mode == configt::ansi_ct::flavourt::CLANG ||
+      config.ansi_c.mode == configt::ansi_ct::flavourt::ARM)
     {
       // GCC extern inline cleanup, to enable remove_internal_symbols
       // do its full job
@@ -165,6 +166,10 @@ void ansi_c_declarationt::to_symbol(
         else  if(get_is_extern()) // traditional GCC
           symbol.is_file_local=true;
       }
+
+      // GCC __attribute__((__used__)) - do not treat those as file-local
+      if(get_is_used())
+        symbol.is_file_local = false;
     }
   }
   else // non-function
@@ -181,7 +186,7 @@ void ansi_c_declarationt::to_symbol(
     symbol.is_file_local=
       symbol.is_macro ||
       (!get_is_global() && !get_is_extern()) ||
-      (get_is_global() && get_is_static()) ||
+      (get_is_global() && get_is_static() && !get_is_used()) ||
       symbol.is_parameter;
   }
 }

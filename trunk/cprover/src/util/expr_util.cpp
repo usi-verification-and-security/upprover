@@ -9,7 +9,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "expr_util.h"
 
+#include <unordered_set>
 #include "expr.h"
+#include "expr_iterator.h"
 #include "fixedbv.h"
 #include "ieee_float.h"
 #include "std_expr.h"
@@ -17,15 +19,19 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "namespace.h"
 #include "arith_tools.h"
 
-void make_next_state(exprt &expr)
+bool is_lvalue(const exprt &expr)
 {
-  Forall_operands(it, expr)
-    make_next_state(*it);
-
-  if(expr.id()==ID_symbol)
-    expr.id(ID_next_symbol);
+  if(expr.id() == ID_index)
+    return is_lvalue(to_index_expr(expr).array());
+  else if(expr.id() == ID_member)
+    return is_lvalue(to_member_expr(expr).compound());
+  else if(expr.id() == ID_dereference)
+    return true;
+  else if(expr.id() == ID_symbol)
+    return true;
+  else
+    return false;
 }
-
 exprt make_binary(const exprt &expr)
 {
   const exprt::operandst &operands=expr.operands();
@@ -129,16 +135,64 @@ exprt boolean_negate(const exprt &src)
     return not_exprt(src);
 }
 
+bool has_subexpr(
+  const exprt &expr,
+  const std::function<bool(const exprt &)> &pred)
+{
+  const auto it = std::find_if(expr.depth_begin(), expr.depth_end(), pred);
+  return it != expr.depth_end();
+}
+
 bool has_subexpr(const exprt &src, const irep_idt &id)
 {
-  if(src.id()==id)
-    return true;
+  return has_subexpr(
+    src, [&](const exprt &subexpr) { return subexpr.id() == id; });
+}
 
-  forall_operands(it, src)
-    if(has_subexpr(*it, id))
+bool has_subtype(
+  const typet &type,
+  const std::function<bool(const typet &)> &pred,
+  const namespacet &ns)
+{
+  std::vector<std::reference_wrapper<const typet>> stack;
+  std::unordered_set<typet, irep_hash> visited;
+
+  const auto push_if_not_visited = [&](const typet &t) {
+    if(visited.insert(t).second)
+      stack.emplace_back(t);
+  };
+
+  push_if_not_visited(type);
+  while(!stack.empty())
+  {
+    const typet &top = stack.back().get();
+    stack.pop_back();
+
+    if(pred(top))
       return true;
+    else if(top.id() == ID_symbol)
+      push_if_not_visited(ns.follow(top));
+    else if(top.id() == ID_c_enum_tag)
+      push_if_not_visited(ns.follow_tag(to_c_enum_tag_type(top)));
+    else if(top.id() == ID_struct || top.id() == ID_union)
+    {
+      for(const auto &comp : to_struct_union_type(top).components())
+        push_if_not_visited(comp.type());
+    }
+    else
+    {
+      for(const auto &subtype : top.subtypes())
+        push_if_not_visited(subtype);
+    }
+  }
 
   return false;
+}
+
+bool has_subtype(const typet &type, const irep_idt &id, const namespacet &ns)
+{
+  return has_subtype(
+    type, [&](const typet &subtype) { return subtype.id() == id; }, ns);
 }
 
 if_exprt lift_if(const exprt &src, std::size_t operand_number)
@@ -159,4 +213,12 @@ if_exprt lift_if(const exprt &src, std::size_t operand_number)
   result.false_case().operands()[operand_number]=false_case;
 
   return result;
+}
+
+const exprt &skip_typecast(const exprt &expr)
+{
+  if(expr.id()!=ID_typecast)
+    return expr;
+
+  return skip_typecast(to_typecast_expr(expr).op());
 }

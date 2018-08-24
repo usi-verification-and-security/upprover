@@ -124,24 +124,6 @@ literalt smtcheck_opensmt2t_la::lconst_number(const exprt &expr)
     PTRef rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     assert(rconst != PTRef_Undef);
 
-    // Check the conversion from string to real was done properly - do not erase!
-    assert(!lalogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
-            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag || expr.type().id()==ID_c_bit_field)); // Cannot check enums
-    if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
-    	exprt temp_check = exprt(expr); temp_check.negate();
-        assert(!lalogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
-        // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
-    } else if (expr.type().id() == ID_pointer) {
-        // when support pointers - change here too
-        // KE: not sure which code shall be here
-    } else {
-    	// Don't check here, it can be a pointer or some address.
-    	// Yes, we can have also a bug here
-    	//TODO: when support array fully add assert here
-        //std::cout << expr.pretty() << std::endl;
-        assert(0); // KE: check when get it. Please show me
-    }
-
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 

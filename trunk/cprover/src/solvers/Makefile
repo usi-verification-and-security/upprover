@@ -1,5 +1,4 @@
 include ../config.inc
-include ../common
 
 ifneq ($(CHAFF),)
   CHAFF_SRC=sat/satcheck_zchaff.cpp sat/satcheck_zcore.cpp
@@ -12,6 +11,7 @@ ifneq ($(MINISAT),)
   MINISAT_INCLUDE=-I $(MINISAT)
   MINISAT_LIB=$(MINISAT)/Solver$(OBJEXT) $(MINISAT)/Proof$(OBJEXT) $(MINISAT)/File$(OBJEXT)
   CP_CXXFLAGS += -DHAVE_MINISAT
+  CLEANFILES += $(MINISAT_LIB) $(patsubst %$(OBJEXT), %.d, $(MINISAT_LIB))
 endif
 
 ifneq ($(MINISAT2),)
@@ -19,6 +19,7 @@ ifneq ($(MINISAT2),)
   MINISAT2_INCLUDE=-I $(MINISAT2)
   MINISAT2_LIB=$(MINISAT2)/minisat/simp/SimpSolver$(OBJEXT) $(MINISAT2)/minisat/core/Solver$(OBJEXT)
   CP_CXXFLAGS += -DHAVE_MINISAT2 -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+  CLEANFILES += $(MINISAT2_LIB) $(patsubst %$(OBJEXT), %.d, $(MINISAT2_LIB))
 endif
 
 ifneq ($(IPASIR),)
@@ -34,12 +35,7 @@ ifneq ($(GLUCOSE),)
   GLUCOSE_INCLUDE=-I $(GLUCOSE)
   GLUCOSE_LIB=$(GLUCOSE)/simp/SimpSolver$(OBJEXT) $(GLUCOSE)/core/Solver$(OBJEXT)
   CP_CXXFLAGS += -DHAVE_GLUCOSE -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
-endif
-
-ifneq ($(SMVSAT),)
-  SMVSAT_SRC=sat/satcheck_smvsat.cpp
-  SMVSAT_INCLUDE=-I $(SMVSAT)/include
-  SMVSAT_LIB=$(SMVSAT)/lib/libsmvsat$(LIBEXT)
+  CLEANFILES += $(GLUCOSE_LIB) $(patsubst %$(OBJEXT), %.d, $(GLUCOSE_LIB))
 endif
 
 ifneq ($(SQUOLEM2),)
@@ -56,13 +52,6 @@ ifneq ($(CUDD),)
            -L $(CUDD)/epd -lobj -lcudd -lmtr -lst -lutil -lepd -ldddmp
 endif
 
-ifneq ($(PRECOSAT),)
-  PRECOSAT_SRC=sat/satcheck_precosat.cpp
-  PRECOSAT_INCLUDE=-I $(PRECOSAT)
-  PRECOSAT_LIB=$(PRECOSAT)/precosat$(OBJEXT)
-  CP_CXXFLAGS += -DHAVE_PRECOSAT
-endif
-
 ifneq ($(PICOSAT),)
   PICOSAT_SRC=sat/satcheck_picosat.cpp
   PICOSAT_INCLUDE=-I $(PICOSAT)
@@ -77,11 +66,11 @@ ifneq ($(LINGELING),)
   CP_CXXFLAGS += -DHAVE_LINGELING
 endif
 
-ifneq ($(LIMMAT),)
-  LIMMAT_SRC=sat/satcheck_limmat.cpp
-  LIMMAT_INCLUDE=-I $(LIMMAT)
-  LIMMAT_LIB=$(LIMMAT)/liblimmat$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_LIMMAT
+ifneq ($(CADICAL),)
+  CADICAL_SRC=sat/satcheck_cadical.cpp
+  CADICAL_INCLUDE=-I $(CADICAL)/src
+  CADICAL_LIB=$(CADICAL)/build/libcadical$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_CADICAL
 endif
 
 SRC = $(BOOLEFORCE_SRC) \
@@ -93,12 +82,8 @@ SRC = $(BOOLEFORCE_SRC) \
       $(IPASIR_SRC) \
       $(MINISAT_SRC) \
       $(PICOSAT_SRC) \
-      $(PRECOSAT_SRC) \
-      $(SMVSAT_SRC) \
       $(SQUOLEM2_SRC) \
-      $(LIMMAT_SRC) \
-      cvc/cvc_conv.cpp \
-      cvc/cvc_dec.cpp \
+      $(CADICAL_SRC) \
       flattening/arrays.cpp \
       flattening/boolbv.cpp \
       flattening/boolbv_abs.cpp \
@@ -106,6 +91,7 @@ SRC = $(BOOLEFORCE_SRC) \
       flattening/boolbv_array.cpp \
       flattening/boolbv_array_of.cpp \
       flattening/boolbv_bitwise.cpp \
+      flattening/boolbv_bswap.cpp \
       flattening/boolbv_bv_rel.cpp \
       flattening/boolbv_byte_extract.cpp \
       flattening/boolbv_byte_update.cpp \
@@ -124,6 +110,7 @@ SRC = $(BOOLEFORCE_SRC) \
       flattening/boolbv_ieee_float_rel.cpp \
       flattening/boolbv_if.cpp \
       flattening/boolbv_index.cpp \
+      flattening/boolbv_let.cpp \
       flattening/boolbv_map.cpp \
       flattening/boolbv_member.cpp \
       flattening/boolbv_mod.cpp \
@@ -145,6 +132,7 @@ SRC = $(BOOLEFORCE_SRC) \
       flattening/boolbv_vector.cpp \
       flattening/boolbv_width.cpp \
       flattening/boolbv_with.cpp \
+      flattening/bv_endianness_map.cpp \
       flattening/bv_minimize.cpp \
       flattening/bv_pointers.cpp \
       flattening/bv_utils.cpp \
@@ -156,17 +144,14 @@ SRC = $(BOOLEFORCE_SRC) \
       floatbv/float_bv.cpp \
       floatbv/float_utils.cpp \
       floatbv/float_approximation.cpp \
+      lowering/popcount.cpp \
       miniBDD/miniBDD.cpp \
-      prop/aig.cpp \
-      prop/aig_prop.cpp \
       prop/bdd_expr.cpp \
       prop/cover_goals.cpp \
       prop/literal.cpp \
       prop/minimize.cpp \
       prop/prop.cpp \
-      prop/prop_assignment.cpp \
       prop/prop_conv.cpp \
-      prop/prop_conv_store.cpp \
       qbf/qbf_quantor.cpp \
       qbf/qbf_qube.cpp \
       qbf/qbf_qube_core.cpp \
@@ -176,7 +161,10 @@ SRC = $(BOOLEFORCE_SRC) \
       refinement/bv_refinement_loop.cpp \
       refinement/refine_arithmetic.cpp \
       refinement/refine_arrays.cpp \
+      refinement/string_builtin_function.cpp \
       refinement/string_refinement.cpp \
+      refinement/string_refinement_util.cpp \
+      refinement/string_constraint.cpp \
       refinement/string_constraint_generator_code_points.cpp \
       refinement/string_constraint_generator_comparison.cpp \
       refinement/string_constraint_generator_concat.cpp \
@@ -194,26 +182,26 @@ SRC = $(BOOLEFORCE_SRC) \
       sat/cnf_clause_list.cpp \
       sat/dimacs_cnf.cpp \
       sat/pbs_dimacs_cnf.cpp \
-      sat/read_dimacs_cnf.cpp \
       sat/resolution_proof.cpp \
-      sat/satcheck.cpp \
-      smt1/smt1_conv.cpp \
-      smt1/smt1_dec.cpp \
       smt2/smt2_conv.cpp \
       smt2/smt2_dec.cpp \
       smt2/smt2_parser.cpp \
+      smt2/smt2_tokenizer.cpp \
       smt2/smt2irep.cpp \
       # Empty last line
+
+include ../common
 
 INCLUDES += -I .. \
   $(CHAFF_INCLUDE) $(BOOLEFORCE_INCLUDE) $(MINISAT_INCLUDE) $(MINISAT2_INCLUDE) \
   $(IPASIR_INCLUDE) \
-  $(SMVSAT_INCLUDE) $(SQUOLEM2_INC) $(CUDD_INCLUDE) $(GLUCOSE_INCLUDE) \
-	$(PRECOSAT_INCLUDE) $(PICOSAT_INCLUDE) $(LINGELING_INCLUDE)
+  $(SQUOLEM2_INC) $(CUDD_INCLUDE) $(GLUCOSE_INCLUDE) \
+	$(PICOSAT_INCLUDE) $(LINGELING_INCLUDE) $(CADICAL_INCLUDE)
 
-CLEANFILES = solvers$(LIBEXT)
+CLEANFILES += solvers$(LIBEXT) \
+  smt2_solver$(EXEEXT) smt2/smt2_solver$(OBJEXT) smt2/smt2_solver$(DEPEXT)
 
-all: solvers$(LIBEXT)
+all: solvers$(LIBEXT) smt2_solver$(EXEEXT)
 
 ifneq ($(SQUOLEM2),)
   CP_CXXFLAGS += -DHAVE_QBF_CORE
@@ -223,13 +211,15 @@ ifneq ($(CUDD),)
 endif
 endif
 
-# extra dependencies
-
--include $(SRC:.cpp=.d)
+SOLVER_LIB = $(CHAFF_LIB) $(BOOLEFORCE_LIB) $(MINISAT_LIB) \
+        $(MINISAT2_LIB) $(SQUOLEM2_LIB) $(CUDD_LIB) \
+        $(PICOSAT_LIB) $(LINGELING_LIB) $(GLUCOSE_LIB) $(CADICAL_LIB)
 
 ###############################################################################
 
-solvers$(LIBEXT): $(OBJ) $(CHAFF_LIB) $(BOOLEFORCE_LIB) $(MINISAT_LIB) \
-        $(MINISAT2_LIB) $(SMVSAT_LIB) $(SQUOLEM2_LIB) $(CUDD_LIB) \
-	$(PRECOSAT_LIB) $(PICOSAT_LIB) $(LINGELING_LIB) $(GLUCOSE_LIB)
+solvers$(LIBEXT): $(OBJ) $(SOLVER_LIB)
 	$(LINKLIB) $(LIBSOLVER)
+
+smt2_solver$(EXEEXT): $(OBJ) smt2/smt2_solver$(OBJEXT) \
+	../util/util$(LIBEXT) ../langapi/langapi$(LIBEXT) ../big-int/big-int$(LIBEXT) $(SOLVER_LIB)
+	$(LINKBIN) $(LIBSOLVER)

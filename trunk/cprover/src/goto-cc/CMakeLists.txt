@@ -11,6 +11,7 @@ target_link_libraries(goto-cc-lib
     big-int
     goto-programs
     util
+    json
     linking
     ansi-c
     cpp
@@ -19,7 +20,6 @@ target_link_libraries(goto-cc-lib
     langapi
 )
 
-add_if_library(goto-cc-lib java_bytecode)
 add_if_library(goto-cc-lib jsil)
 
 # Executable

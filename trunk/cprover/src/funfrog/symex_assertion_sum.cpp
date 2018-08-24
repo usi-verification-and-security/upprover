@@ -12,8 +12,9 @@
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex.h>
 #include <pointer-analysis/add_failed_symbols.h>
-#include <util/time_stopping.h>
 #include <util/base_type.h>
+#include <langapi/language_util.h>
+#include <goto-instrument/accelerate/acceleration_utils.h>
 
 #include "partitioning_slice.h"
 #include "partition_iface.h"
@@ -22,6 +23,7 @@
 #include "hifrog.h"
 #include "summary_store.h"
 #include "assertion_info.h"
+#include "utils/time_utils.h"
 
 #include <memory>
 #include <algorithm>
@@ -39,23 +41,22 @@
 
 \*******************************************************************/
 symex_assertion_sumt::symex_assertion_sumt(
-  const summary_storet & _summary_store,
-  const goto_functionst & _goto_functions,
-  call_tree_nodet &_root,
-  const namespacet &_ns,
-  symbol_tablet &_new_symbol_table,
-  partitioning_target_equationt &_target,
-  message_handlert &_message_handler,
-  const goto_programt &_goto_program,
-  unsigned _last_assertion_loc,
-  bool _single_assertion_check,
-  bool _use_slicing,
-  bool _do_guard_expl,
-  bool _use_smt,
-  unsigned int _max_unwind,
-  bool partial_loops
-) :
-  goto_symext(_message_handler, _ns, _new_symbol_table, _target),
+          const summary_storet & _summary_store,
+          const goto_functionst & _goto_functions,
+          call_tree_nodet &_root,
+          symbol_tablet &_symbol_table,
+          partitioning_target_equationt &_target,
+          message_handlert &_message_handler,
+          const goto_programt &_goto_program,
+          const optionst &_options,
+          path_storaget &_path_storage,          
+          unsigned _last_assertion_loc,
+          bool _single_assertion_check,
+          bool _use_slicing,
+	  bool _do_guard_expl,
+          bool _use_smt,
+          unsigned int _max_unwind) :
+  goto_symext(_message_handler, _symbol_table, _target, _options, _path_storage),
   summary_store(_summary_store),
   goto_functions(_goto_functions),
   call_tree_root(_root),
@@ -69,7 +70,7 @@ symex_assertion_sumt::symex_assertion_sumt(
   use_smt(_use_smt),
   max_unwind(_max_unwind)
 {
-  options.set_option("partial-loops", partial_loops);
+  //options.set_option("partial-loops", partial_loops); // Why do we need to set it twice?! it is already set in parseoptions!
   analyze_globals();
 }
 
@@ -274,26 +275,32 @@ Function: symex_assertion_sumt::process_planned
 bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 {
   // Proceed with symbolic execution
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
 
+  ns = namespacet(outer_symbol_table, state.symbol_table);
+  symex_symbol_table = &state.symbol_table; // Set the symex local table as the current state
+  get_goto_functiont get_goto_function = constuct_get_goto_function(goto_functions);
   while (has_more_steps(state))
   {
-    symex_step(goto_functions, state);
+    symex_step(get_goto_function, state);
   }
-  after=current_time();
-
-  log.statistics() << "SYMEX TIME: " << (after-before) << log.eom;
+  ns = namespacet(outer_symbol_table);
+  auto after=timestamp();
+  
+  
+  ///////////////////////////////////////////////////////////////////////
+  // Statistics - not related to the algorithm:
+  log.statistics() << "SYMEX TIME: " << time_gap(after,before) << log.eom;
 
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
-      before=current_time();
+      before=timestamp();
       log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
       partitioning_slice(equation, summary_store, use_smt);
       log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
-      after=current_time();
-      log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
+      after=timestamp();
+      log.statistics() << "SLICER TIME: " << time_gap(after,before) << log.eom;
     }
 #ifdef DEBUG_SSA
     print_SSA_steps(equation.SSA_steps, ns, std::cout);
@@ -326,7 +333,7 @@ follwoing the changes in symex_main.cpp
 \*******************************************************************/
 
 void symex_assertion_sumt::symex_step(
-  const goto_functionst &goto_functions,
+  const get_goto_functiont &get_goto_function,
   statet &state)
 {
 #ifdef DEBUG_PARTITIONING    
@@ -334,8 +341,8 @@ void symex_assertion_sumt::symex_step(
   std::cout << "Location: " << state.source.pc->source_location << '\n';
   if (state.source.pc->type != DEAD)
   {
-    std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
-    std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
+    std::cout << "Guard: " << format(state.guard.as_expr()) << '\n';
+    std::cout << "Code: " << format(state.source.pc->code) << '\n';
     std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count << '\n';
     std::cout << "Unwind Info."
               << " unwind in last goto was " << prev_unwind_counter 
@@ -486,7 +493,7 @@ void symex_assertion_sumt::symex_step(
 
   case ASSIGN:      
     if(!state.guard.is_false()) 
-      symex_assign_rec(state, to_code_assign(instruction.code));
+      symex_assign(state, to_code_assign(instruction.code));
           
     symex_transition(state);
     break;
@@ -505,7 +512,7 @@ void symex_assertion_sumt::symex_step(
 
   case OTHER:
     if(!state.guard.is_false())
-      symex_other(goto_functions, state);
+      symex_other(state);
 
     symex_transition(state);
     break;
@@ -1716,7 +1723,7 @@ symbolt symex_assertion_sumt::get_tmp_ret_val_symbol(const partition_ifacet & if
 \*******************************************************************/
 void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, const typet & type, bool is_dead) {
   // TODO do we need the location for this symbol? But what location would an artificial symbol had?
-  assert(!new_symbol_table.has_symbol(id));
+  assert(!symex_symbol_table->has_symbol(id));
   if(is_dead){
     dead_identifiers.insert(id);
   }
@@ -1726,7 +1733,7 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   symbol.type = type;
   symbol.is_thread_local = true;
 
-  new_symbol_table.add(symbol);
+  symex_symbol_table->add(symbol);
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version

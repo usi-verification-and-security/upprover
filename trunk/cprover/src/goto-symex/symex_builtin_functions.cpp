@@ -11,26 +11,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
-#include <cassert>
-
-#include <util/expr_util.h>
-#include <util/message.h>
 #include <util/arith_tools.h>
-#include <util/cprover_prefix.h>
-#include <util/std_types.h>
-#include <util/pointer_offset_size.h>
-#include <util/symbol_table.h>
-#include <util/std_expr.h>
-#include <util/std_code.h>
-#include <util/simplify_expr.h>
-#include <util/prefix.h>
-#include <util/string2int.h>
-#include <util/invariant_utils.h>
 #include <util/c_types.h>
-
-#include <linking/zero_initializer.h>
-
-#include "goto_symex_state.h"
+#include <util/expr_initializer.h>
+#include <util/invariant_utils.h>
+#include <util/pointer_offset_size.h>
+#include <util/simplify_expr.h>
+#include <util/string2int.h>
 
 inline static typet c_sizeof_type_rec(const exprt &expr)
 {
@@ -68,6 +55,9 @@ void goto_symext::symex_allocate(
 
   exprt size=code.op0();
   typet object_type=nil_typet();
+  auto function_symbol = outer_symbol_table.lookup(state.source.pc->function);
+  INVARIANT(function_symbol, "function associated with instruction not found");
+  const irep_idt &mode = function_symbol->mode;
 
   // is the type given?
   if(code.type().id()==ID_pointer && code.type().subtype().id()!=ID_empty)
@@ -103,10 +93,10 @@ void goto_symext::symex_allocate(
           if(s.is_constant())
           {
             s=tmp_size.op1();
-            assert(c_sizeof_type_rec(tmp_size.op0())==tmp_type);
+            PRECONDITION(c_sizeof_type_rec(tmp_size.op0()) == tmp_type);
           }
           else
-            assert(c_sizeof_type_rec(tmp_size.op1())==tmp_type);
+            PRECONDITION(c_sizeof_type_rec(tmp_size.op1()) == tmp_type);
 
           object_type=array_typet(tmp_type, s);
         }
@@ -137,21 +127,22 @@ void goto_symext::symex_allocate(
     {
       exprt &size=to_array_type(object_type).size();
 
-      symbolt size_symbol;
+      auxiliary_symbolt size_symbol;
 
       size_symbol.base_name=
         "dynamic_object_size"+std::to_string(dynamic_counter);
       size_symbol.name="symex_dynamic::"+id2string(size_symbol.base_name);
-      size_symbol.is_lvalue=true;
       size_symbol.type=tmp_size.type();
-      size_symbol.mode=ID_C;
+      size_symbol.mode = mode;
+      size_symbol.type.set(ID_C_constant, true);
+      size_symbol.value = size;
 
-      new_symbol_table.add(size_symbol);
+      state.symbol_table.add(size_symbol);
 
       code_assignt assignment(size_symbol.symbol_expr(), size);
       size=assignment.lhs();
 
-      symex_assign_rec(state, assignment);
+      symex_assign(state, assignment);
     }
   }
 
@@ -162,10 +153,10 @@ void goto_symext::symex_allocate(
   value_symbol.name="symex_dynamic::"+id2string(value_symbol.base_name);
   value_symbol.is_lvalue=true;
   value_symbol.type=object_type;
-  value_symbol.type.set("#dynamic", true);
-  value_symbol.mode=ID_C;
+  value_symbol.type.set(ID_C_dynamic, true);
+  value_symbol.mode = mode;
 
-  new_symbol_table.add(value_symbol);
+  state.symbol_table.add(value_symbol);
 
   exprt zero_init=code.op1();
   state.rename(zero_init, ns); // to allow constant propagation
@@ -187,10 +178,16 @@ void goto_symext::symex_allocate(
     if(zero_value.is_not_nil())
     {
       code_assignt assignment(value_symbol.symbol_expr(), zero_value);
-      symex_assign_rec(state, assignment);
+      symex_assign(state, assignment);
     }
     else
       throw "failed to zero initialize dynamic object";
+  }
+  else
+  {
+    exprt nondet = build_symex_nondet(object_type);
+    code_assignt assignment(value_symbol.symbol_expr(), nondet);
+    symex_assign(state, assignment);
   }
 
   exprt rhs;
@@ -212,7 +209,7 @@ void goto_symext::symex_allocate(
   if(rhs.type()!=lhs.type())
     rhs.make_typecast(lhs.type());
 
-  symex_assign_rec(state, code_assignt(lhs, rhs));
+  symex_assign(state, code_assignt(lhs, rhs));
 }
 
 irep_idt get_symbol(const exprt &src)
@@ -269,29 +266,29 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
       const symbolt *symbol;
       if(!ns.lookup(id, symbol))
       {
-        exprt symbol_expr=symbol_exprt(symbol->name, symbol->type);
+        const symbol_exprt symbol_expr(symbol->name, symbol->type);
         rhs=address_of_exprt(symbol_expr);
         rhs.make_typecast(lhs.type());
       }
     }
   }
 
-  symex_assign_rec(state, code_assignt(lhs, rhs));
+  symex_assign(state, code_assignt(lhs, rhs));
 }
 
 irep_idt get_string_argument_rec(const exprt &src)
 {
   if(src.id()==ID_typecast)
   {
-    assert(src.operands().size()==1);
+    PRECONDITION(src.operands().size() == 1);
     return get_string_argument_rec(src.op0());
   }
   else if(src.id()==ID_address_of)
   {
-    assert(src.operands().size()==1);
+    PRECONDITION(src.operands().size() == 1);
     if(src.op0().id()==ID_index)
     {
-      assert(src.op0().operands().size()==2);
+      PRECONDITION(src.op0().operands().size() == 2);
 
       if(src.op0().op0().id()==ID_string_constant &&
          src.op0().op1().is_zero())
@@ -314,7 +311,6 @@ irep_idt get_string_argument(const exprt &src, const namespacet &ns)
 
 void goto_symext::symex_printf(
   statet &state,
-  const exprt &lhs,
   const exprt &rhs)
 {
   if(rhs.operands().empty())
@@ -429,18 +425,16 @@ void goto_symext::symex_cpp_new(
 
   if(do_array)
   {
-    symbol.type=array_typet();
-    symbol.type.subtype()=code.type().subtype();
-    exprt size_arg=static_cast<const exprt&>(code.find(ID_size));
+    exprt size_arg = static_cast<const exprt &>(code.find(ID_size));
     clean_expr(size_arg, state, false);
-    symbol.type.set(ID_size, size_arg);
+    symbol.type = array_typet(code.type().subtype(), size_arg);
   }
   else
     symbol.type=code.type().subtype();
 
-  symbol.type.set("#dynamic", true);
+  symbol.type.set(ID_C_dynamic, true);
 
-  new_symbol_table.add(symbol);
+  state.symbol_table.add(symbol);
 
   // make symbol expression
 
@@ -449,21 +443,18 @@ void goto_symext::symex_cpp_new(
 
   if(do_array)
   {
-    exprt index_expr(ID_index, code.type().subtype());
-    index_expr.copy_to_operands(
-      symbol.symbol_expr(),
-      from_integer(0, index_type()));
+    index_exprt index_expr(symbol.symbol_expr(), from_integer(0, index_type()));
     rhs.move_to_operands(index_expr);
   }
   else
     rhs.copy_to_operands(symbol.symbol_expr());
 
-  symex_assign_rec(state, code_assignt(lhs, rhs));
+  symex_assign(state, code_assignt(lhs, rhs));
 }
 
 void goto_symext::symex_cpp_delete(
-  statet &state,
-  const codet &code)
+  statet &,
+  const codet &)
 {
   // TODO
   #if 0
@@ -511,9 +502,11 @@ void goto_symext::symex_trace(
 }
 
 void goto_symext::symex_fkt(
-  statet &state,
-  const code_function_callt &code)
+  statet &,
+  const code_function_callt &)
 {
+  // TODO: uncomment this line when TG-4667 is done
+  // UNREACHABLE;
   #if 0
   exprt new_fc(ID_function, fc.type());
 
@@ -534,7 +527,7 @@ void goto_symext::symex_fkt(
 }
 
 void goto_symext::symex_macro(
-  statet &state,
+  statet &,
   const code_function_callt &code)
 {
   const irep_idt &identifier=code.op0().get(ID_identifier);

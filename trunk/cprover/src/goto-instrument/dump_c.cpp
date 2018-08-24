@@ -11,23 +11,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "dump_c.h"
 
-#include <sstream>
-#include <cctype>
-
-#include <util/config.h>
-#include <util/invariant.h>
-#include <util/prefix.h>
-#include <util/suffix.h>
-#include <util/find_symbols.h>
 #include <util/base_type.h>
-#include <util/cprover_prefix.h>
+#include <util/config.h>
+#include <util/find_symbols.h>
+#include <util/invariant.h>
 #include <util/replace_symbol.h>
 
 #include <ansi-c/ansi_c_language.h>
 #include <cpp/cpp_language.h>
 
-#include "goto_program2code.h"
+#include <linking/static_lifetime_init.h>
+
 #include "dump_c_class.h"
+#include "goto_program2code.h"
 
 inline std::ostream &operator << (std::ostream &out, dump_ct &src)
 {
@@ -65,8 +61,7 @@ void dump_ct::operator()(std::ostream &os)
     {
       typet &type=it2->type();
 
-      if(type.id()==ID_symbol &&
-         type.get_bool(ID_C_transparent_union))
+      if(type.id() == ID_symbol_type && type.get_bool(ID_C_transparent_union))
       {
         symbolt new_type_sym=
           ns.lookup(to_symbol_type(type).get_identifier());
@@ -82,10 +77,12 @@ void dump_ct::operator()(std::ostream &os)
       }
     }
   }
-  forall_symbols(it, symbols_transparent.symbols)
-    copied_symbol_table.add(it->second);
+  for(const auto &symbol_pair : symbols_transparent.symbols)
+  {
+    copied_symbol_table.add(symbol_pair.second);
+  }
 
-  typedef std::unordered_map<irep_idt, unsigned, irep_id_hash> unique_tagst;
+  typedef std::unordered_map<irep_idt, unsigned> unique_tagst;
   unique_tagst unique_tags;
 
   // add tags to anonymous union/struct/enum,
@@ -316,7 +313,7 @@ void dump_ct::convert_compound(
   bool recursive,
   std::ostream &os)
 {
-  if(type.id()==ID_symbol)
+  if(type.id() == ID_symbol_type)
   {
     const symbolt &symbol=
       ns.lookup(to_symbol_type(type).get_identifier());
@@ -384,7 +381,7 @@ void dump_ct::convert_compound(
     UNREACHABLE;
     /*
     assert(parent_it->id() == ID_base);
-    assert(parent_it->get(ID_type) == ID_symbol);
+    assert(parent_it->get(ID_type) == ID_symbol_type);
 
     const irep_idt &base_id=
       parent_it->find(ID_type).get(ID_identifier);
@@ -611,7 +608,7 @@ void dump_ct::cleanup_decl(
 
   tmp.add_instruction(END_FUNCTION);
 
-  std::unordered_set<irep_idt, irep_id_hash> typedef_names;
+  std::unordered_set<irep_idt> typedef_names;
   for(const auto &td : typedef_map)
     typedef_names.insert(td.first);
 
@@ -638,7 +635,7 @@ void dump_ct::cleanup_decl(
 ///   function declarations or struct definitions
 void dump_ct::collect_typedefs(const typet &type, bool early)
 {
-  std::unordered_set<irep_idt, irep_id_hash> deps;
+  std::unordered_set<irep_idt> deps;
   collect_typedefs_rec(type, early, deps);
 }
 
@@ -652,12 +649,12 @@ void dump_ct::collect_typedefs(const typet &type, bool early)
 void dump_ct::collect_typedefs_rec(
   const typet &type,
   bool early,
-  std::unordered_set<irep_idt, irep_id_hash> &dependencies)
+  std::unordered_set<irep_idt> &dependencies)
 {
   if(system_symbols.is_type_internal(type, system_headers))
     return;
 
-  std::unordered_set<irep_idt, irep_id_hash> local_deps;
+  std::unordered_set<irep_idt> local_deps;
 
   if(type.id()==ID_code)
   {
@@ -671,7 +668,7 @@ void dump_ct::collect_typedefs_rec(
   {
     collect_typedefs_rec(type.subtype(), early, local_deps);
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
     const symbolt &symbol=
       ns.lookup(to_symbol_type(type).get_identifier());
@@ -767,10 +764,9 @@ void dump_ct::dump_typedefs(std::ostream &os) const
   // output
   std::map<std::string, typedef_infot> to_insert;
 
-  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
-  id_sett typedefs_done;
-  std::unordered_map<irep_idt, id_sett, irep_id_hash>
-    forward_deps, reverse_deps;
+  std::unordered_set<irep_idt> typedefs_done;
+  std::unordered_map<irep_idt, std::unordered_set<irep_idt>> forward_deps,
+    reverse_deps;
 
   for(const auto &td : typedef_map)
     if(!td.second.type_decl_str.empty())
@@ -803,8 +799,9 @@ void dump_ct::dump_typedefs(std::ostream &os) const
       continue;
 
     // reduce remaining dependencies
-    id_sett &r_deps=r_it->second;
-    for(id_sett::iterator it=r_deps.begin(); it!=r_deps.end(); ) // no ++it
+    std::unordered_set<irep_idt> &r_deps = r_it->second;
+    for(std::unordered_set<irep_idt>::iterator it = r_deps.begin();
+        it != r_deps.end();) // no ++it
     {
       auto f_it=forward_deps.find(*it);
       if(f_it==forward_deps.end()) // might be done already
@@ -814,7 +811,7 @@ void dump_ct::dump_typedefs(std::ostream &os) const
       }
 
       // update dependencies
-      id_sett &f_deps=f_it->second;
+      std::unordered_set<irep_idt> &f_deps = f_it->second;
       PRECONDITION(!f_deps.empty());
       PRECONDITION(f_deps.find(t.typedef_name)!=f_deps.end());
       f_deps.erase(t.typedef_name);
@@ -951,7 +948,7 @@ void dump_ct::cleanup_harness(code_blockt &b)
         symbol_exprt &s=to_symbol_expr(func);
         if(s.get_identifier()==ID_main)
           s.set_identifier(CPROVER_PREFIX+id2string(ID_main));
-        else if(s.get_identifier()==CPROVER_PREFIX "initialize")
+        else if(s.get_identifier() == INITIALIZE_FUNCTION)
           continue;
       }
     }
@@ -984,7 +981,7 @@ void dump_ct::convert_function_declaration(
     code_blockt b;
     std::list<irep_idt> type_decls, local_static;
 
-    std::unordered_set<irep_idt, irep_id_hash> typedef_names;
+    std::unordered_set<irep_idt> typedef_names;
     for(const auto &td : typedef_map)
       typedef_names.insert(td.first);
 

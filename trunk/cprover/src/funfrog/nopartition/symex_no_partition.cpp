@@ -5,6 +5,7 @@
  * Created on 20 April 2017, 17:51
  */
 #include "symex_no_partition.h"
+#include "../utils/time_utils.h"
 
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex_state.h>
@@ -46,14 +47,14 @@ bool symex_no_partitiont::refine_SSA(const assertion_infot &assertion, bool forc
 bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &goto_functions, bool force_check)
 {
     // Proceed with symbolic execution
-    absolute_timet before, after;
-    before=current_time();
+    auto before=timestamp();
 
     // Taken from bmc.cpp (main)
     try
     {
-        // perform symbolic execution
-        this->operator () (state, goto_functions, goto_program);
+        // perform symbolic execution        
+        //this->operator () (state, goto_functions, goto_program);
+        this->symex_with_state(state, goto_functions, new_symbol_table);
 
         // add a partial ordering, if required
         if(equation.has_threads())
@@ -80,7 +81,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     }
     catch(std::bad_alloc)
     {
-        error() << "Out of memory" << log.eom;
+        log.error() << "Out of memory" << log.eom;
         assert(0);
     }
 
@@ -89,20 +90,20 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
                  << " steps" << log.eom;
 
 
-    after=current_time();
+    auto after=timestamp();
 
-    status() << "SYMEX TIME: " << (after-before) << log.eom;
+    status() << "SYMEX TIME: " << time_gap(after,before) << log.eom;
 
     if(remaining_vccs!=0 || force_check)
     {
         if (use_slicing) {
-          before=current_time();
+            before=timestamp();
             status() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
             symex_slicet symex_slice;
             symex_slice.slice(equation);
             status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
-            after=current_time();
-            status() << "SLICER TIME: " << (after-before) << log.eom;
+            after=timestamp();
+            status() << "SLICER TIME: " << time_gap(after,before) << log.eom;
         }
     } else {
         status() << "Assertion(s) hold trivially(.)" << log.eom;

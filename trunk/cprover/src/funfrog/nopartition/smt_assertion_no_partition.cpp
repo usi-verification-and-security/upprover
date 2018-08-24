@@ -9,7 +9,6 @@
 #include <goto-programs/xml_goto_trace.h>
 #include <util/find_symbols.h>
 #include <ansi-c/expr2c.h>
-#include <util/time_stopping.h>
 #include <util/ui_message.h>
 #include "../error_trace.h"
 
@@ -17,7 +16,7 @@
 #include "../solvers/smtcheck_opensmt2.h"
 
 
-extern time_periodt global_satsolver_time;
+extern timet global_satsolver_time;
 
 /*******************************************************************
 
@@ -34,13 +33,12 @@ bool smt_assertion_no_partitiont::assertion_holds(smtcheck_opensmt2t& decider)
 {
   bool sat=false;
 
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   equation.convert(decider);
 
-  after=current_time();
+  auto after=timestamp();
 
-  status() << "CONVERSION TIME: " << (after-before) << eom;
+  status() << "CONVERSION TIME: " << time_gap(after,before) << eom;
 
   // Decides the equation
   sat = is_satisfiable(decider);
@@ -70,13 +68,12 @@ bool smt_assertion_no_partitiont::assertion_holds(smtcheck_opensmt2t& decider)
 bool smt_assertion_no_partitiont::is_satisfiable(
 		smtcheck_opensmt2t& decider)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   bool r = decider.solve();
-  after=current_time();
-  solving_time = (after-before);
-  global_satsolver_time += (after-before);
-  status() << "SOLVER TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  //solving_time = time_gap(after,before);
+  //global_satsolver_time += solving_time; // TODO
+  status() << "SOLVER TIME: " << time_gap(after,before) << eom;
   status() << "RESULT: ";
 
   // solve it

@@ -8,6 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "rename_symbol.h"
 
+#include "expr_iterator.h"
 #include "std_types.h"
 #include "std_expr.h"
 
@@ -30,44 +31,52 @@ bool rename_symbolt::rename(exprt &dest) const
 {
   bool result=true;
 
-  // first look at type
-
-  if(have_to_rename(dest.type()))
-    if(!rename(dest.type()))
-      result=false;
-
-  // now do expression itself
-
-  if(!have_to_rename(dest))
-    return result;
-
-  if(dest.id()==ID_symbol)
+  for(auto it = dest.depth_begin(), end = dest.depth_end(); it != end; ++it)
   {
-    expr_mapt::const_iterator it=
-      expr_map.find(to_symbol_expr(dest).get_identifier());
+    exprt * modifiable_expr = nullptr;
 
-    if(it!=expr_map.end())
+    // first look at type
+    if(have_to_rename(it->type()))
     {
-      to_symbol_expr(dest).set_identifier(it->second);
-      return false;
+      modifiable_expr = &it.mutate();
+      result &= rename(modifiable_expr->type());
+    }
+
+    // now do expression itself
+    if(it->id()==ID_symbol)
+    {
+      expr_mapt::const_iterator entry =
+        expr_map.find(to_symbol_expr(*it).get_identifier());
+
+      if(entry != expr_map.end())
+      {
+        if(!modifiable_expr)
+          modifiable_expr = &it.mutate();
+        to_symbol_expr(*modifiable_expr).set_identifier(entry->second);
+        result = false;
+      }
+    }
+
+    const typet &c_sizeof_type =
+      static_cast<const typet&>(it->find(ID_C_c_sizeof_type));
+    if(c_sizeof_type.is_not_nil() && have_to_rename(c_sizeof_type))
+    {
+      if(!modifiable_expr)
+        modifiable_expr = &it.mutate();
+      result &=
+        rename(static_cast<typet&>(modifiable_expr->add(ID_C_c_sizeof_type)));
+    }
+
+    const typet &va_arg_type =
+      static_cast<const typet&>(it->find(ID_C_va_arg_type));
+    if(va_arg_type.is_not_nil() && have_to_rename(va_arg_type))
+    {
+      if(!modifiable_expr)
+        modifiable_expr = &it.mutate();
+      result &=
+        rename(static_cast<typet&>(modifiable_expr->add(ID_C_va_arg_type)));
     }
   }
-
-  Forall_operands(it, dest)
-    if(!rename(*it))
-      result=false;
-
-  const irept &c_sizeof_type=dest.find(ID_C_c_sizeof_type);
-
-  if(c_sizeof_type.is_not_nil() &&
-     !rename(static_cast<typet&>(dest.add(ID_C_c_sizeof_type))))
-    result=false;
-
-  const irept &va_arg_type=dest.find(ID_C_va_arg_type);
-
-  if(va_arg_type.is_not_nil() &&
-     !rename(static_cast<typet&>(dest.add(ID_C_va_arg_type))))
-    result=false;
 
   return result;
 }
@@ -85,7 +94,10 @@ bool rename_symbolt::have_to_rename(const exprt &dest) const
   // now do expression itself
 
   if(dest.id()==ID_symbol)
-    return expr_map.find(dest.get(ID_identifier))!=expr_map.end();
+  {
+    const irep_idt &identifier = to_symbol_expr(dest).get_identifier();
+    return expr_map.find(identifier) != expr_map.end();
+  }
 
   forall_operands(it, dest)
     if(have_to_rename(*it))
@@ -158,7 +170,7 @@ bool rename_symbolt::rename(typet &dest) const
       }
     }
   }
-  else if(dest.id()==ID_symbol)
+  else if(dest.id() == ID_symbol_type)
   {
     type_mapt::const_iterator it=
       type_map.find(to_symbol_type(dest).get_identifier());
@@ -241,8 +253,11 @@ bool rename_symbolt::have_to_rename(const typet &dest) const
         return true;
     }
   }
-  else if(dest.id()==ID_symbol)
-    return type_map.find(dest.get(ID_identifier))!=type_map.end();
+  else if(dest.id() == ID_symbol_type)
+  {
+    const irep_idt &identifier = to_symbol_type(dest).get_identifier();
+    return type_map.find(identifier) != type_map.end();
+  }
   else if(dest.id()==ID_c_enum_tag ||
           dest.id()==ID_struct_tag ||
           dest.id()==ID_union_tag)

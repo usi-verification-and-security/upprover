@@ -41,10 +41,8 @@ protected:
 
   std::string convert_rec(
     const typet &src,
-    const c_qualifierst &qualifiers,
+    const qualifierst &qualifiers,
     const std::string &declarator) override;
-
-  typedef std::unordered_set<std::string, string_hash> id_sett;
 };
 
 std::string expr2cppt::convert_struct(
@@ -129,10 +127,11 @@ std::string expr2cppt::convert_constant(
 
 std::string expr2cppt::convert_rec(
   const typet &src,
-  const c_qualifierst &qualifiers,
+  const qualifierst &qualifiers,
   const std::string &declarator)
 {
-  c_qualifierst new_qualifiers(qualifiers);
+  std::unique_ptr<qualifierst> clone = qualifiers.clone();
+  qualifierst &new_qualifiers = *clone;
   new_qualifiers.read(src);
 
   const std::string d=
@@ -188,7 +187,7 @@ std::string expr2cppt::convert_rec(
     else
       return expr2ct::convert_rec(src, qualifiers, declarator);
   }
-  else if(src.id()==ID_symbol)
+  else if(src.id() == ID_symbol_type)
   {
     const irep_idt &identifier=
       to_symbol_type(src).get_identifier();

@@ -45,7 +45,10 @@ public:
   std::list<irep_idt> seen_modes;
 
   std::string object_file_extension;
-  std::string output_file_object, output_file_executable;
+  std::string output_file_executable;
+
+  // the two options below are mutually exclusive -- use either or
+  std::string output_file_object, output_directory_object;
 
   compilet(cmdlinet &_cmdline, ui_message_handlert &mh, bool Werror);
 
@@ -53,7 +56,7 @@ public:
 
   bool add_input_file(const std::string &);
   bool find_library(const std::string &);
-  bool is_elf_file(const std::string &);
+  bool add_files_from_archive(const std::string &file_name, bool thin_archive);
 
   bool parse(const std::string &filename);
   bool parse_stdin();
@@ -94,7 +97,7 @@ protected:
   cmdlinet &cmdline;
   bool warning_is_fatal;
 
-  unsigned function_body_count(const goto_functionst &);
+  unsigned function_body_count(const goto_functionst &) const;
 
   void add_compiler_specific_defines(class configt &config) const;
 

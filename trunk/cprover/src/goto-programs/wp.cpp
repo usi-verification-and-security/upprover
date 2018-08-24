@@ -138,17 +138,12 @@ void substitute_rec(
     case aliasingt::A_MAY:
       {
         // consider possible aliasing between 'what' and 'dest'
-        exprt what_address=address_of_exprt(what);
-        exprt dest_address=address_of_exprt(dest);
+        const address_of_exprt what_address(what);
+        const address_of_exprt dest_address(dest);
 
         equal_exprt alias_cond=equal_exprt(what_address, dest_address);
 
-        if_exprt if_expr;
-
-        if_expr.cond()=alias_cond;
-        if_expr.type()=dest.type();
-        if_expr.true_case()=by;
-        if_expr.false_case()=dest;
+        const if_exprt if_expr(alias_cond, by, dest, dest.type());
 
         dest=if_expr;
         return;
@@ -223,7 +218,7 @@ exprt wp_assign(
 exprt wp_assume(
   const code_assumet &code,
   const exprt &post,
-  const namespacet &ns)
+  const namespacet &)
 {
   return implies_exprt(code.assumption(), post);
 }
@@ -235,7 +230,7 @@ exprt wp_decl(
 {
   // Model decl(var) as var = nondet()
   const exprt &var = code.symbol();
-  side_effect_expr_nondett nondet(var.type());
+  side_effect_expr_nondett nondet(var.type(), source_locationt());
   code_assignt assignment(var, nondet);
 
   return wp_assign(assignment, post, ns);

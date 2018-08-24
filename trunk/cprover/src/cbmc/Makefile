@@ -17,7 +17,6 @@ SRC = all_properties.cpp \
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../cpp/cpp$(LIBEXT) \
-      ../java_bytecode/java_bytecode$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
@@ -31,8 +30,6 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../pointer-analysis/add_failed_symbols$(OBJEXT) \
       ../pointer-analysis/rewrite_index$(OBJEXT) \
       ../pointer-analysis/goto_program_dereference$(OBJEXT) \
-      ../goto-instrument/full_slicer$(OBJEXT) \
-      ../goto-instrument/nondet_static$(OBJEXT) \
       ../goto-instrument/cover$(OBJEXT) \
       ../goto-instrument/cover_basic_blocks$(OBJEXT) \
       ../goto-instrument/cover_filter$(OBJEXT) \
@@ -43,6 +40,10 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../goto-instrument/cover_instrument_mcdc$(OBJEXT) \
       ../goto-instrument/cover_instrument_other$(OBJEXT) \
       ../goto-instrument/cover_util$(OBJEXT) \
+      ../goto-instrument/reachability_slicer$(OBJEXT) \
+      ../goto-instrument/nondet_static$(OBJEXT) \
+      ../goto-instrument/full_slicer$(OBJEXT) \
+      ../goto-instrument/unwindset$(OBJEXT) \
       ../analyses/analyses$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \

@@ -10,14 +10,17 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_MESSAGE_H
 #define CPROVER_UTIL_MESSAGE_H
 
-#include <string>
+#include <functional>
 #include <iosfwd>
 #include <sstream>
+#include <string>
 
 #include "invariant.h"
 #include "json.h"
 #include "source_location.h"
 #include "xml.h"
+
+class json_stream_arrayt;
 
 class message_handlert
 {
@@ -33,6 +36,12 @@ public:
     // no-op by default
   }
 
+  /// Return the underlying JSON stream
+  virtual json_stream_arrayt &get_json_stream()
+  {
+    UNREACHABLE;
+  }
+
   virtual void print(unsigned level, const jsont &json)
   {
     // no-op by default
@@ -41,7 +50,6 @@ public:
   virtual void print(
     unsigned level,
     const std::string &message,
-    int sequence_number,
     const source_locationt &location);
 
   virtual void flush(unsigned level)
@@ -56,7 +64,7 @@ public:
   void set_verbosity(unsigned _verbosity) { verbosity=_verbosity; }
   unsigned get_verbosity() const { return verbosity; }
 
-  unsigned get_message_count(unsigned level) const
+  std::size_t get_message_count(unsigned level) const
   {
     if(level>=message_count.size())
       return 0;
@@ -66,7 +74,7 @@ public:
 
 protected:
   unsigned verbosity;
-  std::vector<unsigned> message_count;
+  std::vector<std::size_t> message_count;
 };
 
 class null_message_handlert:public message_handlert
@@ -80,8 +88,7 @@ public:
   virtual void print(
     unsigned level,
     const std::string &message,
-    int sequence_number,
-    const source_locationt &location)
+    const source_locationt &)
   {
     print(level, message);
   }
@@ -130,6 +137,11 @@ public:
     M_ERROR=1, M_WARNING=2, M_RESULT=4, M_STATUS=6,
     M_STATISTICS=8, M_PROGRESS=9, M_DEBUG=10
   };
+
+  static unsigned eval_verbosity(
+    const std::string &user_input,
+    const message_levelt default_verbosity,
+    message_handlert &dest);
 
   virtual void set_message_handler(message_handlert &_message_handler)
   {
@@ -201,7 +213,8 @@ public:
 
     mstreamt &operator << (const xmlt &data)
     {
-      *this << eom; // force end of previous message
+      if(this->tellp() > 0)
+        *this << eom; // force end of previous message
       if(message.message_handler)
       {
         message.message_handler->print(message_level, data);
@@ -211,7 +224,8 @@ public:
 
     mstreamt &operator << (const json_objectt &data)
     {
-      *this << eom; // force end of previous message
+      if(this->tellp() > 0)
+        *this << eom; // force end of previous message
       if(message.message_handler)
       {
         message.message_handler->print(message_level, data);
@@ -230,6 +244,14 @@ public:
     mstreamt &operator << (mstreamt &(*func)(mstreamt &))
     {
       return func(*this);
+    }
+
+    /// Returns a reference to the top-level JSON array stream
+    json_stream_arrayt &json_stream()
+    {
+      if(this->tellp() > 0)
+        *this << eom; // force end of previous message
+      return message.message_handler->get_json_stream();
     }
 
   private:
@@ -252,7 +274,6 @@ public:
       m.message.message_handler->print(
         m.message_level,
         m.str(),
-        -1,
         m.source_location);
       m.message.message_handler->flush(m.message_level);
     }
@@ -309,6 +330,10 @@ public:
   {
     return get_mstream(M_DEBUG);
   }
+
+  void conditional_output(
+    mstreamt &mstream,
+    const std::function<void(mstreamt &)> &output_generator) const;
 
 protected:
   message_handlert *message_handler;

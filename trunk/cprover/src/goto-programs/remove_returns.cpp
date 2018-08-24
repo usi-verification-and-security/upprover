@@ -14,7 +14,10 @@ Date:   September 2009
 #include "remove_returns.h"
 
 #include <util/std_expr.h>
-#include <util/symbol_table.h>
+
+#include "goto_model.h"
+
+#include "remove_skip.h"
 
 class remove_returnst
 {
@@ -49,7 +52,6 @@ protected:
     goto_functionst::function_mapt::iterator f_it);
 
   void undo_function_calls(
-    goto_functionst &goto_functions,
     goto_programt &goto_program);
 
   symbol_exprt get_or_create_return_value_symbol(const irep_idt &function_id);
@@ -189,7 +191,8 @@ void remove_returnst::do_function_calls(
           if(!is_stub)
             rhs=return_value;
           else
-            rhs=side_effect_expr_nondett(function_call.lhs().type());
+            rhs = side_effect_expr_nondett(
+              function_call.lhs().type(), i_it->source_location);
 
           goto_programt::targett t_a=goto_program.insert_after(i_it);
           t_a->make_assignment();
@@ -244,8 +247,7 @@ void remove_returnst::operator()(
   if(goto_function.body.empty())
     return;
 
-  replace_returns(
-    goto_programt::get_function_id(goto_function.body), goto_function);
+  replace_returns(model_function.get_function_id(), goto_function);
   do_function_calls(function_is_stub, goto_function.body);
 }
 
@@ -288,13 +290,14 @@ void remove_returns(goto_modelt &goto_model)
 /// \param symbol_table: global symbol table
 /// \param function_id: function to get the type of
 /// \return the function's type with its `return_type()` restored to its
-///   original value if a \#return_value variable exists, or nil otherwise
+///   original value
 code_typet original_return_type(
   const symbol_table_baset &symbol_table,
   const irep_idt &function_id)
 {
-  code_typet type;
-  type.make_nil();
+  // look up the function symbol
+  const symbolt &function_symbol = symbol_table.lookup_ref(function_id);
+  code_typet type = to_code_type(function_symbol.type);
 
   // do we have X#return_value?
   std::string rv_name=id2string(function_id)+RETURN_VALUE_SUFFIX;
@@ -302,19 +305,13 @@ code_typet original_return_type(
   symbol_tablet::symbolst::const_iterator rv_it=
     symbol_table.symbols.find(rv_name);
 
-  if(rv_it!=symbol_table.symbols.end())
-  {
-    // look up the function symbol
-    const symbolt &function_symbol=symbol_table.lookup_ref(function_id);
-
-    type=to_code_type(function_symbol.type);
-    type.return_type()=rv_it->second.type;
-  }
+  if(rv_it != symbol_table.symbols.end())
+    type.return_type() = rv_it->second.type;
 
   return type;
 }
 
-/// turns 'return x' into an assignment to fkt#return_value
+/// turns an assignment to fkt#return_value back into 'return x'
 bool remove_returnst::restore_returns(
   goto_functionst::function_mapt::iterator f_it)
 {
@@ -342,6 +339,8 @@ bool remove_returnst::restore_returns(
 
   goto_programt &goto_program=f_it->second.body;
 
+  bool did_something = false;
+
   Forall_goto_program_instructions(i_it, goto_program)
   {
     if(i_it->is_assign())
@@ -352,47 +351,21 @@ bool remove_returnst::restore_returns(
         continue;
 
       // replace "fkt#return_value=x;" by "return x;"
-      code_returnt return_code(assign.rhs());
-
-      // the assignment might be a goto target
-      i_it->make_skip();
-      i_it++;
-
-      while(!i_it->is_goto() && !i_it->is_end_function())
-      {
-        INVARIANT(
-          i_it->is_dead(),
-          "only dead statements should appear between "
-          "a return and the next goto or function end");
-        i_it++;
-      }
-
-      if(i_it->is_goto())
-      {
-        INVARIANT(
-          i_it->get_target()->is_end_function(),
-          "GOTO following return should target end of function");
-      }
-      else
-      {
-        INVARIANT(
-          i_it->is_end_function(),
-          "control-flow after assigning return value should lead directly "
-          "to end of function");
-        i_it=goto_program.instructions.insert(i_it, *i_it);
-      }
-
+      const exprt rhs = assign.rhs();
       i_it->make_return();
-      i_it->code=return_code;
+      i_it->code = code_returnt(rhs);
+      did_something = true;
     }
   }
+
+  if(did_something)
+    remove_skip(goto_program);
 
   return false;
 }
 
 /// turns f(...); lhs=f#return_value; into lhs=f(...)
 void remove_returnst::undo_function_calls(
-  goto_functionst &goto_functions,
   goto_programt &goto_program)
 {
   namespacet ns(symbol_table);
@@ -462,7 +435,7 @@ void remove_returnst::restore(goto_functionst &goto_functions)
   if(!unmodified)
   {
     Forall_goto_functions(it, goto_functions)
-      undo_function_calls(goto_functions, it->second.body);
+      undo_function_calls(it->second.body);
   }
 }
 

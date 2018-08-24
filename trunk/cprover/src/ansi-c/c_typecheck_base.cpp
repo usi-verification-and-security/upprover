@@ -152,7 +152,7 @@ void c_typecheck_baset::typecheck_new_symbol(symbolt &symbol)
         it->set_identifier(irep_idt());
     }
   }
-  else
+  else if(!symbol.is_macro)
   {
     // check the initializer
     do_initializer(symbol);
@@ -333,10 +333,12 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
         // gcc allows re-definition if the first
         // definition is marked as "extern inline"
 
-        if(old_symbol.type.get_bool(ID_C_inlined) &&
-           (config.ansi_c.mode==configt::ansi_ct::flavourt::GCC ||
-            config.ansi_c.mode==configt::ansi_ct::flavourt::APPLE ||
-            config.ansi_c.mode==configt::ansi_ct::flavourt::ARM))
+        if(
+          old_symbol.type.get_bool(ID_C_inlined) &&
+          (config.ansi_c.mode == configt::ansi_ct::flavourt::GCC ||
+           config.ansi_c.mode == configt::ansi_ct::flavourt::CLANG ||
+           config.ansi_c.mode == configt::ansi_ct::flavourt::ARM ||
+           config.ansi_c.mode == configt::ansi_ct::flavourt::VISUAL_STUDIO))
         {
           // overwrite "extern inline" properties
           old_symbol.is_extern=new_symbol.is_extern;
@@ -404,7 +406,7 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
        final_old.subtype()==final_new.subtype())
     {
       // we don't do symbol types for arrays anymore
-      PRECONDITION(old_symbol.type.id()!=ID_symbol);
+      PRECONDITION(old_symbol.type.id() != ID_symbol_type);
       old_symbol.type=new_symbol.type;
     }
     else if((final_old.id()==ID_incomplete_c_enum ||
@@ -688,6 +690,7 @@ void c_typecheck_baset::typecheck_declaration(
       declaration.set_is_register(full_spec.is_register);
       declaration.set_is_typedef(full_spec.is_typedef);
       declaration.set_is_weak(full_spec.is_weak);
+      declaration.set_is_used(full_spec.is_used);
 
       symbolt symbol;
       declaration.to_symbol(*d_it, symbol);
@@ -708,7 +711,12 @@ void c_typecheck_baset::typecheck_declaration(
 
         // alias function need not have been declared yet, thus
         // can't lookup
-        symbol.value=symbol_exprt(full_spec.alias);
+        // also cater for renaming/placement in sections
+        const auto &renaming_entry = asm_label_map.find(full_spec.alias);
+        if(renaming_entry == asm_label_map.end())
+          symbol.value = symbol_exprt(full_spec.alias);
+        else
+          symbol.value = symbol_exprt(renaming_entry->second);
         symbol.is_macro=true;
       }
 
@@ -716,8 +724,19 @@ void c_typecheck_baset::typecheck_declaration(
         apply_asm_label(full_spec.asm_label, symbol);
       else
       {
-        std::string asm_name;
-        asm_name=id2string(full_spec.section)+"$$";
+        // section name is not empty, do a bit of parsing
+        std::string asm_name = id2string(full_spec.section);
+
+        if(asm_name[0] == '.')
+        {
+          std::string::size_type primary_section = asm_name.find('.', 1);
+
+          if(primary_section != std::string::npos)
+            asm_name.resize(primary_section);
+        }
+
+        asm_name += "$$";
+
         if(!full_spec.asm_label.empty())
           asm_name+=id2string(full_spec.asm_label);
         else
@@ -725,6 +744,7 @@ void c_typecheck_baset::typecheck_declaration(
 
         apply_asm_label(asm_name, symbol);
       }
+
       irep_idt identifier=symbol.name;
       d_it->set_name(identifier);
 

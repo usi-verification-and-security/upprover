@@ -33,8 +33,7 @@ codet cpp_typecheckt::cpp_constructor(
 
   elaborate_class_template(object_tc.type());
 
-  typet tmp_type(object_tc.type());
-  follow_symbol(tmp_type);
+  typet tmp_type(follow(object_tc.type()));
 
   assert(!is_reference(tmp_type));
 
@@ -42,12 +41,12 @@ codet cpp_typecheckt::cpp_constructor(
   {
     // We allow only one operand and it must be tagged with '#array_ini'.
     // Note that the operand is an array that is used for copy-initialization.
-    // In the general case, a program is not allow to use this form of
+    // In the general case, a program is not allowed to use this form of
     // construct. This way of initializing an array is used internally only.
     // The purpose of the tag #array_ini is to rule out ill-formed
     // programs.
 
-    if(!operands.empty() && !operands.front().get_bool("#array_ini"))
+    if(!operands.empty() && !operands.front().get_bool(ID_C_array_ini))
     {
       error().source_location=source_location;
       error() << "bad array initializer" << eom;
@@ -66,7 +65,7 @@ codet cpp_typecheckt::cpp_constructor(
     const exprt &size_expr=
       to_array_type(tmp_type).size();
 
-    if(size_expr.id()=="infinity")
+    if(size_expr.id() == ID_infinity)
     {
       // don't initialize
       codet nil;
@@ -92,8 +91,8 @@ codet cpp_typecheckt::cpp_constructor(
       exprt op_tc=operands.front();
       typecheck_expr(op_tc);
        // Override constantness
-      object_tc.type().set("#constant", false);
-      object_tc.set("#lvalue", true);
+      object_tc.type().set("ID_C_constant", false);
+      object_tc.set("ID_C_lvalue", true);
       side_effect_exprt assign("assign");
       assign.add_source_location()=source_location;
       assign.copy_to_operands(object_tc, op_tc);
@@ -103,7 +102,7 @@ codet cpp_typecheckt::cpp_constructor(
     }
     else*/
     {
-      codet new_code(ID_block);
+      code_blockt new_code;
 
       // for each element of the array, call the default constructor
       for(mp_integer i=0; i < s; ++i)
@@ -113,16 +112,12 @@ codet cpp_typecheckt::cpp_constructor(
         exprt constant=from_integer(i, index_type());
         constant.add_source_location()=source_location;
 
-        exprt index(ID_index);
-        index.copy_to_operands(object);
-        index.copy_to_operands(constant);
+        index_exprt index(object, constant);
         index.add_source_location()=source_location;
 
         if(!operands.empty())
         {
-          exprt operand(ID_index);
-          operand.copy_to_operands(operands.front());
-          operand.copy_to_operands(constant);
+          index_exprt operand(operands.front(), constant);
           operand.add_source_location()=source_location;
           tmp_operands.push_back(operand);
         }
@@ -165,8 +160,7 @@ codet cpp_typecheckt::cpp_constructor(
       // Override constantness
       object_tc.type().set(ID_C_constant, false);
       object_tc.set(ID_C_lvalue, true);
-      side_effect_exprt assign(ID_assign);
-      assign.add_source_location()=source_location;
+      side_effect_exprt assign(ID_assign, typet(), source_location);
       assign.copy_to_operands(object_tc, operands_tc.front());
       typecheck_side_effect_assignment(assign);
       new_code.expression()=assign;
@@ -202,16 +196,14 @@ codet cpp_typecheckt::cpp_constructor(
       to_struct_type(tmp_type);
 
     // set most-derived bits
-    codet block(ID_block);
+    code_blockt block;
     for(std::size_t i=0; i < struct_type.components().size(); i++)
     {
       const irept &component=struct_type.components()[i];
       if(component.get(ID_base_name)!="@most_derived")
         continue;
 
-      exprt member(ID_member, bool_typet());
-      member.set(ID_component_name, component.get(ID_name));
-      member.copy_to_operands(object_tc);
+      member_exprt member(object_tc, component.get(ID_name), bool_typet());
       member.add_source_location()=source_location;
       member.set(ID_C_lvalue, object_tc.get_bool(ID_C_lvalue));
 
@@ -220,12 +212,10 @@ codet cpp_typecheckt::cpp_constructor(
       if(!component.get_bool("from_base"))
         val=true_exprt();
 
-      side_effect_exprt assign(ID_assign);
-      assign.add_source_location()=source_location;
+      side_effect_exprt assign(ID_assign, typet(), source_location);
       assign.move_to_operands(member, val);
       typecheck_side_effect_assignment(assign);
-      code_expressiont code_exp;
-      code_exp.expression()=assign;
+      code_expressiont code_exp(assign);
       block.move_to_operands(code_exp);
     }
 

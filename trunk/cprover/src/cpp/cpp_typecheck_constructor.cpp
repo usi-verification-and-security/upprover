@@ -252,7 +252,7 @@ void cpp_typecheckt::default_cpctor(
   forall_irep(parent_it, bases.get_sub())
   {
     assert(parent_it->id()==ID_base);
-    assert(parent_it->get(ID_type)==ID_symbol);
+    assert(parent_it->get(ID_type) == ID_symbol_type);
 
     const symbolt &parsymb=
       lookup(parent_it->find(ID_type).get(ID_identifier));
@@ -297,12 +297,10 @@ void cpp_typecheckt::default_cpctor(
       cppname.move_to_sub(name);
 
       const symbolt &virtual_table_symbol_type =
-        namespacet(symbol_table).lookup(
-          mem_it->type().subtype().get(ID_identifier));
+        lookup(mem_it->type().subtype().get(ID_identifier));
 
-      const symbolt &virtual_table_symbol_var  =
-        namespacet(symbol_table).lookup(
-          id2string(virtual_table_symbol_type.name) + "@" +
+      const symbolt &virtual_table_symbol_var = lookup(
+        id2string(virtual_table_symbol_type.name) + "@" +
         id2string(symbol.name));
 
       exprt var=virtual_table_symbol_var.symbol_expr();
@@ -346,7 +344,7 @@ void cpp_typecheckt::default_cpctor(
     memberexpr.add_source_location()=source_location;
 
     if(mem_it->type().id()==ID_array)
-      memberexpr.set("#array_ini", true);
+      memberexpr.set(ID_C_array_ini, true);
 
     mem_init.move_to_operands(memberexpr);
     initializers.move_to_sub(mem_init);
@@ -369,7 +367,7 @@ void cpp_typecheckt::default_assignop(
   std::string arg_name("ref");
 
   cpctor.add(ID_storage_spec).id(ID_cpp_storage_spec);
-  cpctor.type().id(ID_symbol);
+  cpctor.type().id(ID_symbol_type);
   cpctor.type().add(ID_identifier).id(symbol.name);
   cpctor.operands().push_back(exprt(ID_cpp_declarator));
   cpctor.add_source_location()=source_location;
@@ -388,7 +386,7 @@ void cpp_typecheckt::default_assignop(
 
   declarator_type.id(ID_function_type);
   declarator_type.subtype()=reference_type(nil_typet());
-  declarator_type.subtype().add("#qualifier").make_nil();
+  declarator_type.subtype().add(ID_C_qualifier).make_nil();
 
   exprt &args=static_cast<exprt&>(declarator.type().add(ID_parameters));
   args.add_source_location()=source_location;
@@ -437,7 +435,7 @@ void cpp_typecheckt::default_assignop_value(
   declarator.value().add_source_location()=source_location;
   declarator.value().id(ID_code);
   declarator.value().set(ID_statement, ID_block);
-  declarator.value().type()=code_typet();
+  declarator.value().type() = code_typet({}, empty_typet());
 
   exprt &block=declarator.value();
 
@@ -449,7 +447,7 @@ void cpp_typecheckt::default_assignop_value(
   forall_irep(parent_it, bases.get_sub())
   {
     assert(parent_it->id()==ID_base);
-    assert(parent_it->get(ID_type)==ID_symbol);
+    assert(parent_it->get(ID_type) == ID_symbol_type);
 
     const symbolt &symb=
       lookup(parent_it->find(ID_type).get(ID_identifier));
@@ -503,7 +501,7 @@ void cpp_typecheckt::default_assignop_value(
   ret_code.operands().push_back(exprt(ID_dereference));
   ret_code.op0().operands().push_back(exprt("cpp-this"));
   ret_code.set(ID_statement, ID_return);
-  ret_code.type()=code_typet();
+  ret_code.type() = code_typet({}, empty_typet());
 }
 
 /// Check a constructor initialization-list. An initializer has to be a data
@@ -542,7 +540,7 @@ void cpp_typecheckt::check_member_initializers(
       bool ok=false;
       forall_irep(parent_it, bases.get_sub())
       {
-        assert(parent_it->get(ID_type)==ID_symbol);
+        assert(parent_it->get(ID_type) == ID_symbol_type);
 
         if(member_type.get(ID_identifier)
           ==parent_it->find(ID_type).get(ID_identifier))
@@ -586,7 +584,7 @@ void cpp_typecheckt::check_member_initializers(
       if(c_it->get_bool("is_type"))
       {
         typet type=static_cast<const typet&>(c_it->find(ID_type));
-        if(type.id()!=ID_symbol)
+        if(type.id() != ID_symbol_type)
           continue;
 
         const symbolt &symb=lookup(type.get(ID_identifier));
@@ -596,7 +594,7 @@ void cpp_typecheckt::check_member_initializers(
         // check for a direct parent
         forall_irep(parent_it, bases.get_sub())
         {
-          assert(parent_it->get(ID_type)==ID_symbol);
+          assert(parent_it->get(ID_type) == ID_symbol_type);
           if(symb.name==parent_it->find(ID_type).get(ID_identifier))
           {
             ok=true;
@@ -619,7 +617,7 @@ void cpp_typecheckt::check_member_initializers(
         // check for a direct parent
         forall_irep(parent_it, bases.get_sub())
         {
-          assert(parent_it->get(ID_type)==ID_symbol);
+          assert(parent_it->get(ID_type) == ID_symbol_type);
 
           if(member_type.get(ID_identifier)==
              parent_it->find(ID_type).get(ID_identifier))
@@ -669,6 +667,8 @@ void cpp_typecheckt::full_member_initialization(
 
     if(!vbases.empty())
     {
+      // TODO(tautschnig): this code doesn't seem to make much sense as the
+      // ifthenelse only gets to have two operands (instead of three)
       codet cond(ID_ifthenelse);
 
       {
@@ -681,7 +681,7 @@ void cpp_typecheckt::full_member_initialization(
         cond.move_to_operands(tmp);
       }
 
-      codet block(ID_block);
+      code_blockt block;
 
       while(!vbases.empty())
       {
@@ -711,7 +711,7 @@ void cpp_typecheckt::full_member_initialization(
     forall_irep(parent_it, bases.get_sub())
     {
       assert(parent_it->id()==ID_base);
-      assert(parent_it->get(ID_type)==ID_symbol);
+      assert(parent_it->get(ID_type) == ID_symbol_type);
 
       const symbolt &ctorsymb=
         lookup(parent_it->find(ID_type).get(ID_identifier));
@@ -764,7 +764,7 @@ void cpp_typecheckt::full_member_initialization(
 
         typecheck_type(member_type);
 
-        if(member_type.id()!=ID_symbol)
+        if(member_type.id() != ID_symbol_type)
           break;
 
         if(parent_it->find(ID_type).get(ID_identifier)==
@@ -792,6 +792,8 @@ void cpp_typecheckt::full_member_initialization(
 
       if(parent_it->get_bool(ID_virtual))
       {
+        // TODO(tautschnig): this code doesn't seem to make much sense as the
+        // ifthenelse only gets to have two operands (instead of three)
         codet cond(ID_ifthenelse);
 
         {

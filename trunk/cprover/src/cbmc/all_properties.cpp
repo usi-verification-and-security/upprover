@@ -11,7 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "all_properties_class.h"
 
-#include <util/time_stopping.h>
+#include <chrono>
+
 #include <util/xml.h>
 #include <util/json.h>
 
@@ -40,10 +41,7 @@ void bmc_all_propertiest::goal_covered(const cover_goalst::goalt &)
       if(solver.l_get(cond).is_false())
       {
         g.second.status=goalt::statust::FAILURE;
-        symex_target_equationt::SSA_stepst::iterator next=c;
-        next++; // include the assertion
-        build_goto_trace(bmc.equation, next, solver, bmc.ns,
-                         g.second.goto_trace);
+        build_goto_trace(bmc.equation, c, solver, bmc.ns, g.second.goto_trace);
         break;
       }
     }
@@ -56,8 +54,7 @@ safety_checkert::resultt bmc_all_propertiest::operator()()
 
   solver.set_message_handler(get_message_handler());
 
-  // stop the time
-  absolute_timet sat_start=current_time();
+  auto solver_start=std::chrono::steady_clock::now();
 
   bmc.do_conversion();
 
@@ -131,12 +128,12 @@ safety_checkert::resultt bmc_all_propertiest::operator()()
         g.second.status=goalt::statust::SUCCESS;
   }
 
-  // output runtime
-
   {
-    absolute_timet sat_stop=current_time();
+    auto solver_stop = std::chrono::steady_clock::now();
+
     status() << "Runtime decision procedure: "
-             << (sat_stop-sat_start) << "s" << eom;
+             << std::chrono::duration<double>(solver_stop-solver_start).count()
+             << "s" << eom;
   }
 
   // report
@@ -175,10 +172,11 @@ void bmc_all_propertiest::report(const cover_goalst &cover_goals)
           if(g.second.status==goalt::statust::FAILURE)
           {
             result() << "\n" << "Trace for " << g.first << ":" << "\n";
-            show_goto_trace(result(), bmc.ns, g.second.goto_trace);
+            show_goto_trace(
+              result(), bmc.ns, g.second.goto_trace, bmc.trace_options());
+            result() << eom;
           }
       }
-      result() << eom;
 
       status() << "\n** " << cover_goals.number_covered()
                << " of " << cover_goals.size() << " failed ("
@@ -206,24 +204,26 @@ void bmc_all_propertiest::report(const cover_goalst &cover_goals)
 
     case ui_message_handlert::uit::JSON_UI:
     {
-      json_objectt json_result;
-      json_arrayt &result_array=json_result["result"].make_array();
+      json_stream_objectt &json_result =
+        result().json_stream().push_back_stream_object();
+      json_stream_arrayt &result_array =
+        json_result.push_back_stream_array("result");
 
       for(const auto &g : goal_map)
       {
-        json_objectt &result=result_array.push_back().make_object();
-        result["property"]=json_stringt(id2string(g.first));
-        result["description"]=json_stringt(id2string(g.second.description));
+        json_stream_objectt &result = result_array.push_back_stream_object();
+        result["property"] = json_stringt(g.first);
+        result["description"] = json_stringt(g.second.description);
         result["status"]=json_stringt(g.second.status_string());
 
         if(g.second.status==goalt::statust::FAILURE)
         {
-          jsont &json_trace=result["trace"];
-          convert(bmc.ns, g.second.goto_trace, json_trace, bmc.trace_options());
+          json_stream_arrayt &json_trace =
+            result.push_back_stream_array("trace");
+          convert<json_stream_arrayt>(
+            bmc.ns, g.second.goto_trace, json_trace, bmc.trace_options());
         }
       }
-
-      result() << json_result;
     }
     break;
   }

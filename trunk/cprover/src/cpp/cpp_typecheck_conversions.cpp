@@ -890,14 +890,11 @@ bool cpp_typecheckt::user_defined_conversion_sequence(
           qual_from.write(ptr_sub.subtype());
           make_ptr_typecast(address, ptr_sub);
 
-          exprt deref(ID_dereference);
-          deref.copy_to_operands(address);
-          deref.type()=address.type().subtype();
+          const dereference_exprt deref(address);
 
           // create temporary object
-          exprt tmp_object_expr=exprt(ID_side_effect, type);
-          tmp_object_expr.set(ID_statement, ID_temporary_object);
-          tmp_object_expr.add_source_location()=expr.source_location();
+          side_effect_exprt tmp_object_expr(
+            ID_temporary_object, type, expr.source_location());
           tmp_object_expr.copy_to_operands(deref);
           tmp_object_expr.set(ID_C_lvalue, true);
 
@@ -1024,10 +1021,8 @@ bool cpp_typecheckt::user_defined_conversion_sequence(
               rank+=tmp_rank;
 
               // create temporary object
-              exprt expr_deref=
-                exprt(ID_dereference, expr_ptmp.type().subtype());
+              dereference_exprt expr_deref(expr_ptmp);
               expr_deref.set(ID_C_lvalue, true);
-              expr_deref.copy_to_operands(expr_ptmp);
               expr_deref.add_source_location()=expr.source_location();
 
               exprt new_object("new_object", type);
@@ -1263,9 +1258,9 @@ bool cpp_typecheckt::reference_binding(
       expr.set(ID_C_lvalue, true);
     else if(expr.get(ID_statement)==ID_function_call)
       expr.set(ID_C_lvalue, true);
-    else if(expr.get_bool("#temporary_avoided"))
+    else if(expr.get_bool(ID_C_temporary_avoided))
     {
-      expr.remove("#temporary_avoided");
+      expr.remove(ID_C_temporary_avoided);
       exprt temporary;
       new_temporary(expr.source_location(), expr.type(), expr, temporary);
       expr.swap(temporary);
@@ -1513,6 +1508,13 @@ void cpp_typecheckt::implicit_typecast(exprt &expr, const typet &type)
 {
   exprt e=expr;
 
+  if(
+    e.id() == ID_initializer_list && cpp_is_pod(type) &&
+    e.operands().size() == 1)
+  {
+    e = expr.op0();
+  }
+
   if(!implicit_conversion_sequence(e, type, expr))
   {
     show_instantiation_stack(error());
@@ -1600,9 +1602,11 @@ bool cpp_typecheckt::cast_away_constness(
 
   if(is_reference(nt1))
     nt1.remove(ID_C_reference);
+  nt1.remove("to-member");
 
   if(is_reference(nt2))
     nt2.remove(ID_C_reference);
+  nt2.remove("to-member");
 
   // substitute final subtypes
   std::vector<typet> snt1;
@@ -1692,7 +1696,7 @@ bool cpp_typecheckt::const_typecast(
     if(new_expr.type()!=type.subtype())
       return false;
 
-    exprt address_of=address_of_exprt(expr, to_pointer_type(type));
+    address_of_exprt address_of(expr, to_pointer_type(type));
     add_implicit_dereference(address_of);
     new_expr=address_of;
     return true;
@@ -1961,7 +1965,7 @@ bool cpp_typecheckt::static_typecast(
     else
     {
       // try to avoid temporary
-      new_expr.set("#temporary_avoided", true);
+      new_expr.set(ID_C_temporary_avoided, true);
       if(new_expr.get_bool(ID_C_lvalue))
         new_expr.remove(ID_C_lvalue);
     }
@@ -2025,6 +2029,21 @@ bool cpp_typecheckt::static_typecast(
         new_expr.make_typecast(type);
         return true;
       }
+    }
+    else if(
+      type.find("to-member").is_nil() &&
+      e.type().find("to-member").is_not_nil())
+    {
+      if(type.subtype() != e.type().subtype())
+        return false;
+
+      struct_typet from_struct = to_struct_type(
+        follow(static_cast<const typet &>(e.type().find("to-member"))));
+
+      new_expr = e;
+      new_expr.type().add("to-member") = from_struct;
+
+      return true;
     }
     else
       return false;

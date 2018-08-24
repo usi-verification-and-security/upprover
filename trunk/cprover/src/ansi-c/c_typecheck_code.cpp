@@ -12,7 +12,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "c_typecheck_base.h"
 
 #include <util/config.h>
-#include <linking/zero_initializer.h>
+#include <util/expr_initializer.h>
 
 #include "ansi_c_declaration.h"
 
@@ -322,9 +322,8 @@ void c_typecheck_baset::typecheck_decl(codet &code)
     }
     else
     {
-      code_declt code;
+      code_declt code(symbol.symbol_expr());
       code.add_source_location()=symbol.location;
-      code.symbol()=symbol.symbol_expr();
       code.symbol().add_source_location()=symbol.location;
 
       // add initializer, if any
@@ -384,7 +383,7 @@ bool c_typecheck_baset::is_complete_type(const typet &type) const
   }
   else if(type.id()==ID_vector)
     return is_complete_type(type.subtype());
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
     return is_complete_type(follow(type));
 
   return true;
@@ -535,6 +534,7 @@ void c_typecheck_baset::typecheck_switch_case(code_switch_caset &code)
     exprt &case_expr=code.case_op();
     typecheck_expr(case_expr);
     implicit_typecast(case_expr, switch_op_type);
+    make_constant(case_expr);
   }
 }
 
@@ -561,9 +561,11 @@ void c_typecheck_baset::typecheck_gcc_switch_case_range(codet &code)
   typecheck_expr(code.op1());
   implicit_typecast(code.op0(), switch_op_type);
   implicit_typecast(code.op1(), switch_op_type);
+  make_constant(code.op0());
+  make_constant(code.op1());
 }
 
-void c_typecheck_baset::typecheck_gcc_local_label(codet &code)
+void c_typecheck_baset::typecheck_gcc_local_label(codet &)
 {
   // these are just declarations, e.g.,
   // __label__ here, there;
@@ -623,7 +625,7 @@ void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
 
   implicit_typecast_bool(cond);
 
-  if(to_code(code.then_case()).get_statement()==ID_decl_block)
+  if(code.then_case().get_statement() == ID_decl_block)
   {
     code_blockt code_block;
     code_block.add_source_location()=code.then_case().source_location();
@@ -632,11 +634,11 @@ void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
     code.then_case().swap(code_block);
   }
 
-  typecheck_code(to_code(code.then_case()));
+  typecheck_code(code.then_case());
 
   if(!code.else_case().is_nil())
   {
-    if(to_code(code.else_case()).get_statement()==ID_decl_block)
+    if(code.else_case().get_statement() == ID_decl_block)
     {
       code_blockt code_block;
       code_block.add_source_location()=code.else_case().source_location();
@@ -645,7 +647,7 @@ void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
       code.else_case().swap(code_block);
     }
 
-    typecheck_code(to_code(code.else_case()));
+    typecheck_code(code.else_case());
   }
 }
 
@@ -670,11 +672,11 @@ void c_typecheck_baset::typecheck_return(codet &code)
        return_type.id()!=ID_destructor)
     {
       // gcc doesn't actually complain, it just warns!
-      // We'll put a zero here, which is dubious.
-      exprt zero=
-        zero_initializer(
-          return_type, code.source_location(), *this, get_message_handler());
-      code.copy_to_operands(zero);
+      warning().source_location = code.source_location();
+      warning() << "non-void function should return a value" << eom;
+
+      code.copy_to_operands(
+        side_effect_expr_nondett(return_type, code.source_location()));
     }
   }
   else if(code.operands().size()==1)

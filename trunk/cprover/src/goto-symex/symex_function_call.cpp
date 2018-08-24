@@ -11,24 +11,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
-#include <sstream>
-#include <cassert>
-
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
 #include <util/arith_tools.h>
 #include <util/base_type.h>
-#include <util/std_expr.h>
-#include <util/symbol_table.h>
-
+#include <util/byte_operators.h>
 #include <util/c_types.h>
-
-//#include <analyses/dirty.h>
+#include <util/invariant.h>
 
 bool goto_symext::get_unwind_recursion(
-  const irep_idt &identifier,
-  const unsigned thread_nr,
-  unsigned unwind)
+  const irep_idt &,
+  const unsigned,
+  unsigned)
 {
   assert(0); // KE: when is it needed?
   return false;
@@ -81,7 +73,8 @@ void goto_symext::parameter_assignments(
                        "not enough arguments, inserting non-deterministic value"
                     << log.eom;
 
-      rhs=side_effect_expr_nondett(parameter_type);
+      rhs = side_effect_expr_nondett(
+        parameter_type, state.source.pc->source_location);
     }
     else
       rhs=*it1;
@@ -131,7 +124,7 @@ void goto_symext::parameter_assignments(
         }
       }
 
-      symex_assign_rec(state, code_assignt(lhs, rhs));
+      symex_assign(state, code_assignt(lhs, rhs));
     }
 
     if(it1!=arguments.end())
@@ -157,13 +150,14 @@ void goto_symext::parameter_assignments(
       symbolt symbol;
       symbol.name=id;
       symbol.base_name="va_arg"+std::to_string(va_count);
+      symbol.mode=ID_C;
       symbol.type=it1->type();
 
-      new_symbol_table.insert(std::move(symbol));
+      state.symbol_table.insert(std::move(symbol));
 
       symbol_exprt lhs=symbol_exprt(id, it1->type());
 
-      symex_assign_rec(state, code_assignt(lhs, *it1));
+      symex_assign(state, code_assignt(lhs, *it1));
     }
   }
   else if(it1!=arguments.end())
@@ -173,14 +167,14 @@ void goto_symext::parameter_assignments(
 }
 
 void goto_symext::symex_function_call(
-  const goto_functionst &goto_functions,
+  const get_goto_functiont &get_goto_function,
   statet &state,
   const code_function_callt &code)
 {
   const exprt &function=code.function();
 
   if(function.id()==ID_symbol)
-    symex_function_call_symbol(goto_functions, state, code);
+    symex_function_call_symbol(get_goto_function, state, code);
   else if(function.id()==ID_if)
     throw "symex_function_call can't do if";
   else if(function.id()==ID_dereference)
@@ -190,7 +184,7 @@ void goto_symext::symex_function_call(
 }
 
 void goto_symext::symex_function_call_symbol(
-  const goto_functionst &goto_functions,
+  const get_goto_functiont &get_goto_function,
   statet &state,
   const code_function_callt &code)
 {
@@ -214,27 +208,27 @@ void goto_symext::symex_function_call_symbol(
     symex_macro(state, code);
   }
   else
-    symex_function_call_code(goto_functions, state, code);
+    symex_function_call_code(get_goto_function, state, code);
 }
 
 /// do function call by inlining
 void goto_symext::symex_function_call_code(
-  const goto_functionst &goto_functions,
+  const get_goto_functiont &get_goto_function,
   statet &state,
   const code_function_callt &call)
 {
   const irep_idt &identifier=
     to_symbol_expr(call.function()).get_identifier();
 
-  // find code in function map
+  const goto_functionst::goto_functiont &goto_function =
+    get_goto_function(identifier);
 
-  goto_functionst::function_mapt::const_iterator it=
-    goto_functions.function_map.find(identifier);
+  state.dirty.populate_dirty_for_function(identifier, goto_function);
 
-  if(it==goto_functions.function_map.end())
-    throw "failed to find `"+id2string(identifier)+"' in function_map";
-
-  const goto_functionst::goto_functiont &goto_function=it->second;
+  auto emplace_safe_pointers_result =
+    safe_pointers.emplace(identifier, local_safe_pointerst{ns});
+  if(emplace_safe_pointers_result.second)
+    emplace_safe_pointers_result.first->second(goto_function.body);
 
   const bool stop_recursing=get_unwind_recursion(
     identifier,
@@ -261,8 +255,14 @@ void goto_symext::symex_function_call_code(
     return;
   }
 
+  // read the arguments -- before the locality renaming
+  exprt::operandst arguments = call.arguments();
+  for(auto &a : arguments)
+    state.rename(a, ns);
+
   // record the call
-  target.function_call(state.guard.as_expr(), identifier, state.source);
+  target.function_call(
+    state.guard.as_expr(), identifier, arguments, state.source);
 
   if(!goto_function.body_available())
   {
@@ -273,20 +273,15 @@ void goto_symext::symex_function_call_code(
 
     if(call.lhs().is_not_nil())
     {
-      side_effect_expr_nondett rhs(call.lhs().type());
-      rhs.add_source_location()=call.source_location();
+      const auto rhs =
+        side_effect_expr_nondett(call.lhs().type(), call.source_location());
       code_assignt code(call.lhs(), rhs);
-      symex_assign_rec(state, code);
+      symex_assign(state, code);
     }
 
     symex_transition(state);
     return;
   }
-
-  // read the arguments -- before the locality renaming
-  exprt::operandst arguments=call.arguments();
-  for(auto &a : arguments)
-    state.rename(a, ns);
 
   // produce a new frame
   PRECONDITION(!state.call_stack().empty());
@@ -335,7 +330,6 @@ void goto_symext::pop_frame(statet &state)
     state.level1.restore_from(frame.old_level1);
 
     // clear function-locals from L2 renaming
-    //PRECONDITION(state.dirty);
     for(goto_symex_statet::renaming_levelt::current_namest::iterator
         c_it=state.level2.current_names.begin();
         c_it!=state.level2.current_names.end();
@@ -343,9 +337,10 @@ void goto_symext::pop_frame(statet &state)
     {
       const irep_idt l1_o_id=c_it->second.first.get_l1_object_identifier();
       // could use iteration over local_objects as l1_o_id is prefix
-      if(frame.local_objects.find(l1_o_id)==frame.local_objects.end() ||
-         (state.threads.size()>1 /* &&
-          (*state.dirty)(c_it->second.first.get_object_name())*/))
+      if(
+        frame.local_objects.find(l1_o_id) == frame.local_objects.end() ||
+        (state.threads.size() > 1 &&
+         state.dirty(c_it->second.first.get_object_name())))
       {
         ++c_it;
         continue;
@@ -456,7 +451,7 @@ void goto_symext::return_assignment(statet &state)
           "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
           "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
 
-      symex_assign_rec(state, assignment);
+      symex_assign(state, assignment);
     }
   }
   else

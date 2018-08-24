@@ -11,25 +11,21 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "symex_target_equation.h"
 
-#include <cassert>
-
+#include <util/format_expr.h>
 #include <util/std_expr.h>
+#include <util/throw_with_nested.h>
+#include <util/unwrap_nested_exception.h>
 
+// Can be removed once deprecated SSA_stept::output is removed
 #include <langapi/language_util.h>
-#include <solvers/prop/prop_conv.h>
-#include <solvers/prop/prop.h>
+
+#include <solvers/flattening/bv_conversion_exceptions.h>
 #include <solvers/prop/literal_expr.h>
+#include <solvers/prop/prop.h>
+#include <solvers/prop/prop_conv.h>
 
+#include "equation_conversion_exceptions.h"
 #include "goto_symex_state.h"
-
-symex_target_equationt::symex_target_equationt(
-  const namespacet &_ns):ns(_ns)
-{
-}
-
-symex_target_equationt::~symex_target_equationt()
-{
-}
 
 /// read from a shared variable
 void symex_target_equationt::shared_read(
@@ -138,7 +134,7 @@ void symex_target_equationt::assignment(
   const sourcet &source,
   assignment_typet assignment_type)
 {
-  assert(ssa_lhs.is_not_nil());
+  PRECONDITION(ssa_lhs.is_not_nil());
 
   SSA_steps.push_back(SSA_stept());
   SSA_stept &SSA_step=SSA_steps.back();
@@ -166,7 +162,7 @@ void symex_target_equationt::decl(
   const sourcet &source,
   assignment_typet assignment_type)
 {
-  assert(ssa_lhs.is_not_nil());
+  PRECONDITION(ssa_lhs.is_not_nil());
 
   SSA_steps.push_back(SSA_stept());
   SSA_stept &SSA_step=SSA_steps.back();
@@ -188,9 +184,9 @@ void symex_target_equationt::decl(
 
 /// declare a fresh variable
 void symex_target_equationt::dead(
-  const exprt &guard,
-  const ssa_exprt &ssa_lhs,
-  const sourcet &source)
+  const exprt &,
+  const ssa_exprt &,
+  const sourcet &)
 {
   // we currently don't record these
 }
@@ -213,16 +209,18 @@ void symex_target_equationt::location(
 /// just record a location
 void symex_target_equationt::function_call(
   const exprt &guard,
-  const irep_idt &identifier,
+  const irep_idt &function_identifier,
+  const std::vector<exprt> &ssa_function_arguments,
   const sourcet &source)
 {
   SSA_steps.push_back(SSA_stept());
   SSA_stept &SSA_step=SSA_steps.back();
 
-  SSA_step.guard=guard;
-  SSA_step.type=goto_trace_stept::typet::FUNCTION_CALL;
-  SSA_step.source=source;
-  SSA_step.identifier=identifier;
+  SSA_step.guard = guard;
+  SSA_step.type = goto_trace_stept::typet::FUNCTION_CALL;
+  SSA_step.source = source;
+  SSA_step.function_identifier = function_identifier;
+  SSA_step.ssa_function_arguments = ssa_function_arguments;
 
   merge_ireps(SSA_step);
 }
@@ -230,16 +228,16 @@ void symex_target_equationt::function_call(
 /// just record a location
 void symex_target_equationt::function_return(
   const exprt &guard,
-  const irep_idt &identifier,
+  const irep_idt &function_identifier,
   const sourcet &source)
 {
   SSA_steps.push_back(SSA_stept());
   SSA_stept &SSA_step=SSA_steps.back();
 
-  SSA_step.guard=guard;
-  SSA_step.type=goto_trace_stept::typet::FUNCTION_RETURN;
-  SSA_step.source=source;
-  SSA_step.identifier=identifier;
+  SSA_step.guard = guard;
+  SSA_step.type = goto_trace_stept::typet::FUNCTION_RETURN;
+  SSA_step.source = source;
+  SSA_step.function_identifier = function_identifier;
 
   merge_ireps(SSA_step);
 }
@@ -379,14 +377,24 @@ void symex_target_equationt::constraint(
 void symex_target_equationt::convert(
   prop_convt &prop_conv)
 {
-  convert_guards(prop_conv);
-  convert_assignments(prop_conv);
-  convert_decls(prop_conv);
-  convert_assumptions(prop_conv);
-  convert_assertions(prop_conv);
-  convert_goto_instructions(prop_conv);
-  convert_io(prop_conv);
-  convert_constraints(prop_conv);
+  try
+  {
+    convert_guards(prop_conv);
+    convert_assignments(prop_conv);
+    convert_decls(prop_conv);
+    convert_assumptions(prop_conv);
+    convert_assertions(prop_conv);
+    convert_goto_instructions(prop_conv);
+    convert_function_calls(prop_conv);
+    convert_io(prop_conv);
+    convert_constraints(prop_conv);
+  }
+  catch(const equation_conversion_exceptiont &conversion_exception)
+  {
+    // unwrap the except and throw like normal
+    const std::string full_error = unwrap_exception(conversion_exception);
+    throw full_error;
+  }
 }
 
 /// converts assignments
@@ -398,7 +406,17 @@ void symex_target_equationt::convert_assignments(
   for(const auto &step : SSA_steps)
   {
     if(step.is_assignment() && !step.ignore)
+    {
+      decision_procedure.conditional_output(
+        decision_procedure.debug(),
+        [&step](messaget::mstreamt &mstream) {
+          std::ostringstream oss;
+          step.output(oss);
+          mstream << oss.str() << messaget::eom;
+        });
+
       decision_procedure.set_to_true(step.cond_expr);
+    }
   }
 }
 
@@ -413,7 +431,16 @@ void symex_target_equationt::convert_decls(
     {
       // The result is not used, these have no impact on
       // the satisfiability of the formula.
-      prop_conv.convert(step.cond_expr);
+      try
+      {
+        prop_conv.convert(step.cond_expr);
+      }
+      catch(const bitvector_conversion_exceptiont &)
+      {
+        util_throw_with_nested(
+          equation_conversion_exceptiont(
+            "Error converting decls for step", step));
+      }
     }
   }
 }
@@ -428,7 +455,26 @@ void symex_target_equationt::convert_guards(
     if(step.ignore)
       step.guard_literal=const_literal(false);
     else
-      step.guard_literal=prop_conv.convert(step.guard);
+    {
+      prop_conv.conditional_output(
+        prop_conv.debug(),
+        [&step](messaget::mstreamt &mstream) {
+          std::ostringstream oss;
+          step.output(oss);
+          mstream << oss.str() << messaget::eom;
+        });
+
+      try
+      {
+        step.guard_literal = prop_conv.convert(step.guard);
+      }
+      catch(const bitvector_conversion_exceptiont &)
+      {
+        util_throw_with_nested(
+          equation_conversion_exceptiont(
+            "Error converting guard for step", step));
+      }
+    }
   }
 }
 
@@ -444,7 +490,26 @@ void symex_target_equationt::convert_assumptions(
       if(step.ignore)
         step.cond_literal=const_literal(true);
       else
-        step.cond_literal=prop_conv.convert(step.cond_expr);
+      {
+        prop_conv.conditional_output(
+          prop_conv.debug(),
+          [&step](messaget::mstreamt &mstream) {
+            std::ostringstream oss;
+            step.output(oss);
+            mstream << oss.str() << messaget::eom;
+          });
+
+        try
+        {
+          step.cond_literal = prop_conv.convert(step.cond_expr);
+        }
+        catch(const bitvector_conversion_exceptiont &)
+        {
+          util_throw_with_nested(
+            equation_conversion_exceptiont(
+              "Error converting assumptions for step", step));
+        }
+      }
     }
   }
 }
@@ -461,7 +526,26 @@ void symex_target_equationt::convert_goto_instructions(
       if(step.ignore)
         step.cond_literal=const_literal(true);
       else
-        step.cond_literal=prop_conv.convert(step.cond_expr);
+      {
+        prop_conv.conditional_output(
+          prop_conv.debug(),
+          [&step](messaget::mstreamt &mstream) {
+            std::ostringstream oss;
+            step.output(oss);
+            mstream << oss.str() << messaget::eom;
+          });
+
+        try
+        {
+          step.cond_literal = prop_conv.convert(step.cond_expr);
+        }
+        catch(const bitvector_conversion_exceptiont &)
+        {
+          util_throw_with_nested(
+            equation_conversion_exceptiont(
+              "Error converting goto instructions for step", step));
+        }
+      }
     }
   }
 }
@@ -476,10 +560,27 @@ void symex_target_equationt::convert_constraints(
   {
     if(step.is_constraint())
     {
-      if(step.ignore)
-        continue;
+      if(!step.ignore)
+      {
+        decision_procedure.conditional_output(
+          decision_procedure.debug(),
+          [&step](messaget::mstreamt &mstream) {
+            std::ostringstream oss;
+            step.output(oss);
+            mstream << oss.str() << messaget::eom;
+          });
 
-      decision_procedure.set_to_true(step.cond_expr);
+        try
+        {
+          decision_procedure.set_to_true(step.cond_expr);
+        }
+        catch(const bitvector_conversion_exceptiont &)
+        {
+          util_throw_with_nested(
+            equation_conversion_exceptiont(
+              "Error converting constraints for step", step));
+        }
+      }
     }
   }
 }
@@ -530,7 +631,16 @@ void symex_target_equationt::convert_assertions(
         step.cond_expr);
 
       // do the conversion
-      step.cond_literal=prop_conv.convert(implication);
+      try
+      {
+        step.cond_literal = prop_conv.convert(implication);
+      }
+      catch(const bitvector_conversion_exceptiont &)
+      {
+        util_throw_with_nested(
+          equation_conversion_exceptiont(
+            "Error converting assertions for step", step));
+      }
 
       // store disjunct
       disjuncts.push_back(literal_exprt(!step.cond_literal));
@@ -549,6 +659,39 @@ void symex_target_equationt::convert_assertions(
 
   // the below is 'true' if there are no assertions
   prop_conv.set_to_true(disjunction(disjuncts));
+}
+
+/// converts function calls
+/// \par parameters: decision procedure
+/// \return -
+void symex_target_equationt::convert_function_calls(
+  decision_proceduret &dec_proc)
+{
+  std::size_t argument_count=0;
+
+  for(auto &step : SSA_steps)
+    if(!step.ignore)
+    {
+      step.converted_function_arguments.reserve(step.ssa_function_arguments.size());
+
+      for(const auto &arg : step.ssa_function_arguments)
+      {
+        if(arg.is_constant() ||
+           arg.id()==ID_string_constant)
+          step.converted_function_arguments.push_back(arg);
+        else
+        {
+          const irep_idt identifier="symex::args::"+std::to_string(argument_count++);
+          symbol_exprt symbol(identifier, arg.type());
+
+          equal_exprt eq(arg, symbol);
+          merge_irep(eq);
+
+          dec_proc.set_to(eq, true);
+          step.converted_function_arguments.push_back(symbol);
+        }
+      }
+    }
 }
 
 /// converts I/O
@@ -583,7 +726,6 @@ void symex_target_equationt::convert_io(
     }
 }
 
-
 void symex_target_equationt::merge_ireps(SSA_stept &SSA_step)
 {
   merge_irep(SSA_step.guard);
@@ -598,10 +740,15 @@ void symex_target_equationt::merge_ireps(SSA_stept &SSA_step)
   for(auto &step : SSA_step.io_args)
     merge_irep(step);
 
+  for(auto &arg : SSA_step.ssa_function_arguments)
+    merge_irep(arg);
+
   // converted_io_args is merged in convert_io
 }
 
-void symex_target_equationt::output(std::ostream &out) const
+void symex_target_equationt::output(
+  std::ostream &out,
+  const namespacet &ns) const
 {
   for(const auto &step : SSA_steps)
   {
@@ -627,9 +774,11 @@ void symex_target_equationt::SSA_stept::output(
   switch(type)
   {
   case goto_trace_stept::typet::ASSERT:
-    out << "ASSERT " << from_expr(ns, "", cond_expr) << '\n'; break;
+    out << "ASSERT " << from_expr(ns, source.pc->function, cond_expr) << '\n';
+    break;
   case goto_trace_stept::typet::ASSUME:
-    out << "ASSUME " << from_expr(ns, "", cond_expr) << '\n'; break;
+    out << "ASSUME " << from_expr(ns, source.pc->function, cond_expr) << '\n';
+    break;
   case goto_trace_stept::typet::LOCATION:
     out << "LOCATION" << '\n'; break;
   case goto_trace_stept::typet::INPUT:
@@ -639,7 +788,7 @@ void symex_target_equationt::SSA_stept::output(
 
   case goto_trace_stept::typet::DECL:
     out << "DECL" << '\n';
-    out << from_expr(ns, "", ssa_lhs) << '\n';
+    out << from_expr(ns, source.pc->function, ssa_lhs) << '\n';
     break;
 
   case goto_trace_stept::typet::ASSIGNMENT:
@@ -693,38 +842,135 @@ void symex_target_equationt::SSA_stept::output(
   case goto_trace_stept::typet::MEMORY_BARRIER:
     out << "MEMORY_BARRIER\n"; break;
   case goto_trace_stept::typet::GOTO:
-    out << "IF " << from_expr(ns, "", cond_expr) << " GOTO\n"; break;
+    out << "IF " << from_expr(ns, source.pc->function, cond_expr) << " GOTO\n";
+    break;
 
   default: UNREACHABLE;
   }
 
   if(is_assert() || is_assume() || is_assignment() || is_constraint())
-    out << from_expr(ns, "", cond_expr) << '\n';
+    out << from_expr(ns, source.pc->function, cond_expr) << '\n';
 
   if(is_assert() || is_constraint())
     out << comment << '\n';
 
   if(is_shared_read() || is_shared_write())
-    out << from_expr(ns, "", ssa_lhs) << '\n';
+    out << from_expr(ns, source.pc->function, ssa_lhs) << '\n';
 
-  out << "Guard: " << from_expr(ns, "", guard) << '\n';
+  out << "Guard: " << from_expr(ns, source.pc->function, guard) << '\n';
 }
 
-std::ostream &operator<<(
-  std::ostream &out,
-  const symex_target_equationt &equation)
+void symex_target_equationt::SSA_stept::output(std::ostream &out) const
 {
-  equation.output(out);
-  return out;
-}
+  if(source.is_set)
+  {
+    out << "Thread " << source.thread_nr;
 
-std::ostream &operator<<(
-  std::ostream &out,
-  const symex_target_equationt::SSA_stept &step)
-{
-  // may cause lookup failures, since it's blank
-  symbol_tablet symbol_table;
-  namespacet ns(symbol_table);
-  step.output(ns, out);
-  return out;
+    if(source.pc->source_location.is_not_nil())
+      out << " " << source.pc->source_location << '\n';
+    else
+      out << '\n';
+  }
+
+  switch(type)
+  {
+  case goto_trace_stept::typet::ASSERT:
+    out << "ASSERT " << format(cond_expr) << '\n';
+    break;
+  case goto_trace_stept::typet::ASSUME:
+    out << "ASSUME " << format(cond_expr) << '\n';
+    break;
+  case goto_trace_stept::typet::LOCATION:
+    out << "LOCATION" << '\n';
+    break;
+  case goto_trace_stept::typet::INPUT:
+    out << "INPUT" << '\n';
+    break;
+  case goto_trace_stept::typet::OUTPUT:
+    out << "OUTPUT" << '\n';
+    break;
+
+  case goto_trace_stept::typet::DECL:
+    out << "DECL" << '\n';
+    out << format(ssa_lhs) << '\n';
+    break;
+
+  case goto_trace_stept::typet::ASSIGNMENT:
+    out << "ASSIGNMENT (";
+    switch(assignment_type)
+    {
+    case assignment_typet::HIDDEN:
+      out << "HIDDEN";
+      break;
+    case assignment_typet::STATE:
+      out << "STATE";
+      break;
+    case assignment_typet::VISIBLE_ACTUAL_PARAMETER:
+      out << "VISIBLE_ACTUAL_PARAMETER";
+      break;
+    case assignment_typet::HIDDEN_ACTUAL_PARAMETER:
+      out << "HIDDEN_ACTUAL_PARAMETER";
+      break;
+    case assignment_typet::PHI:
+      out << "PHI";
+      break;
+    case assignment_typet::GUARD:
+      out << "GUARD";
+      break;
+    default:
+    {
+    }
+    }
+
+    out << ")\n";
+    break;
+
+  case goto_trace_stept::typet::DEAD:
+    out << "DEAD\n";
+    break;
+  case goto_trace_stept::typet::FUNCTION_CALL:
+    out << "FUNCTION_CALL\n";
+    break;
+  case goto_trace_stept::typet::FUNCTION_RETURN:
+    out << "FUNCTION_RETURN\n";
+    break;
+  case goto_trace_stept::typet::CONSTRAINT:
+    out << "CONSTRAINT\n";
+    break;
+  case goto_trace_stept::typet::SHARED_READ:
+    out << "SHARED READ\n";
+    break;
+  case goto_trace_stept::typet::SHARED_WRITE:
+    out << "SHARED WRITE\n";
+    break;
+  case goto_trace_stept::typet::ATOMIC_BEGIN:
+    out << "ATOMIC_BEGIN\n";
+    break;
+  case goto_trace_stept::typet::ATOMIC_END:
+    out << "AUTOMIC_END\n";
+    break;
+  case goto_trace_stept::typet::SPAWN:
+    out << "SPAWN\n";
+    break;
+  case goto_trace_stept::typet::MEMORY_BARRIER:
+    out << "MEMORY_BARRIER\n";
+    break;
+  case goto_trace_stept::typet::GOTO:
+    out << "IF " << format(cond_expr) << " GOTO\n";
+    break;
+
+  default:
+    UNREACHABLE;
+  }
+
+  if(is_assert() || is_assume() || is_assignment() || is_constraint())
+    out << format(cond_expr) << '\n';
+
+  if(is_assert() || is_constraint())
+    out << comment << '\n';
+
+  if(is_shared_read() || is_shared_write())
+    out << format(ssa_lhs) << '\n';
+
+  out << "Guard: " << format(guard) << '\n';
 }

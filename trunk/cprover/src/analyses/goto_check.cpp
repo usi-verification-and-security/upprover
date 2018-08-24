@@ -13,20 +13,26 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <algorithm>
 
-#include <util/simplify_expr.h>
-#include <util/array_name.h>
-#include <util/ieee_float.h>
 #include <util/arith_tools.h>
+#include <util/array_name.h>
+#include <util/base_type.h>
+#include <util/cprover_prefix.h>
+#include <util/c_types.h>
 #include <util/expr_util.h>
 #include <util/find_symbols.h>
-#include <util/std_expr.h>
-#include <util/std_types.h>
 #include <util/guard.h>
-#include <util/base_type.h>
+#include <util/ieee_float.h>
+#include <util/options.h>
 #include <util/pointer_offset_size.h>
 #include <util/pointer_predicates.h>
-#include <util/cprover_prefix.h>
-#include <util/options.h>
+#include <util/simplify_expr.h>
+#include <util/std_expr.h>
+#include <util/std_types.h>
+
+#include <langapi/language.h>
+#include <langapi/mode.h>
+
+#include <goto-programs/remove_skip.h>
 
 #include "local_bitvector_analysis.h"
 
@@ -78,28 +84,37 @@ protected:
   void check_rec(
     const exprt &expr,
     guardt &guard,
-    bool address,
-    const irep_idt &mode);
-  void check(const exprt &expr, const irep_idt &mode);
+    bool address);
+  void check(const exprt &expr);
 
-  void bounds_check(const index_exprt &expr, const guardt &guard);
-  void div_by_zero_check(const div_exprt &expr, const guardt &guard);
-  void mod_by_zero_check(const mod_exprt &expr, const guardt &guard);
-  void undefined_shift_check(const shift_exprt &expr, const guardt &guard);
-  void pointer_rel_check(const exprt &expr, const guardt &guard);
-  void pointer_overflow_check(const exprt &expr, const guardt &guard);
-  void pointer_validity_check(
-    const dereference_exprt &expr,
-    const guardt &guard,
-    const exprt &access_lb,
-    const exprt &access_ub,
-    const irep_idt &mode);
-  void integer_overflow_check(const exprt &expr, const guardt &guard);
-  void conversion_check(const exprt &expr, const guardt &guard);
-  void float_overflow_check(const exprt &expr, const guardt &guard);
-  void nan_check(const exprt &expr, const guardt &guard);
+  struct conditiont
+  {
+    conditiont(const exprt &_assertion, const std::string &_description)
+      : assertion(_assertion), description(_description)
+    {
+    }
 
-  std::string array_name(const exprt &expr);
+    exprt assertion;
+    std::string description;
+  };
+
+  using conditionst = std::list<conditiont>;
+
+  void bounds_check(const index_exprt &, const guardt &);
+  void div_by_zero_check(const div_exprt &, const guardt &);
+  void mod_by_zero_check(const mod_exprt &, const guardt &);
+  void undefined_shift_check(const shift_exprt &, const guardt &);
+  void pointer_rel_check(const exprt &, const guardt &);
+  void pointer_overflow_check(const exprt &, const guardt &);
+  void pointer_validity_check(const dereference_exprt &, const guardt &);
+  conditionst address_check(const exprt &address, const exprt &size);
+  void integer_overflow_check(const exprt &, const guardt &);
+  void conversion_check(const exprt &, const guardt &);
+  void float_overflow_check(const exprt &, const guardt &);
+  void nan_check(const exprt &, const guardt &);
+  void rw_ok_check(exprt &);
+
+  std::string array_name(const exprt &);
 
   void add_guarded_claim(
     const exprt &expr,
@@ -114,11 +129,6 @@ protected:
   assertionst assertions;
 
   void invalidate(const exprt &lhs);
-
-  inline static bool has_dereference(const exprt &src)
-  {
-    return has_subexpr(src, ID_dereference);
-  }
 
   bool enable_bounds_check;
   bool enable_pointer_check;
@@ -141,9 +151,13 @@ protected:
   typedef optionst::value_listt error_labelst;
   error_labelst error_labels;
 
+  // the first element of the pair is the base address,
+  // and the second is the size of the region
   typedef std::pair<exprt, exprt> allocationt;
   typedef std::list<allocationt> allocationst;
   allocationst allocations;
+
+  irep_idt mode;
 };
 
 void goto_checkt::collect_allocations(
@@ -198,8 +212,7 @@ void goto_checkt::invalidate(const exprt &lhs)
       assertionst::iterator next=it;
       next++;
 
-      if(has_symbol(*it, find_symbols_set) ||
-         has_dereference(*it))
+      if(has_symbol(*it, find_symbols_set) || has_subexpr(*it, ID_dereference))
         assertions.erase(it);
 
       it=next;
@@ -226,8 +239,7 @@ void goto_checkt::div_by_zero_check(
   if(zero.is_nil())
     throw "no zero of argument type of operator "+expr.id_string();
 
-  exprt inequality(ID_notequal, bool_typet());
-  inequality.copy_to_operands(expr.op1(), zero);
+  const notequal_exprt inequality(expr.op1(), zero);
 
   add_guarded_claim(
     inequality,
@@ -327,8 +339,7 @@ void goto_checkt::mod_by_zero_check(
   if(zero.is_nil())
     throw "no zero of argument type of operator "+expr.id_string();
 
-  exprt inequality(ID_notequal, bool_typet());
-  inequality.copy_to_operands(expr.op1(), zero);
+  const notequal_exprt inequality(expr.op1(), zero);
 
   add_guarded_claim(
     inequality,
@@ -372,13 +383,13 @@ void goto_checkt::conversion_check(
         if(new_width>=old_width)
           return; // always ok
 
-        binary_relation_exprt no_overflow_upper(ID_le);
-        no_overflow_upper.lhs()=expr.op0();
-        no_overflow_upper.rhs()=from_integer(power(2, new_width-1)-1, old_type);
+        const binary_relation_exprt no_overflow_upper(
+          expr.op0(),
+          ID_le,
+          from_integer(power(2, new_width - 1) - 1, old_type));
 
-        binary_relation_exprt no_overflow_lower(ID_ge);
-        no_overflow_lower.lhs()=expr.op0();
-        no_overflow_lower.rhs()=from_integer(-power(2, new_width-1), old_type);
+        const binary_relation_exprt no_overflow_lower(
+          expr.op0(), ID_ge, from_integer(-power(2, new_width - 1), old_type));
 
         add_guarded_claim(
           and_exprt(no_overflow_lower, no_overflow_upper),
@@ -394,9 +405,10 @@ void goto_checkt::conversion_check(
         if(new_width>=old_width+1)
           return; // always ok
 
-        binary_relation_exprt no_overflow_upper(ID_le);
-        no_overflow_upper.lhs()=expr.op0();
-        no_overflow_upper.rhs()=from_integer(power(2, new_width-1)-1, old_type);
+        const binary_relation_exprt no_overflow_upper(
+          expr.op0(),
+          ID_le,
+          from_integer(power(2, new_width - 1) - 1, old_type));
 
         add_guarded_claim(
           no_overflow_upper,
@@ -411,15 +423,13 @@ void goto_checkt::conversion_check(
         // Note that the fractional part is truncated!
         ieee_floatt upper(to_floatbv_type(old_type));
         upper.from_integer(power(2, new_width-1));
-        binary_relation_exprt no_overflow_upper(ID_lt);
-        no_overflow_upper.lhs()=expr.op0();
-        no_overflow_upper.rhs()=upper.to_expr();
+        const binary_relation_exprt no_overflow_upper(
+          expr.op0(), ID_lt, upper.to_expr());
 
         ieee_floatt lower(to_floatbv_type(old_type));
         lower.from_integer(-power(2, new_width-1)-1);
-        binary_relation_exprt no_overflow_lower(ID_gt);
-        no_overflow_lower.lhs()=expr.op0();
-        no_overflow_lower.rhs()=lower.to_expr();
+        const binary_relation_exprt no_overflow_lower(
+          expr.op0(), ID_gt, lower.to_expr());
 
         add_guarded_claim(
           and_exprt(no_overflow_lower, no_overflow_upper),
@@ -441,9 +451,8 @@ void goto_checkt::conversion_check(
         if(new_width>=old_width-1)
         {
           // only need lower bound check
-          binary_relation_exprt no_overflow_lower(ID_ge);
-          no_overflow_lower.lhs()=expr.op0();
-          no_overflow_lower.rhs()=from_integer(0, old_type);
+          const binary_relation_exprt no_overflow_lower(
+            expr.op0(), ID_ge, from_integer(0, old_type));
 
           add_guarded_claim(
             no_overflow_lower,
@@ -456,13 +465,11 @@ void goto_checkt::conversion_check(
         else
         {
           // need both
-          binary_relation_exprt no_overflow_upper(ID_le);
-          no_overflow_upper.lhs()=expr.op0();
-          no_overflow_upper.rhs()=from_integer(power(2, new_width)-1, old_type);
+          const binary_relation_exprt no_overflow_upper(
+            expr.op0(), ID_le, from_integer(power(2, new_width) - 1, old_type));
 
-          binary_relation_exprt no_overflow_lower(ID_ge);
-          no_overflow_lower.lhs()=expr.op0();
-          no_overflow_lower.rhs()=from_integer(0, old_type);
+          const binary_relation_exprt no_overflow_lower(
+            expr.op0(), ID_ge, from_integer(0, old_type));
 
           add_guarded_claim(
             and_exprt(no_overflow_lower, no_overflow_upper),
@@ -479,9 +486,8 @@ void goto_checkt::conversion_check(
         if(new_width>=old_width)
           return; // always ok
 
-        binary_relation_exprt no_overflow_upper(ID_le);
-        no_overflow_upper.lhs()=expr.op0();
-        no_overflow_upper.rhs()=from_integer(power(2, new_width)-1, old_type);
+        const binary_relation_exprt no_overflow_upper(
+          expr.op0(), ID_le, from_integer(power(2, new_width) - 1, old_type));
 
         add_guarded_claim(
           no_overflow_upper,
@@ -496,15 +502,13 @@ void goto_checkt::conversion_check(
         // Note that the fractional part is truncated!
         ieee_floatt upper(to_floatbv_type(old_type));
         upper.from_integer(power(2, new_width)-1);
-        binary_relation_exprt no_overflow_upper(ID_lt);
-        no_overflow_upper.lhs()=expr.op0();
-        no_overflow_upper.rhs()=upper.to_expr();
+        const binary_relation_exprt no_overflow_upper(
+          expr.op0(), ID_lt, upper.to_expr());
 
         ieee_floatt lower(to_floatbv_type(old_type));
         lower.from_integer(-1);
-        binary_relation_exprt no_overflow_lower(ID_gt);
-        no_overflow_lower.lhs()=expr.op0();
-        no_overflow_lower.rhs()=lower.to_expr();
+        const binary_relation_exprt no_overflow_lower(
+          expr.op0(), ID_gt, lower.to_expr());
 
         add_guarded_claim(
           and_exprt(no_overflow_lower, no_overflow_upper),
@@ -663,8 +667,8 @@ void goto_checkt::float_overflow_check(
     if(ns.follow(expr.op0().type()).id()==ID_floatbv)
     {
       // float-to-float
-      unary_exprt op0_inf(ID_isinf, expr.op0(), bool_typet());
-      unary_exprt new_inf(ID_isinf, expr, bool_typet());
+      const isinf_exprt op0_inf(expr.op0());
+      const isinf_exprt new_inf(expr);
 
       or_exprt overflow_check(op0_inf, not_exprt(new_inf));
 
@@ -679,7 +683,7 @@ void goto_checkt::float_overflow_check(
     else
     {
       // non-float-to-float
-      unary_exprt new_inf(ID_isinf, expr, bool_typet());
+      const isinf_exprt new_inf(expr);
 
       add_guarded_claim(
         not_exprt(new_inf),
@@ -697,8 +701,8 @@ void goto_checkt::float_overflow_check(
     assert(expr.operands().size()==2);
 
     // Can overflow if dividing by something small
-    unary_exprt new_inf(ID_isinf, expr, bool_typet());
-    unary_exprt op0_inf(ID_isinf, expr.op0(), bool_typet());
+    const isinf_exprt new_inf(expr);
+    const isinf_exprt op0_inf(expr.op0());
 
     or_exprt overflow_check(op0_inf, not_exprt(new_inf));
 
@@ -728,9 +732,9 @@ void goto_checkt::float_overflow_check(
     if(expr.operands().size()==2)
     {
       // Can overflow
-      unary_exprt new_inf(ID_isinf, expr, bool_typet());
-      unary_exprt op0_inf(ID_isinf, expr.op0(), bool_typet());
-      unary_exprt op1_inf(ID_isinf, expr.op1(), bool_typet());
+      const isinf_exprt new_inf(expr);
+      const isinf_exprt op0_inf(expr.op0());
+      const isinf_exprt op1_inf(expr.op1());
 
       or_exprt overflow_check(op0_inf, op1_inf, not_exprt(new_inf));
 
@@ -789,11 +793,11 @@ void goto_checkt::nan_check(
     // there a two ways to get a new NaN on division:
     // 0/0 = NaN and x/inf = NaN
     // (note that x/0 = +-inf for x!=0 and x!=inf)
-    exprt zero_div_zero=and_exprt(
+    const and_exprt zero_div_zero(
       ieee_float_equal_exprt(expr.op0(), from_integer(0, expr.op0().type())),
       ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())));
 
-    exprt div_inf=unary_exprt(ID_isinf, expr.op1(), bool_typet());
+    const isinf_exprt div_inf(expr.op1());
 
     isnan=or_exprt(zero_div_zero, div_inf);
   }
@@ -805,13 +809,13 @@ void goto_checkt::nan_check(
     assert(expr.operands().size()==2);
 
     // Inf * 0 is NaN
-    exprt inf_times_zero=and_exprt(
-      unary_exprt(ID_isinf, expr.op0(), bool_typet()),
+    const and_exprt inf_times_zero(
+      isinf_exprt(expr.op0()),
       ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())));
 
-    exprt zero_times_inf=and_exprt(
+    const and_exprt zero_times_inf(
       ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())),
-      unary_exprt(ID_isinf, expr.op0(), bool_typet()));
+      isinf_exprt(expr.op0()));
 
     isnan=or_exprt(inf_times_zero, zero_times_inf);
   }
@@ -928,172 +932,137 @@ void goto_checkt::pointer_overflow_check(
 
 void goto_checkt::pointer_validity_check(
   const dereference_exprt &expr,
-  const guardt &guard,
-  const exprt &access_lb,
-  const exprt &access_ub,
-  const irep_idt &mode)
+  const guardt &guard)
 {
   if(!enable_pointer_check)
     return;
 
-  const exprt &pointer=expr.op0();
-  const pointer_typet &pointer_type=
-    to_pointer_type(ns.follow(pointer.type()));
+  const exprt &pointer=expr.pointer();
 
-  assert(base_type_eq(pointer_type.subtype(), expr.type(), ns));
+  auto conditions =
+    address_check(pointer, size_of_expr(expr.type(), ns));
 
-  local_bitvector_analysist::flagst flags=
-    local_bitvector_analysis->get(t, pointer);
+  for(const auto &c : conditions)
+  {
+    add_guarded_claim(
+      c.assertion,
+      "dereference failure: "+c.description,
+      "pointer dereference",
+      expr.find_source_location(),
+      expr,
+      guard);
+  }
+}
 
-  const typet &dereference_type=pointer_type.subtype();
+goto_checkt::conditionst
+goto_checkt::address_check(const exprt &address, const exprt &size)
+{
+  if(!enable_pointer_check)
+    return {};
+
+  PRECONDITION(address.type().id() == ID_pointer);
+  const auto &pointer_type = to_pointer_type(address.type());
+
+  local_bitvector_analysist::flagst flags =
+    local_bitvector_analysis->get(t, address);
 
   // For Java, we only need to check for null
-  if(mode==ID_java)
+  if(mode == ID_java)
   {
     if(flags.is_unknown() || flags.is_null())
     {
-      notequal_exprt not_eq_null(pointer, null_pointer_exprt(pointer_type));
+      notequal_exprt not_eq_null(address, null_pointer_exprt(pointer_type));
 
-      add_guarded_claim(
-        not_eq_null,
-        "reference is null",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+      return {conditiont(not_eq_null, "reference is null")};
     }
+    else
+      return {};
   }
   else
   {
-    exprt allocs=false_exprt();
+    conditionst conditions;
+    exprt::operandst alloc_disjuncts;
 
-    if(!allocations.empty())
+    for(const auto &a : allocations)
     {
-      exprt::operandst disjuncts;
+      typecast_exprt int_ptr(address, a.first.type());
 
-      for(const auto &a : allocations)
-      {
-        typecast_exprt int_ptr(pointer, a.first.type());
+      binary_relation_exprt lb_check(a.first, ID_le, int_ptr);
 
-        exprt lb(int_ptr);
-        if(access_lb.is_not_nil())
-        {
-          if(!base_type_eq(lb.type(), access_lb.type(), ns))
-            lb=plus_exprt(lb, typecast_exprt(access_lb, lb.type()));
-          else
-            lb=plus_exprt(lb, access_lb);
-        }
+      plus_exprt ub(int_ptr, size, int_ptr.type());
 
-        binary_relation_exprt lb_check(a.first, ID_le, lb);
+      binary_relation_exprt ub_check(ub, ID_le, plus_exprt(a.first, a.second));
 
-        exprt ub(int_ptr);
-        if(access_ub.is_not_nil())
-        {
-          if(!base_type_eq(ub.type(), access_ub.type(), ns))
-            ub=plus_exprt(ub, typecast_exprt(access_ub, ub.type()));
-          else
-            ub=plus_exprt(ub, access_ub);
-        }
-
-        binary_relation_exprt ub_check(
-          ub, ID_le, plus_exprt(a.first, a.second));
-
-        disjuncts.push_back(and_exprt(lb_check, ub_check));
-      }
-
-      allocs=disjunction(disjuncts);
+      alloc_disjuncts.push_back(and_exprt(lb_check, ub_check));
     }
+
+    const exprt allocs = disjunction(alloc_disjuncts);
 
     if(flags.is_unknown() || flags.is_null())
     {
-      add_guarded_claim(
-        or_exprt(allocs, not_exprt(null_pointer(pointer))),
-        "dereference failure: pointer NULL",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+      conditions.push_back(conditiont(
+        or_exprt(allocs, not_exprt(null_pointer(address))), "pointer NULL"));
     }
 
     if(flags.is_unknown())
-      add_guarded_claim(
-        or_exprt(allocs, not_exprt(invalid_pointer(pointer))),
-        "dereference failure: pointer invalid",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+    {
+      conditions.push_back(conditiont(
+        not_exprt(invalid_pointer(address)),
+        "pointer invalid"));
+    }
 
     if(flags.is_uninitialized())
-      add_guarded_claim(
-        or_exprt(allocs, not_exprt(invalid_pointer(pointer))),
-        "dereference failure: pointer uninitialized",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+    {
+      conditions.push_back(conditiont(
+        or_exprt(allocs, not_exprt(invalid_pointer(address))),
+        "pointer uninitialized"));
+    }
 
     if(flags.is_unknown() || flags.is_dynamic_heap())
-      add_guarded_claim(
-        or_exprt(allocs, not_exprt(deallocated(pointer, ns))),
-        "dereference failure: deallocated dynamic object",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+    {
+      conditions.push_back(conditiont(
+        not_exprt(deallocated(address, ns)),
+        "deallocated dynamic object"));
+    }
 
     if(flags.is_unknown() || flags.is_dynamic_local())
-      add_guarded_claim(
-        or_exprt(allocs, not_exprt(dead_object(pointer, ns))),
-        "dereference failure: dead object",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+    {
+      conditions.push_back(conditiont(
+        not_exprt(dead_object(address, ns)), "dead object"));
+    }
 
     if(flags.is_unknown() || flags.is_dynamic_heap())
     {
-      exprt dynamic_bounds=
-        or_exprt(dynamic_object_lower_bound(pointer, ns, access_lb),
-                 dynamic_object_upper_bound(
-                   pointer,
-                   dereference_type,
-                   ns,
-                   access_ub));
+      const or_exprt dynamic_bounds_violation(
+        dynamic_object_lower_bound(address, ns, nil_exprt()),
+        dynamic_object_upper_bound(address, ns, size));
 
-      add_guarded_claim(
-        or_exprt(
-          allocs,
-          implies_exprt(
-            malloc_object(pointer, ns),
-            not_exprt(dynamic_bounds))),
-        "dereference failure: pointer outside dynamic object bounds",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+      conditions.push_back(conditiont(
+        implies_exprt(malloc_object(address, ns), not_exprt(dynamic_bounds_violation)),
+        "pointer outside dynamic object bounds"));
     }
 
-    if(flags.is_unknown() ||
-       flags.is_dynamic_local() ||
-       flags.is_static_lifetime())
+    if(
+      flags.is_unknown() || flags.is_dynamic_local() ||
+      flags.is_static_lifetime())
     {
-      exprt object_bounds=
-        or_exprt(object_lower_bound(pointer, ns, access_lb),
-                 object_upper_bound(
-                   pointer,
-                   dereference_type,
-                   ns,
-                   access_ub));
+      const or_exprt object_bounds_violation(
+        object_lower_bound(address, ns, nil_exprt()),
+        object_upper_bound(address, ns, size));
 
-      add_guarded_claim(
-        or_exprt(allocs, dynamic_object(pointer), not_exprt(object_bounds)),
-        "dereference failure: pointer outside object bounds",
-        "pointer dereference",
-        expr.find_source_location(),
-        expr,
-        guard);
+      conditions.push_back(conditiont(
+        implies_exprt(not_exprt(dynamic_object(address)), not_exprt(object_bounds_violation)),
+        "pointer outside object bounds"));
     }
+
+    if(flags.is_unknown() || flags.is_integer_address())
+    {
+      conditions.push_back(conditiont(
+        implies_exprt(integer_address(address), allocs),
+        "invalid integer address"));
+    }
+
+    return conditions;
   }
 }
 
@@ -1234,6 +1203,27 @@ void goto_checkt::bounds_check(
           expr.array().id()==ID_member)
   {
     // a variable sized struct member
+    //
+    // Excerpt from the C standard on flexible array members:
+    // However, when a . (or ->) operator has a left operand that is (a pointer
+    // to) a structure with a flexible array member and the right operand names
+    // that member, it behaves as if that member were replaced with the longest
+    // array (with the same element type) that would not make the structure
+    // larger than the object being accessed; [...]
+    const exprt type_size = size_of_expr(ode.root_object().type(), ns);
+
+    binary_relation_exprt inequality(
+      typecast_exprt::conditional_cast(ode.offset(), type_size.type()),
+      ID_lt,
+      type_size);
+
+    add_guarded_claim(
+      implies_exprt(type_matches_size, inequality),
+      name + " upper bound",
+      "array bounds",
+      expr.find_source_location(),
+      expr,
+      guard);
   }
   else
   {
@@ -1295,7 +1285,8 @@ void goto_checkt::add_guarded_claim(
 
     goto_programt::targett t=new_code.add_instruction(type);
 
-    std::string source_expr_string=from_expr(ns, "", src_expr);
+    std::string source_expr_string;
+    get_language_from_mode(mode)->from_expr(src_expr, source_expr_string, ns);
 
     t->guard.swap(new_expr);
     t->source_location=source_location;
@@ -1304,11 +1295,7 @@ void goto_checkt::add_guarded_claim(
   }
 }
 
-void goto_checkt::check_rec(
-  const exprt &expr,
-  guardt &guard,
-  bool address,
-  const irep_idt &mode)
+void goto_checkt::check_rec(const exprt &expr, guardt &guard, bool address)
 {
   // we don't look into quantifiers
   if(expr.id()==ID_exists || expr.id()==ID_forall)
@@ -1319,18 +1306,18 @@ void goto_checkt::check_rec(
     if(expr.id()==ID_dereference)
     {
       assert(expr.operands().size()==1);
-      check_rec(expr.op0(), guard, false, mode);
+      check_rec(expr.op0(), guard, false);
     }
     else if(expr.id()==ID_index)
     {
       assert(expr.operands().size()==2);
-      check_rec(expr.op0(), guard, true, mode);
-      check_rec(expr.op1(), guard, false, mode);
+      check_rec(expr.op0(), guard, true);
+      check_rec(expr.op1(), guard, false);
     }
     else
     {
       forall_operands(it, expr)
-        check_rec(*it, guard, true, mode);
+        check_rec(*it, guard, true);
     }
     return;
   }
@@ -1338,7 +1325,7 @@ void goto_checkt::check_rec(
   if(expr.id()==ID_address_of)
   {
     assert(expr.operands().size()==1);
-    check_rec(expr.op0(), guard, true, mode);
+    check_rec(expr.op0(), guard, true);
     return;
   }
   else if(expr.id()==ID_and || expr.id()==ID_or)
@@ -1355,7 +1342,7 @@ void goto_checkt::check_rec(
         throw "`"+expr.id_string()+"' takes Boolean operands only, but got "+
               op.pretty();
 
-      check_rec(op, guard, false, mode);
+      check_rec(op, guard, false);
 
       if(expr.id()==ID_or)
         guard.add(not_exprt(op));
@@ -1380,19 +1367,19 @@ void goto_checkt::check_rec(
       throw msg;
     }
 
-    check_rec(expr.op0(), guard, false, mode);
+    check_rec(expr.op0(), guard, false);
 
     {
       guardt old_guard=guard;
       guard.add(expr.op0());
-      check_rec(expr.op1(), guard, false, mode);
+      check_rec(expr.op1(), guard, false);
       guard.swap(old_guard);
     }
 
     {
       guardt old_guard=guard;
       guard.add(not_exprt(expr.op0()));
-      check_rec(expr.op2(), guard, false, mode);
+      check_rec(expr.op2(), guard, false);
       guard.swap(old_guard);
     }
 
@@ -1405,23 +1392,46 @@ void goto_checkt::check_rec(
     const dereference_exprt &deref=
       to_dereference_expr(member.struct_op());
 
-    check_rec(deref.op0(), guard, false, mode);
+    check_rec(deref.pointer(), guard, false);
 
-    exprt access_ub=nil_exprt();
+    // avoid building the following expressions when pointer_validity_check
+    // would return immediately anyway
+    if(!enable_pointer_check)
+      return;
+
+    // we rewrite s->member into *(s+member_offset)
+    // to avoid requiring memory safety of the entire struct
 
     exprt member_offset=member_offset_expr(member, ns);
-    exprt size=size_of_expr(expr.type(), ns);
 
-    if(member_offset.is_not_nil() && size.is_not_nil())
-      access_ub=plus_exprt(member_offset, size);
+    if(member_offset.is_not_nil())
+    {
+      pointer_typet new_pointer_type = to_pointer_type(deref.pointer().type());
+      new_pointer_type.subtype() = expr.type();
 
-    pointer_validity_check(deref, guard, member_offset, access_ub, mode);
+      const exprt char_pointer =
+        typecast_exprt::conditional_cast(
+          deref.pointer(), pointer_type(char_type()));
 
-    return;
+      const exprt new_address = typecast_exprt(
+        plus_exprt(
+          char_pointer,
+          typecast_exprt::conditional_cast(member_offset, pointer_diff_type())),
+        char_pointer.type());
+
+      const exprt new_address_casted =
+        typecast_exprt::conditional_cast(new_address, new_pointer_type);
+
+      dereference_exprt new_deref(new_address_casted, expr.type());
+      new_deref.add_source_location() = deref.source_location();
+      pointer_validity_check(new_deref, guard);
+
+      return;
+    }
   }
 
   forall_operands(it, expr)
-    check_rec(*it, guard, false, mode);
+    check_rec(*it, guard, false);
 
   if(expr.id()==ID_index)
   {
@@ -1479,25 +1489,46 @@ void goto_checkt::check_rec(
           expr.id()==ID_ge || expr.id()==ID_gt)
     pointer_rel_check(expr, guard);
   else if(expr.id()==ID_dereference)
-    pointer_validity_check(
-      to_dereference_expr(expr),
-      guard,
-      nil_exprt(),
-      size_of_expr(expr.type(), ns),
-      mode);
+  {
+    pointer_validity_check(to_dereference_expr(expr), guard);
+  }
 }
 
-void goto_checkt::check(const exprt &expr, const irep_idt &mode)
+void goto_checkt::check(const exprt &expr)
 {
   guardt guard;
-  check_rec(expr, guard, false, mode);
+  check_rec(expr, guard, false);
+}
+
+/// expand the r_ok and w_ok predicates
+void goto_checkt::rw_ok_check(exprt &expr)
+{
+  for(auto &op : expr.operands())
+    rw_ok_check(op);
+
+  if(expr.id() == ID_r_ok || expr.id() == ID_w_ok)
+  {
+    // these get an address as first argument and a size as second
+    DATA_INVARIANT(
+      expr.operands().size() == 2, "r/w_ok must have two operands");
+
+    const auto conditions = address_check(expr.op0(), expr.op1());
+    exprt::operandst conjuncts;
+    for(const auto &c : conditions)
+      conjuncts.push_back(c.assertion);
+
+    expr = conjunction(conjuncts);
+  }
 }
 
 void goto_checkt::goto_check(
   goto_functiont &goto_function,
-  const irep_idt &mode)
+  const irep_idt &_mode)
 {
   assertions.clear();
+  mode = _mode;
+
+  bool did_something = false;
 
   local_bitvector_analysist local_bitvector_analysis_obj(goto_function);
   local_bitvector_analysis=&local_bitvector_analysis_obj;
@@ -1518,7 +1549,7 @@ void goto_checkt::goto_check(
        i.is_target())
       assertions.clear();
 
-    check(i.guard, mode);
+    check(i.guard);
 
     // magic ERROR label?
     for(const auto &label : error_labels)
@@ -1544,20 +1575,20 @@ void goto_checkt::goto_check(
 
       if(statement==ID_expression)
       {
-        check(i.code, mode);
+        check(i.code);
       }
       else if(statement==ID_printf)
       {
         forall_operands(it, i.code)
-          check(*it, mode);
+          check(*it);
       }
     }
     else if(i.is_assign())
     {
       const code_assignt &code_assign=to_code_assign(i.code);
 
-      check(code_assign.lhs(), mode);
-      check(code_assign.rhs(), mode);
+      check(code_assign.lhs());
+      check(code_assign.rhs());
 
       // the LHS might invalidate any assertion
       invalidate(code_assign.lhs());
@@ -1597,7 +1628,7 @@ void goto_checkt::goto_check(
       }
 
       forall_operands(it, code_function_call)
-        check(*it, mode);
+        check(*it);
 
       // the call might invalidate any assertion
       assertions.clear();
@@ -1606,7 +1637,7 @@ void goto_checkt::goto_check(
     {
       if(i.code.operands().size()==1)
       {
-        check(i.code.op0(), mode);
+        check(i.code.op0());
         // the return value invalidate any assertion
         invalidate(i.code.op0());
       }
@@ -1621,21 +1652,16 @@ void goto_checkt::goto_check(
 
         exprt pointer=i.code.op0().op0();
 
-        if(pointer.type().subtype().get(ID_identifier)!=
-           "java::java.lang.AssertionError")
-        {
-          notequal_exprt not_eq_null(
-            pointer,
-            null_pointer_exprt(to_pointer_type(pointer.type())));
+        const notequal_exprt not_eq_null(
+          pointer, null_pointer_exprt(to_pointer_type(pointer.type())));
 
-          add_guarded_claim(
-            not_eq_null,
-            "throwing null",
-            "pointer dereference",
-            i.source_location,
-            pointer,
-            guardt());
-        }
+        add_guarded_claim(
+          not_eq_null,
+          "throwing null",
+          "pointer dereference",
+          i.source_location,
+          pointer,
+          guardt());
       }
 
       // this has no successor
@@ -1644,15 +1670,24 @@ void goto_checkt::goto_check(
     else if(i.is_assert())
     {
       bool is_user_provided=i.source_location.get_bool("user-provided");
+
+      rw_ok_check(i.guard);
+
       if((is_user_provided && !enable_assertions &&
           i.source_location.get_property_class()!="error label") ||
          (!is_user_provided && !enable_built_in_assertions))
-        i.type=SKIP;
+      {
+        i.make_skip();
+        did_something = true;
+      }
     }
     else if(i.is_assume())
     {
       if(!enable_assumptions)
-        i.type=SKIP;
+      {
+        i.make_skip();
+        did_something = true;
+      }
     }
     else if(i.is_dead())
     {
@@ -1670,12 +1705,11 @@ void goto_checkt::goto_check(
           exprt lhs=ns.lookup(CPROVER_PREFIX "dead_object").symbol_expr();
           if(!base_type_eq(lhs.type(), address_of_expr.type(), ns))
             address_of_expr.make_typecast(lhs.type());
-          exprt rhs=
-            if_exprt(
-              side_effect_expr_nondett(bool_typet()),
-              address_of_expr,
-              lhs,
-              lhs.type());
+          const if_exprt rhs(
+            side_effect_expr_nondett(bool_typet(), i.source_location),
+            address_of_expr,
+            lhs,
+            lhs.type());
           t->source_location=i.source_location;
           t->code=code_assignt(lhs, rhs);
           t->code.add_source_location()=i.source_location;
@@ -1740,6 +1774,7 @@ void goto_checkt::goto_check(
     }
 
     // insert new instructions -- make sure targets are not moved
+    did_something |= !new_code.instructions.empty();
 
     while(!new_code.instructions.empty())
     {
@@ -1748,6 +1783,9 @@ void goto_checkt::goto_check(
       it++;
     }
   }
+
+  if(did_something)
+    remove_skip(goto_program);
 }
 
 void goto_check(

@@ -8,11 +8,12 @@
 
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
-#include <ansi-c/printf_formatter.h>
 #include <funfrog/utils/naming_helpers.h>
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "hifrog.h"
+#include <langapi/language_util.h>
+#include <goto-programs/printf_formatter.h>
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
@@ -86,7 +87,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
-    goto_trace_step.identifier=SSA_step.identifier;
+    goto_trace_step.function_identifier=SSA_step.function_identifier;
 
     if(SSA_step.ssa_lhs.is_not_nil()) {
         if (str.find(GOTO_GUARD) == 0){

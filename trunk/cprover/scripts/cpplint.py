@@ -1971,8 +1971,13 @@ def GetHeaderGuardCPPVariable(filename):
 
   fileinfo = FileInfo(filename)
   file_path_from_root = fileinfo.RepositoryName()
-  # Remove first path component
-  offset=len(file_path_from_root.split(os.path.sep)[0])+1
+  # Remove up to including `src` component
+  path_components = file_path_from_root.split(os.path.sep)
+  offset = 0
+  for component in path_components:
+      offset += len(component) + 1
+      if component == 'src' or  component == 'unit':
+        break
   file_path_from_root = 'CPROVER_' + file_path_from_root[offset:]
   if _root:
     suffix = os.sep
@@ -3625,8 +3630,8 @@ def CheckOperatorSpacing(filename, clean_lines, linenum, error):
 #          'Remove spaces around %s' % match.group(0))
 
 # check any inherited classes don't have a space between the type and the :
-  if Search(r'(struct|class)\s[\w_]*\s+:', line):
-    error(filename, linenum, 'readability/identifier_spacing', 4, 'There shouldn\'t be a space between class identifier and :')
+  if Search(r'(struct|class)\s[\w_]*:', line):
+    error(filename, linenum, 'readability/identifier_spacing', 4, 'There should be a space between class identifier and :')
 
   #check type definitions end with t
   # Look for class declarations and check the final character is a t
@@ -3971,14 +3976,6 @@ def CheckBracesSpacing(filename, clean_lines, linenum, nesting_state, error):
         and not _IsType(clean_lines, nesting_state, leading_text)):
       error(filename, linenum, 'whitespace/braces', 5,
             'Missing space before {')
-
-  # Make sure '} else {' has spaces.
-  # if Search(r'}else', line):
-  #   error(filename, linenum, 'whitespace/braces', 5,
-  #        'Missing space before else')
-  if (Search(r'^.*[^\s].*}$', line) or Search(r'^.*[^\s].*{$', line)) and not(Search(r'{[^}]*}', line)):
-     error(filename, linenum, 'whitespace/braces', 5,
-           'Put braces on a separate next line')
 
   # You shouldn't have a space before a semicolon at the end of the line.
   # There's a special case for "for" since the style guide allows space before
@@ -4984,7 +4981,7 @@ def _ClassifyInclude(fileinfo, include, is_system):
 
 
 
-def CheckIncludeLine(filename, clean_lines, linenum, include_state, error):
+def CheckIncludeLine(filename, clean_lines, linenum, include_state, error, module_deps):
   """Check rules that are applicable to #include lines.
 
   Strings on #include lines are NOT removed from elided line, to make
@@ -5031,6 +5028,18 @@ def CheckIncludeLine(filename, clean_lines, linenum, include_state, error):
             'Do not include .cc files from other packages')
     elif not _THIRD_PARTY_HEADERS_PATTERN.match(include):
       include_state.include_list[-1].append((include, linenum))
+
+    # Check module dependencies
+    module_name = os.path.dirname(filename)
+    has_src = module_name.find('src/')
+    if has_src >= 0:
+        module_name = module_name[has_src+4:]
+    deps_name = os.path.dirname(include)
+    if deps_name and module_deps:
+        may_use = any(deps_name.startswith(module) for module in module_deps)
+        if not may_use:
+            error(filename, linenum, 'build/include', 4,
+                  'Module `'+module_name+'` must not use `'+include+'`')
 
       # We want to ensure that headers appear in the right order:
       # 1) for foo.cc, foo.h  (preferred location)
@@ -5144,7 +5153,7 @@ _RE_PATTERN_REF_STREAM_PARAM = (
 
 
 def CheckLanguage(filename, clean_lines, linenum, file_extension,
-                  include_state, nesting_state, error):
+                  include_state, nesting_state, error, module_deps):
   """Checks rules from the 'C++ language rules' section of cppguide.html.
 
   Some of these rules are hard to test (function overloading, using
@@ -5168,7 +5177,7 @@ def CheckLanguage(filename, clean_lines, linenum, file_extension,
 
   match = _RE_PATTERN_INCLUDE.search(line)
   if match:
-    CheckIncludeLine(filename, clean_lines, linenum, include_state, error)
+    CheckIncludeLine(filename, clean_lines, linenum, include_state, error, module_deps)
     return
 
   # Reset include state across preprocessor directives.  This is meant
@@ -6139,21 +6148,21 @@ def CheckRedundantVirtual(filename, clean_lines, linenum, error):
   if end_col < 0:
     return  # Couldn't find end of parameter list, give up
 
-#  # Look for "override" or "final" after the parameter list
-#  # (possibly on the next few lines).
-#  for i in xrange(end_line, min(end_line + 3, clean_lines.NumLines())):
-#    line = clean_lines.elided[i][end_col:]
-#    match = Search(r'\b(override|final)\b', line)
-#    if match:
-#      error(filename, linenum, 'readability/inheritance', 4,
-#            ('"virtual" is redundant since function is '
-#             'already declared as "%s"' % match.group(1)))
-#
-#    # Set end_col to check whole lines after we are done with the
-#    # first line.
-#    end_col = 0
-#    if Search(r'[^\w]\s*$', line):
-#      break
+  # Look for "override" or "final" after the parameter list
+  # (possibly on the next few lines).
+  for i in xrange(end_line, min(end_line + 3, clean_lines.NumLines())):
+    line = clean_lines.elided[i][end_col:]
+    match = Search(r'\b(override|final)\b', line)
+    if match:
+      error(filename, linenum, 'readability/inheritance', 4,
+            ('"virtual" is redundant since function is '
+             'already declared as "%s"' % match.group(1)))
+
+    # Set end_col to check whole lines after we are done with the
+    # first line.
+    end_col = 0
+    if Search(r'[^\w]\s*$', line):
+      break
 
 
 
@@ -6249,7 +6258,7 @@ def CheckForEndl(filename, clean_lines, linenum, error):
     error(filename, linenum, 'runtime/endl', 4, 'Do not use std::endl')
 
 def ProcessLine(filename, file_extension, clean_lines, line,
-                include_state, function_state, nesting_state, error,
+                include_state, function_state, nesting_state, error, module_deps,
                 extra_check_functions=[]):
   """Processes a single line in the file.
 
@@ -6279,7 +6288,7 @@ def ProcessLine(filename, file_extension, clean_lines, line,
   CheckForMultilineCommentsAndStrings(filename, clean_lines, line, error)
   CheckStyle(filename, clean_lines, line, file_extension, nesting_state, error)
   CheckLanguage(filename, clean_lines, line, file_extension, include_state,
-                nesting_state, error)
+                nesting_state, error, module_deps)
   CheckForNonConstReference(filename, clean_lines, line, nesting_state, error)
   CheckForNonStandardConstructs(filename, clean_lines, line,
                                 nesting_state, error)
@@ -6373,6 +6382,27 @@ def ProcessFileData(filename, file_extension, lines, error,
 
   ResetNolintSuppressions()
 
+  # Load module dependencies
+  module_deps_file = os.path.join(os.path.dirname(filename), 'module_dependencies.txt')
+  module_deps = []
+  if os.path.isfile(module_deps_file):
+      with open(module_deps_file, 'r') as f:
+          module_deps = f.read().splitlines()
+      # strip off comments and whitespace
+      def strip_off_comments(s):
+          comment_index = s.find('#')
+          if comment_index >= 0:
+              s = s[:comment_index]
+          s = s.strip()
+          return s
+      module_deps = [strip_off_comments(module) for module in module_deps]
+      # remove empty lines
+      module_deps = [module for module in module_deps if len(module) != 0]
+  else:
+      error(filename, 0, 'build/include', 4,
+            'module_dependencies.txt not found in `' +
+                os.path.dirname(filename) + '`')
+
   CheckForCopyright(filename, lines, error)
   CheckForFunctionCommentHeaders(filename, lines, error)
   ProcessGlobalSuppresions(lines)
@@ -6384,7 +6414,7 @@ def ProcessFileData(filename, file_extension, lines, error,
 
   for line in xrange(clean_lines.NumLines()):
     ProcessLine(filename, file_extension, clean_lines, line,
-                include_state, function_state, nesting_state, error,
+                include_state, function_state, nesting_state, error, module_deps,
                 extra_check_functions)
     FlagCxx11Features(filename, clean_lines, line, error)
   nesting_state.CheckCompletedBlocks(filename, error)
@@ -6506,7 +6536,7 @@ def ProcessFile(filename, vlevel, extra_check_functions=[]):
   if Search(r'_builtin_headers(_[a-z0-9_-]+)?\.h$', filename):
     return
 
-  if Search(r'regression/.*\.cpp', filename):
+  if Search(r'regression/.*\.(cpp|h)', filename):
     return
 
   if not ProcessConfigOverrides(filename):

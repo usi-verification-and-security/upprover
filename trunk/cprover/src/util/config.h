@@ -41,8 +41,9 @@ public:
 
     // various language options
     bool char_is_unsigned, wchar_t_is_unsigned;
-    bool use_fixed_for_float;
     bool for_has_scope;
+    bool ts_18661_3_Floatn_types; // ISO/IEC TS 18661-3:2015
+    bool Float128_type;
     bool single_precision_constant;
     enum class c_standardt { C89, C99, C11 } c_standard;
     static c_standardt default_c_standard();
@@ -100,8 +101,16 @@ public:
     void set_arch_spec_hppa();
     void set_arch_spec_sh4();
 
-    enum class flavourt { NONE, ANSI, GCC, ARM, APPLE,
-                          VISUAL_STUDIO, CODEWARRIOR };
+    enum class flavourt
+    {
+      NONE,
+      ANSI,
+      GCC,
+      ARM,
+      CLANG,
+      VISUAL_STUDIO,
+      CODEWARRIOR
+    };
     flavourt mode; // the syntax of source files
 
     enum class preprocessort { NONE, GCC, CLANG, VISUAL_STUDIO,

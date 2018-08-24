@@ -3,14 +3,12 @@
 
 #include <util/symbol.h>
 #include <util/ui_message.h>
-#include <util/time_stopping.h>
-
 #include <goto-symex/symex_target_equation.h>
 #include <goto-symex/slice.h>
 
 #include <funfrog/utils/UnionFind.h>
+#include <funfrog/utils/time_utils.h>
 #include <map>
-
 
 class smt_symex_target_equationt;
 class goto_programt;
@@ -75,7 +73,7 @@ public:
   std::string variable_name(dstringt name);
   void print_dependents(std::map<std::string,bool> dependents, std::ostream &out);
 
-  virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it c1, SSA_steps_it c2)=0;
+  virtual std::pair<bool, timet> check_implication(SSA_steps_it c1, SSA_steps_it c2)=0;
   bool compare_assertions(std::size_t idx1, std::size_t idx2);
 
 protected:

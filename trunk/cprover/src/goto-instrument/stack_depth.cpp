@@ -13,14 +13,11 @@ Date: November 2011
 
 #include "stack_depth.h"
 
-#include <util/c_types.h>
-#include <util/symbol_table.h>
-#include <util/std_expr.h>
-#include <util/std_types.h>
 #include <util/arith_tools.h>
-#include <util/cprover_prefix.h>
 
 #include <goto-programs/goto_model.h>
+
+#include <linking/static_lifetime_init.h>
 
 symbol_exprt add_stack_depth_symbol(symbol_tablet &symbol_table)
 {
@@ -94,25 +91,24 @@ void stack_depth(
 
   Forall_goto_functions(f_it, goto_model.goto_functions)
     if(f_it->second.body_available() &&
-        f_it->first!=CPROVER_PREFIX "initialize" &&
+        f_it->first != INITIALIZE_FUNCTION &&
         f_it->first!=goto_functionst::entry_point())
       stack_depth(f_it->second.body, sym, depth, depth_expr);
 
   // initialize depth to 0
-  goto_functionst::function_mapt::iterator
-    i_it=goto_model.goto_functions.function_map.find(
-      CPROVER_PREFIX "initialize");
+  goto_functionst::function_mapt::iterator i_it =
+    goto_model.goto_functions.function_map.find(INITIALIZE_FUNCTION);
   DATA_INVARIANT(
     i_it!=goto_model.goto_functions.function_map.end(),
-    "__CPROVER_initialize must exist");
+    INITIALIZE_FUNCTION " must exist");
 
   goto_programt &init=i_it->second.body;
   goto_programt::targett first=init.instructions.begin();
   goto_programt::targett it=init.insert_before(first);
   it->make_assignment();
   it->code=code_assignt(sym, from_integer(0, sym.type()));
-  it->source_location=first->source_location;
-  it->function=first->function;
+  // no suitable value for source location -- omitted
+  it->function = INITIALIZE_FUNCTION;
 
   // update counters etc.
   goto_model.goto_functions.update();

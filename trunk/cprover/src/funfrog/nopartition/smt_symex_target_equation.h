@@ -18,7 +18,7 @@ class smt_symex_target_equationt:public symex_target_equationt
 public:
     smt_symex_target_equationt(const namespacet &_ns,
             std::vector<unsigned>& _clauses) :
-        symex_target_equationt(_ns),
+        symex_target_equationt(),
         clauses(_clauses),
 #       ifdef DISABLE_OPTIMIZATIONS
         dump_SSA_tree(false),

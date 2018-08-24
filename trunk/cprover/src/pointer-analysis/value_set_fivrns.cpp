@@ -33,23 +33,23 @@ hash_numbering<irep_idt, irep_id_hash> value_set_fivrnst::function_numbering;
 static const char *alloc_adapter_prefix="alloc_adaptor::";
 
 #define forall_objects(it, map) \
-  for(object_map_dt::const_iterator (it) = (map).begin(); \
+  for(object_map_dt::const_iterator it = (map).begin(); \
   (it)!=(map).end(); \
   (it)++)
 
 #define forall_valid_objects(it, map) \
-  for(object_map_dt::const_iterator (it) = (map).begin(); \
+  for(object_map_dt::const_iterator it = (map).begin(); \
   (it)!=(map).end(); \
   (it)++) \
     if((map).is_valid_at((it)->first, from_function, from_target_index))
 
 #define Forall_objects(it, map) \
-  for(object_map_dt::iterator (it) = (map).begin(); \
+  for(object_map_dt::iterator it = (map).begin(); \
   (it)!=(map).end(); \
   (it)++)
 
 #define Forall_valid_objects(it, map) \
-  for(object_map_dt::iterator (it) = (map).begin(); \
+  for(object_map_dt::iterator it = (map).begin(); \
       (it)!=(map).end(); \
       (it)++) \
     if((map).is_valid_at((it)->first, from_function, from_target_index)) /* NOLINT(*) */
@@ -277,7 +277,7 @@ void value_set_fivrnst::get_value_set(
   #if 0
   for(std::list<exprt>::const_iterator it=value_set.begin();
       it!=value_set.end(); it++)
-    std::cout << "GET_VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+    std::cout << "GET_VALUE_SET: " << format(*it) << '\n';
   #endif
 }
 
@@ -351,7 +351,7 @@ void value_set_fivrnst::get_value_set_rec(
   {
     // just keep a reference to the ident in the set
     // (if it exists)
-    irep_idt ident = expr.get_string(ID_identifier)+suffix;
+    irep_idt ident = id2string(to_symbol_expr(expr).get_identifier()) + suffix;
 
     if(has_prefix(id2string(ident), alloc_adapter_prefix))
     {
@@ -434,7 +434,7 @@ void value_set_fivrnst::get_value_set_rec(
     if(expr.get(ID_value)==ID_NULL &&
        expr.type().id()==ID_pointer)
     {
-      insert_from(dest, exprt("NULL-object", expr.type().subtype()), 0);
+      insert_from(dest, exprt(ID_null_object, expr.type().subtype()), 0);
       return;
     }
   }
@@ -622,8 +622,7 @@ void value_set_fivrnst::get_reference_set_rec(
   const namespacet &ns) const
 {
   #if 0
-  std::cout << "GET_REFERENCE_SET_REC EXPR: " << from_expr(ns, "", expr)
-            << '\n';
+  std::cout << "GET_REFERENCE_SET_REC EXPR: " << format(expr) << '\n';
   #endif
 
   if(expr.id()==ID_symbol ||
@@ -648,7 +647,7 @@ void value_set_fivrnst::get_reference_set_rec(
     #if 0
     for(expr_sett::const_iterator it=value_set.begin();
         it!=value_set.end(); it++)
-      std::cout << "VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+      std::cout << "VALUE_SET: " << format(*it) << '\n';
     #endif
 
     return;
@@ -679,10 +678,8 @@ void value_set_fivrnst::get_reference_set_rec(
         insert_from(dest, exprt(ID_unknown, expr.type()));
       else
       {
-        exprt index_expr(ID_index, expr.type());
-        index_expr.operands().resize(2);
-        index_expr.op0()=object;
-        index_expr.op1()=from_integer(0, index_type());
+        index_exprt index_expr(
+          object, from_integer(0, index_type()), expr.type());
 
         // adjust type?
         if(ns.follow(object.type())!=array_type)
@@ -738,9 +735,7 @@ void value_set_fivrnst::get_reference_set_rec(
       {
         offsett o = it->second;
 
-        exprt member_expr(ID_member, expr.type());
-        member_expr.copy_to_operands(object);
-        member_expr.set(ID_component_name, component_name);
+        member_exprt member_expr(object, component_name, expr.type());
 
         // adjust type?
         if(ns.follow(struct_op.type())!=ns.follow(object.type()))
@@ -773,8 +768,8 @@ void value_set_fivrnst::assign(
 {
   #if 0
   std::cout << "ASSIGN LHS: " << lhs << '\n';
-  std::cout << "ASSIGN LTYPE: " << ns.follow(lhs.type()) << '\n';
-  std::cout << "ASSIGN RHS: " << from_expr(ns, "", rhs) << '\n';
+  std::cout << "ASSIGN LTYPE: " << format(ns.follow(lhs.type())) << '\n';
+  std::cout << "ASSIGN RHS: " << format(rhs) << '\n';
   #endif
 
   if(rhs.id()==ID_if)
@@ -808,9 +803,7 @@ void value_set_fivrnst::assign(
       if(subtype.id()==ID_code)
         continue;
 
-      exprt lhs_member(ID_member, subtype);
-      lhs_member.set(ID_component_name, name);
-      lhs_member.copy_to_operands(lhs);
+      member_exprt lhs_member(lhs, name, subtype);
 
       exprt rhs_member;
 
@@ -868,8 +861,8 @@ void value_set_fivrnst::assign(
   }
   else if(type.id()==ID_array)
   {
-    exprt lhs_index(ID_index, type.subtype());
-    lhs_index.copy_to_operands(lhs, exprt(ID_unknown, index_type()));
+    const index_exprt lhs_index(
+      lhs, exprt(ID_unknown, index_type()), type.subtype());
 
     if(rhs.id()==ID_unknown ||
        rhs.id()==ID_invalid)
@@ -898,16 +891,16 @@ void value_set_fivrnst::assign(
       {
         assert(rhs.operands().size()==3);
 
-        exprt op0_index(ID_index, type.subtype());
-        op0_index.copy_to_operands(rhs.op0(), exprt(ID_unknown, index_type()));
+        const index_exprt op0_index(
+          rhs.op0(), exprt(ID_unknown, index_type()), type.subtype());
 
         assign(lhs_index, op0_index, ns, add_to_sets);
         assign(lhs_index, rhs.op2(), ns, true);
       }
       else
       {
-        exprt rhs_index(ID_index, type.subtype());
-        rhs_index.copy_to_operands(rhs, exprt(ID_unknown, index_type()));
+        const index_exprt rhs_index(
+          rhs, exprt(ID_unknown, index_type()), type.subtype());
         assign(lhs_index, rhs_index, ns, true);
       }
     }
@@ -1019,7 +1012,7 @@ void value_set_fivrnst::assign_rec(
 
   if(lhs.id()==ID_symbol)
   {
-    const irep_idt &identifier=lhs.get(ID_identifier);
+    const irep_idt &identifier = to_symbol_expr(lhs).get_identifier();
 
     if(has_prefix(id2string(identifier),
                   "value_set::dynamic_object") ||
@@ -1118,7 +1111,7 @@ void value_set_fivrnst::assign_rec(
     // someone writes into a string-constant
     // evil guy
   }
-  else if(lhs.id()=="NULL-object")
+  else if(lhs.id() == ID_null_object)
   {
     // evil as well
   }
@@ -1172,8 +1165,7 @@ void value_set_fivrnst::do_function_call(
     const std::string identifier="value_set::" + id2string(function) + "::" +
                                  "argument$"+std::to_string(i);
     add_var(identifier, "");
-    exprt dummy_lhs=symbol_exprt(identifier, arguments[i].type());
-//    std::cout << arguments[i] << '\n';
+    const symbol_exprt dummy_lhs(identifier, arguments[i].type());
 
     assign(dummy_lhs, arguments[i], ns, true);
 
@@ -1206,7 +1198,7 @@ void value_set_fivrnst::do_function_call(
       symbol_exprt("value_set::" + id2string(function) + "::" +
                    "argument$"+std::to_string(i), it->type());
 
-    exprt actual_lhs=symbol_exprt(identifier, it->type());
+    const symbol_exprt actual_lhs(identifier, it->type());
     assign(actual_lhs, v_expr, ns, true);
     i++;
   }
@@ -1262,11 +1254,6 @@ void value_set_fivrnst::apply_code(
       throw "decl expected to have symbol on lhs";
 
     assign(lhs, exprt(ID_invalid, lhs.type()), ns);
-  }
-  else if(statement==ID_specc_notify ||
-          statement==ID_specc_wait)
-  {
-    // ignore, does not change variables
   }
   else if(statement==ID_expression)
   {

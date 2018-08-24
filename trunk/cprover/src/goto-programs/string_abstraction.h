@@ -52,7 +52,7 @@ protected:
 
   bool is_char_type(const typet &type) const
   {
-    if(type.id()==ID_symbol)
+    if(type.id() == ID_symbol_type)
       return is_char_type(ns.follow(type));
 
     if(type.id()!=ID_signedbv &&
@@ -87,7 +87,7 @@ protected:
     const exprt &lhs,
     const exprt &rhs);
 
-  void abstract_function_call(goto_programt &dest, goto_programt::targett it);
+  void abstract_function_call(goto_programt::targett it);
 
   goto_programt::targett value_assignments(goto_programt &dest,
       goto_programt::targett it,
@@ -134,7 +134,7 @@ protected:
   typet string_struct;
   goto_programt initialization;
 
-  typedef std::unordered_map<irep_idt, irep_idt, irep_id_hash> localst;
+  typedef std::unordered_map<irep_idt, irep_idt> localst;
   localst locals;
 
   void abstract(goto_programt &dest);

@@ -14,6 +14,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/xml_expr.h>
 #include <util/simplify_expr.h>
 
+#include <langapi/language_util.h>
+
 #include <iostream>
 
 void custom_bitvector_domaint::set_bit(
@@ -269,8 +271,7 @@ void custom_bitvector_domaint::transform(
   locationt from,
   locationt to,
   ai_baset &ai,
-  const namespacet &ns,
-  ai_domain_baset::edge_typet edge_type)
+  const namespacet &ns)
 {
   // upcast of ai
   custom_bitvector_analysist &cba=
@@ -329,7 +330,8 @@ void custom_bitvector_domaint::transform(
             unsigned bit_nr=
               cba.get_bit_nr(code_function_call.arguments()[1]);
 
-            modet mode;
+            // initialize to make Visual Studio happy
+            modet mode = modet::SET_MUST;
 
             if(identifier=="__CPROVER_set_must")
               mode=modet::SET_MUST;
@@ -397,7 +399,7 @@ void custom_bitvector_domaint::transform(
         else
         {
           // only if there is an actual call, i.e., we have a body
-          if(edge_type != ai_domain_baset::edge_typet::FUNCTION_LOCAL)
+          if(from->function != to->function)
           {
             const code_typet &code_type=
               to_code_type(ns.lookup(identifier).type);
@@ -457,7 +459,8 @@ void custom_bitvector_domaint::transform(
         unsigned bit_nr=
           cba.get_bit_nr(instruction.code.op1());
 
-        modet mode;
+        // initialize to make Visual Studio happy
+        modet mode = modet::SET_MUST;
 
         if(statement=="set_must")
           mode=modet::SET_MUST;
@@ -520,6 +523,8 @@ void custom_bitvector_domaint::transform(
     {
       exprt guard=instruction.guard;
 
+      // Comparing iterators is safe as the target must be within the same list
+      // of instructions because this is a GOTO.
       if(to!=from->get_target())
         guard.make_not();
 
@@ -540,7 +545,7 @@ void custom_bitvector_domaint::transform(
 void custom_bitvector_domaint::output(
   std::ostream &out,
   const ai_baset &ai,
-  const namespacet &ns) const
+  const namespacet &) const
 {
   if(has_values.is_known())
   {
@@ -586,8 +591,8 @@ void custom_bitvector_domaint::output(
 
 bool custom_bitvector_domaint::merge(
   const custom_bitvector_domaint &b,
-  locationt from,
-  locationt to)
+  locationt,
+  locationt)
 {
   bool changed=has_values.is_false();
   has_values=tvt::unknown();

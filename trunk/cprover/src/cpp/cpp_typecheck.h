@@ -338,13 +338,12 @@ protected:
   };
 
   typedef std::list<method_bodyt> method_bodiest;
+  std::set<irep_idt> methods_seen;
   method_bodiest method_bodies;
 
-  void add_method_body(symbolt *_method_symbol)
-  {
-    method_bodies.push_back(method_bodyt(
-      _method_symbol, template_map, instantiation_stack));
-  }
+  void add_method_body(symbolt *_method_symbol);
+
+  bool builtin_factory(const irep_idt &);
 
   // types
 
@@ -380,9 +379,9 @@ protected:
 
   void put_compound_into_scope(const struct_union_typet::componentt &component);
   void typecheck_compound_body(symbolt &symbol);
-  void typecheck_compound_body(struct_union_typet &type) { UNREACHABLE; }
+  void typecheck_compound_body(struct_union_typet &) { UNREACHABLE; }
   void typecheck_enum_body(symbolt &symbol);
-  void typecheck_method_bodies(method_bodiest &);
+  void typecheck_method_bodies();
   void typecheck_compound_bases(struct_typet &type);
   void add_anonymous_members_to_scope(const symbolt &struct_union_symbol);
 
@@ -393,6 +392,7 @@ protected:
 
   static bool has_const(const typet &type);
   static bool has_volatile(const typet &type);
+  static bool has_auto(const typet &type);
 
   void typecheck_member_function(
     const irep_idt &compound_identifier,
@@ -429,7 +429,6 @@ protected:
 
   codet cpp_destructor(
       const source_locationt &source_location,
-      const typet &type,
       const exprt &object);
 
   // expressions
@@ -480,8 +479,6 @@ protected:
 
   void typecheck_method_application(
                     side_effect_expr_function_callt &expr);
-
-  void typecheck_assign(codet &code);
 
 public:
   //
@@ -589,6 +586,8 @@ public:
     const typet &type,
     exprt &new_expr,
     bool check_constantness=true);
+
+  bool contains_cpp_name(const exprt &expr);
 
 private:
   typedef std::list<irep_idt> dynamic_initializationst;

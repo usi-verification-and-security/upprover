@@ -11,16 +11,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "string_abstraction.h"
 
-#include <cstring>
+#include <algorithm>
 
-#include <util/pointer_predicates.h>
-#include <util/std_expr.h>
-#include <util/std_code.h>
-#include <util/message.h>
 #include <util/arith_tools.h>
-#include <util/type_eq.h>
-
 #include <util/c_types.h>
+#include <util/pointer_predicates.h>
+#include <util/type_eq.h>
 
 #include "pointer_arithmetic.h"
 
@@ -252,8 +248,7 @@ void string_abstractiont::abstract(goto_programt &dest)
 
 void string_abstractiont::declare_define_locals(goto_programt &dest)
 {
-  typedef std::unordered_map<irep_idt, goto_programt::targett, irep_id_hash>
-    available_declst;
+  typedef std::unordered_map<irep_idt, goto_programt::targett> available_declst;
   available_declst available_decls;
 
   Forall_goto_program_instructions(it, dest)
@@ -474,7 +469,7 @@ goto_programt::targett string_abstractiont::abstract(
     break;
 
   case FUNCTION_CALL:
-    abstract_function_call(dest, it);
+    abstract_function_call(it);
     break;
 
   case RETURN:
@@ -495,6 +490,8 @@ goto_programt::targett string_abstractiont::abstract(
   case OTHER:
   case LOCATION:
     break;
+
+  case INCOMPLETE_GOTO:
   case NO_INSTRUCTION_TYPE:
     UNREACHABLE;
     break;
@@ -531,7 +528,6 @@ goto_programt::targett string_abstractiont::abstract_assign(
 }
 
 void string_abstractiont::abstract_function_call(
-  goto_programt &dest,
   goto_programt::targett target)
 {
   code_function_callt &call=to_code_function_call(target->code);
@@ -760,7 +756,11 @@ bool string_abstractiont::build(const exprt &object, exprt &dest, bool write)
 
   if(object.id()==ID_string_constant)
   {
-    mp_integer str_len=strlen(object.get(ID_value).c_str());
+    const std::string &str_value = id2string(object.get(ID_value));
+    // make sure we handle the case of a string constant with string-terminating
+    // \0 in it
+    const std::size_t str_len =
+      std::min(str_value.size(), str_value.find('\0'));
     return build_symbol_constant(str_len, str_len+1, dest);
   }
 
@@ -894,7 +894,7 @@ exprt string_abstractiont::build_unknown(whatt what, bool write)
   typet type=build_type(what);
 
   if(write)
-    return exprt("NULL-object", type);
+    return exprt(ID_null_object, type);
 
   exprt result;
 
@@ -906,7 +906,7 @@ exprt string_abstractiont::build_unknown(whatt what, bool write)
 
   case whatt::LENGTH:
   case whatt::SIZE:
-    result=side_effect_expr_nondett(type);
+    result = side_effect_expr_nondett(type, source_locationt());
     break;
   }
 
@@ -916,7 +916,7 @@ exprt string_abstractiont::build_unknown(whatt what, bool write)
 exprt string_abstractiont::build_unknown(const typet &type, bool write)
 {
   if(write)
-    return exprt("NULL-object", type);
+    return exprt(ID_null_object, type);
 
   // create an uninitialized dummy symbol
   // because of a lack of contextual information we can't build a nice name

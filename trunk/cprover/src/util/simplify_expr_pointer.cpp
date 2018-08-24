@@ -10,17 +10,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include "c_types.h"
-#include "expr.h"
-#include "namespace.h"
-#include "std_expr.h"
-#include "pointer_offset_size.h"
 #include "arith_tools.h"
+#include "c_types.h"
 #include "config.h"
 #include "expr_util.h"
-#include "threeval.h"
-#include "prefix.h"
+#include "namespace.h"
+#include "pointer_offset_size.h"
 #include "pointer_predicates.h"
+#include "std_expr.h"
+#include "threeval.h"
 
 static bool is_dereference_integer_object(
   const exprt &expr,
@@ -83,8 +81,7 @@ bool simplify_exprt::simplify_address_of_arg(exprt &expr)
           pointer_type.subtype()=expr.type();
           typecast_exprt typecast_expr(
             from_integer(step_size*index+address, index_type()), pointer_type);
-          exprt new_expr=dereference_exprt(typecast_expr, expr.type());
-          expr=new_expr;
+          expr = dereference_exprt(typecast_expr, expr.type());
           result=true;
         }
       }
@@ -120,8 +117,7 @@ bool simplify_exprt::simplify_address_of_arg(exprt &expr)
             pointer_type.subtype()=expr.type();
             typecast_exprt typecast_expr(
               from_integer(address+offset, index_type()), pointer_type);
-            exprt new_expr=dereference_exprt(typecast_expr, expr.type());
-            expr=new_expr;
+            expr = dereference_exprt(typecast_expr, expr.type());
             result=true;
           }
         }
@@ -193,10 +189,7 @@ bool simplify_exprt::simplify_address_of(exprt &expr)
       offset.swap(index_expr.op1());
       index_expr.op1()=from_integer(0, offset.type());
 
-      exprt addition(ID_plus, expr.type());
-      addition.move_to_operands(expr, offset);
-
-      expr.swap(addition);
+      expr = plus_exprt(expr, offset);
       return false;
     }
   }
@@ -410,8 +403,6 @@ bool simplify_exprt::simplify_pointer_offset(exprt &expr)
 
       return false;
     }
-
-    return true;
   }
 
   return true;
@@ -446,9 +437,8 @@ bool simplify_exprt::simplify_inequality_address_of(exprt &expr)
   if(tmp0.op0().id()==ID_symbol &&
      tmp1.op0().id()==ID_symbol)
   {
-    bool equal=
-       tmp0.op0().get(ID_identifier)==
-       tmp1.op0().get(ID_identifier);
+    bool equal = to_symbol_expr(tmp0.op0()).get_identifier() ==
+                 to_symbol_expr(tmp1.op0()).get_identifier();
 
     expr.make_bool(expr.id()==ID_equal?equal:!equal);
 
@@ -634,7 +624,7 @@ tvt simplify_exprt::objects_equal_address_of(const exprt &a, const exprt &b)
 
   if(a.id()==ID_symbol && b.id()==ID_symbol)
   {
-    if(a.get(ID_identifier)==b.get(ID_identifier))
+    if(to_symbol_expr(a).get_identifier() == to_symbol_expr(b).get_identifier())
       return tvt(true);
   }
   else if(a.id()==ID_index && b.id()==ID_index)

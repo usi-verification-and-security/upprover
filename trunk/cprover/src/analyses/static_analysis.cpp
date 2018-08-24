@@ -93,7 +93,7 @@ void static_analysis_baset::output(
 
 void static_analysis_baset::output(
   const goto_programt &goto_program,
-  const irep_idt &identifier,
+  const irep_idt &,
   std::ostream &out) const
 {
   forall_goto_program_instructions(i_it, goto_program)
@@ -248,7 +248,7 @@ void static_analysis_baset::do_function_call(
   locationt l_call, locationt l_return,
   const goto_functionst &goto_functions,
   const goto_functionst::function_mapt::const_iterator f_it,
-  const exprt::operandst &arguments,
+  const exprt::operandst &,
   statet &new_state)
 {
   const goto_functionst::goto_functiont &goto_function=f_it->second;
@@ -328,7 +328,7 @@ void static_analysis_baset::do_function_call_rec(
 
   if(function.id()==ID_symbol)
   {
-    const irep_idt &identifier=function.get(ID_identifier);
+    const irep_idt &identifier = to_symbol_expr(function).get_identifier();
 
     if(recursion_set.find(identifier)!=recursion_set.end())
     {
@@ -397,8 +397,8 @@ void static_analysis_baset::do_function_call_rec(
       }
     }
   }
-  else if(function.id()=="NULL-object" ||
-          function.id()==ID_integer_address)
+  else if(function.id() == ID_null_object ||
+          function.id() == ID_integer_address)
   {
     // ignore, can't be a function
   }

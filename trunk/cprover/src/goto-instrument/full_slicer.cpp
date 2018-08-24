@@ -14,8 +14,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/find_symbols.h>
 #include <util/cprover_prefix.h>
-#ifdef DEBUG_FULL_SLICERT
-#endif
 
 #include <goto-programs/remove_skip.h>
 
@@ -150,7 +148,7 @@ void full_slicert::add_jumps(
       continue;
     }
 
-    const irep_idt id=goto_programt::get_function_id(j.PC);
+    const irep_idt id=j.PC->function;
     const cfg_post_dominatorst &pd=post_dominators.at(id);
 
     cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e=
@@ -184,7 +182,7 @@ void full_slicert::add_jumps(
 
         if(cfg[entry->second].node_required)
         {
-          const irep_idt id2=goto_programt::get_function_id(*d_it);
+          const irep_idt id2=(*d_it)->function;
           INVARIANT(id==id2,
                     "goto/jump expected to be within a single function");
 
@@ -364,7 +362,6 @@ void full_slicert::operator()(
 
   // remove the skips
   remove_skip(goto_functions);
-  goto_functions.update();
 }
 
 void full_slicer(

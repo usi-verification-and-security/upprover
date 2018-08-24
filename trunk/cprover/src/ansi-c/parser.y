@@ -121,8 +121,14 @@ extern char *yyansi_ctext;
 %token TOK_PTR64       "__ptr64"
 %token TOK_TYPEOF      "typeof"
 %token TOK_GCC_AUTO_TYPE "__auto_type"
+%token TOK_GCC_FLOAT16 "_Float16"
+%token TOK_GCC_FLOAT32 "_Float32"
+%token TOK_GCC_FLOAT32X "_Float32x"
 %token TOK_GCC_FLOAT80 "__float80"
-%token TOK_GCC_FLOAT128 "__float128"
+%token TOK_GCC_FLOAT64 "_Float64"
+%token TOK_GCC_FLOAT64X "_Float64x"
+%token TOK_GCC_FLOAT128 "_Float128"
+%token TOK_GCC_FLOAT128X "_Float128x"
 %token TOK_GCC_INT128 "__int128"
 %token TOK_GCC_DECIMAL32 "_Decimal32"
 %token TOK_GCC_DECIMAL64 "_Decimal64"
@@ -142,6 +148,8 @@ extern char *yyansi_ctext;
 %token TOK_GCC_ATTRIBUTE_NORETURN "noreturn"
 %token TOK_GCC_ATTRIBUTE_CONSTRUCTOR "constructor"
 %token TOK_GCC_ATTRIBUTE_DESTRUCTOR "destructor"
+%token TOK_GCC_ATTRIBUTE_FALLTHROUGH "fallthrough"
+%token TOK_GCC_ATTRIBUTE_USED "used"
 %token TOK_GCC_LABEL   "__label__"
 %token TOK_MSC_ASM     "__asm"
 %token TOK_MSC_BASED   "__based"
@@ -156,6 +164,7 @@ extern char *yyansi_ctext;
 %token TOK_MSC_EXCEPT  "__except"
 %token TOK_MSC_LEAVE   "__leave"
 %token TOK_MSC_DECLSPEC "__declspec"
+%token TOK_MSC_FORCEINLINE "__forceinline"
 %token TOK_INTERFACE   "__interface"
 %token TOK_CDECL       "__cdecl"
 %token TOK_STDCALL     "__stdcall"
@@ -1376,6 +1385,25 @@ storage_class:
         | TOK_THREAD_LOCAL { $$=$1; set($$, ID_thread_local); }
         | TOK_GCC_ASM      { $$=$1; set($$, ID_asm); }
         | msc_declspec     { $$=$1; }
+        | TOK_MSC_FORCEINLINE
+        {
+          // equivalent to always_inline, and seemingly also has the semantics
+          // of extern inline in that multiple definitions can be provided in
+          // the same translation unit
+          init($$);
+          set($$, ID_static);
+          set($1, ID_inline);
+          #if 0
+          // enable once always_inline support is reinstantiated
+          $1=merge($1, $$);
+
+          init($$);
+          set($$, ID_always_inline);
+          $$=merge($1, $$);
+          #else
+          $$=merge($1, $$);
+          #endif
+        }
         ;
 
 basic_type_name:
@@ -1388,9 +1416,15 @@ basic_type_name:
         | TOK_SHORT    { $$=$1; set($$, ID_short); }
         | TOK_LONG     { $$=$1; set($$, ID_long); }
         | TOK_FLOAT    { $$=$1; set($$, ID_float); }
-        | TOK_GCC_FLOAT80 { $$=$1; set($$, ID_gcc_float80); }
-        | TOK_GCC_FLOAT128 { $$=$1; set($$, ID_gcc_float128); }
-        | TOK_GCC_INT128 { $$=$1; set($$, ID_gcc_int128); }
+        | TOK_GCC_FLOAT16   { $$=$1; set($$, ID_gcc_float16); }
+        | TOK_GCC_FLOAT32   { $$=$1; set($$, ID_gcc_float32); }
+        | TOK_GCC_FLOAT32X  { $$=$1; set($$, ID_gcc_float32x); }
+        | TOK_GCC_FLOAT64   { $$=$1; set($$, ID_gcc_float64); }
+        | TOK_GCC_FLOAT64X  { $$=$1; set($$, ID_gcc_float64x); }
+        | TOK_GCC_FLOAT80   { $$=$1; set($$, ID_gcc_float80); }
+        | TOK_GCC_FLOAT128  { $$=$1; set($$, ID_gcc_float128); }
+        | TOK_GCC_FLOAT128X { $$=$1; set($$, ID_gcc_float128x); }
+        | TOK_GCC_INT128    { $$=$1; set($$, ID_gcc_int128); }
         | TOK_GCC_DECIMAL32 { $$=$1; set($$, ID_gcc_decimal32); }
         | TOK_GCC_DECIMAL64 { $$=$1; set($$, ID_gcc_decimal64); }
         | TOK_GCC_DECIMAL128 { $$=$1; set($$, ID_gcc_decimal128); }
@@ -1531,6 +1565,8 @@ gcc_type_attribute:
         { $$=$1; set($$, ID_constructor); }
         | TOK_GCC_ATTRIBUTE_DESTRUCTOR
         { $$=$1; set($$, ID_destructor); }
+        | TOK_GCC_ATTRIBUTE_USED
+        { $$=$1; set($$, ID_used); }
         ;
 
 gcc_attribute:
@@ -2144,6 +2180,7 @@ statement:
         | msc_asm_statement
         | msc_seh_statement
         | cprover_exception_statement
+        | statement_attribute
         ;
 
 declaration_statement:
@@ -2199,6 +2236,14 @@ labeled_statement:
           stack($$).operands().push_back(nil_exprt());
           mto($$, $3);
           stack($$).set(ID_default, true);
+        }
+        ;
+
+statement_attribute:
+          TOK_GCC_ATTRIBUTE '(' '(' TOK_GCC_ATTRIBUTE_FALLTHROUGH ')' ')' ';' labeled_statement
+        {
+          // attribute ignored
+          $$=$8;
         }
         ;
 

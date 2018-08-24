@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Diffblue Limited. All Rights Reserved.
+/// Author: Diffblue Ltd.
 
 /// \file
 /// A lazy wrapper for goto_functionst.
@@ -7,10 +7,12 @@
 #define CPROVER_GOTO_PROGRAMS_LAZY_GOTO_FUNCTIONS_MAP_H
 
 #include <unordered_set>
+
 #include "goto_functions.h"
 #include "goto_convert_functions.h"
+
 #include <util/message.h>
-#include <util/language_file.h>
+#include <langapi/language_file.h>
 #include <util/journalling_symbol_table.h>
 
 /// Provides a wrapper for a map of lazily loaded goto_functiont.
@@ -18,24 +20,23 @@
 /// access to goto programs while they are still under construction.
 /// The intended workflow:
 /// 1. The front-end registers the functions that are potentially
-///   available, probably by use of util/language_files.h
+///   available, probably by use of langapi/language_file.h
 /// 2. The main function registers functions that should be run on
 ///   each program, in sequence, after it is converted.
 /// 3. Analyses will then access functions using the `at` function
 /// \tparam bodyt: The type of the function bodies, usually goto_programt
-template<typename bodyt>
 class lazy_goto_functions_mapt final
 {
 public:
   // NOLINTNEXTLINE(readability/identifiers)  - name matches those used in STL
   typedef irep_idt key_type;
   // NOLINTNEXTLINE(readability/identifiers)  - name matches those used in STL
-  typedef goto_function_templatet<bodyt> &mapped_type;
+  typedef goto_functiont &mapped_type;
   /// The type of elements returned by const members
   // NOLINTNEXTLINE(readability/identifiers)  - name matches mapped_type
-  typedef const goto_function_templatet<bodyt> &const_mapped_type;
+  typedef const goto_functiont &const_mapped_type;
   // NOLINTNEXTLINE(readability/identifiers)  - name matches those used in STL
-  typedef std::pair<const key_type, goto_function_templatet<bodyt>> value_type;
+  typedef std::pair<const key_type, goto_functiont> value_type;
   // NOLINTNEXTLINE(readability/identifiers)  - name matches those used in STL
   typedef value_type &reference;
   // NOLINTNEXTLINE(readability/identifiers)  - name matches those used in STL
@@ -49,21 +50,33 @@ public:
 
   typedef
     std::function<void(
+      const irep_idt &name,
       goto_functionst::goto_functiont &function,
       journalling_symbol_tablet &function_symbols)>
     post_process_functiont;
+  typedef std::function<bool(const irep_idt &name)>
+    can_generate_function_bodyt;
+  typedef std::function<
+    bool(
+      const irep_idt &function_name,
+      symbol_table_baset &symbol_table,
+      goto_functiont &function,
+      bool body_available)>
+    generate_function_bodyt;
 
 private:
-  typedef std::map<key_type, goto_function_templatet<bodyt>> underlying_mapt;
+  typedef std::map<key_type, goto_functiont> underlying_mapt;
   underlying_mapt &goto_functions;
   /// Names of functions that are already fully available in the programt state.
   /// \remarks These functions do not need processing before being returned
   /// whenever they are requested
-  mutable std::unordered_set<irep_idt, irep_id_hash> processed_functions;
+  mutable std::unordered_set<irep_idt> processed_functions;
 
   language_filest &language_files;
   symbol_tablet &symbol_table;
   const post_process_functiont post_process_function;
+  const can_generate_function_bodyt driver_program_can_generate_function_body;
+  const generate_function_bodyt driver_program_generate_function_body;
   message_handlert &message_handler;
 
 public:
@@ -73,11 +86,17 @@ public:
     language_filest &language_files,
     symbol_tablet &symbol_table,
     post_process_functiont post_process_function,
+    can_generate_function_bodyt driver_program_can_generate_function_body,
+    generate_function_bodyt driver_program_generate_function_body,
     message_handlert &message_handler)
   : goto_functions(goto_functions),
     language_files(language_files),
     symbol_table(symbol_table),
-    post_process_function(std::move(post_process_function)),
+    post_process_function(post_process_function),
+    driver_program_can_generate_function_body(
+      driver_program_can_generate_function_body),
+    driver_program_generate_function_body(
+      driver_program_generate_function_body),
     message_handler(message_handler)
   {
   }
@@ -105,7 +124,9 @@ public:
   ///   it a bodyless stub.
   bool can_produce_function(const key_type &name) const
   {
-    return language_files.can_convert_lazy_method(name);
+    return
+      language_files.can_convert_lazy_method(name) ||
+      driver_program_can_generate_function_body(name);
   }
 
   void unload(const key_type &name) const { goto_functions.erase(name); }
@@ -128,7 +149,7 @@ private:
     if(processed_functions.count(name)==0)
     {
       // Run function-pass conversions
-      post_process_function(function, journalling_table);
+      post_process_function(name, function, journalling_table);
       // Assign procedure-local location numbers for now
       function.body.compute_location_numbers();
       processed_functions.insert(name);
@@ -148,17 +169,33 @@ private:
     const key_type &name,
     symbol_table_baset &function_symbol_table) const
   {
-    typename underlying_mapt::iterator it=goto_functions.find(name);
+    underlying_mapt::iterator it=goto_functions.find(name);
     if(it!=goto_functions.end())
       return *it;
-    // Fill in symbol table entry body if not already done
-    // If this returns false then it's a stub
-    language_files.convert_lazy_method(name, function_symbol_table);
-    // Create goto_functiont
-    goto_functionst::goto_functiont function;
-    goto_convert_functionst convert_functions(
-      function_symbol_table, message_handler);
-    convert_functions.convert_function(name, function);
+
+    goto_functiont function;
+
+    // First chance: see if the driver program wants to provide a replacement:
+    bool body_provided =
+      driver_program_generate_function_body(
+        name,
+        function_symbol_table,
+        function,
+        language_files.can_convert_lazy_method(name));
+
+    // Second chance: see if language_filest can provide a body:
+    if(!body_provided)
+    {
+      // Fill in symbol table entry body if not already done
+      language_files.convert_lazy_method(name, function_symbol_table);
+      body_provided = function_symbol_table.lookup_ref(name).value.is_not_nil();
+
+      // Create goto_functiont
+      goto_convert_functionst convert_functions(
+        function_symbol_table, message_handler);
+      convert_functions.convert_function(name, function);
+    }
+
     // Add to map
     return *goto_functions.emplace(name, std::move(function)).first;
   }

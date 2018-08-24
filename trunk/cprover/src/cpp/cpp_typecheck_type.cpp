@@ -78,6 +78,8 @@ void cpp_typecheckt::typecheck_type(typet &type)
   }
   else if(type.id()==ID_pointer)
   {
+    c_qualifierst qualifiers(type);
+
     // the pointer/reference might have a qualifier,
     // but do subtype first
     typecheck_type(type.subtype());
@@ -114,6 +116,11 @@ void cpp_typecheckt::typecheck_type(typet &type)
         }
       }
     }
+
+    if(type.get_bool(ID_C_constant))
+      qualifiers.is_constant = true;
+
+    qualifiers.write(type);
   }
   else if(type.id()==ID_array)
   {
@@ -132,6 +139,10 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
     if(type.subtype().get_bool(ID_C_volatile))
       type.set(ID_C_volatile, true);
+  }
+  else if(type.id()==ID_vector)
+  {
+    typecheck_vector_type(to_vector_type(type));
   }
   else if(type.id()==ID_code)
   {
@@ -175,7 +186,7 @@ void cpp_typecheckt::typecheck_type(typet &type)
           type.id()==ID_empty)
   {
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
   }
   else if(type.id()==ID_constructor ||
@@ -227,7 +238,11 @@ void cpp_typecheckt::typecheck_type(typet &type)
   {
     exprt e=static_cast<const exprt &>(type.find(ID_expr_arg));
     typecheck_expr(e);
-    type=e.type();
+
+    if(e.type().id() == ID_c_bit_field)
+      type = e.type().subtype();
+    else
+      type = e.type();
   }
   else if(type.id()==ID_unassigned)
   {
@@ -241,9 +256,16 @@ void cpp_typecheckt::typecheck_type(typet &type)
   {
     // This is an Apple extension for lambda-like constructs.
     // http://thirdcog.eu/pwcblocks/
+    // we just treat them as references to functions
+    type.id(ID_frontend_pointer);
+    typecheck_type(type);
   }
   else if(type.id()==ID_nullptr)
   {
+  }
+  else if(type.id()==ID_already_typechecked)
+  {
+    c_typecheck_baset::typecheck_type(type);
   }
   else
   {

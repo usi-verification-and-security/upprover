@@ -1,5 +1,4 @@
-
-// Copyright 2016-2017 DiffBlue Limited. All Rights Reserved.
+/// Author: Diffblue Ltd.
 
 /// \file
 /// A symbol table writer that records which entries have been updated
@@ -27,15 +26,16 @@
 ///
 /// journalling_symbol_tablet journal(actual_table); // Wraps real_table
 /// alter_table(journal);
-
+///
 /// for(const auto &added : journal.added())
 /// {
 ///   printf("%s was added\n", added.name);
 /// }
+/// ```
 class journalling_symbol_tablet : public symbol_table_baset
 {
 public:
-  typedef std::unordered_set<irep_idt, irep_id_hash> changesett;
+  typedef std::unordered_set<irep_idt> changesett;
 
 private:
   symbol_table_baset &base_symbol_table;
@@ -122,6 +122,17 @@ public:
     for(const auto &named_symbol : base_symbol_table.symbols)
       on_remove(named_symbol.first);
     base_symbol_table.clear();
+  }
+
+  virtual iteratort begin() override
+  {
+    return iteratort(
+      base_symbol_table.begin(), [this](const irep_idt &id) { on_update(id); });
+  }
+  virtual iteratort end() override
+  {
+    return iteratort(
+      base_symbol_table.end(), [this](const irep_idt &id) { on_update(id); });
   }
 
   const changesett &get_inserted() const

@@ -12,9 +12,11 @@
 #include "prepare_smt_formula.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include <util/time_stopping.h>
 #include "smt_summary_store.h"
 #include "assertion_info.h"
+#include "utils/time_utils.h"
+#include <langapi/language_util.h>
+
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -71,8 +73,7 @@ void get_numbers(std::set<int>& nums, std::string set){
 bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-  absolute_timet initial, final;
-  initial=current_time();
+  auto before=timestamp();
 
   omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -93,10 +94,11 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
 
   call_tree_nodet& summary_info = omega.get_call_tree_root();
-  symex_assertion_sumt symex = symex_assertion_sumt(
-            dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true, true, unwind_bound);
+  std::unique_ptr<path_storaget> worklist;
+  symex_assertion_sumt symex {
+            dummy, omega.get_goto_functions(), summary_info, temp_table,
+            equation, message_handler, goto_program,  options, *worklist, last_assertion_loc,
+            single_assertion_check, true, true, true, unwind_bound};
 
   //setup_unwind(symex);
 
@@ -388,9 +390,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
       }
   }
 
-  final = current_time();
+  auto after = timestamp();
 
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
 
 #ifdef PRODUCE_PROOF
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())

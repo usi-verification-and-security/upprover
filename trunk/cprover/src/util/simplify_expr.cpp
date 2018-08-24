@@ -11,36 +11,29 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <algorithm>
 
-#include "c_types.h"
-#include "rational.h"
-#include "simplify_expr_class.h"
-#include "mp_arith.h"
 #include "arith_tools.h"
-#include "replace_expr.h"
-#include "std_types.h"
-#include "expr_util.h"
-#include "std_expr.h"
-#include "fixedbv.h"
-#include "pointer_offset_size.h"
-#include "rational_tools.h"
-#include "config.h"
 #include "base_type.h"
-#include "type_eq.h"
-#include "namespace.h"
-#include "threeval.h"
-#include "pointer_predicates.h"
-#include "prefix.h"
 #include "byte_operators.h"
-#include "bv_arithmetic.h"
+#include "c_types.h"
+#include "config.h"
 #include "endianness_map.h"
+#include "expr_util.h"
+#include "fixedbv.h"
+#include "namespace.h"
+#include "pointer_offset_size.h"
+#include "rational.h"
+#include "rational_tools.h"
 #include "simplify_utils.h"
+#include "std_expr.h"
+#include "type_eq.h"
 
 // #define DEBUGX
 
 #ifdef DEBUGX
-#include <langapi/language_util.h>
 #include <iostream>
 #endif
+
+#include "simplify_expr_class.h"
 
 // #define USE_CACHE
 
@@ -136,20 +129,19 @@ bool simplify_exprt::simplify_sign(exprt &expr)
   return true;
 }
 
-bool simplify_exprt::simplify_popcount(exprt &expr)
+bool simplify_exprt::simplify_popcount(popcount_exprt &expr)
 {
-  if(expr.operands().size()!=1)
-    return true;
+  const exprt &op = expr.op();
 
-  if(expr.op0().is_constant())
+  if(op.is_constant())
   {
-    const typet &type=ns.follow(expr.op0().type());
+    const typet &type=ns.follow(op.type());
 
     if(type.id()==ID_signedbv ||
        type.id()==ID_unsignedbv)
     {
       mp_integer value;
-      if(!to_integer(expr.op0(), value))
+      if(!to_integer(op, value))
       {
         std::size_t result;
 
@@ -157,7 +149,8 @@ bool simplify_exprt::simplify_popcount(exprt &expr)
           if(value.is_odd())
             result++;
 
-        expr=from_integer(result, expr.type());
+        exprt simp_result = from_integer(result, expr.type());
+        expr.swap(simp_result);
 
         return false;
       }
@@ -430,8 +423,8 @@ bool simplify_exprt::simplify_typecast(exprt &expr)
   if(expr.op0().id()==ID_if &&
      expr.op0().operands().size()==3)
   {
-    exprt tmp_op1=typecast_exprt(expr.op0().op1(), expr_type);
-    exprt tmp_op2=typecast_exprt(expr.op0().op2(), expr_type);
+    typecast_exprt tmp_op1(expr.op0().op1(), expr_type);
+    typecast_exprt tmp_op2(expr.op0().op2(), expr_type);
     simplify_typecast(tmp_op1);
     simplify_typecast(tmp_op2);
     expr=if_exprt(expr.op0().op0(), tmp_op1, tmp_op2, expr_type);
@@ -510,7 +503,7 @@ bool simplify_exprt::simplify_typecast(exprt &expr)
         const typet &c_enum_type=ns.follow_tag(to_c_enum_tag_type(expr_type));
         if(c_enum_type.id()==ID_c_enum) // possibly incomplete
         {
-          unsigned int_value=operand.is_true();
+          unsigned int_value = operand.is_true() ? 1u : 0u;
           exprt tmp=from_integer(int_value, c_enum_type);
           tmp.type()=expr_type; // we maintain the tag type
           expr=tmp;
@@ -1068,7 +1061,7 @@ bool simplify_exprt::simplify_if_preorder(if_exprt &expr)
       result=false;
     }
 
-    #if 0
+#ifdef USE_LOCAL_REPLACE_MAP
     replace_mapt map_before(local_replace_map);
 
     // a ? b : c  --> a ? b[a/true] : c
@@ -1110,10 +1103,10 @@ bool simplify_exprt::simplify_if_preorder(if_exprt &expr)
     result=simplify_rec(falsevalue) && result;
 
     local_replace_map.swap(map_before);
-    #else
+#else
     result=simplify_rec(truevalue) && result;
     result=simplify_rec(falsevalue) && result;
-    #endif
+#endif
   }
   else
   {
@@ -1239,7 +1232,7 @@ bool simplify_exprt::get_values(
   if(expr.is_constant())
   {
     mp_integer int_value;
-    if(to_integer(expr, int_value))
+    if(to_integer(to_constant_expr(expr), int_value))
       return true;
 
     value_list.insert(int_value);
@@ -1258,7 +1251,7 @@ bool simplify_exprt::get_values(
   return true;
 }
 
-bool simplify_exprt::simplify_lambda(exprt &expr)
+bool simplify_exprt::simplify_lambda(exprt &)
 {
   bool result=true;
 
@@ -1545,7 +1538,7 @@ exprt simplify_exprt::bits2expr(
     const struct_typet::componentst &components=
       struct_type.components();
 
-    exprt result=struct_exprt(type);
+    struct_exprt result(type);
     result.reserve_operands(components.size());
 
     mp_integer m_offset_bits=0;
@@ -1582,7 +1575,7 @@ exprt simplify_exprt::bits2expr(
       integer2size_t(pointer_offset_bits(type.subtype(), ns));
     assert(el_size>0);
 
-    exprt result=array_exprt(array_type);
+    array_exprt result(array_type);
     result.reserve_operands(n_el);
 
     for(std::size_t i=0; i<n_el; ++i)
@@ -1600,7 +1593,7 @@ exprt simplify_exprt::bits2expr(
   return nil_exprt();
 }
 
-std::string simplify_exprt::expr2bits(
+optionalt<std::string> simplify_exprt::expr2bits(
   const exprt &expr,
   bool little_endian)
 {
@@ -1637,11 +1630,12 @@ std::string simplify_exprt::expr2bits(
     std::string result;
     forall_operands(it, expr)
     {
-      std::string tmp=expr2bits(*it, little_endian);
-      if(tmp.empty())
-        return tmp; // failed
-      result+=tmp;
+      auto tmp=expr2bits(*it, little_endian);
+      if(!tmp.has_value())
+        return {}; // failed
+      result+=tmp.value();
     }
+
     return result;
   }
   else if(expr.id()==ID_array)
@@ -1649,15 +1643,16 @@ std::string simplify_exprt::expr2bits(
     std::string result;
     forall_operands(it, expr)
     {
-      std::string tmp=expr2bits(*it, little_endian);
-      if(tmp.empty())
-        return tmp; // failed
-      result+=tmp;
+      auto tmp=expr2bits(*it, little_endian);
+      if(!tmp.has_value())
+        return {}; // failed
+      result+=tmp.value();
     }
+
     return result;
   }
 
-  return "";
+  return {};
 }
 
 bool simplify_exprt::simplify_byte_extract(byte_extract_exprt &expr)
@@ -1741,11 +1736,18 @@ bool simplify_exprt::simplify_byte_extract(byte_extract_exprt &expr)
     return true;
 
   if(expr.op().id()==ID_array_of &&
-     expr.op().op0().id()==ID_constant)
+     to_array_of_expr(expr.op()).op().id()==ID_constant)
   {
-    std::string const_bits=
-      expr2bits(expr.op().op0(),
+    const auto const_bits_opt=
+      expr2bits(to_array_of_expr(expr.op()).op(),
                 byte_extract_id()==ID_byte_extract_little_endian);
+
+    if(!const_bits_opt.has_value())
+      return true;
+
+    std::string const_bits=const_bits_opt.value();
+
+    DATA_INVARIANT(!const_bits.empty(), "bit representation must be non-empty");
 
     // double the string until we have sufficiently many bits
     while(mp_integer(const_bits.size())<offset*8+el_size)
@@ -1783,15 +1785,17 @@ bool simplify_exprt::simplify_byte_extract(byte_extract_exprt &expr)
   }
 
   // extract bits of a constant
-  std::string bits=
+  const auto bits=
     expr2bits(expr.op(), expr.id()==ID_byte_extract_little_endian);
+
   // exact match of length only - otherwise we might lose bits of
   // flexible array members at the end of a struct
-  if(mp_integer(bits.size())==el_size+offset*8)
+  if(bits.has_value() &&
+     mp_integer(bits->size())==el_size+offset*8)
   {
     std::string bits_cut=
       std::string(
-        bits,
+        bits.value(),
         integer2size_t(offset*8),
         integer2size_t(el_size));
 
@@ -2318,12 +2322,12 @@ bool simplify_exprt::simplify_node(exprt &expr)
   else if(expr.id()==ID_concatenation)
     result=simplify_concatenation(expr) && result;
   else if(expr.id()==ID_extractbits)
-    result=simplify_extractbits(expr) && result;
+    result = simplify_extractbits(to_extractbits_expr(expr)) && result;
   else if(expr.id()==ID_ieee_float_equal ||
           expr.id()==ID_ieee_float_notequal)
     result=simplify_ieee_float_relation(expr) && result;
-  else if(expr.id()==ID_bswap)
-    result=simplify_bswap(expr) && result;
+  else if(expr.id() == ID_bswap)
+    result = simplify_bswap(to_bswap_expr(expr)) && result;
   else if(expr.id()==ID_isinf)
     result=simplify_isinf(expr) && result;
   else if(expr.id()==ID_isnan)
@@ -2334,8 +2338,8 @@ bool simplify_exprt::simplify_node(exprt &expr)
     result=simplify_abs(expr) && result;
   else if(expr.id()==ID_sign)
     result=simplify_sign(expr) && result;
-  else if(expr.id()==ID_popcount)
-    result=simplify_popcount(expr) && result;
+  else if(expr.id() == ID_popcount)
+    result = simplify_popcount(to_popcount_expr(expr)) && result;
 
   #ifdef DEBUGX
   if(!result
@@ -2344,8 +2348,7 @@ bool simplify_exprt::simplify_node(exprt &expr)
      #endif
      )
   {
-    std::cout << "===== " << from_expr(ns, "", old)
-              << "\n ---> " << from_expr(ns, "", expr)
+    std::cout << "===== " << format(old) << "\n ---> " << format(expr)
               << "\n";
   }
   #endif
@@ -2384,6 +2387,7 @@ bool simplify_exprt::simplify_rec(exprt &expr)
   if(!simplify_node(tmp))
     result=false;
 
+#ifdef USE_LOCAL_REPLACE_MAP
   #if 1
   replace_mapt::const_iterator it=local_replace_map.find(tmp);
   if(it!=local_replace_map.end())
@@ -2399,6 +2403,7 @@ bool simplify_exprt::simplify_rec(exprt &expr)
     result=false;
   }
   #endif
+#endif
 
   if(!result)
   {
@@ -2417,12 +2422,12 @@ bool simplify_exprt::simplify(exprt &expr)
 {
 #ifdef DEBUG_ON_DEMAND
   if(debug_on)
-    std::cout << "TO-SIMP " << from_expr(ns, "", expr) << "\n";
+    std::cout << "TO-SIMP " << format(expr) << "\n";
 #endif
   bool res=simplify_rec(expr);
 #ifdef DEBUG_ON_DEMAND
   if(debug_on)
-    std::cout << "FULLSIMP " << from_expr(ns, "", expr) << "\n";
+    std::cout << "FULLSIMP " << format(expr) << "\n";
 #endif
   return res;
 }

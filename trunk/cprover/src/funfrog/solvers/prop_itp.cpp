@@ -10,7 +10,6 @@ Author: Ondrej Sery
 #include <limits.h>
 #include <string.h>
 #include <stdlib.h>
-#include "util/time_stopping.h"
 #include <util/symbol_table.h>
 #include "../hifrog.h"
 #include "satcheck_opensmt2.h"

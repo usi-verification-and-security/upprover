@@ -23,13 +23,11 @@ Date: September 2011
 
 #include <set>
 
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
-#include <util/message.h>
-
 #include <goto-programs/remove_skip.h>
 
-#include "../rw_set.h"
+#include <linking/static_lifetime_init.h>
+
+#include <goto-instrument/rw_set.h>
 
 #include "shared_buffers.h"
 #include "goto2graph.h"
@@ -109,7 +107,6 @@ void weak_memory(
   goto_modelt &goto_model,
   bool SCC,
   instrumentation_strategyt event_strategy,
-  unsigned unwinding_bound,
   bool no_cfg_kill,
   bool no_dependencies,
   loop_strategyt duplicate_body,
@@ -135,7 +132,7 @@ void weak_memory(
 
   // all access to shared variables is pushed into assignments
   Forall_goto_functions(f_it, goto_model.goto_functions)
-    if(f_it->first!=CPROVER_PREFIX "initialize" &&
+    if(f_it->first != INITIALIZE_FUNCTION &&
       f_it->first!=goto_functionst::entry_point())
       introduce_temporaries(value_sets, goto_model.symbol_table, f_it->first,
         f_it->second.body,
@@ -157,7 +154,7 @@ void weak_memory(
     instrumenter.set_parameters_collection(input_max_var,
       input_max_po_trans, ignore_arrays);
   else
-    instrumenter.set_parameters_collection(max_thds, ignore_arrays);
+    instrumenter.set_parameters_collection(max_thds, 0, ignore_arrays);
 
   if(SCC)
   {

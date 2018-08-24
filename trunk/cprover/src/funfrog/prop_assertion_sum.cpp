@@ -9,10 +9,10 @@
 #include "prop_assertion_sum.h"
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>
-#include <util/time_stopping.h>
 #include <util/ui_message.h>
 #include "solvers/prop/prop_conv.h"
 #include "prop_partitioning_target_equation.h"
+#include <funfrog/utils/time_utils.h>
 
 
 /*******************************************************************
@@ -37,14 +37,13 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   decider.set_message_handler(*message_handler);
   //decider.set_verbosity(10);
 
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   equation.convert(decider, interpolator);
 
 
-  after=current_time();
+  auto after=timestamp();
 
-  status() << "CONVERSION TIME: " << (after-before) << eom;
+  status() << "CONVERSION TIME: " << time_gap(after,before) << eom;
 
   // Decides the equation
   sat = is_satisfiable(decider);
@@ -120,11 +119,10 @@ bool prop_assertion_sumt::is_satisfiable(
   decision_proceduret &decision_procedure)
 {
   status() << ("RESULT") << endl;
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   decision_proceduret::resultt r = decision_procedure.dec_solve();
-  after=current_time();
-  status() << "SOLVER TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  status() << "SOLVER TIME: " << time_gap(after,before) << eom;
 
   // solve it
   switch (r)
@@ -186,7 +184,7 @@ void build_exec_order_goto_trace(
     goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
-    goto_trace_step.identifier=SSA_step.identifier;
+    goto_trace_step.function_identifier=SSA_step.function_identifier;
 
     if(SSA_step.ssa_lhs.is_not_nil()) {
       goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);

@@ -17,9 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
  * \date   Sun Jul 31 21:54:44 BST 2011
 */
 
-/*! \defgroup gr_symbol_table Symbol Table
-*/
-
 #include <iosfwd>
 
 #include "expr.h"
@@ -93,10 +90,6 @@ public:
 
   void swap(symbolt &b);
   void show(std::ostream &out) const;
-
-  // serialization
-  irept to_irep() const;
-  void from_irep(const irept &src);
 
   class symbol_exprt symbol_expr() const;
 

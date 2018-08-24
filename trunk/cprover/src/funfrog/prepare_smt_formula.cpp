@@ -7,13 +7,13 @@
 
 \*******************************************************************/
 
-#include <util/time_stopping.h>
 #include "prepare_smt_formula.h"
 #include "error_trace.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
+#include <funfrog/utils/time_utils.h>
 
-time_periodt global_satsolver_time;
+timet global_satsolver_time;
 
 /*******************************************************************
 
@@ -28,13 +28,12 @@ time_periodt global_satsolver_time;
 \*******************************************************************/
 void prepare_smt_formulat::convert_to_formula(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   equation.convert(decider, interpolator);
 
-  after=current_time();
+  auto after=timestamp();
 
-  status() << "CONVERSION TIME: " << (after-before) << eom;
+  status() << "CONVERSION TIME: " << time_gap(after,before) << eom;
 }
 
 /*******************************************************************
@@ -52,11 +51,10 @@ void prepare_smt_formulat::convert_to_formula(smtcheck_opensmt2t &decider, inter
 bool prepare_smt_formulat::is_satisfiable(
 		smtcheck_opensmt2t& decider)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   bool is_sat = decider.solve();
-  after=current_time();
-  status() << "SOLVER TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  status() << "SOLVER TIME: " << time_gap(after,before) << eom;
   status() << "RESULT: ";
 
   // solve it

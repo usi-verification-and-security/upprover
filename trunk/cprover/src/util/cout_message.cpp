@@ -90,7 +90,7 @@ void console_message_handlert::flush(unsigned level)
   // in particular when writing to NFS.
   if(level>=4)
   {
-    if(level<=6)
+    if(level <= 6 || always_flush)
       std::cout << std::flush;
   }
   else
@@ -100,7 +100,6 @@ void console_message_handlert::flush(unsigned level)
 void gcc_message_handlert::print(
   unsigned level,
   const std::string &message,
-  int sequence_number,
   const source_locationt &location)
 {
   const irep_idt file=location.get_file();

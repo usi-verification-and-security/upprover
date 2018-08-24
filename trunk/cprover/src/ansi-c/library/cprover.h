@@ -24,6 +24,8 @@ void __CPROVER_precondition(__CPROVER_bool assertion, const char *description);
 __CPROVER_bool __CPROVER_is_zero_string(const void *);
 __CPROVER_size_t __CPROVER_zero_string_length(const void *);
 __CPROVER_size_t __CPROVER_buffer_size(const void *);
+__CPROVER_bool __CPROVER_r_ok(const void *, __CPROVER_size_t);
+__CPROVER_bool __CPROVER_w_ok(const void *, __CPROVER_size_t);
 
 #if 0
 __CPROVER_bool __CPROVER_equal();
@@ -70,6 +72,7 @@ extern __CPROVER_thread_local const char __PRETTY_FUNCTION__[__CPROVER_constant_
 #endif
 
 // float stuff
+int __CPROVER_fpclassify(int, int, int, int, int, ...);
 __CPROVER_bool __CPROVER_isfinite(double f);
 __CPROVER_bool __CPROVER_isinf(double f);
 __CPROVER_bool __CPROVER_isnormal(double f);

@@ -2,7 +2,7 @@
 
  Module: Analyses
 
- Author: DiffBlue Limited. All rights reserved.
+ Author: Diffblue Ltd.
 
 \*******************************************************************/
 /// \file
@@ -22,7 +22,7 @@ class does_remove_constt
 {
 public:
   does_remove_constt(const goto_programt &goto_program, const namespacet &ns);
-  bool operator()() const;
+  std::pair<bool, source_locationt>  operator()() const;
 
 private:
   bool does_expr_lose_const(const exprt &expr) const;

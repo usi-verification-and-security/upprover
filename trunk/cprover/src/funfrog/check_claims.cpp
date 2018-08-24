@@ -13,10 +13,12 @@
 #include <util/ui_message.h>
 #include <util/xml.h>
 #include <util/xml_irep.h>
-#include <util/time_stopping.h>
 #include <ansi-c/expr2c.h>
 
 #include <fstream>
+
+#include "utils/time_utils.h"
+#include <langapi/language_util.h>
 
 /*******************************************************************
 
@@ -194,12 +196,11 @@ void check_claims(
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
           res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
-          absolute_timet initial, final;
-          initial=current_time();
+          auto before=timestamp();
           bool single_res = core_checker.check_sum_theoref_single(assertion_infot{ass_ptr});
           claim_map[ass_ptr] = std::make_pair(true, single_res);
-          final = current_time();
-          res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << (final - initial) << res.eom;
+          auto after = timestamp();
+          res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << time_gap(after,before) << res.eom;
       }
       // REPORT the results
       res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;

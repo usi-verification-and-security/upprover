@@ -11,12 +11,13 @@ Author: Peter Schrammel
 
 #include "fault_localization.h"
 
+#include <chrono>
+
 #include <util/threeval.h>
 #include <util/arith_tools.h>
 #include <util/symbol.h>
 #include <util/std_expr.h>
 #include <util/message.h>
-#include <util/time_stopping.h>
 #include <util/xml_expr.h>
 
 #include <solvers/prop/minimize.h>
@@ -103,8 +104,7 @@ bool fault_localizationt::check(const lpointst &lpoints,
   return true;
 }
 
-void fault_localizationt::update_scores(lpointst &lpoints,
-                                        const lpoints_valuet &value)
+void fault_localizationt::update_scores(lpointst &lpoints)
 {
   for(auto &l : lpoints)
   {
@@ -130,10 +130,10 @@ void fault_localizationt::localize_linear(lpointst &lpoints)
   {
     v[i]=tvt(tvt::tv_enumt::TV_TRUE);
     if(!check(lpoints, v))
-      update_scores(lpoints, v);
+      update_scores(lpoints);
     v[i]=tvt(tvt::tv_enumt::TV_FALSE);
     if(!check(lpoints, v))
-      update_scores(lpoints, v);
+      update_scores(lpoints);
     v[i]=tvt(tvt::tv_enumt::TV_UNKNOWN);
   }
 }
@@ -245,8 +245,7 @@ fault_localizationt::run_decision_procedure(prop_convt &prop_conv)
 
   prop_conv.set_message_handler(bmc.get_message_handler());
 
-  // stop the time
-  absolute_timet sat_start=current_time();
+  auto solver_start=std::chrono::steady_clock::now();
 
   bmc.do_conversion();
 
@@ -259,9 +258,10 @@ fault_localizationt::run_decision_procedure(prop_convt &prop_conv)
   // output runtime
 
   {
-    absolute_timet sat_stop=current_time();
+    auto solver_stop=std::chrono::steady_clock::now();
     status() << "Runtime decision procedure: "
-             << (sat_stop-sat_start) << "s" << eom;
+             << std::chrono::duration<double>(solver_stop-solver_start).count()
+             << "s" << eom;
   }
 
   return dec_result;
@@ -280,7 +280,7 @@ safety_checkert::resultt fault_localizationt::stop_on_fail()
     {
       if(options.get_bool_option("beautify"))
         counterexample_beautificationt()(
-          dynamic_cast<bv_cbmct &>(bmc.prop_conv), bmc.equation, bmc.ns);
+          dynamic_cast<bv_cbmct &>(bmc.prop_conv), bmc.equation);
 
       bmc.error_trace();
     }
@@ -336,10 +336,8 @@ void fault_localizationt::goal_covered(
       if(solver.l_get(cond).is_false())
       {
         goal_pair.second.status=goalt::statust::FAILURE;
-        symex_target_equationt::SSA_stepst::iterator next=inst;
-        next++; // include the assertion
         build_goto_trace(
-          bmc.equation, next, solver, bmc.ns, goal_pair.second.goto_trace);
+          bmc.equation, inst, solver, bmc.ns, goal_pair.second.goto_trace);
 
         // localize faults
         run(goal_pair.first);

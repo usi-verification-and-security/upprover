@@ -18,8 +18,9 @@ Author: Daniel Kroening
 #include <util/xml_expr.h>
 #include <util/symbol.h>
 
-#include <ansi-c/printf_formatter.h>
 #include <langapi/language_util.h>
+
+#include "printf_formatter.h"
 
 void convert(
   const namespacet &ns,
@@ -76,7 +77,7 @@ void convert(
         if(xml_location.name!="")
           xml_assignment.new_element().swap(xml_location);
 
-        std::string value_string, binary_string, type_string,
+        std::string value_string, type_string,
                     full_lhs_string, full_lhs_value_string;
 
         if(step.lhs_object_value.is_not_nil())
@@ -147,7 +148,8 @@ void convert(
 
         for(const auto &arg : step.io_args)
         {
-          xml_output.new_element("value").data=from_expr(ns, "", arg);
+          xml_output.new_element("value").data =
+            from_expr(ns, step.pc->function, arg);
           xml_output.new_element("value_expression").
             new_element(xml(arg, ns));
         }
@@ -165,7 +167,8 @@ void convert(
 
         for(const auto &arg : step.io_args)
         {
-          xml_input.new_element("value").data=from_expr(ns, "", arg);
+          xml_input.new_element("value").data =
+            from_expr(ns, step.pc->function, arg);
           xml_input.new_element("value_expression").
             new_element(xml(arg, ns));
         }
@@ -187,11 +190,12 @@ void convert(
         xml_call_return.set_attribute("thread", std::to_string(step.thread_nr));
         xml_call_return.set_attribute("step_nr", std::to_string(step.step_nr));
 
-        const symbolt &symbol=ns.lookup(step.identifier);
+        const symbolt &symbol = ns.lookup(step.function_identifier);
         xmlt &xml_function=xml_call_return.new_element("function");
         xml_function.set_attribute(
           "display_name", id2string(symbol.display_name()));
-        xml_function.set_attribute("identifier", id2string(step.identifier));
+        xml_function.set_attribute(
+          "identifier", id2string(step.function_identifier));
         xml_function.new_element()=xml(symbol.location);
 
         if(xml_location.name!="")

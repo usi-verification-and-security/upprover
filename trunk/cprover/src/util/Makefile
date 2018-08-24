@@ -11,17 +11,19 @@ SRC = arith_tools.cpp \
       dstring.cpp \
       endianness_map.cpp \
       expr.cpp \
+      expr_initializer.cpp \
       expr_util.cpp \
       file_util.cpp \
       find_macros.cpp \
       find_symbols.cpp \
       fixedbv.cpp \
       format_constant.cpp \
+      format_expr.cpp \
       format_number_range.cpp \
+      format_type.cpp \
       fresh_symbol.cpp \
       get_base_name.cpp \
       get_module.cpp \
-      graph.cpp \
       guard.cpp \
       identifier.cpp \
       ieee_float.cpp \
@@ -35,21 +37,17 @@ SRC = arith_tools.cpp \
       json.cpp \
       json_expr.cpp \
       json_irep.cpp \
-      language.cpp \
-      language_file.cpp \
+      json_stream.cpp \
       lispexpr.cpp \
       lispirep.cpp \
       memory_info.cpp \
-      memory_limit.cpp \
       merge_irep.cpp \
       message.cpp \
       mp_arith.cpp \
       namespace.cpp \
-      nondet_ifthenelse.cpp \
       options.cpp \
       parse_options.cpp \
       parser.cpp \
-      pipe_stream.cpp \
       pointer_offset_size.cpp \
       pointer_predicates.cpp \
       rational.cpp \
@@ -76,18 +74,17 @@ SRC = arith_tools.cpp \
       std_expr.cpp \
       std_types.cpp \
       string2int.cpp \
+      string_constant.cpp \
       string_container.cpp \
       string_hash.cpp \
       string_utils.cpp \
-      substitute.cpp \
       symbol.cpp \
       symbol_table_base.cpp \
       symbol_table.cpp \
       tempdir.cpp \
       tempfile.cpp \
       threeval.cpp \
-      time_stopping.cpp \
-      timer.cpp \
+      timestamper.cpp \
       type.cpp \
       type_eq.cpp \
       typecheck.cpp \
@@ -95,6 +92,8 @@ SRC = arith_tools.cpp \
       unicode.cpp \
       union_find.cpp \
       union_find_replace.cpp \
+      unwrap_nested_exception.cpp \
+      version.cpp \
       xml.cpp \
       xml_expr.cpp \
       xml_irep.cpp \
@@ -105,9 +104,26 @@ INCLUDES= -I ..
 include ../config.inc
 include ../common
 
-CLEANFILES = util$(LIBEXT)
+# get version from git
+GIT_INFO = $(shell git describe --tags --always --dirty || echo "n/a")
+RELEASE_INFO = const char *CBMC_VERSION="$(CBMC_VERSION) ($(GIT_INFO))";
+GIT_INFO_FILE = version.cpp
 
-all: util$(LIBEXT)
+$(GIT_INFO_FILE):
+	echo '$(RELEASE_INFO)' > $@
+
+generated_files: $(GIT_INFO_FILE)
+
+# mark the actually generated file as a phony target to enforce a rebuild - but
+# only if the version information has changed!
+KNOWN_RELEASE_INFO = $(shell cat $(GIT_INFO_FILE) 2>/dev/null)
+ifneq ($(RELEASE_INFO), $(KNOWN_RELEASE_INFO))
+.PHONY: $(GIT_INFO_FILE)
+endif
+
+CLEANFILES = $(GIT_INFO_FILE) util$(LIBEXT)
+
+all: util$(LIBEXT) $(GIT_INFO_FILE)
 
 util$(LIBEXT): $(OBJ)
 	$(LINKLIB)

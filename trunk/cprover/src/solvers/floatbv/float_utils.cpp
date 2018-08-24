@@ -43,7 +43,7 @@ bvt float_utilst::from_signed_integer(const bvt &src)
   result.exponent=
     bv_utils.build_constant(
       src.size()-1,
-      address_bits(src.size()-1).to_long()+1);
+      address_bits(src.size() - 1) + 1);
 
   return rounder(result);
 }
@@ -58,7 +58,7 @@ bvt float_utilst::from_unsigned_integer(const bvt &src)
   result.exponent=
     bv_utils.build_constant(
       src.size()-1,
-      address_bits(src.size()-1).to_long()+1);
+      address_bits(src.size() - 1) + 1);
 
   result.sign=const_literal(false);
 
@@ -106,7 +106,7 @@ bvt float_utilst::to_integer(
                                        unpacked.exponent.size());
     bvt distance=bv_utils.sub(offset, unpacked.exponent);
     bvt shift_result=bv_utils.shift(
-      fraction, bv_utilst::shiftt::LRIGHT, distance);
+      fraction, bv_utilst::shiftt::SHIFT_LRIGHT, distance);
 
     // if the exponent is negative, we have zero anyways
     bvt result=shift_result;
@@ -388,7 +388,7 @@ bvt float_utilst::limit_distance(
   const bvt &dist,
   mp_integer limit)
 {
-  std::size_t nb_bits=integer2unsigned(address_bits(limit));
+  std::size_t nb_bits = address_bits(limit);
 
   bvt upper_bits=dist;
   upper_bits.erase(upper_bits.begin(), upper_bits.begin()+nb_bits);
@@ -790,7 +790,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
   // The worst-case shift is the number of fraction
   // bits minus one, in case the faction is one exactly.
   assert(!fraction.empty());
-  unsigned depth=integer2unsigned(address_bits(fraction.size()-1));
+  std::size_t depth = address_bits(fraction.size() - 1);
 
   if(exponent.size()<depth)
     exponent=bv_utils.sign_extension(exponent, depth);
@@ -809,7 +809,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
     // If so, shift the zeros out left by 'distance'.
     // Otherwise, leave as is.
     const bvt shifted=
-      bv_utils.shift(fraction, bv_utilst::shiftt::LEFT, distance);
+      bv_utils.shift(fraction, bv_utilst::shiftt::SHIFT_LEFT, distance);
 
     fraction=
       bv_utils.select(prefix_is_zero, shifted, fraction);
@@ -903,9 +903,7 @@ bvt float_utilst::rounder(const unbiased_floatt &src)
       aligned_exponent=src.exponent;
 
   {
-    std::size_t exponent_bits=
-      std::max((std::size_t)integer2size_t(address_bits(spec.f)),
-               (std::size_t)spec.e)+1;
+    std::size_t exponent_bits = std::max(address_bits(spec.f), spec.e) + 1;
 
     // before normalization, make sure exponent is large enough
     if(aligned_exponent.size()<exponent_bits)
@@ -1283,7 +1281,7 @@ bvt float_utilst::sticky_right_shift(
   {
     if(dist[stage]!=const_literal(false))
     {
-      bvt tmp=bv_utils.shift(result, bv_utilst::shiftt::LRIGHT, d);
+      bvt tmp=bv_utils.shift(result, bv_utilst::shiftt::SHIFT_LRIGHT, d);
 
       bvt lost_bits;
 
@@ -1307,14 +1305,14 @@ bvt float_utilst::sticky_right_shift(
 
 bvt float_utilst::debug1(
   const bvt &src1,
-  const bvt &src2)
+  const bvt &)
 {
   return src1;
 }
 
 bvt float_utilst::debug2(
   const bvt &op0,
-  const bvt &op1)
+  const bvt &)
 {
   return op0;
 }

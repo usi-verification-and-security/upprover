@@ -25,7 +25,7 @@ public:
           _message_handler, _goto_program, _omega,fraction,SSA_steps_size) {}
     virtual ~smt_dependency_checkert() {}
     
-    virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it it1, SSA_steps_it it2) override;
+    virtual std::pair<bool, timet> check_implication(SSA_steps_it it1, SSA_steps_it it2) override;
     virtual long find_implications() override;
 private:
   void deep_convert_guards(smtcheck_opensmt2t &decider, exprt exp);

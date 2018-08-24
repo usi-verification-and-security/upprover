@@ -33,13 +33,13 @@ hash_numbering<irep_idt, irep_id_hash> value_set_fit::function_numbering;
 static const char *alloc_adapter_prefix="alloc_adaptor::";
 
 #define forall_objects(it, map) \
-  for(object_map_dt::const_iterator (it) = (map).begin(); \
-  (it)!=(map).end(); \
+  for(object_map_dt::const_iterator it = (map).begin(); \
+  it!=(map).end(); \
   (it)++)
 
 #define Forall_objects(it, map) \
-  for(object_map_dt::iterator (it) = (map).begin(); \
-  (it)!=(map).end(); \
+  for(object_map_dt::iterator it = (map).begin(); \
+  it!=(map).end(); \
   (it)++)
 
 void value_set_fit::output(
@@ -184,8 +184,7 @@ void value_set_fit::flatten_rec(
       if(fi==values.end())
       {
         // this is some static object, keep it in.
-        exprt se(ID_symbol, o.type().subtype());
-        se.set(ID_identifier, o.get(ID_identifier));
+        const symbol_exprt se(o.get(ID_identifier), o.type().subtype());
         insert(dest, se, 0);
       }
       else
@@ -351,7 +350,7 @@ void value_set_fit::get_value_set(
 
   #if 0
   for(expr_sett::const_iterator it=value_set.begin(); it!=value_set.end(); it++)
-    std::cout << "GET_VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+    std::cout << "GET_VALUE_SET: " << format(*it) << '\n';
   #endif
 }
 
@@ -376,7 +375,7 @@ void value_set_fit::get_value_set_rec(
   gvs_recursion_sett &recursion_set) const
 {
   #if 0
-  std::cout << "GET_VALUE_SET_REC EXPR: " << from_expr(ns, "", expr)
+  std::cout << "GET_VALUE_SET_REC EXPR: " << format(expr)
             << '\n';
   std::cout << "GET_VALUE_SET_REC SUFFIX: " << suffix << '\n';
   std::cout << '\n';
@@ -447,7 +446,7 @@ void value_set_fit::get_value_set_rec(
   {
     // just keep a reference to the ident in the set
     // (if it exists)
-    irep_idt ident = expr.get_string(ID_identifier)+suffix;
+    irep_idt ident = id2string(to_symbol_expr(expr).get_identifier()) + suffix;
     valuest::const_iterator v_it=values.find(ident);
 
     if(has_prefix(id2string(ident), alloc_adapter_prefix))
@@ -529,7 +528,7 @@ void value_set_fit::get_value_set_rec(
     if(expr.get(ID_value)==ID_NULL &&
        expr.type().id()==ID_pointer)
     {
-      insert(dest, exprt("NULL-object", expr.type().subtype()), 0);
+      insert(dest, exprt(ID_null_object, expr.type().subtype()), 0);
       return;
     }
   }
@@ -769,7 +768,7 @@ void value_set_fit::get_reference_set_sharing_rec(
   const namespacet &ns) const
 {
   #if 0
-  std::cout << "GET_REFERENCE_SET_REC EXPR: " << from_expr(ns, "", expr)
+  std::cout << "GET_REFERENCE_SET_REC EXPR: " << format(expr)
             << '\n';
   #endif
 
@@ -844,7 +843,7 @@ void value_set_fit::get_reference_set_sharing_rec(
     for(expr_sett::const_iterator it=value_set.begin();
         it!=value_set.end();
         it++)
-      std::cout << "VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+      std::cout << "VALUE_SET: " << format(*it) << '\n';
     #endif
 
     return;
@@ -874,10 +873,8 @@ void value_set_fit::get_reference_set_sharing_rec(
         insert(dest, exprt(ID_unknown, expr.type()));
       else
       {
-        exprt index_expr(ID_index, expr.type());
-        index_expr.operands().resize(2);
-        index_expr.op0()=object;
-        index_expr.op1()=from_integer(0, index_type());
+        index_exprt index_expr(
+          object, from_integer(0, index_type()), expr.type());
 
         // adjust type?
         if(object.type().id()!="#REF#" &&
@@ -932,9 +929,7 @@ void value_set_fit::get_reference_set_sharing_rec(
       {
         offsett o = it->second;
 
-        exprt member_expr(ID_member, expr.type());
-        member_expr.copy_to_operands(object);
-        member_expr.set(ID_component_name, component_name);
+        member_exprt member_expr(object, component_name, expr.type());
 
         // adjust type?
         if(ns.follow(struct_op.type())!=ns.follow(object.type()))
@@ -965,8 +960,8 @@ void value_set_fit::assign(
   const namespacet &ns)
 {
   #if 0
-  std::cout << "ASSIGN LHS: " << from_expr(ns, "", lhs) << '\n';
-  std::cout << "ASSIGN RHS: " << from_expr(ns, "", rhs) << '\n';
+  std::cout << "ASSIGN LHS: " << format(lhs) << '\n';
+  std::cout << "ASSIGN RHS: " << format(rhs) << '\n';
   #endif
 
   if(rhs.id()==ID_if)
@@ -1000,9 +995,7 @@ void value_set_fit::assign(
       if(subtype.id()==ID_code)
         continue;
 
-      exprt lhs_member(ID_member, subtype);
-      lhs_member.set(ID_component_name, name);
-      lhs_member.copy_to_operands(lhs);
+      member_exprt lhs_member(lhs, name, subtype);
 
       exprt rhs_member;
 
@@ -1060,8 +1053,8 @@ void value_set_fit::assign(
   }
   else if(type.id()==ID_array)
   {
-    exprt lhs_index(ID_index, type.subtype());
-    lhs_index.copy_to_operands(lhs, exprt(ID_unknown, index_type()));
+    const index_exprt lhs_index(
+      lhs, exprt(ID_unknown, index_type()), type.subtype());
 
     if(rhs.id()==ID_unknown ||
        rhs.id()==ID_invalid)
@@ -1096,16 +1089,16 @@ void value_set_fit::assign(
       {
         assert(rhs.operands().size()==3);
 
-        exprt op0_index(ID_index, type.subtype());
-        op0_index.copy_to_operands(rhs.op0(), exprt(ID_unknown, index_type()));
+        const index_exprt op0_index(
+          rhs.op0(), exprt(ID_unknown, index_type()), type.subtype());
 
         assign(lhs_index, op0_index, ns);
         assign(lhs_index, rhs.op2(), ns);
       }
       else
       {
-        exprt rhs_index(ID_index, type.subtype());
-        rhs_index.copy_to_operands(rhs, exprt(ID_unknown, index_type()));
+        const index_exprt rhs_index(
+          rhs, exprt(ID_unknown, index_type()), type.subtype());
         assign(lhs_index, rhs_index, ns);
       }
     }
@@ -1207,7 +1200,7 @@ void value_set_fit::assign_rec(
   assign_recursion_sett &recursion_set)
 {
   #if 0
-  std::cout << "ASSIGN_REC LHS: " << from_expr(ns, "", lhs) << '\n';
+  std::cout << "ASSIGN_REC LHS: " << format(lhs) << '\n';
   std::cout << "ASSIGN_REC SUFFIX: " << suffix << '\n';
 
   for(object_map_dt::const_iterator it=values_rhs.read().begin();
@@ -1236,7 +1229,7 @@ void value_set_fit::assign_rec(
   }
   else if(lhs.id()==ID_symbol)
   {
-    const irep_idt &identifier=lhs.get(ID_identifier);
+    const irep_idt &identifier = to_symbol_expr(lhs).get_identifier();
 
     if(has_prefix(id2string(identifier),
                   "value_set::dynamic_object") ||
@@ -1325,7 +1318,7 @@ void value_set_fit::assign_rec(
     // someone writes into a string-constant
     // evil guy
   }
-  else if(lhs.id()=="NULL-object")
+  else if(lhs.id() == ID_null_object)
   {
     // evil as well
   }
@@ -1371,7 +1364,7 @@ void value_set_fit::do_function_call(
     const std::string identifier="value_set::" + id2string(function) + "::" +
                                  "argument$"+std::to_string(i);
     add_var(identifier, "");
-    exprt dummy_lhs=symbol_exprt(identifier, arguments[i].type());
+    const symbol_exprt dummy_lhs(identifier, arguments[i].type());
     assign(dummy_lhs, arguments[i], ns);
   }
 
@@ -1394,7 +1387,7 @@ void value_set_fit::do_function_call(
       symbol_exprt("value_set::" + id2string(function) + "::" +
                    "argument$"+std::to_string(i), it->type());
 
-    exprt actual_lhs=symbol_exprt(identifier, it->type());
+    const symbol_exprt actual_lhs(identifier, it->type());
     assign(actual_lhs, v_expr, ns);
     i++;
   }
@@ -1448,11 +1441,6 @@ void value_set_fit::apply_code(
       throw "decl expected to have symbol on lhs";
 
     assign(lhs, exprt(ID_invalid, lhs.type()), ns);
-  }
-  else if(statement==ID_specc_notify ||
-          statement==ID_specc_wait)
-  {
-    // ignore, does not change variables
   }
   else if(statement==ID_expression)
   {

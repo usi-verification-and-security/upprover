@@ -55,7 +55,7 @@ public:
     std::string get_value(const propt &) const;
   };
 
-  typedef std::unordered_map<irep_idt, map_entryt, irep_id_hash> mappingt;
+  typedef std::unordered_map<irep_idt, map_entryt> mappingt;
   mappingt mapping;
 
   void show() const;
@@ -74,6 +74,10 @@ public:
     const irep_idt &identifier,
     const typet &type,
     const bvt &literals);
+
+  void erase_literals(
+    const irep_idt &identifier,
+    const typet &type);
 
 protected:
   propt &prop;

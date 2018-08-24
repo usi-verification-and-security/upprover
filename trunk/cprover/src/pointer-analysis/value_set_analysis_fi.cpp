@@ -47,7 +47,7 @@ void value_set_analysis_fit::add_vars(
   goto_program.get_decl_identifiers(locals);
 
   // cache the list for the locals to speed things up
-  typedef std::unordered_map<irep_idt, entry_listt, irep_id_hash> entry_cachet;
+  typedef std::unordered_map<irep_idt, entry_listt> entry_cachet;
   entry_cachet entry_cache;
 
   value_set_fit &v=state.value_set;
@@ -156,10 +156,13 @@ void value_set_analysis_fit::get_globals(
   std::list<value_set_fit::entryt> &dest)
 {
   // static ones
-  forall_symbols(it, ns.get_symbol_table().symbols)
-    if(it->second.is_lvalue &&
-       it->second.is_static_lifetime)
-      get_entries(it->second, dest);
+  for(const auto &symbol_pair : ns.get_symbol_table().symbols)
+  {
+    if(symbol_pair.second.is_lvalue && symbol_pair.second.is_static_lifetime)
+    {
+      get_entries(symbol_pair.second, dest);
+    }
+  }
 }
 
 bool value_set_analysis_fit::check_type(const typet &type)

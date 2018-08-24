@@ -12,21 +12,21 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "goto_symex_state.h"
 
 #include <cstdlib>
-#include <cassert>
 #include <iostream>
 
+#include <util/invariant.h>
 #include <util/base_exceptions.h>
 #include <util/std_expr.h>
 #include <util/prefix.h>
 
-//#include <analyses/dirty.h>
+#include <analyses/dirty.h>
 
-goto_symex_statet::goto_symex_statet():
-  depth(0),
-  symex_target(nullptr),
-  atomic_section_id(0),
-  record_events(true)
-  //dirty(nullptr)
+goto_symex_statet::goto_symex_statet()
+  : depth(0),
+    symex_target(nullptr),
+    atomic_section_id(0),
+    record_events(true),
+    dirty()
 {
   threads.resize(1);
   new_frame();
@@ -50,12 +50,9 @@ void goto_symex_statet::level0t::operator()(
     return;
 
   const symbolt *s;
-
-  if(ns.lookup(obj_identifier, s))
-  {
-    std::cerr << "level0: failed to find " << obj_identifier << '\n';
-    abort();
-  }
+  const bool found_l0 = !ns.lookup(obj_identifier, s);
+  DATA_INVARIANT(
+    found_l0, "level0: failed to find " + id2string(obj_identifier));
 
   // don't rename shared variables or functions
   if(s->type.id()==ID_code ||
@@ -314,7 +311,8 @@ void goto_symex_statet::assignment(
   const exprt &rhs,  // L2
   const namespacet &ns,
   bool rhs_is_simplified,
-  bool record_value)
+  bool record_value,
+  bool allow_pointer_unsoundness)
 {
   // identifier should be l0 or l1, make sure it's l1
   rename(lhs, ns, L1);
@@ -326,7 +324,7 @@ void goto_symex_statet::assignment(
   assert_l1_renaming(lhs);
 
   #if 0
-  assert(l1_identifier != get_original_name(l1_identifier)
+  PRECONDITION(l1_identifier != get_original_name(l1_identifier)
       || l1_identifier=="goto_symex::\\guard"
       || ns.lookup(l1_identifier).is_shared()
       || has_prefix(id2string(l1_identifier), "symex::invalid_object")
@@ -344,6 +342,10 @@ void goto_symex_statet::assignment(
 
   assert_l2_renaming(lhs);
   assert_l2_renaming(rhs);
+
+  // see #305 on GitHub for a simple example and possible discussion
+  if(is_shared && lhs.type().id() == ID_pointer && !allow_pointer_unsoundness)
+    throw "pointer handling for concurrency is unsound";
 
   // for value propagation -- the RHS is L2
 
@@ -378,8 +380,8 @@ void goto_symex_statet::propagationt::operator()(exprt &expr)
 {
   if(expr.id()==ID_symbol)
   {
-    valuest::const_iterator it=
-      values.find(expr.get(ID_identifier));
+    valuest::const_iterator it =
+      values.find(to_symbol_expr(expr).get_identifier());
     if(it!=values.end())
       expr=it->second;
   }
@@ -493,9 +495,12 @@ void goto_symex_statet::rename(
   }
   else if(expr.id()==ID_address_of)
   {
-    assert(expr.operands().size()==1);
+    DATA_INVARIANT(
+      expr.operands().size() == 1, "address_of should have a single operand");
     rename_address(expr.op0(), ns, level);
-    assert(expr.type().id()==ID_pointer);
+    DATA_INVARIANT(
+      expr.type().id() == ID_pointer,
+      "type of address_of should be ID_pointer");
     expr.type().subtype()=expr.op0().type();
   }
   else
@@ -512,8 +517,11 @@ void goto_symex_statet::rename(
       expr.type()=to_with_expr(expr).old().type();
     else if(expr.id()==ID_if)
     {
-      assert(to_if_expr(expr).true_case().type()==
-             to_if_expr(expr).false_case().type());
+      DATA_INVARIANT(
+        to_if_expr(expr).true_case().type() ==
+          to_if_expr(expr).false_case().type(),
+        "true case of to_if_expr should be of same type "
+        "as false case");
       expr.type()=to_if_expr(expr).true_case().type();
     }
   }
@@ -529,11 +537,10 @@ bool goto_symex_statet::l2_thread_read_encoding(
     return false;
 
   // is it a shared object?
-  //INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
   const irep_idt &obj_identifier=expr.get_object_name();
-  if(obj_identifier=="goto_symex::\\guard" ||
-     (!ns.lookup(obj_identifier).is_shared() /*&&
-      !(*dirty)(obj_identifier)*/))
+  if(
+    obj_identifier == "goto_symex::\\guard" ||
+    (!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier)))
     return false;
 
   ssa_exprt ssa_l1=expr;
@@ -623,14 +630,14 @@ bool goto_symex_statet::l2_thread_read_encoding(
     }
     else
     {
-        symex_target->assignment(
-          guard.as_expr(),
-          ssa_l1,
-          ssa_l1,
-          ssa_l1.get_original_expr(),
-          tmp,
-          source,
-          symex_targett::assignment_typet::PHI);
+    symex_target->assignment(
+      guard.as_expr(),
+      ssa_l1,
+      ssa_l1,
+      ssa_l1.get_original_expr(),
+      tmp,
+      source,
+      symex_targett::assignment_typet::PHI);
     }
 
     set_ssa_indices(ssa_l1, ns, L2);
@@ -680,11 +687,10 @@ bool goto_symex_statet::l2_thread_write_encoding(
     return false;
 
   // is it a shared object?
-  //INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
   const irep_idt &obj_identifier=expr.get_object_name();
-  if(obj_identifier=="goto_symex::\\guard" ||
-     (!ns.lookup(obj_identifier).is_shared() /*&&
-      !(*dirty)(obj_identifier)*/))
+  if(
+    obj_identifier == "goto_symex::\\guard" ||
+    (!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier)))
     return false; // not shared
 
   // see whether we are within an atomic section
@@ -700,11 +706,11 @@ bool goto_symex_statet::l2_thread_write_encoding(
   // record a shared write
   if (symex_target != NULL)
   {
-      symex_target->shared_write(
-        guard.as_expr(),
-        expr,
-        atomic_section_id,
-        source);
+  symex_target->shared_write(
+    guard.as_expr(),
+    expr,
+    atomic_section_id,
+    source);
   }
   else
   {
@@ -743,7 +749,7 @@ void goto_symex_statet::rename_address(
       index_exprt &index_expr=to_index_expr(expr);
 
       rename_address(index_expr.array(), ns, level);
-      assert(index_expr.array().type().id()==ID_array);
+      PRECONDITION(index_expr.array().type().id() == ID_array);
       expr.type()=index_expr.array().type().subtype();
 
       // the index is not an address
@@ -767,13 +773,13 @@ void goto_symex_statet::rename_address(
 
       // type might not have been renamed in case of nesting of
       // structs and pointers/arrays
-      if(member_expr.struct_op().type().id()!=ID_symbol)
+      if(member_expr.struct_op().type().id() != ID_symbol_type)
       {
         const struct_union_typet &su_type=
           to_struct_union_type(member_expr.struct_op().type());
         const struct_union_typet::componentt &comp=
           su_type.get_component(member_expr.get_component_name());
-        assert(comp.is_not_nil());
+        PRECONDITION(comp.is_not_nil());
         expr.type()=comp.type();
       }
       else
@@ -850,7 +856,7 @@ void goto_symex_statet::rename(
   {
     rename(type.subtype(), irep_idt(), ns, level);
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
     const symbolt &symbol=
       ns.lookup(to_symbol_type(type).get_identifier());
@@ -917,8 +923,8 @@ void goto_symex_statet::get_l1_name(exprt &expr) const
 
 void goto_symex_statet::switch_to_thread(unsigned t)
 {
-  assert(source.thread_nr<threads.size());
-  assert(t<threads.size());
+  PRECONDITION(source.thread_nr < threads.size());
+  PRECONDITION(t < threads.size());
 
   // save PC
   threads[source.thread_nr].pc=source.pc;

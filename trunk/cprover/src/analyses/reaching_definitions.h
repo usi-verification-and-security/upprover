@@ -60,7 +60,7 @@ public:
 protected:
   typedef typename std::map<V, std::size_t> inner_mapt;
   std::vector<typename inner_mapt::const_iterator> values;
-  std::unordered_map<irep_idt, inner_mapt, irep_id_hash> value_map;
+  std::unordered_map<irep_idt, inner_mapt> value_map;
 };
 
 struct reaching_definitiont
@@ -113,17 +113,14 @@ public:
     bv_container=&_bv_container;
   }
 
-  void transform(
-    locationt from,
-    locationt to,
-    ai_baset &ai,
-    const namespacet &ns,
-    ai_domain_baset::edge_typet edge_type) final override;
+  void
+  transform(locationt from, locationt to, ai_baset &ai, const namespacet &ns)
+    final override;
 
   void output(
     std::ostream &out,
-    const ai_baset &ai,
-    const namespacet &ns) const final override
+    const ai_baset &,
+    const namespacet &) const final override
   {
     output(out);
   }
@@ -194,15 +191,14 @@ private:
   #ifdef USE_DSTRING
   typedef std::map<irep_idt, values_innert> valuest;
   #else
-  typedef std::unordered_map<irep_idt, values_innert, irep_id_hash> valuest;
+  typedef std::unordered_map<irep_idt, values_innert> valuest;
   #endif
   valuest values;
 
   #ifdef USE_DSTRING
   typedef std::map<irep_idt, ranges_at_loct> export_cachet;
   #else
-  typedef std::unordered_map<irep_idt, ranges_at_loct, irep_id_hash>
-    export_cachet;
+  typedef std::unordered_map<irep_idt, ranges_at_loct> export_cachet;
   #endif
   mutable export_cachet export_cache;
 
@@ -218,8 +214,7 @@ private:
     const namespacet &ns,
     locationt from,
     locationt to,
-    reaching_definitions_analysist &rd,
-    ai_domain_baset::edge_typet edge_type);
+    reaching_definitions_analysist &rd);
   void transform_end_function(
     const namespacet &ns,
     locationt from,

@@ -61,10 +61,9 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
   {
     const std::map<irep_idt, exprt> &value_map=cit->second;
 
-    const symbolt &late_cast_symb=namespacet(symbol_table).lookup(cit->first);
-    const symbolt &vt_symb_type=
-      namespacet(symbol_table).lookup(
-        "virtual_table::"+id2string(late_cast_symb.name));
+    const symbolt &late_cast_symb = lookup(cit->first);
+    const symbolt &vt_symb_type =
+      lookup("virtual_table::" + id2string(late_cast_symb.name));
 
     symbolt vt_symb_var;
     vt_symb_var.name=
@@ -81,7 +80,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
     // do the values
     const struct_typet &vt_type=to_struct_type(vt_symb_type.type);
 
-    exprt values(ID_struct, symbol_typet(vt_symb_type.name));
+    struct_exprt values(symbol_typet(vt_symb_type.name));
 
     for(std::size_t i=0; i < vt_type.components().size(); i++)
     {
