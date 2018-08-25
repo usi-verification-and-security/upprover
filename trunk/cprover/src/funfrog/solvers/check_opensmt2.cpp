@@ -1,6 +1,10 @@
 #include "check_opensmt2.h"
 #include <solvers/prop/literal.h>
 
+// Shall be static - no need to allocate these all the time!
+const char* check_opensmt2t::false_str = "false";
+const char* check_opensmt2t::true_str = "true";
+
 check_opensmt2t::check_opensmt2t() :
       osmt  (nullptr),
       logic (nullptr),

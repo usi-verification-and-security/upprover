@@ -15,6 +15,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include <solvers/prop/literal.h>
 #include "funfrog/interface/solver/interpolating_solver.h"
 #include "funfrog/interface/solver/solver.h"
+#include "solver_options.h"
 
 class literalt;
 class exprt;
@@ -27,13 +28,16 @@ class check_opensmt2t :  public interpolating_solvert, public solvert
 {
 public:
     check_opensmt2t();
-    check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops) : check_opensmt2t()
-    {
-        set_reduction(_reduction);
-        set_reduction_graph(_reduction_graph);
-        set_reduction_loops(_reduction_loops);
-    }
-
+    
+#ifdef PRODUCE_PROOF    
+    check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops) 
+        : check_opensmt2t(),
+          reduction(_reduction),
+          reduction_graph(_reduction_graph),
+          reduction_loops(_reduction_loops)
+    { }
+#endif
+          
     virtual ~check_opensmt2t();
 
     virtual literalt bool_expr_to_literal(const exprt & expr) = 0;
@@ -91,15 +95,6 @@ public:
     //  Mapping from variable indices to their PTRefs in OpenSMT
     std::vector<PTRef> ptrefs;
   
-
-    void set_random_seed(unsigned int i);
-
-    unsigned get_random_seed() { return random_seed; }
-
-  virtual  void set_verbosity(int r) { verbosity = r; }
-  
-  virtual  void set_certify(int r) override { certify = r; }
-  
     bool read_formula_from_file(std::string fileName) // KE: Sepideh, this shall be renamed according to the new interface
     { return mainSolver->readFormulaFromFile(fileName.c_str()); }
   
@@ -122,32 +117,14 @@ public:
 
     virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
 
-
-    /* General consts for prop version */
-  const char* false_str = "false";
-  const char* true_str = "true";
-
 #ifdef PRODUCE_PROOF
     virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
 
-    void set_reduction(bool do_reduction) { reduction = do_reduction; }
-    void set_reduction_graph(unsigned int _reduction_graph) { reduction_graph = _reduction_graph; }
-    void set_reduction_loops(unsigned int _reduction_loops) { reduction_loops = _reduction_loops; }
-
-    void set_prop_itp_alg(ItpAlgorithm itp) {itp_algorithm = itp;}
-
-    // TODO: move these options to appropriate suclasses
-    void set_lra_itp_alg(ItpAlgorithm lra_itp) {itp_lra_algorithm = lra_itp;}
-    void set_uf_itp_alg(ItpAlgorithm uf_itp) {itp_euf_algorithm = uf_itp;}
-    void set_lra_factor(std::string factor) {itp_lra_factor = std::move(factor);}
-
 #endif //PRODUCE_PROOF
 
-#ifdef DISABLE_OPTIMIZATIONS
-    void set_dump_query(bool f);
-    void set_dump_pre_query(bool f);
-    void set_dump_query_name(const string& n);
-#endif // DISABLE_OPTIMIZATIONS
+  /* General consts for prop version - Shall be Static. No need to allocate these all the time */
+  static const char* false_str;
+  static const char* true_str;
 
 protected:
   // Common Data members
@@ -205,13 +182,14 @@ protected:
   std::string pre_queries_file_name;
 
   // Code for init these options
-
+  void set_dump_query(bool f);
+  void set_dump_query_name(const string& n);
 #endif 
   
     void insert_top_level_formulas();
 
     // Initialize the OpenSMT context
-    virtual void initializeSolver(const char*)=0;
+    virtual void initializeSolver(const solver_optionst, const char*)=0;
 
     // Free context/data in OpenSMT
     virtual void freeSolver() { delete osmt; osmt = nullptr; }

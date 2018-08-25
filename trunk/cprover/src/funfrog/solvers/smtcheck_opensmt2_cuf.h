@@ -15,13 +15,13 @@ class BitBlaster;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name
+  smtcheck_opensmt2t_cuf(solver_optionst solver_options, const char* name
   ) :
         smtcheck_opensmt2t(),
-        bitwidth(bitwidth),
-        type_constraints_level(_type_constraints_level)      
+        bitwidth(solver_options.m_bitwidth),
+        type_constraints_level(solver_options.m_byte_type_constraints)      
   {
-    initializeSolver(name);
+    initializeSolver(solver_options, name);
   }
 
   virtual ~smtcheck_opensmt2t_cuf(); // d'tor
@@ -48,9 +48,6 @@ public:
   
   PTRef type_cast_bv(const exprt &expr);
   
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
-
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
                std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep);
 
@@ -88,7 +85,7 @@ protected:
   
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
-  virtual void initializeSolver(const char*) override;
+  virtual void initializeSolver(const solver_optionst solver_options, const char*) override;
 
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   
@@ -104,6 +101,11 @@ protected:
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
   
   PTRef labs_bv(const exprt &expr); // from convert for ID_abs
+
+  // Inner use only to create UF functions (needed in UF and Mix-Encoding)  
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
+
 };
 
 #endif

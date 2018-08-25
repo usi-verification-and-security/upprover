@@ -35,7 +35,7 @@ Function: smtcheck_opensmt2t_uf::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
+void smtcheck_opensmt2t_uf::initializeSolver(const solver_optionst solver_options, const char* name)
 {
   osmt = new Opensmt(opensmt_logic::qf_uf, name);
   logic = &(osmt->getLogic());
@@ -44,6 +44,25 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   const char* msg2 = nullptr;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
   assert(strcmp(msg2, "ok") == 0);
+  
+  // Initialize parameters
+  this->verbosity { solver_options.m_verbosity };
+  this->random_seed { solver_options.m_random_seed };
+  
+#ifdef PRODUCE_PROOF  
+  this->itp_euf_algorithm { solver_options.m_uf_itp_algorithm };
+  
+  this->certify { solver_options.m_certify };
+  this->reduction { solver_options.m_do_reduce };
+  this->reduction_loops { solver_options.m_reduction_loops };
+  this->reduction_graph { solver_options.m_reduction_graph };
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    set_dump_query(solver_options.m_dump_query);
+    this->dump_pre_queries { solver_options.m_dump_pre_query };
+    set_dump_query_name(solver_options.m_dump_query_name);
+#endif // DISABLE_OPTIMIZATIONS
+
 
   //Initialize the stuff to fake UF
   //Create new sort UReal

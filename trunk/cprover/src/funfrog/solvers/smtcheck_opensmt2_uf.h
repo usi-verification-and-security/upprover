@@ -12,10 +12,10 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name) :
+  smtcheck_opensmt2t_uf(const solver_optionst solver_options, const char* name) :
       smtcheck_opensmt2t()
   {
-    initializeSolver(name);
+    initializeSolver(solver_options, name);
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
@@ -25,23 +25,23 @@ public:
   virtual PTRef numeric_constant(const exprt &expr) override;
   
   virtual PTRef type_cast(const exprt & expr) override;
-
-protected:
-    PTRef new_num_var(const std::string & var_name) override;
-
-public:
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
-  SRef getURealSortRef() const {return sort_ureal;}
   
+  SRef getURealSortRef() const {return sort_ureal;}
+
 protected:
 
+  PTRef new_num_var(const std::string & var_name) override;
+    
   virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  virtual void initializeSolver(const char* name) override;
+  virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
   
   virtual bool is_non_linear_operator(PTRef tr) override;
- 
+
+  // Inner use only to create UF functions (needed in UF and Mix-Encoding)
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
+  
 private:  
 
   static const char *tk_sort_ureal;

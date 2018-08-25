@@ -19,13 +19,26 @@ Function: smtcheck_opensmt2t_lia::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lia::initializeSolver(const char* name)
+void smtcheck_opensmt2t_lia::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_lia, name);
     lalogic = &(osmt->getLIALogic());
     logic = &(osmt->getLIALogic());
     mainSolver = &(osmt->getMainSolver());
 
+    // Initialize parameters
+    this->verbosity { solver_options.m_verbosity };
+    this->random_seed { solver_options.m_random_seed };
+  
+#ifdef PRODUCE_PROOF  
+    // TODO: add sets once interpolation is working for LIA
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    set_dump_query(solver_options.m_dump_query);
+    this->dump_pre_queries { solver_options.m_dump_pre_query };
+    set_dump_query_name(solver_options.m_dump_query_name);
+#endif // DISABLE_OPTIMIZATIONS
+    
 #ifndef NDEBUG
     // To avoid issues with type constraints for LIA
     ptr_assert_var_constraints = logic->getTerm_true();

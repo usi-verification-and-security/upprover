@@ -11,9 +11,9 @@ Module: Wrapper for OpenSMT2
 
 class smtcheck_opensmt2t_lia : public smtcheck_opensmt2t_la {
 public:
-    smtcheck_opensmt2t_lia(unsigned int _type_constraints_level, const char * name) :
-            smtcheck_opensmt2t_la(_type_constraints_level, name) {
-        initializeSolver(name);
+    smtcheck_opensmt2t_lia(const solver_optionst solver_options, const char * name) :
+            smtcheck_opensmt2t_la(solver_options.m_type_constraints, name) {
+        initializeSolver(solver_options, name);
         ptr_assert_var_constraints = logic->getTerm_true();
     }
 
@@ -30,7 +30,7 @@ public:
 #endif
 protected:
 
-    virtual void initializeSolver(const char *) override;
+    virtual void initializeSolver(const solver_optionst solver_options, const char *) override;
 
 };
 

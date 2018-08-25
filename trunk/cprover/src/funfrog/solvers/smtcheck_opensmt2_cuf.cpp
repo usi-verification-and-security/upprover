@@ -26,13 +26,26 @@ Function: smtcheck_opensmt2t_cuf::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
+void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
     logic = &(osmt->getCUFLogic());
     uflogic = &(osmt->getCUFLogic());
     bvlogic = &((BVLogic&)osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
+ 
+    // Initialize parameters
+    this->verbosity { solver_options.m_verbosity };
+    this->random_seed { solver_options.m_random_seed };
+  
+#ifdef PRODUCE_PROOF  
+    // TODO: add sets once interpolation is working for LIA
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    set_dump_query(solver_options.m_dump_query);
+    this->dump_pre_queries { solver_options.m_dump_pre_query };
+    set_dump_query_name(solver_options.m_dump_query_name);
+#endif // DISABLE_OPTIMIZATIONS    
 
     SolverId id = { 0 };
     vec<PtAsgn> asgns;
