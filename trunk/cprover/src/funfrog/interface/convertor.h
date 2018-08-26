@@ -1,12 +1,19 @@
-//
-// Created by usi on 8/22/18.
-//
 
 #ifndef PROJECT_CONVERTOR_H
 #define PROJECT_CONVERTOR_H
 
+#include <util/expr.h>
+#include "solvers/prop/literal.h"
+#include <opensmt/opensmt2.h>
+
 class convertort {
-  public:
+public:
+
+    virtual void set_to_true(const exprt &expr) = 0; // Common to all
+
+    virtual void set_equal(literalt l1, literalt l2) = 0; // Common to all
+
+    virtual literalt land(literalt l1, literalt l2) = 0; // Common to all
 
 };
 #endif //PROJECT_CONVERTOR_H
