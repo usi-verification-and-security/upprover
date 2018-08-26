@@ -12,7 +12,7 @@
 namespace hifrog {
 
 inline literalt convert_expr(check_opensmt2t & decider, const exprt & expr) {
-    return decider.bool_expr_to_literal(expr);
+    return decider.convert_bool_expr(expr);
 }
 
 template<typename Iter>

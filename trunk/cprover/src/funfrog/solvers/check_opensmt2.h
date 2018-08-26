@@ -32,10 +32,10 @@ public:
           
     virtual ~check_opensmt2t();
 
-    virtual literalt bool_expr_to_literal(const exprt & expr) = 0;
-    // virtual literalt land(literalt l1, literalt l2) = 0;  //moved to iface
-    virtual literalt lor(literalt l1, literalt l2) = 0;
-    virtual literalt lor(const bvt & bv) = 0;
+   // virtual literalt bool_expr_to_literal(const exprt & expr) = 0; //moved to iface
+   // virtual literalt land(literalt l1, literalt l2) = 0;
+   // virtual literalt lor(literalt l1, literalt l2) = 0;
+   // virtual literalt lor(const bvt & bv) = 0;
     virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
 
     literalt limplies(literalt a, literalt b)
@@ -57,12 +57,12 @@ public:
     virtual void assert_literal(literalt) = 0;
 
     void set_to_true(const exprt &expr) override {
-        literalt l = bool_expr_to_literal(expr);
+        literalt l = convert_bool_expr(expr);
         assert_literal(l);
     }
 
     void set_to_false(const exprt &expr){
-        literalt l = bool_expr_to_literal(expr);
+        literalt l = convert_bool_expr(expr);
         assert_literal(!l); // assert the negation
     }
 

@@ -438,7 +438,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         if (it->is_assert()) {
 
             // Collect ass \in assertions(f) in bv
-            literalt tmp_literal = decider.land(decider.bool_expr_to_literal(it->cond_expr), var_constraints_lit);
+            literalt tmp_literal = decider.land(decider.convert_bool_expr(it->cond_expr), var_constraints_lit);
             it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
             error_lits.push_back(!it->cond_literal); // negated literal
         } else if (it->is_assume()) {
@@ -698,7 +698,7 @@ void partitioning_target_equationt::convert_partition_goto_instructions(
 {
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_goto()) {
-            it->cond_literal = it->ignore ? const_literal(true) : decider.bool_expr_to_literal(it->cond_expr);
+            it->cond_literal = it->ignore ? const_literal(true) : decider.convert_bool_expr(it->cond_expr);
         }
     }
 }
@@ -718,7 +718,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
         check_opensmt2t &decider, partitiont& partition) {
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assume()) {
-            it->cond_literal = it->ignore ? const_literal(true) : decider.bool_expr_to_literal(it->cond_expr);
+            it->cond_literal = it->ignore ? const_literal(true) : decider.convert_bool_expr(it->cond_expr);
         }
     }
 }
@@ -803,12 +803,12 @@ void partitioning_target_equationt::convert_partition(
     }
     // Convert the assumption propagation symbols
     partition_ifacet &partition_iface = partition.get_iface();
-    partition_iface.callstart_literal = decider.bool_expr_to_literal(
+    partition_iface.callstart_literal = decider.convert_bool_expr(
             partition_iface.callstart_symbol);
-    partition_iface.callend_literal = decider.bool_expr_to_literal(
+    partition_iface.callend_literal = decider.convert_bool_expr(
             partition_iface.callend_symbol);
     if (partition_iface.assertion_in_subtree) {
-        partition_iface.error_literal = decider.bool_expr_to_literal(partition_iface.error_symbol);
+        partition_iface.error_literal = decider.convert_bool_expr(partition_iface.error_symbol);
     }
     if (partition.is_stub()) {
         return;

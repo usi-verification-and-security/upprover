@@ -130,7 +130,7 @@ protected:
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
 
-  literalt bool_expr_to_literal(const exprt & expr) override {
+  literalt convert_bool_expr(const exprt &expr) override {
       assert(is_boolean(expr));
       return get_bv_converter().convert(expr);
   }

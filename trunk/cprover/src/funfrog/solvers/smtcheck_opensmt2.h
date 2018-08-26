@@ -42,7 +42,7 @@ public:
 
   void set_equal(literalt l1, literalt l2) override; // Common to all
 
-  virtual literalt bool_expr_to_literal(const exprt & expr) override{
+  virtual literalt convert_bool_expr(const exprt &expr) override{
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
       // FIXME: PTRef to literal should maybe consider negation, caching...
