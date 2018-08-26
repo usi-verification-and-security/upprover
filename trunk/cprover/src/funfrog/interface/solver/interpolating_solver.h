@@ -25,7 +25,7 @@ public:
   // next call of new_partition() will be part of this partition.
   //
   // returns a unique partition id
-  virtual expr_idt new_partition()=0;
+  virtual fle_part_idt new_partition()=0;
 
 #ifdef PRODUCE_PROOF  
   // Extracts the symmetric interpolant of the specified set of

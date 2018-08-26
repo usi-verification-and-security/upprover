@@ -86,7 +86,7 @@ public:
   
     virtual bool is_overapprox_encoding() const = 0;
 
-    expr_idt new_partition() override;
+    fle_part_idt new_partition() override;
 
     void close_partition() override;
 
