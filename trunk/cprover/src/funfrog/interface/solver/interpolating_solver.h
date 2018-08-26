@@ -27,8 +27,6 @@ public:
   // returns a unique partition id
   virtual expr_idt new_partition()=0;
 
-  virtual void set_certify(int r)=0;
-
 #ifdef PRODUCE_PROOF  
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the

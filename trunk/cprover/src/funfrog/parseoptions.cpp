@@ -927,6 +927,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("random-seed")) {
     options.set_option("random-seed", cmdline.get_value("random-seed"));
+  } else {
+    options.set_option("random-seed", "1");  
   }
   if (cmdline.isset("color-proof")) {
     options.set_option("color-proof", cmdline.get_value("color-proof"));
@@ -935,6 +937,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
+  } else {
+    options.set_option("verbose-solver", "0");  
   }
   //options.set_option("simplify-if", false); // Try to avoid compications with if
   //if (cmdline.isset("refine-mode")) {

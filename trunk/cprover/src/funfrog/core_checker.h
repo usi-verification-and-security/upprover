@@ -19,6 +19,7 @@
 #include <funfrog/solvers/smtcheck_opensmt2_lra.h>
 #include <funfrog/solvers/smtcheck_opensmt2_lia.h>
 #include <funfrog/solvers/satcheck_opensmt2.h>
+#include <funfrog/solvers/solver_options.h>
 #include "subst_scenario.h"
 
 class smt_assertion_no_partitiont;
@@ -58,14 +59,22 @@ protected:
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
+   solver_optionst solver_options; // Init once, use when ever create a new solver
 
   void initialize_solver();
-  void initialize_solver_options(check_opensmt2t* _decider);
   smtcheck_opensmt2t_uf * initialize__euf_solver();
   smtcheck_opensmt2t_cuf * initialize__cuf_solver();
   smtcheck_opensmt2t_lra * initialize__lra_solver();
   smtcheck_opensmt2t_lia * initialize__lia_solver();
   satcheck_opensmt2t * initialize__prop_solver();
+  
+  void initialize_solver_options();
+  void initialize_solver_debug_options();
+  void initialize__euf_option_solver();
+  void initialize__cuf_option_solver();
+  void initialize__lra_option_solver();
+  void initialize__lia_option_solver();
+  void initialize__prop_option_solver();
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  

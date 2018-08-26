@@ -26,6 +26,7 @@ set(HIFROG_SOURCE_FILES
         solvers/smtcheck_opensmt2_lra.h
         solvers/smtcheck_opensmt2_uf.cpp
         solvers/smtcheck_opensmt2_uf.h
+        solvers/solver_options.h
         solvers/naming_boolbv.h
         assertion_info.h
         call_stack.h

@@ -15,10 +15,10 @@ Author: Grigory Fedyukovich
 #include <iostream>
 #endif
 
-satcheck_opensmt2t::satcheck_opensmt2t(const char * name, const namespacet & ns)
+satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, const char * name, const namespacet & ns)
         : check_opensmt2t()
 {
-    initializeSolver(name);
+    initializeSolver(solver_options, name);
     // TODO: move to separate method?
     auto bv_pointers = new naming_boolbv(ns, *this);
     bv_pointers->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
@@ -26,13 +26,29 @@ satcheck_opensmt2t::satcheck_opensmt2t(const char * name, const namespacet & ns)
     this->set_prop_conv_solvert(std::move(prop_conv_solver));
 }
 
-void satcheck_opensmt2t::initializeSolver(const char* name)
+void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_bool, name);
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
     const char* msg = nullptr;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+    
+    // Initialize parameters
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
+  
+#ifdef PRODUCE_PROOF  
+    this->itp_algorithm.x = solver_options.m_prop_itp_algorithm;
+
+    this->certify = solver_options.m_certify;
+    this->reduction = solver_options.m_do_reduce;
+    this->reduction_loops = solver_options.m_reduction_loops;
+    this->reduction_graph = solver_options.m_reduction_graph;
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    // TODO: add when Debug options works for Proporsitional logic
+#endif // DISABLE_OPTIMIZATIONS    
 }
 
 /*******************************************************************\

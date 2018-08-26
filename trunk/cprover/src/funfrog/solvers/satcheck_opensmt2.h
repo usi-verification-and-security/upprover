@@ -28,7 +28,7 @@ class boolbv_mapt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-  satcheck_opensmt2t(const char* name, const namespacet & ns);
+  satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
 
   virtual ~satcheck_opensmt2t() {
     freeSolver();
@@ -151,7 +151,7 @@ protected:
     void set_variable_name(literalt a, const std::string & name) override;
 
   // Initialize the OpenSMT context
-  virtual void initializeSolver(const char*) override;
+  virtual void initializeSolver(solver_optionst solver_options, const char*) override;
 
 
   void add_variables();

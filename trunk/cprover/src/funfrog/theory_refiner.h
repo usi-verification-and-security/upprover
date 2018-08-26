@@ -5,6 +5,7 @@
 #include <util/options.h>
 #include <util/ui_message.h>
 #include "subst_scenario.h"
+#include <funfrog/solvers/solver_options.h>
 
 class smtcheck_opensmt2t_cuf;
 class symex_assertion_sumt;
@@ -43,6 +44,7 @@ private:
   ui_message_handlert &message_handler;
   smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;
+  solver_optionst solver_options;
   
   //void setup_unwind(symex_assertion_sumt& symex);
   void report_success();

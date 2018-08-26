@@ -15,9 +15,7 @@ class solvert
     virtual void set_random_seed(unsigned int i) = 0;
 
     virtual unsigned get_random_seed() = 0;
-
-    virtual  void set_verbosity(int r) = 0;
-
+    
     virtual exprt get_value(const exprt &expr) = 0;
 
 };

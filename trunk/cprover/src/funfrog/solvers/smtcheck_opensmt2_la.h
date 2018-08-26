@@ -12,17 +12,17 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_la : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name) :
-          smtcheck_opensmt2t(),
-          type_constraints_level(_type_constraints_level)
-  {
-  }
+    smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name) :
+            smtcheck_opensmt2t(),
+            type_constraints_level(_type_constraints_level)
+    {
+    }
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor
 
     virtual PTRef expression_to_ptref(const exprt & expr) override;
 
-  virtual literalt const_from_str(const char* num);
+    virtual literalt const_from_str(const char* num);
 
     virtual PTRef numeric_constant(const exprt & expr) override;
 

@@ -1,6 +1,10 @@
 #include "check_opensmt2.h"
 #include <solvers/prop/literal.h>
 
+// Shall be static - no need to allocate these all the time!
+const char* check_opensmt2t::false_str = "false";
+const char* check_opensmt2t::true_str = "true";
+
 check_opensmt2t::check_opensmt2t() :
       osmt  (nullptr),
       logic (nullptr),
@@ -37,10 +41,16 @@ check_opensmt2t::~check_opensmt2t()
 void check_opensmt2t::set_random_seed(unsigned int i)
 {
   random_seed = i;
-  if (osmt != nullptr) {
+  if (osmt != NULL) {
       const char* msg=nullptr;
       osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
-      if (msg != nullptr) free((char *)msg); // If there is an error consider printing the msg
+      if ((char *)msg != nullptr) { 
+          // If there is an error consider printing the msg
+          /*free((char *)msg); // KE: UNIX crash herel TODO
+           ==2676== Invalid free() / delete / delete[] / realloc()
+           ==2676==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so) */
+          msg=nullptr;
+      }
   }
 }
 

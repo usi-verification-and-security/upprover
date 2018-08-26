@@ -20,7 +20,7 @@ Function: smtcheck_opensmt2t_lra::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
+void smtcheck_opensmt2t_lra::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_lra, name);
     lalogic = &(osmt->getLRALogic());
@@ -32,6 +32,25 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     // msg is not allocated, do not free it!
     assert(strcmp(msg, "ok") == 0);
 
+    // Initialize parameters
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
+  
+#ifdef PRODUCE_PROOF  
+    this->itp_lra_algorithm.x = solver_options.m_lra_itp_algorithm;
+    this->set_lra_factor(solver_options.m_lra_factor);
+
+    this->certify = solver_options.m_certify;
+    this->reduction = solver_options.m_do_reduce;
+    this->reduction_loops = solver_options.m_reduction_loops;
+    this->reduction_graph = solver_options.m_reduction_graph;
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    set_dump_query(solver_options.m_dump_query);
+    this->dump_pre_queries { solver_options.m_dump_pre_query };
+    set_dump_query_name(solver_options.m_dump_query_name);
+#endif // DISABLE_OPTIMIZATIONS
+    
 #ifndef NDEBUG
     // To avoid issues with type constraints for LRA
     ptr_assert_var_constraints = logic->getTerm_true();
