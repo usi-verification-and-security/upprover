@@ -92,17 +92,6 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     return push_variable(ans);
 }
 
-literalt smtcheck_opensmt2t::land(bvt b){
-    vec<PTRef> args;
-    for(auto lit : b)
-    {
-        PTRef tmpp = literalToPTRef(lit);
-        args.push(tmpp);
-    }
-    PTRef ans = logic->mkAnd(args);
-    return push_variable(ans);
-}
-
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     vec<PTRef> args;
     PTRef pl1 = literalToPTRef(l1);

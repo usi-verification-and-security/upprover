@@ -51,8 +51,6 @@ public:
 
   literalt land(literalt l1, literalt l2) override; // Common to all
 
-  virtual literalt land(bvt b); // Common to all
-
   literalt lor(literalt l1, literalt l2) override; // Common to all
 
   literalt lor(const bvt & b) override; // Common to all
