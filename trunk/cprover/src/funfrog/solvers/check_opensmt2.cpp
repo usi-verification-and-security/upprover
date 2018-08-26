@@ -41,16 +41,10 @@ check_opensmt2t::~check_opensmt2t()
 void check_opensmt2t::set_random_seed(unsigned int i)
 {
   random_seed = i;
-  if (osmt != NULL) {
-      const char* msg=nullptr;
+  if (osmt != nullptr) {
+      const char* msg = nullptr;
       osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
-      if ((char *)msg != nullptr) { 
-          // If there is an error consider printing the msg
-          /*free((char *)msg); // KE: UNIX crash herel TODO
-           ==2676== Invalid free() / delete / delete[] / realloc()
-           ==2676==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so) */
-          msg=nullptr;
-      }
+      assert(msg && std::strcmp(msg, "ok") == 0); // The message is set to "ok" if option is set successfully in OpenSMT
   }
 }
 
