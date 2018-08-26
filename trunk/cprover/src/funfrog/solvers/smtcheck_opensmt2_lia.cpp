@@ -27,8 +27,8 @@ void smtcheck_opensmt2t_lia::initializeSolver(solver_optionst solver_options, co
     mainSolver = &(osmt->getMainSolver());
 
     // Initialize parameters
-    this->verbosity { solver_options.m_verbosity };
-    this->random_seed { solver_options.m_random_seed };
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
   
 #ifdef PRODUCE_PROOF  
     // TODO: add sets once interpolation is working for LIA

@@ -18,6 +18,7 @@
 #include "solvers/satcheck_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "conversion_utils.h"
+#include <funfrog/solvers/solver_options.h>
 
 #include <sstream>
 #include <map>
@@ -742,7 +743,8 @@ std::pair<bool, fine_timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{
         // TODO: create solver according to current settings?
-        satcheck_opensmt2t* decider = new satcheck_opensmt2t("implication checker", ns);
+        solver_optionst solver_options; // Set defaults inside
+        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns);
         decider->new_partition();
 
         convert_delta_SSA(*decider, c1, c2);

@@ -28,12 +28,6 @@ class smtcheck_opensmt2t : public check_opensmt2t
 public:
     smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false}
     {}
-  // C'tor to pass the value to main interface check_opensmt2
-  smtcheck_opensmt2t(bool _reduction, int _reduction_graph, int _reduction_loops,
-          bool _store_unsupported_info=false) :
-        check_opensmt2t(_reduction, _reduction_graph, _reduction_loops),
-        unsupported_info(_store_unsupported_info)
-  { /* No init of solver - done for inherit check_opensmt2 */}
 
   virtual ~smtcheck_opensmt2t(); // d'tor
 

@@ -10,6 +10,7 @@
 #include "naming_helpers.h"
 
 #include <set>
+#include <algorithm>
 
 inline bool is_boolean(const exprt & expr){
     return expr.is_boolean() || expr.type().id() == ID_c_bool;

@@ -26,6 +26,7 @@ set(HIFROG_SOURCE_FILES
         solvers/smtcheck_opensmt2_lra.h
         solvers/smtcheck_opensmt2_uf.cpp
         solvers/smtcheck_opensmt2_uf.h
+        solvers/solver_options.h
         solvers/naming_boolbv.h
         assertion_info.h
         call_stack.h
@@ -149,13 +150,7 @@ target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
 target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog-lib
-    ansi-c
-    cpp
-    goto-symex
-    solvers
-    util
-    xml
+target_link_libraries(hifrog-lib ansi-c cpp goto-symex solvers util xml
 )
 
 target_link_libraries(hifrog hifrog-lib)

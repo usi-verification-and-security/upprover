@@ -146,7 +146,7 @@ void core_checkert::initialize__euf_option_solver()
 {
 #ifdef PRODUCE_PROOF
     if (is_option_set("itp-uf-algorithm")) 
-        solver_option.m_uf_itp_algorithm{options.get_signed_int_option("itp-uf-algorithm")};
+        solver_options.m_uf_itp_algorithm = options.get_signed_int_option("itp-uf-algorithm");
 #endif
         
     initialize_solver_options();
@@ -156,13 +156,13 @@ void core_checkert::initialize__euf_option_solver()
 // Generic creation for any solver - euf
 smtcheck_opensmt2t_uf * core_checkert::initialize__euf_solver()
 {
-    return new smtcheck_opensmt2t_uf(solver_option, "uf checker");
+    return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
 }
 
 // Generic initialise for OpenSMT solver - cuf
 void core_checkert::initialize__cuf_option_solver()
 {
-    solver_option.initialize_mix_encoding_solver_options(
+    solver_options.initialize_mix_encoding_solver_options(
             options.get_unsigned_int_option("type-byte-constraints"), 
             options.get_unsigned_int_option("bitwidth"));
     
@@ -174,13 +174,13 @@ void core_checkert::initialize__cuf_option_solver()
 // Only for OpenSMT solver - cuf
 smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
-    return new smtcheck_opensmt2t_cuf(solver_option, "cuf checker");
+    return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
 }
 
 // Generic initialise for any solver - lra
 void core_checkert::initialize__lra_option_solver()
 {
-    solver_option.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
+    solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
     
     initialize_solver_options();
         
@@ -190,13 +190,13 @@ void core_checkert::initialize__lra_option_solver()
 // Generic creation for any solver - lra
 smtcheck_opensmt2t_lra * core_checkert::initialize__lra_solver()
 {
-    return new smtcheck_opensmt2t_lra(solver_option, "lra checker");
+    return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
 }
 
 // Generic initialise for any solver - lia
 void core_checkert::initialize__lia_option_solver()
 {
-    solver_option.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
+    solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
     
     //initialize_solver_options(); // TODO: when we have interpolation
         
@@ -206,14 +206,14 @@ void core_checkert::initialize__lia_option_solver()
 // Generic creation for any solver - lra
 smtcheck_opensmt2t_lia * core_checkert::initialize__lia_solver()
 {
-    return new smtcheck_opensmt2t_lia(solver_option, "lia checker");
+    return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
 }
 
 // Generic initialise for any solver - lia
 void core_checkert::initialize__prop_option_solver()
 {
     if (is_option_set("itp-algorithm")) 
-        solver_option.m_prop_itp_algorithm{options.get_signed_int_option("itp-algorithm")};
+        solver_options.m_prop_itp_algorithm = options.get_signed_int_option("itp-algorithm");
  
     initialize_solver_options();
         
@@ -229,13 +229,13 @@ satcheck_opensmt2t * core_checkert::initialize__prop_solver()
     }
 
     // If all OK, create the decider
-    return new satcheck_opensmt2t(solver_option, "prop checker", ns);
+    return new satcheck_opensmt2t(solver_options, "prop checker", ns);
 }
 
 void core_checkert::initialize_solver_debug_options()
 {
 #ifdef DISABLE_OPTIMIZATIONS
-    solver_option.initialize_solver_debug_options(
+    solver_options.initialize_solver_debug_options(
     options.get_bool_option("dump-query"),
     options.get_bool_option("dump-pre-query"),
     options.get_option("dump-query-name"));
@@ -245,21 +245,21 @@ void core_checkert::initialize_solver_debug_options()
 void core_checkert::initialize_solver_options()
 {
     // Set all the rest of the option - KE: check what to shift to the part of SMT only
-    solver_option.m_verbosity {options.get_unsigned_int_option("verbose-solver")};
+    solver_options.m_verbosity = options.get_unsigned_int_option("verbose-solver");
   
     if(options.get_unsigned_int_option("random-seed")) 
-        solver_option.m_random_seed {options.get_unsigned_int_option("random-seed")};
+        solver_options.m_random_seed = options.get_unsigned_int_option("random-seed");
         
 #ifdef PRODUCE_PROOF
-    solver_option.m_certify { options.get_unsigned_int_option("check-itp") };
+    solver_options.m_certify = options.get_unsigned_int_option("check-itp");
     bool do_reduce = options.get_bool_option("reduce-proof");
     if (do_reduce) {
-        solver_option.m_do_reduce(true);
-        solver_option.m_reduction_loops{options.get_unsigned_int_option("reduce-proof-loops")};
-        solver_option.m_reduction_graph{options.get_unsigned_int_option("reduce-proof-graph")};
+        solver_options.m_do_reduce = true;
+        solver_options.m_reduction_loops = options.get_unsigned_int_option("reduce-proof-loops");
+        solver_options.m_reduction_graph = options.get_unsigned_int_option("reduce-proof-graph");
     }
 #endif 
-}
+} 
 
 void core_checkert::initialize()
 {

@@ -59,7 +59,7 @@ protected:
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
-   solver_optionst solver_option; // Init once, use when ever create a new solver
+   solver_optionst solver_options; // Init once, use when ever create a new solver
 
   void initialize_solver();
   smtcheck_opensmt2t_uf * initialize__euf_solver();

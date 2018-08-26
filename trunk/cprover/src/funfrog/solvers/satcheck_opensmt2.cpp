@@ -35,16 +35,16 @@ void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const 
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
     
     // Initialize parameters
-    this->verbosity { solver_options.m_verbosity };
-    this->random_seed { solver_options.m_random_seed };
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
   
 #ifdef PRODUCE_PROOF  
-    this->itp_algorithm { solver_options.m_prop_itp_algorithm };
+    this->itp_algorithm.x = solver_options.m_prop_itp_algorithm;
 
-    this->certify { solver_options.m_certify };
-    this->reduction { solver_options.m_do_reduce };
-    this->reduction_loops { solver_options.m_reduction_loops };
-    this->reduction_graph { solver_options.m_reduction_graph };
+    this->certify = solver_options.m_certify;
+    this->reduction = solver_options.m_do_reduce;
+    this->reduction_loops = solver_options.m_reduction_loops;
+    this->reduction_graph = solver_options.m_reduction_graph;
 #endif
 #ifdef DISABLE_OPTIMIZATIONS
     // TODO: add when Debug options works for Proporsitional logic

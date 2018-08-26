@@ -17,7 +17,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/solver.h"
 #include "solver_options.h"
 
-class literalt;
+//class literalt;  //SA: Is not this declaration redundant?
 class exprt;
 
 // Cache of already visited interpolant ptrefs
@@ -28,15 +28,6 @@ class check_opensmt2t :  public interpolating_solvert, public solvert
 {
 public:
     check_opensmt2t();
-    
-#ifdef PRODUCE_PROOF    
-    check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops) 
-        : check_opensmt2t(),
-          reduction(_reduction),
-          reduction_graph(_reduction_graph),
-          reduction_loops(_reduction_loops)
-    { }
-#endif
           
     virtual ~check_opensmt2t();
 
@@ -78,23 +69,12 @@ public:
 
     void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
 
-    PTRef literalToPTRef(literalt l) {
-        if(l.is_constant()){
-            return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
-        }
-        assert(l.var_no() < ptrefs.size());
-        assert(l.var_no() != literalt::unused_var_no());
-        PTRef ptref = ptrefs[l.var_no()];
-        return l.sign() ? getLogic()->mkNot(ptref) : ptref;
-    }
-
     literalt get_const_literal(bool val){
         return const_literal(val);
     }
-
-    //  Mapping from variable indices to their PTRefs in OpenSMT
-    std::vector<PTRef> ptrefs;
-  
+    
+    unsigned get_random_seed() override { return random_seed; }
+    
     bool read_formula_from_file(std::string fileName) // KE: Sepideh, this shall be renamed according to the new interface
     { return mainSolver->readFormulaFromFile(fileName.c_str()); }
   
@@ -105,20 +85,18 @@ public:
   
     virtual bool is_overapprox_encoding() const = 0;
 
-    fle_part_idt new_partition() override;
+    expr_idt new_partition() override;
 
-    void close_partition();
+    void close_partition() override;
 
     virtual bool is_overapproximating() const = 0;
 
-    virtual bool is_assignment_true(literalt a) const = 0;
+   // virtual bool is_assignment_true(literalt a) const = 0; //SA: moved to the interface class solvert
 
-    virtual exprt get_value(const exprt &expr) = 0;
-
-    virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
+   // virtual exprt get_value(const exprt &expr) = 0;  //SA: moved to the interface class solvert
 
 #ifdef PRODUCE_PROOF
-    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+    //virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0; //SA:moved to interface
 
 #endif //PRODUCE_PROOF
 
@@ -148,7 +126,10 @@ protected:
 
     // boundary index for top_level_formulas that has been pushed to solver already
     unsigned pushed_formulas;
-  
+
+    //  Mapping from variable indices to their PTRefs in OpenSMT
+    std::vector<PTRef> ptrefs;
+    
 #ifdef PRODUCE_PROOF
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
   ItpAlgorithm itp_algorithm;
@@ -193,6 +174,19 @@ protected:
 
     // Free context/data in OpenSMT
     virtual void freeSolver() { delete osmt; osmt = nullptr; }
+    
+    virtual void set_random_seed(unsigned int i) override;
+     
+    // Used only in check_opensmt2 sub-classes
+    PTRef literalToPTRef(literalt l) {
+        if(l.is_constant()){
+            return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
+        }
+        assert(l.var_no() < ptrefs.size());
+        assert(l.var_no() != literalt::unused_var_no());
+        PTRef ptref = ptrefs[l.var_no()];
+        return l.sign() ? getLogic()->mkNot(ptref) : ptref;
+    }
 };
 
 #endif

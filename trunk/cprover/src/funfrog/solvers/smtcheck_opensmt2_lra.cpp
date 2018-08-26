@@ -33,17 +33,17 @@ void smtcheck_opensmt2t_lra::initializeSolver(solver_optionst solver_options, co
     assert(strcmp(msg, "ok") == 0);
 
     // Initialize parameters
-    this->verbosity { solver_options.m_verbosity };
-    this->random_seed { solver_options.m_random_seed };
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
   
 #ifdef PRODUCE_PROOF  
-    this->itp_lra_algorithm { solver_options.m_lra_itp_algorithm };
+    this->itp_lra_algorithm.x = solver_options.m_lra_itp_algorithm;
     this->set_lra_factor(solver_options.m_lra_factor);
 
-    this->certify { solver_options.m_certify };
-    this->reduction { solver_options.m_do_reduce };
-    this->reduction_loops { solver_options.m_reduction_loops };
-    this->reduction_graph { solver_options.m_reduction_graph };
+    this->certify = solver_options.m_certify;
+    this->reduction = solver_options.m_do_reduce;
+    this->reduction_loops = solver_options.m_reduction_loops;
+    this->reduction_graph = solver_options.m_reduction_graph;
 #endif
 #ifdef DISABLE_OPTIMIZATIONS
     set_dump_query(solver_options.m_dump_query);
