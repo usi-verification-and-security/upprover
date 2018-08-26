@@ -142,6 +142,9 @@ protected:
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
+  // Hold uninterpreted functions that the solver was told about
+  std::map<std::string,SymRef> decl_uninterperted_func;
+
   unsupported_operationst unsupported_info;
   
   bool has_unsupported_vars() const { return unsupported_info.has_unsupported_vars(); }

@@ -524,7 +524,7 @@ Function: smtcheck_opensmt2t::create_equation_for_unsupported
 PTRef smtcheck_opensmt2t::create_equation_for_unsupported(const exprt &expr)
 {  
     // extract parameters to the call
-    vec<PTRef> args; 
+    vec<PTRef> args;
     get_unsupported_op_args(expr, args);
     
     // Define the function if needed and check it is OK
@@ -567,9 +567,6 @@ SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<
         args_decl.push(logic->getSortRef(args[i]));
         key_func += "," + std::string(logic->getSortName(logic->getSortRef(args[i])));
     }
-    
-    // Keep the list of already declared
-    static std::map<std::string,SymRef> decl_uninterperted_func; // Inner use only
     
     // Define the function if needed and check it is OK
     SymRef decl = SymRef_Undef;
