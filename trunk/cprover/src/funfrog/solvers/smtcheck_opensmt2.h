@@ -7,15 +7,16 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-#include <map>
-#include <vector>
+#include "check_opensmt2.h"
 
 #include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
-#include "check_opensmt2.h"
 #include <funfrog/utils/expressions_utils.h>
 #include <util/expr.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
+
+#include <map>
+#include <vector>
 
 class smt_itpt;
 class symbol_exprt;

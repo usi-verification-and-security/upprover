@@ -10,6 +10,8 @@
 #ifndef SOLVER_OPTIONS_H
 #define SOLVER_OPTIONS_H
 
+#include <string>
+
 class solver_optionst {
 public:
     
@@ -44,7 +46,7 @@ public:
     
     // LRA
     unsigned m_lra_itp_algorithm=0;
-    std::string m_lra_factor="";
+    std::string m_lra_factor="1/2";
     
     // UF
     unsigned m_uf_itp_algorithm=0;
