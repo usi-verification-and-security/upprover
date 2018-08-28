@@ -11,7 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_interpolating_solver_H
 
 #include <funfrog/solvers/itp_fwd.h>
-#include "funfrog/solvers/interpolating_solver_fwd.h"
+#include <funfrog/solvers/interpolating_solver_fwd.h>
 
 class symbol_exprt;
 
