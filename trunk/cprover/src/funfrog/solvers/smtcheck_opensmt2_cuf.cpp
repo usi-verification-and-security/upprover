@@ -2171,7 +2171,7 @@ SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const typet& type)
 }
 
 // Check if a literal is non-linear in the solver side
-bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr)
+bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr) const
 {
     if (!uflogic->isCUFDiv(tr) && !uflogic->isCUFTimes(tr) && !uflogic->isCUFMod(tr))
         return false;

@@ -36,7 +36,7 @@ protected:
 
   virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
   
-  virtual bool is_non_linear_operator(PTRef tr) override;
+  virtual bool is_non_linear_operator(PTRef tr) const override;
 
   // Inner use only to create UF functions (needed in UF and Mix-Encoding)
   virtual std::string getStringSMTlibDatatype(const typet& type) override;

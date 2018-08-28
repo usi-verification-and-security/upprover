@@ -307,24 +307,12 @@ set<PTRef> smtcheck_opensmt2t::getVars() const
 {
     std::set<PTRef> ret;
     std::set<PTRef> seen;
+    auto is_var = [this](const PTRef ptref) { return logic->isVar(ptref); };
     for(const PTRef ptref : ptrefs)
     {
-        get_vars_rec(ptref, ret, seen);
+        collect_rec(is_var, ptref, ret, seen);
     }
     return ret;
-}
-
-void smtcheck_opensmt2t::get_vars_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen) const {
-    if (contains(seen, ptref)) { return; }
-    if (logic->isVar(ptref)) {
-        res.insert(ptref);
-    }
-    seen.insert(ptref);
-    // recurs on children
-    auto const & pterm = logic->getPterm(ptref);
-    for (auto i = 0; i < pterm.size(); ++i) {
-        get_vars_rec(pterm[i], res, seen);
-    }
 }
 
 /*******************************************************************\
@@ -395,28 +383,18 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
 }
 
 
-std::set<PTRef> smtcheck_opensmt2t::get_constants() const{
+std::set<PTRef> smtcheck_opensmt2t::get_constants() const {
     std::set<PTRef> res;
     std::set<PTRef> seen;
 
+    const auto is_constant = [this](const PTRef ptref) {
+        return logic->isConstant(ptref) && !logic->isTrue(ptref) && !logic->isFalse(ptref);
+    };
     for(const PTRef ptref : ptrefs)
     {
-        get_constants_rec(ptref, res, seen);
+        collect_rec(is_constant, ptref, res, seen);
     }
     return res;
-}
-
-void smtcheck_opensmt2t::get_constants_rec(PTRef ptref, std::set<PTRef>& res, std::set<PTRef>& seen) const {
-    if (contains(seen, ptref)) { return; } // already processed
-    if (logic->isConstant(ptref) && !logic->isTrue(ptref) && !logic->isFalse(ptref)) {
-        res.insert(ptref);
-    }
-    seen.insert(ptref);
-    // recurse on children
-    auto const & pterm = logic->getPterm(ptref);
-    for (auto i = 0; i < pterm.size(); ++i) {
-        get_constants_rec(pterm[i], res, seen);
-    }
 }
 
 /*******************************************************************\
@@ -676,7 +654,7 @@ SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
 #ifdef PRODUCE_PROOF
 
 // Returns all literals that are non-linear expressions
-std::set<PTRef> smtcheck_opensmt2t::get_non_linears()
+std::set<PTRef> smtcheck_opensmt2t::get_non_linears() const
 {
     std::set<PTRef> ret;
     
@@ -685,24 +663,14 @@ std::set<PTRef> smtcheck_opensmt2t::get_non_linears()
     
     // Go over all expressions and search for / or *
     std::set<PTRef> seen;
-    for(const PTRef ptref : ptrefs)
+    const auto is_non_linear = [this](const PTRef ptref){
+        return !(logic->isVar(ptref)) && !(logic->isConstant(ptref)) && is_non_linear_operator(ptref);
+    };
+    for (const PTRef ptref : ptrefs)
     {
-        get_non_linears_rec(ptref, ret, seen);
+        collect_rec(is_non_linear, ptref, ret, seen);
     }
     return ret;
-}
-
-void smtcheck_opensmt2t::get_non_linears_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen){
-    if(contains(seen, ptref)) { return; }
-    if (!(logic->isVar(ptref)) && !(logic->isConstant(ptref)) && is_non_linear_operator(ptref)){
-            res.insert(ptref);
-    }
-    seen.insert(ptref);
-    // recurse on children
-    auto const & pterm = logic->getPterm(ptref);
-    for(auto i = 0; i < pterm.size(); ++i) {
-        get_non_linears_rec(pterm[i], res, seen);
-    }
 }
 
 void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
@@ -828,11 +796,8 @@ PTRef smtcheck_opensmt2t::complex_symbol_to_ptref(const exprt& expr){
 }
 
 PTRef smtcheck_opensmt2t::get_from_cache(const exprt & expr) const {
-    PTRef ptref = PTRef_Undef;
-    if (expression_to_ptref_map.find(expr) != expression_to_ptref_map.end()) {
-        ptref = expression_to_ptref_map.at(expr);
-    }
-    return ptref;
+    const auto it = expression_to_ptref_map.find(expr);
+    return it == expression_to_ptref_map.end() ? PTRef_Undef : it->second;
 }
 
 void smtcheck_opensmt2t::store_to_cache(const exprt & expr, PTRef ptref) {

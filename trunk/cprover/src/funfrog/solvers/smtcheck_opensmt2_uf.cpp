@@ -660,7 +660,7 @@ SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const typet& type)
 }
 
 // Check if a literal is non-linear in the solver side
-bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr)
+bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr) const
 {
     std::string symName{logic->getSymName(tr)};
     if(symName.find("uns_") != std::string::npos){

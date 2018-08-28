@@ -74,17 +74,14 @@ public:
 
   void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
 
-  std::set<PTRef> get_non_linears();
-  void get_non_linears_rec(PTRef current_ptref, std::set<PTRef> & res, std::set<PTRef> & seen); // TODO: use one template for these recursion calls
+  std::set<PTRef> get_non_linears() const;
 #endif
 
   // Common to all
   std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
-  void get_vars_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const;
 
   std::string getSimpleHeader(); // Get all the declarations without the variables
   std::set<PTRef> get_constants() const;
-  void get_constants_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const; // TODO: use one template for these recursion calls
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
 
@@ -168,6 +165,20 @@ protected:
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 
+  template<typename Pred, typename Cont_Ret, typename Cont_Cache>
+  void collect_rec(const Pred predicate, PTRef ptref, Cont_Ret& collected, Cont_Cache& seen) const {
+      if (contains(seen, ptref)) { return; } // already processed
+      if (predicate(ptref)) {
+          collected.insert(ptref);
+      }
+      seen.insert(ptref);
+      // recurse on children
+      auto const & pterm = logic->getPterm(ptref);
+      for (auto i = 0; i < pterm.size(); ++i) {
+          collect_rec(predicate, pterm[i], collected, seen);
+      }
+  }
+
 #ifdef PRODUCE_PROOF
   void setup_reduction();
 
@@ -177,9 +188,9 @@ protected:
 
 #endif
 
-  virtual bool can_have_non_linears() {return true;}
+  virtual bool can_have_non_linears() const {return true;}
 
-  virtual bool is_non_linear_operator(PTRef tr)=0;
+  virtual bool is_non_linear_operator(PTRef tr) const = 0;
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var

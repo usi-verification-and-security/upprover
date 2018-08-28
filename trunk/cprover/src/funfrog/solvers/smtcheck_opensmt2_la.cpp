@@ -848,7 +848,7 @@ bool smtcheck_opensmt2t_la::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 }
 
 // Check if a literal is non-linear in the solver side
-bool smtcheck_opensmt2t_la::is_non_linear_operator(PTRef tr)
+bool smtcheck_opensmt2t_la::is_non_linear_operator(PTRef tr) const
 {
     if (!lalogic->isNumDiv(tr) && !lalogic->isNumTimes(tr))
         return false;

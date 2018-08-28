@@ -95,7 +95,7 @@ protected:
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
 
-  virtual bool is_non_linear_operator(PTRef tr) override;
+  virtual bool is_non_linear_operator(PTRef tr) const override;
   
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
