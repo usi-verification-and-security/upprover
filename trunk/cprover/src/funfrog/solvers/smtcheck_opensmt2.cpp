@@ -776,9 +776,15 @@ void smtcheck_opensmt2t::lcnf(const bvt & bv) {
 
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_if_necessary(str);
-    assert(str.compare(CProverStringConstants::NIL) != 0);
     assert(!str.empty());
+    
+    // Nil is a special case - don't create a var but a val of true
+    if (str.compare(CProverStringConstants::NIL) == 0) return constant_bool(true);
+    if (str.compare(CProverStringConstants::QUOTE_NIL) == 0) return constant_bool(true);
+    if (expr.type().is_nil()) return constant_bool(true);
+    
+    str = quote_if_necessary(str);
+    //assert(str.compare(CProverStringConstants::NIL) != 0); // after quote will compare |nil| =? nil
     PTRef symbol_ptref;
     if(is_number(expr.type()))
         symbol_ptref = new_num_var(str);
