@@ -9,29 +9,31 @@ Module: Wrapper for OpenSMT2
 
 #include "smtcheck_opensmt2_la.h"
 
-class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t_la
-{
+class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t_la {
 public:
-  smtcheck_opensmt2t_lra(unsigned int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
-          smtcheck_opensmt2t_la(_type_constraints_level, name, _store_unsupported_info)
-  {
-    initializeSolver(name);
-  }
-      
-  virtual ~smtcheck_opensmt2t_lra(); // d'tor
+    smtcheck_opensmt2t_lra(const solver_optionst solver_options, const char * name) :
+            smtcheck_opensmt2t_la(solver_options.m_type_constraints, name) {
+        initializeSolver(solver_options,name);
+        ptr_assert_var_constraints = logic->getTerm_true();
+    }
 
-  virtual literalt type_cast(const exprt &expr) override;
-  
-  virtual literalt labs(const exprt &expr) override; // from convert for ID_abs
+    virtual ~smtcheck_opensmt2t_lra(); // d'tor
 
-  void check_ce(std::vector<exprt>& exprs); // checking spuriousness of the error trace (not refinement here)
-  
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
+    void check_ce(std::vector<exprt> & exprs); // checking spuriousness of the error trace (not refinement here)
+
+    virtual std::string getStringSMTlibDatatype(const typet & type) override;
+
+
+    virtual SRef getSMTlibDatatype(const typet & type) override;
 
 protected:
-  virtual void initializeSolver(const char*) override;
+    virtual void initializeSolver(const solver_optionst solver_options, const char *) override;
+    
+#ifdef PRODUCE_PROOF
+    
+    void set_lra_factor(std::string factor) {itp_lra_factor = std::move(factor);}
 
+#endif //PRODUCE_PROOF
 };
 
 #endif

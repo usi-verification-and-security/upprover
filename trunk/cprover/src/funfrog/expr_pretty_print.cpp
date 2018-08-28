@@ -5,14 +5,15 @@ Module: Simple pretty printing visitor for exprt.
 Author: Ondrej Sery
 
 \*******************************************************************/
-
 #ifdef DISABLE_OPTIMIZATIONS
 
 #include "expr_pretty_print.h"
 
+#include "utils/naming_helpers.h"
+#include "utils/expressions_utils.h"
+
 #include <iostream>
 #include <sstream>
-#include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
 #define TYPE_COLOR "\033[0;37m"
@@ -36,12 +37,12 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     type_expr[0] = static_cast<char>(std::toupper(type_expr[0]));
     if (type_expr == "Signedbv")
     {
-        type_expr = SMT_REAL;
+        type_expr = SMTConstants::SMT_REAL;
         type_expr += " ";
     }
     
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
-    std::string name_expr = fix_symex_nondet_name(expr);
+    std::string name_expr = normalize_name(expr);
     if (is_cprover_rounding_mode_var(name_expr))
     {
         // We don't save __cprover built-ins
@@ -97,10 +98,12 @@ expr_pretty_printt::operator()(const exprt &expr)
     } else if (expr.id() == ID_symbol) {
         if (is_prev_token) out << " ";
         out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;
+#ifdef DEBUG_SSA_SMT_INFO
         if (!is_L2_SSA_symbol(expr)) {
             std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree (" 
                     << expr.get(ID_identifier) << " : " << expr.type().id().c_str() << ")\n" ;
         }
+#endif
         is_prev_token = true;
         addToDeclMap(expr); // Add the symbol to the symbol table
     } else if (expr.id() == ID_constant) {

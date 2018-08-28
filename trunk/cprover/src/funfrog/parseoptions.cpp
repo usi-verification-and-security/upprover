@@ -23,7 +23,7 @@
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_instanceof.h>
-//#include <goto-programs/remove_returns.h> // KE: never remove it from comment!
+//#include <goto-programs/remove_returns.h> // KE: never include this header, HiFrog will stop working otherwise
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -49,7 +49,6 @@
 
 #include "check_claims.h"
 #include "version.h"
-#include "parseoptions.h"
 #include <goto-programs/link_to_library.h>
 #include <goto-programs/mm_io.h>
 #include <goto-programs/goto_inline.h>
@@ -64,12 +63,13 @@
 #include <goto-programs/show_symbol_table.h>
 #include <goto-programs/show_goto_functions.h>
 #include <goto-programs/show_properties.h>
-#include "UserDefinedSummary.h"
+#include "UserDefinedSummary.h" // TODO: doesn't work yet, only contains original code
 #include <limits>
+#include <funfrog/utils/naming_helpers.h>
 
 /*******************************************************************
 
- Function: funfrog_parseoptionst::funfrog_parseoptionst
+ Function: funfrog_parseoptionst::funfrog_parseoptionst 
 
  Inputs:
 
@@ -188,9 +188,9 @@ bool funfrog_parseoptionst::process_goto_program(
     //remove_asm(goto_model);
 
     // KE: Only to prop logic
-    if(cmdline.isset("logic")) 
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
     {
-        if (cmdline.get_value("logic") == "prop") 
+        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
         {
             // There is a message in the method, no need to print it twice
             
@@ -239,9 +239,9 @@ bool funfrog_parseoptionst::process_goto_program(
     goto_check(options, goto_model);
             
     // HIFROG: We remove built-ins from smt logics
-    if(cmdline.isset("logic")) 
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
     {
-        if (cmdline.get_value("logic") == "prop") 
+        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
         {
             // checks don't know about adjusted float expressions
             adjust_float_expressions(goto_model);
@@ -688,7 +688,7 @@ bool funfrog_parseoptionst::check_function_summarization()
     if (cmdline.isset("claims-opt"))
       store_claims(claim_map, claim_numbers);
     
-    // If we set bitwidth, check it sets right, it will be by defualt 8
+    // If we set bitwidth, check it sets right, it will be by default 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
     {
       unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
@@ -785,7 +785,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("dump-query-name")) {
     options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
   } else { // Set a default name in case no name was provided by user
-    options.set_option("dump-query-name", "_dump");
+    options.set_option("dump-query-name", "query_default");
   }  
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else
@@ -797,7 +797,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
-  //options.set_option("list-templates", cmdline.isset("list-templates"));
+  //options.set_option("list-templates", cmdline.isset("list-templates")); // FIXME
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("partial-loops", cmdline.isset("partial-loops"));
 
@@ -917,12 +917,18 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //}
   if (cmdline.isset("reduce-proof-graph")) { // In Help Menu
     options.set_option("reduce-proof-graph", cmdline.get_value("reduce-proof-graph"));
+  } else {
+    options.set_option("reduce-proof-graph", 3);
   }
   if (cmdline.isset("reduce-proof-loops")) { // In Help Menu
     options.set_option("reduce-proof-loops", cmdline.get_value("reduce-proof-loops"));
+  } else {
+    options.set_option("reduce-proof-loops", 2);  
   }
   if (cmdline.isset("random-seed")) {
     options.set_option("random-seed", cmdline.get_value("random-seed"));
+  } else {
+    options.set_option("random-seed", "1");  
   }
   if (cmdline.isset("color-proof")) {
     options.set_option("color-proof", cmdline.get_value("color-proof"));
@@ -931,6 +937,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
+  } else {
+    options.set_option("verbose-solver", "0");  
   }
   //options.set_option("simplify-if", false); // Try to avoid compications with if
   //if (cmdline.isset("refine-mode")) {

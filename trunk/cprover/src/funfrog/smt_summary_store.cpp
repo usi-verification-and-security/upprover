@@ -14,6 +14,7 @@ Author: Ondrej Sery
 
 // Serialization SMT
 void smt_summary_storet::serialize(std::ostream &out) const {
+    decider->getLogic()->dumpHeaderToFile(out);
     for (const auto & summary_node : store){
         if(summary_node.is_repr()){
             summary_node.summary->serialize(out);
@@ -33,12 +34,12 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     int old_function_count = 0;
     for (const auto & fileName : fileNames) {
         try {
-            if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
+            if (decider->read_formula_from_file(fileName.c_str())) {
                 // std::cout << "\n----Read summary file: " << fileName << std::endl;
-                vec<Tterm> & functions = decider->getLogic()->getFunctions();
+                vec<Tterm> & functions = decider->get_functions();
                 assert(old_function_count <= functions.size());
                 // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
-                // we have added previously; Also note that this will work onbly if functions in files have different names!
+                // we have added previously; Also note that this will work only if functions in files have different names!
                 for (int i = old_function_count; i < functions.size(); ++i) {
                     auto itp = new smt_summaryt();
                     // only copy assignment work correctly, copy constructor do not at the moment
@@ -47,9 +48,8 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                     std::string fname = tterm.getName();
                     clean_name(fname);
                     tterm.setName(fname);
-                    itp->setLogic(decider->getLogic());
+                    itp->setDecider(decider);
                     itp->setInterpolant(tterm.getBody());
-                    itp->set_valid(true);
                     this->insert_summary(itp, fname);
                 }
                 old_function_count = functions.size();
@@ -82,14 +82,12 @@ void smt_summary_storet::insert_summary(summaryt *summary, const std::string & f
     }
     // Here gets the function names
     Tterm & tterm = smt_summary->getTempl();
-    std::string fname = tterm.getName();
     // at this point, there should be just the name of the original function
-    assert(fname == function_name);
-    assert(!is_quoted(fname));
-    assert(!fun_name_contains_counter(fname));
-    std::size_t next_idx = get_next_id(fname);
+    assert(!is_quoted(function_name));
+    assert(!fun_name_contains_counter(function_name));
+    std::size_t next_idx = get_next_id(function_name);
     // as name of the summary, store the quoted version with counter from the store
-    std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
+    std::string fixed_name = quote(add_counter_to_fun_name(function_name, next_idx));
     tterm.setName(fixed_name);
 
     // call the base functionality

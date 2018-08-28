@@ -9,12 +9,13 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
-#include "prepare_smt_formula.h"
-#include "smt_partitioning_target_equation.h"
+#include "prepare_formula.h"
+#include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include <util/time_stopping.h>
 #include "smt_summary_store.h"
 #include "assertion_info.h"
+#include "partitioning_slice.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -24,23 +25,16 @@ theory_refinert::~theory_refinert()
 
 void theory_refinert::initialize()
 {
-  decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"),
+    // Extend once adding interpolation for mix theories
+    solver_options.initialize_mix_encoding_solver_options(
           options.get_unsigned_int_option("type-byte-constraints"),
-          "theory refiner");
-
-  if (options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-
-#ifdef DISABLE_OPTIMIZATIONS  
-  if (options.get_bool_option("dump-query"))
-      decider->set_dump_query(true);
-
-  if (options.get_bool_option("dump-pre-query"))
-      decider->set_dump_pre_query(true);
+          options.get_unsigned_int_option("bitwidth"));
+    solver_options.m_verbosity = options.get_unsigned_int_option("verbose-solver");
   
-  const std::string& dump_query_name = options.get_option("dump-query-name");
-  if (dump_query_name != "")
-      decider->set_dump_query_name(dump_query_name);
-#endif  
+    if(options.get_unsigned_int_option("random-seed")) 
+        solver_options.m_random_seed = options.get_unsigned_int_option("random-seed");
+  
+  decider = new smtcheck_opensmt2t_cuf(solver_options, "theory refiner");
 
   omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
@@ -83,12 +77,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
-  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+  const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
   smt_summary_storet dummy;
   symbol_tablet temp_table;
   namespacet ns{this->symbol_table, temp_table};
-  smt_partitioning_target_equationt equation(ns, dummy,
+  partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -99,19 +93,19 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
 
   call_tree_nodet& summary_info = omega.get_call_tree_root();
-  symex_assertion_sumt symex = symex_assertion_sumt(
-            dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true, true, unwind_bound);
+  symex_assertion_sumt symex{
+          omega.get_goto_functions(), summary_info, ns, temp_table,
+          equation, message_handler, goto_program, last_assertion_loc,
+          single_assertion_check, true, unwind_bound, false};
+  symex.set_assertion_info_to_verify(&assertion);
 
-  //setup_unwind(symex);
+  prepare_formulat ssaTosmt = prepare_formulat(equation, message_handler);
 
-  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
-
-  bool end = symex.prepare_SSA(assertion);
+  bool end = symex.prepare_SSA();
 
   if (!end)
   {
+    slice_target(symex.get_target_equation());
       //Converts SSA to SMT formula
     ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
 
@@ -134,14 +128,15 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           status() << "Checking if the error trace is spurious (for testing only) with LRA" << eom;
 
-          smtcheck_opensmt2t_lra decider2(0, "Checking if the error trace is spurious (for testing only) with LRA");
+          smtcheck_opensmt2t_lra decider2(solver_options, "Checking if the error trace is spurious (for testing only) with LRA"
+          );
 
 //          error_trace.build_goto_trace_formula(equation,
 //                *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
 //                        *(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
           error_trace.build_goto_trace_formula(equation, *(dynamic_cast<smtcheck_opensmt2t *> (decider)), decider2);
 
-          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          std::vector<exprt> exprs = equation.get_exprs_to_refine();
           decider2.check_ce(exprs);
 
       } else {
@@ -153,7 +148,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           bool refine_all = options.get_bool_option("force");
 
-          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          std::vector<exprt> exprs = equation.get_exprs_to_refine();
           std::set<int> refined;
 
           if (exprs_ids.size() > 0){
@@ -198,7 +193,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
           } else {
 
               status() << "(driven by iterative CE-analysis)" << endl << eom;
-              unsigned bw = options.get_unsigned_int_option("bitwidth");
               unsigned heuristic = options.get_unsigned_int_option("heuristic");
 
               while (true){
@@ -215,18 +209,14 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 0 :
                       //   forward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw,
-                                  options.get_unsigned_int_option("type-byte-constraints"),
-                                  "forward checker");
+                          smtcheck_opensmt2t_cuf decider2(solver_options, "forward checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 0);
                       }
                       break;
                     case 1 :
                       //   backward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw,
-                                  options.get_unsigned_int_option("type-byte-constraints"),
-                                  "backward checker");
+                          smtcheck_opensmt2t_cuf decider2(solver_options, "backward checker");
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 0);
                       }
                       break;
@@ -235,9 +225,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == (int) exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, 
-                                    options.get_unsigned_int_option("type-byte-constraints"),
-                                    "forward multiple checker");
+                            smtcheck_opensmt2t_cuf decider2(solver_options, "forward multiple checker");
                             last = decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
                           }
                       }
@@ -247,9 +235,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = exprs.size()-1;
                       {
                           while (last >= 0){
-                            smtcheck_opensmt2t_cuf decider2(bw,
-                                    options.get_unsigned_int_option("type-byte-constraints"),
-                                    "backward multiple refiner");
+                            smtcheck_opensmt2t_cuf decider2(solver_options, "backward multiple refiner");
                             last = decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 0);
                           }
                       }
@@ -257,18 +243,14 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 4 :
                       //   forward with dependencies
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw,
-                                  options.get_unsigned_int_option("type-byte-constraints"),
-                                  "Forward dependency checker");
+                          smtcheck_opensmt2t_cuf decider2(solver_options, "Forward dependency checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 1);
                       }
                       break;
                     case 5 :
                       //   backward with dependencies
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw,
-                                  options.get_unsigned_int_option("type-byte-constraints"),
-                                  "Backward dependency checker");
+                          smtcheck_opensmt2t_cuf decider2(solver_options, "Backward dependency checker");
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 1);
                       }
                       break;
@@ -277,9 +259,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == (int) exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, 
-                                    options.get_unsigned_int_option("type-byte-constraints"),
-                                    "Foward with multiple refinements & dependencies");
+                            smtcheck_opensmt2t_cuf decider2(solver_options, "Foward with multiple refinements & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
                           }
                       }
@@ -289,8 +269,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = exprs.size()-1;
                       {
                           while (last >= 0){
-                            smtcheck_opensmt2t_cuf decider2(bw,
-                                    options.get_unsigned_int_option("type-byte-constraints"),
+                            smtcheck_opensmt2t_cuf decider2(solver_options, 
                                     "backward with multiple refinement & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 1);
                           }
@@ -409,6 +388,15 @@ void theory_refinert::report_success()
   default:
     assert(false);
   }
+}
+
+void theory_refinert::slice_target(partitioning_target_equationt & equation) {
+    auto before = current_time();
+    statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+    partitioning_slice(equation);
+    statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+    auto after = current_time();
+    statistics() << "SLICER TIME: " << (after - before) << eom;
 }
 
 /*******************************************************************\

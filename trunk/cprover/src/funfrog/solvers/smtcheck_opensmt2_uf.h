@@ -12,43 +12,38 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info=false) :
-      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info) // Is last always!
+  smtcheck_opensmt2t_uf(const solver_optionst solver_options, const char* name) :
+      smtcheck_opensmt2t()
   {
-    initializeSolver(name);
+    initializeSolver(solver_options, name);
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
+
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
+
+  virtual PTRef numeric_constant(const exprt &expr) override;
   
-  virtual exprt get_value(const exprt &expr) override;
-
-  virtual literalt convert(const exprt &expr) override;
-
-  virtual literalt const_var_Number(const exprt &expr) override;
+  virtual PTRef type_cast(const exprt & expr) override;
   
-  virtual literalt type_cast(const exprt &expr) override;
-
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  virtual literalt lvar(const exprt &expr) override;
-
-  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
-     
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
-
   SRef getURealSortRef() const {return sort_ureal;}
 
 protected:
 
-  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  PTRef new_num_var(const std::string & var_name) override;
+    
+  virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  virtual void initializeSolver(const char* name) override;
+  virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
   
-  virtual bool can_have_non_linears() override { return true; }
+  virtual bool is_non_linear_operator(PTRef tr) const override;
+
+  // Inner use only to create UF functions (needed in UF and Mix-Encoding)
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
   
-  virtual bool is_non_linear_operator(PTRef tr) override;
-  
+private:  
+
   static const char *tk_sort_ureal;
   static const char *tk_mult;
   static const char *tk_div;

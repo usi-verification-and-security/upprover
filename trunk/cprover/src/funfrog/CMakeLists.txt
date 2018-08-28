@@ -6,7 +6,7 @@ set(HIFROG_SOURCE_FILES
         nopartition/symex_no_partition.cpp
         nopartition/symex_no_partition.h
         solvers/check_opensmt2.h
-        solvers/interpolating_solver.h
+        solvers/check_opensmt2.cpp
         solvers/itp.h
         solvers/prop_itp.cpp
         solvers/prop_itp.h
@@ -26,49 +26,36 @@ set(HIFROG_SOURCE_FILES
         solvers/smtcheck_opensmt2_lra.h
         solvers/smtcheck_opensmt2_uf.cpp
         solvers/smtcheck_opensmt2_uf.h
+        solvers/solver_options.h
+        solvers/naming_boolbv.h
         assertion_info.h
-        assertion_sum.h
         call_stack.h
         check_claims.cpp
         check_claims.h
+        conversion_utils.h
+        conversion_utils.cpp
         dependency_checker.cpp
         dependency_checker.h
         error_trace.cpp
         error_trace.h
         expr_pretty_print.cpp
         expr_pretty_print.h
-        hifrog.cpp
-        hifrog.h
         languages.cpp
-        main.cpp
         parseoptions.cpp
         parseoptions.h
         partition.h
         partition_iface.h
+        partition_iface.cpp
         partitioning_slice.cpp
         partitioning_slice.h
         partitioning_target_equation.cpp
         partitioning_target_equation.h
-        prop_assertion_sum.cpp
-        prop_assertion_sum.h
-        prop_dependency_checker.cpp
-        prop_dependency_checker.h
-        prop_partitioning_target_equation.cpp
-        prop_partitioning_target_equation.h
-        prop_refiner_assertion_sum.cpp
-        prop_refiner_assertion_sum.h
         prop_summary_store.cpp
         prop_summary_store.h
         refiner_assertion_sum.cpp
         refiner_assertion_sum.h
-        prepare_smt_formula.cpp
-        prepare_smt_formula.h
-        smt_dependency_checker.cpp
-        smt_dependency_checker.h
-        smt_partitioning_target_equation.cpp
-        smt_partitioning_target_equation.h
-        smt_refiner_assertion_sum.cpp
-        smt_refiner_assertion_sum.h
+        prepare_formula.cpp
+        prepare_formula.h
         smt_summary_store.cpp
         smt_summary_store.h
         subst_scenario.cpp
@@ -92,6 +79,8 @@ set(HIFROG_SOURCE_FILES
         xml_interface.h
         utils/naming_helpers.h
         utils/naming_helpers.cpp
+        utils/unsupported_operations.h
+        utils/unsupported_operations.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
@@ -100,7 +89,11 @@ set(HIFROG_SOURCE_FILES
         #reportt.cpp reportt.h
         utils/UnionFind.cpp
         utils/UnionFind.h
-        utils/string_utils.h)
+        utils/string_utils.h
+        utils/containers_utils.h
+        interface/solver/solver.h
+        interface/solver/interpolating_solver.h
+        interface/convertor.h utils/expressions_utils.cpp)
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
@@ -121,19 +114,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modul
 
 find_package(GMP REQUIRED)
 
-add_executable(hifrog ${HIFROG_SOURCE_FILES}
+add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
+
+add_executable(hifrog main.cpp
 )
 
-target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(hifrog-lib PUBLIC ${PROJECT_SOURCE_DIR})
 
-target_compile_options(hifrog PRIVATE  -Wall)
+target_compile_options(hifrog-lib PRIVATE -Wall)
 
 if(PRODUCE_PROOF)
     #message("Compiling with PRODUCE_PROOF")
-    target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
+    target_compile_definitions(hifrog-lib PUBLIC -DPRODUCE_PROOF)
 endif(PRODUCE_PROOF)
 
-target_compile_definitions(hifrog PRIVATE
+target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_PARTITIONING
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
@@ -151,21 +146,16 @@ if(NOT OPENSMT2_INCLUDE)
 	message(FATAL_ERROR "opensmt header files not found")
 endif()
 
-target_include_directories(hifrog SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
-target_link_libraries(hifrog ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
+target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog
-    ansi-c
-    cbmc-lib #this is here only because of no_partition, if that is done in a different way, remove this dependency
-    cpp
-    goto-symex
-    solvers
-    util
-    xml
+target_link_libraries(hifrog-lib ansi-c cpp goto-symex solvers util xml
 )
 
-set_target_properties(hifrog
+target_link_libraries(hifrog hifrog-lib)
+
+set_target_properties(hifrog hifrog-lib
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11

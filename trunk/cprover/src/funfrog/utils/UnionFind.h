@@ -6,11 +6,7 @@
 #define PROJECT_UNIONFIND_H
 
 #include <map>
-
-template<typename C, typename E>
-bool contains(const C& container, const E& element){
-    return container.find(element) != std::end(container);
-}
+#include "containers_utils.h"
 
 template< typename Elem>
 class UnionFind {

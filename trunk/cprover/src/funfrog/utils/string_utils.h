@@ -6,6 +6,7 @@
 #define PROJECT_STRING_UTILS_H
 
 #include <string>
+#include <vector>
 
 std::vector<std::string> splitString(std::string s, char delim){
     std::vector<std::string> res;

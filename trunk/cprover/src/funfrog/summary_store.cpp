@@ -83,7 +83,6 @@ summaryt& summary_storet::find_summary(summary_idt new_id) const
   return *(node.summary);
 }
 
-
 /*******************************************************************\
 
 Function: summary_storet::insert_summary
@@ -98,10 +97,9 @@ Function: summary_storet::insert_summary
 void summary_storet::insert_summary(summaryt * summary, const std::string & function_name) {
     // Do not add summary if the same is already there
     if(has_summaries(function_name)) {
-        auto itp = summary->getInterpolant();
         const auto & summaries = get_summaries(function_name);
-        auto it = std::find_if(summaries.begin(), summaries.end(), [this, itp](summary_idt id){
-            return find_summary(id).getInterpolant() == itp;
+        auto it = std::find_if(summaries.begin(), summaries.end(), [this, summary](summary_idt id){
+            return find_summary(id).equals(summary);
         });
         if(it != summaries.end()){
             // the same summary for this function is already present in the store
@@ -112,12 +110,8 @@ void summary_storet::insert_summary(summaryt * summary, const std::string & func
     }
     // TODO optimizations of summary store? Do we want to check for stronger summaries and replace the weaker ones?
     summary_idt id = max_id++;
-    summary->set_valid(true);
     store.emplace_back(id, summary);
     // this also creates the map entry if it is the first time we see this function_name
     function_to_summaries[function_name].push_back(id);
     repr_count++;
 }
-
-
-

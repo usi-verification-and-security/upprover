@@ -77,8 +77,7 @@ Function: partitioning_slicet::slice
 
 \*******************************************************************/
 
-void partitioning_slicet::slice(partitioning_target_equationt &equation,
-        const summary_storet & summary_store, bool use_smt)
+void partitioning_slicet::slice(partitioning_target_equationt & equation, const summary_storet & summary_store)
 {
   // Mark assignments as ignored
   for(symex_target_equationt::SSA_stepst::iterator it = 
@@ -88,19 +87,17 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     // We can only slice assignments
     it->ignore = it->is_assignment();
   }
-  for (partitionst::iterator it = equation.get_partitions().begin();
-          it != equation.get_partitions().end();
-          ++it)
+  for (auto & partition : equation.get_partitions())
   {
-    if (it->summary) {
-      it->applicable_summaries.clear();
+    if (partition.has_summary_representation()) {
+      partition.applicable_summaries.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
-      if (it->get_iface().assertion_in_subtree) {
-        mark_summary_symbols(summary_store, *it, use_smt);
-        it->ignore = false;
+      if (partition.get_iface().assertion_in_subtree) {
+        mark_summary_symbols(summary_store, partition);
+        partition.ignore = false;
       } else {
-        it->ignore = true;
+        partition.ignore = true;
       }
     }
   }
@@ -137,8 +134,6 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
-
-
       }
     }
     
@@ -147,7 +142,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
-      assert(partition.summary);
+      assert(partition.has_summary_representation());
       const summary_idst& itps = partition.summaries;
       //unsigned symbol_idx = sum_it->second.second;
 
@@ -165,16 +160,11 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         //  continue;
         
         // Yes it is relevant, add only symbols constrained by the summary
-        unsigned idx = 0;
         partition.applicable_summaries.insert(summary_id);
-        for (std::vector<symbol_exprt>::iterator it2 = 
-                partition_iface.argument_symbols.begin();
-                it2 != partition_iface.argument_symbols.end();
-                ++it2, ++idx) {
-            // SAT checks idx, SMT checks it2
-            if(summary.usesVar(*it2,idx))
+        for (unsigned idx = 0; idx < partition_iface.argument_symbols.size(); ++idx) {
+            if(summary.usesVar(idx))
             {
-                get_symbols(*it2, depends);
+                get_symbols(partition_iface.argument_symbols[idx], depends);
             }
         }
       }
@@ -185,7 +175,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
   // Mark sliced out partitions
   for(auto & partition : equation.get_partitions()) {
     // Only care about real partitions
-    if (partition.summary || partition.ignore || partition.stub ||
+    if (partition.has_abstract_representation()|| partition.ignore ||
             partition.get_iface().assertion_in_subtree)
       continue;
     
@@ -198,7 +188,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       }
     }
     if (ignore) {
-      std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
+      //std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
       partition.ignore = ignore;
     }
   }
@@ -226,7 +216,7 @@ void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation)
   {
     prepare_partition(*it);
     
-    if (it->summary || it->stub)
+    if (it->has_abstract_representation())
       continue;
 
     // Analyze the SSA steps
@@ -355,7 +345,7 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
 {
   partition_ifacet & partition_iface = partition.get_iface();
   // For a standard summary without assertion_in_subtree, fill the summary table
-  if (partition.summary) {
+  if (partition.has_summary_representation()) {
     if (!partition_iface.assertion_in_subtree) {
       if (partition_iface.returns_value) {
         summary_map.insert(summary_mapt::value_type(
@@ -398,106 +388,24 @@ Function: partitioning_slicet::mark_summary_symbols
  Purpose: 
 
 \*******************************************************************/
-
 void partitioning_slicet::mark_summary_symbols(const summary_storet & summary_store,
-        partitiont &partition, bool use_smt) {
-    
-    if (!use_smt)
-        mark_summary_symbols_sat(summary_store, partition);
-    else
-        mark_summary_symbols_smt(summary_store, partition);
-}
-
-// For SAT version
-void partitioning_slicet::mark_summary_symbols_sat(const summary_storet & summary_store,
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
-  partition_ifacet& partition_iface = partition.get_iface();
+  const partition_ifacet& partition_iface = partition.get_iface();
   const summary_idst& itps = partition.summaries;
-
+  auto iface_symbols = partition_iface.get_iface_symbols();
   // Mark all the used symbols in all summaries
-  for (summary_idst::const_iterator it = itps.begin();
-          it != itps.end(); ++it) {
-    summary_idt summary_id = *it;
-
-    /* THIS CODE IS FOR PROP-LOGIC ONLY. IF Gets here with something else assert! */
-    prop_summaryt& summary = dynamic_cast <prop_summaryt&> 
-            (summary_store.find_summary(summary_id)); // KE: SMT code shall not use this!
+  for (auto summary_id : itps) {
+    auto& summary = summary_store.find_summary(summary_id);
 
     // Add only symbols constrained by the summary
-    unsigned idx = 0;
     partition.applicable_summaries.insert(summary_id);
-    symbol_exprt stub_v; // Stub var
-    // Input argument symbols
-    for (std::vector<symbol_exprt>::iterator it2 =
-            partition_iface.argument_symbols.begin();
-            it2 != partition_iface.argument_symbols.end();
-            ++it2, ++idx) {
-      // SAT checks idx, SMT checks it2
-      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
-        get_symbols(*it2, depends);
-    }
-    // Output argument symbols
-    for (std::vector<symbol_exprt>::iterator it2 =
-            partition_iface.out_arg_symbols.begin();
-            it2 != partition_iface.out_arg_symbols.end();
-            ++it2, ++idx) {
-      // SAT checks idx, SMT checks it2
-      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
-        get_symbols(*it2, depends);
-    }
-    // Return value symbol
-    if (partition_iface.returns_value) {
-      // SAT checks idx, SMT checks it2
-      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
-        get_symbols(partition_iface.retval_symbol, depends);
-    }
-  }
-}
 
-void partitioning_slicet::mark_summary_symbols_smt(const summary_storet & summary_store,
-        partitiont &partition) {
-  // Mark all used symbols as directly as dependent
-  partition_ifacet& partition_iface = partition.get_iface();
-  const summary_idst& itps = partition.summaries;
-
-  // Mark all the used symbols in all summaries
-  for (summary_idst::const_iterator it = itps.begin();
-          it != itps.end(); ++it) {
-    summary_idt summary_id = *it;
-
-    smt_summaryt& summary = dynamic_cast <smt_summaryt&> 
-            (summary_store.find_summary(summary_id));
-
-    // Add only symbols constrained by the summary
-    unsigned idx = 0;
-    partition.applicable_summaries.insert(summary_id);
-    // Input argument symbols
-    for (std::vector<symbol_exprt>::iterator it2 =
-            partition_iface.argument_symbols.begin();
-            it2 != partition_iface.argument_symbols.end();
-            ++it2, ++idx) {
-      // SAT checks idx, SMT checks it2
-      if(summary.usesVar(*it2,idx))
-        get_symbols(*it2, depends);
-    }
-    // Output argument symbols
-    for (std::vector<symbol_exprt>::iterator it2 =
-            partition_iface.out_arg_symbols.begin();
-            it2 != partition_iface.out_arg_symbols.end();
-            ++it2, ++idx) {
-      // SAT checks idx, SMT checks it2
-      if(summary.usesVar(*it2,idx))
-        get_symbols(*it2, depends);
-    }
-    // Return value symbol, 
-    //KE: get_symbols is stab now, so have no idea what it should be here
-    // Comment out when get_symbols is implimented
-    if (partition_iface.returns_value) {
-      // SAT checks idx, SMT checks it2
-    //  if(summary.usesVar(*it2,idx))
-    //    get_symbols(partition_iface.retval_symbol, depends);
-    }
+      for (unsigned idx = 0; idx < iface_symbols.size(); ++idx)
+      {
+          if(summary.usesVar(idx))
+              get_symbols(iface_symbols[idx], depends);
+      }
   }
 }
 
@@ -513,9 +421,8 @@ Function: partitioning_slice
 
 \*******************************************************************/
 
-void partitioning_slice(partitioning_target_equationt &equation,
-        const summary_storet & summary_store, bool use_smt)
+void partitioning_slice(partitioning_target_equationt & equation)
 {
   partitioning_slicet slice;
-  slice.slice(equation, summary_store, use_smt);
+    slice.slice(equation, equation.get_summary_store());
 }

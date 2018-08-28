@@ -12,11 +12,12 @@
 #include <map>
 
 
-class smt_symex_target_equationt;
+class hifrog_symex_target_equationt;
 class goto_programt;
 class namespacet;
 class subst_scenariot;
 class partitioning_target_equationt;
+class check_opensmt2t;
 
 #define INDEPT false
 #define DEPT true
@@ -25,7 +26,7 @@ class partitioning_target_equationt;
 #define IMP true
 
 
-class dependency_checkert : public messaget
+class dependency_checkert : private messaget
 {
 public:
     dependency_checkert(
@@ -39,7 +40,6 @@ public:
     ) :
           goto_program(_goto_program),
           ns(_ns),
-          message_handler (_message_handler),
           omega(_omega)
     {
           set_message_handler(_message_handler);
@@ -54,14 +54,14 @@ public:
     }
 
   void do_it(partitioning_target_equationt &equation);
-  void do_it(smt_symex_target_equationt &equation);
+  void do_it(hifrog_symex_target_equationt &equation);
 
-  using SSA_stepst = std::vector<symex_target_equationt::SSA_stept*> ;
+  using SSA_stepst = std::vector<symex_target_equationt::SSA_stept> ;
   using SSA_steps_it = SSA_stepst::iterator;
 
   void find_var_deps(UnionFind<std::string> &deps_ds, std::map<std::string, bool> &visited);
   void find_assert_deps();
-  virtual long find_implications()=0;
+  long find_implications();
 
 #ifdef DISABLE_OPTIMIZATIONS   
   void print_SSA_steps_infos();
@@ -75,13 +75,12 @@ public:
   std::string variable_name(dstringt name);
   void print_dependents(std::map<std::string,bool> dependents, std::ostream &out);
 
-  virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it c1, SSA_steps_it c2)=0;
+  std::pair<bool, fine_timet> check_implication(SSA_steps_it c1, SSA_steps_it c2);
   bool compare_assertions(std::size_t idx1, std::size_t idx2);
 
 protected:
   const goto_programt &goto_program;
   const namespacet &ns;
-  ui_message_handlert &message_handler;
   subst_scenariot &omega;
 
   int last_label;
@@ -102,6 +101,12 @@ protected:
   unsigned long impl_timeout;
   
   void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);
+
+    void convert_delta_SSA(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+    void convert_assumptions(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+    void convert_assertions(check_opensmt2t &decider, SSA_steps_it &it2);
+    void convert_io(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+    void set_guards_to_true(check_opensmt2t &decider, const exprt& exp);
 };
 
 extern inline bool operator<(

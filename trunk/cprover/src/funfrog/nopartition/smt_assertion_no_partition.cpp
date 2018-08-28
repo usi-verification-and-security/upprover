@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_assertion_no_partition.cpp
  * Author: karinek
@@ -104,7 +98,7 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
     
     error_tracet error_trace;
     
-    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider);
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
@@ -113,10 +107,10 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
         return; // Cannot really print a trace
     }
 
-    error_trace.build_goto_trace(equation, decider);
+    error_trace.build_goto_trace(get_steps_exec_order(), decider);
 
     result() << "\nCounterexample:" << eom;
-    error_trace.show_goto_trace(decider, result (), ns, guard_expln);
+    error_trace.show_goto_trace(result(), ns, guard_expln);
     result () << eom;
 }
 

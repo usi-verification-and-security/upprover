@@ -26,4 +26,12 @@ void print_SSA_steps_in_order(const C & iterable, const namespacet & ns, std::os
   }
 }
 
+template<typename Iter>
+void print_SSA_steps(Iter beg, Iter end, const namespacet & ns, std::ostream& out){
+    for (auto it = beg; it != end; ++it){
+        it->output(ns, out);
+        out << '\n';
+    }
+}
+
 #endif //HIFROG_SSA_HELPERS_H

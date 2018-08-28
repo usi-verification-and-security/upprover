@@ -23,7 +23,6 @@ void prop_summary_storet::serialize(std::ostream& out) const
     out << summary_node.repr_id << " " << summary_node.is_repr() << std::endl;
     
     if (summary_node.is_repr()) {
-      out << summary_node.summary->is_valid() << std::endl;
         summary_node.summary->serialize(out);
     }
   }
@@ -57,15 +56,12 @@ void prop_summary_storet::deserialize(std::istream& in)
   {
     summary_idt repr_id;
     bool is_repr;
-    bool is_valid;
     prop_summaryt * summary = new prop_summaryt{};
     
     in >> repr_id >> is_repr;
     
     if (is_repr) {
-      in >> is_valid;
       summary->deserialize(in);
-      summary->set_valid(is_valid);
       store.emplace_back(repr_id, summary);
       repr_count++;
     } else {

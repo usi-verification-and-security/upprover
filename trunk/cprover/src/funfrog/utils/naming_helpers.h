@@ -17,12 +17,34 @@ struct HifrogStringConstants {
   static const std::string CALLSTART_SYMBOL;
   static const std::string CALLEND_SYMBOL;
   static const std::string ERROR_SYMBOL;
-  static const std::string UNSUPPORTED_VAR_NAME;
+};
+
+struct SMTConstants{
+    static const std::string SMT_BOOL;
+    static const std::string SMT_REAL;
+    static const std::string SMT_UREAL;
+    static const std::string SMT_UNKNOWN;
+    static const std::string SMT_INT;
 };
 
 struct CProverStringConstants {
-  static const std::string INITIALIZE_METHOD;
-  static const std::string IO_CONST;
+    static const std::string INITIALIZE_METHOD;
+    static const std::string ROUNDING_MODE;
+    static const std::string IO_CONST;
+    static const std::string CPROVER_BUILDINS;
+    static const std::string DYNAMIC_OBJ;
+    static const std::string GOTO_GUARD;
+    static const std::string NIL;
+    static const std::string NONDETv1;
+    static const std::string NONDETv2;
+    static const std::string SYMEX_NONDET;
+};
+
+struct HiFrogOptions {
+    static const std::string NO_SLICING;
+    static const std::string NO_ERROR_TRACE;
+    static const std::string UNWIND;
+    static const std::string LOGIC;
 };
 
 inline std::string add_counter_to_fun_name(const std::string & name, size_t counter) {
@@ -49,6 +71,17 @@ inline bool is_cprover_initialize_method(const std::string& name)
 {
   return name == CProverStringConstants::INITIALIZE_METHOD;
 }
+
+inline bool is_cprover_rounding_mode_var(const std::string& str)
+{
+    return (str.find(CProverStringConstants::ROUNDING_MODE) != std::string::npos);
+}
+
+inline bool is_cprover_builtins_var(const std::string str)
+{
+    return (str.find(CProverStringConstants::CPROVER_BUILDINS) != std::string::npos);
+}
+
 inline bool is_main(const std::string& name){
   return name == "main";
 }
@@ -67,5 +100,7 @@ inline bool is_main(const std::string& name){
   }
 
   std::string stripGlobalSuffix(const std::string& name);
+
+unsigned int get_unique_index();
 
 #endif //HIFROG_NAMING_HELPERS_H

@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   symex_assertion_no_partitiont.cpp
  * Author: karinek
@@ -15,6 +9,10 @@
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex_state.h>
 #include <goto-symex/symex_slice_class.h>
+#include <funfrog/assertion_info.h>
+#include <util/time_stopping.h>
+#include "smt_symex_target_equation.h"
+
 
 bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const goto_functionst& goto_functions)
 {
@@ -26,9 +24,6 @@ bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const go
     status() << "ASSERTION IS TRUE" << log.eom;
     return true;
   }
-
-  // Start Checking:
-  last_source_location.make_nil();
   
   // Clear the state
   state = goto_symext::statet();
@@ -71,7 +66,6 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     catch(const std::string &error_str)
     {
         messaget message(log.get_message_handler());
-        message.error().source_location=last_source_location;
         message.error() << error_str << messaget::eom;
 
         assert(0);
@@ -79,7 +73,6 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     catch(const char *error_str)
     {
         messaget message(log.get_message_handler());
-        message.error().source_location=last_source_location;
         message.error() << error_str << messaget::eom;
 
         assert(0);
@@ -116,4 +109,23 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     }
     return false;
 }
+
+bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, unsigned unwind) {
+    // returns true if we should not continue unwinding
+    // for support of different bounds in different loops, see how it's done in symex_bmct
+    return unwind >= max_unwind;
+}
+
+symex_no_partitiont::symex_no_partitiont(const namespacet & _ns, symbol_tablet & _new_symbol_table,
+                                         hifrog_symex_target_equationt & _target, message_handlert & _message_handler,
+                                         const goto_programt & _goto_program, bool _use_slicing)
+ :
+    goto_symext(_message_handler, _ns, _new_symbol_table, _target),
+            equation(_target),
+            goto_program(_goto_program),
+            current_assertion(nullptr),
+            loc(0),
+            use_slicing(_use_slicing)
+    {}
+
 
