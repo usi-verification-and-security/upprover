@@ -795,6 +795,7 @@ void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
   PTRef new_root;
   logic->varsubstitute(old_root, subst, new_root);
   this->set_to_true(new_root);
+  ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
 }
 
 void smtcheck_opensmt2t::lcnf(const bvt & bv) {
