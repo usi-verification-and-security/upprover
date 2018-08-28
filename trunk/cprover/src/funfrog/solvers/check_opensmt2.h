@@ -165,6 +165,7 @@ protected:
 
   // Code for init these options
   void set_dump_query(bool f);
+  void set_dump_pre_query(bool f) {dump_pre_queries = f;}
   void set_dump_query_name(const string& n);
 #endif 
   
