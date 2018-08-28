@@ -693,15 +693,14 @@ std::set<PTRef> smtcheck_opensmt2t::get_non_linears()
 }
 
 void smtcheck_opensmt2t::get_non_linears_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen){
-    if (!contains(seen, ptref) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref))) {
-        if (is_non_linear_operator(ptref)){
+    if(contains(seen, ptref)) { return; }
+    if (!(logic->isVar(ptref)) && !(logic->isConstant(ptref)) && is_non_linear_operator(ptref)){
             res.insert(ptref);
-        }
     }
     seen.insert(ptref);
     // recurse on children
     auto const & pterm = logic->getPterm(ptref);
-    for(auto i = 0; i < pterm.size(); ++i){
+    for(auto i = 0; i < pterm.size(); ++i) {
         get_non_linears_rec(pterm[i], res, seen);
     }
 }
