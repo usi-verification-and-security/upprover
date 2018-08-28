@@ -1151,7 +1151,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     initialize__prop_option_solver();
     decider = initialize__prop_solver();
     new_symbol_table.clear();
-    return this->assertion_holds_(assertion, false);
+    auto res = this->assertion_holds_(assertion, false);
+    if (res) {
+        status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;
+    }
+    return res;
 }
 
 #endif // PRODUCE_PROOF

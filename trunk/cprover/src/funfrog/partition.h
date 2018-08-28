@@ -51,12 +51,12 @@ public:
     child_locs.erase(it2);
   }
 
-  void add_fle_part_id(expr_idt _fle_part_id) {
+  void add_fle_part_id(fle_part_idt _fle_part_id) {
     assert(!contains(fle_part_indices, _fle_part_id));
     this->fle_part_indices.push_back(_fle_part_id);
   }
 
-  const std::vector<expr_idt>& get_fle_part_ids(){
+  const std::vector<fle_part_idt>& get_fle_part_ids(){
       return this->fle_part_indices;
   }
 
@@ -118,7 +118,7 @@ public:
 private:
     partition_representation representation;
     partition_ifacet * partition_iface;
-    std::vector<expr_idt> fle_part_indices;
+    std::vector<fle_part_idt> fle_part_indices;
 
 };
 

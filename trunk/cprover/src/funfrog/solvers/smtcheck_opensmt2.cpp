@@ -92,17 +92,6 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     return push_variable(ans);
 }
 
-literalt smtcheck_opensmt2t::land(bvt b){
-    vec<PTRef> args;
-    for(auto lit : b)
-    {
-        PTRef tmpp = literalToPTRef(lit);
-        args.push(tmpp);
-    }
-    PTRef ans = logic->mkAnd(args);
-    return push_variable(ans);
-}
-
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     vec<PTRef> args;
     PTRef pl1 = literalToPTRef(l1);
@@ -535,7 +524,7 @@ Function: smtcheck_opensmt2t::create_equation_for_unsupported
 PTRef smtcheck_opensmt2t::create_equation_for_unsupported(const exprt &expr)
 {  
     // extract parameters to the call
-    vec<PTRef> args; 
+    vec<PTRef> args;
     get_unsupported_op_args(expr, args);
     
     // Define the function if needed and check it is OK
@@ -578,9 +567,6 @@ SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<
         args_decl.push(logic->getSortRef(args[i]));
         key_func += "," + std::string(logic->getSortName(logic->getSortRef(args[i])));
     }
-    
-    // Keep the list of already declared
-    static std::map<std::string,SymRef> decl_uninterperted_func; // Inner use only
     
     // Define the function if needed and check it is OK
     SymRef decl = SymRef_Undef;
@@ -707,15 +693,14 @@ std::set<PTRef> smtcheck_opensmt2t::get_non_linears()
 }
 
 void smtcheck_opensmt2t::get_non_linears_rec(PTRef ptref, std::set<PTRef> & res, std::set<PTRef> & seen){
-    if (!contains(seen, ptref) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref))) {
-        if (is_non_linear_operator(ptref)){
+    if(contains(seen, ptref)) { return; }
+    if (!(logic->isVar(ptref)) && !(logic->isConstant(ptref)) && is_non_linear_operator(ptref)){
             res.insert(ptref);
-        }
     }
     seen.insert(ptref);
     // recurse on children
     auto const & pterm = logic->getPterm(ptref);
-    for(auto i = 0; i < pterm.size(); ++i){
+    for(auto i = 0; i < pterm.size(); ++i) {
         get_non_linears_rec(pterm[i], res, seen);
     }
 }
@@ -810,6 +795,7 @@ void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
   PTRef new_root;
   logic->varsubstitute(old_root, subst, new_root);
   this->set_to_true(new_root);
+  ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
 }
 
 void smtcheck_opensmt2t::lcnf(const bvt & bv) {

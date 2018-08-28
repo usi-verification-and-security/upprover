@@ -16,6 +16,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/interpolating_solver.h"
 #include "funfrog/interface/solver/solver.h"
 #include "solver_options.h"
+#include "funfrog/interface/convertor.h"
 
 //class literalt;  //SA: Is not this declaration redundant?
 class exprt;
@@ -24,24 +25,24 @@ class exprt;
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 // General interface for OPENSMT2 calls
-class check_opensmt2t :  public interpolating_solvert, public solvert
+class check_opensmt2t :  public interpolating_solvert, public solvert, public convertort
 {
 public:
     check_opensmt2t();
           
     virtual ~check_opensmt2t();
 
-    virtual literalt bool_expr_to_literal(const exprt & expr) = 0;
-    virtual literalt land(literalt l1, literalt l2) = 0;
-    virtual literalt lor(literalt l1, literalt l2) = 0;
-    virtual literalt lor(const bvt & bv) = 0;
+   // virtual literalt bool_expr_to_literal(const exprt & expr) = 0; //moved to iface
+   // virtual literalt land(literalt l1, literalt l2) = 0;
+   // virtual literalt lor(literalt l1, literalt l2) = 0;
+   // virtual literalt lor(const bvt & bv) = 0;
     virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
 
     literalt limplies(literalt a, literalt b)
     {
         return lor(!a, b);
     }
-    virtual void set_equal(literalt l1, literalt l2) = 0;
+    // virtual void set_equal(literalt l1, literalt l2) = 0;  //SA: moved to interface class convertort
 
     // assert this clause to the solver
     virtual void lcnf(const std::vector<literalt> & lits) = 0;
@@ -55,13 +56,13 @@ public:
 
     virtual void assert_literal(literalt) = 0;
 
-    void set_to_true(const exprt &expr) {
-        literalt l = bool_expr_to_literal(expr);
+    void set_to_true(const exprt &expr) override {
+        literalt l = convert_bool_expr(expr);
         assert_literal(l);
     }
 
     void set_to_false(const exprt &expr){
-        literalt l = bool_expr_to_literal(expr);
+        literalt l = convert_bool_expr(expr);
         assert_literal(!l); // assert the negation
     }
 
@@ -85,7 +86,7 @@ public:
   
     virtual bool is_overapprox_encoding() const = 0;
 
-    expr_idt new_partition() override;
+    fle_part_idt new_partition() override;
 
     void close_partition() override;
 

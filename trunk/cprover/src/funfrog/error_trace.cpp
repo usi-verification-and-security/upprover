@@ -212,7 +212,7 @@ void error_tracet::build_goto_trace_formula (
           if (non_interp_classes.find(val_val) == non_interp_classes.end()){
             non_interp_classes[val_val] = new std::vector<literalt>();
           }
-          non_interp_classes[val_val]->push_back(decider2.bool_expr_to_literal(SSA_step.ssa_lhs));
+          non_interp_classes[val_val]->push_back(decider2.convert_bool_expr(SSA_step.ssa_lhs));
           continue;
         } else if (val.get(ID_value) == "1"){
           ltr = decider2.get_const_literal(true);
@@ -222,7 +222,7 @@ void error_tracet::build_goto_trace_formula (
           continue;
         }
 
-	decider2.set_equal(ltr, decider2.bool_expr_to_literal(SSA_step.ssa_lhs));
+	decider2.set_equal(ltr, decider2.convert_bool_expr(SSA_step.ssa_lhs));
     }
   }
   for (std::map<const irep_idt, std::vector<literalt>*>::iterator

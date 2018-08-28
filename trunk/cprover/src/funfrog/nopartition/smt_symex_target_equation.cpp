@@ -67,7 +67,7 @@ void hifrog_symex_target_equationt::convert_guards(check_opensmt2t &decider)
             expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(GUARD-OUT) --> ", tmp,false);
 #	endif
-            step.guard_literal = decider.bool_expr_to_literal(tmp);
+            step.guard_literal = decider.convert_bool_expr(tmp);
         }
     }      
 }
@@ -129,7 +129,7 @@ void hifrog_symex_target_equationt::convert_assumptions(check_opensmt2t &decider
                             cout << "Before decider::convert(ASSUME-OUT) --> ",
                             tmp, false);
 #               endif
-                step.cond_literal = decider.bool_expr_to_literal(tmp);
+                step.cond_literal = decider.convert_bool_expr(tmp);
             }
         }
     }
@@ -153,7 +153,7 @@ void hifrog_symex_target_equationt::convert_goto_instructions(check_opensmt2t &d
                             cout << "Before decider::convert(GOTO-OUT) --> ",
                             tmp, false);
 #               endif
-                step.cond_literal = decider.bool_expr_to_literal(tmp);
+                step.cond_literal = decider.convert_bool_expr(tmp);
             }
         }
     }
@@ -203,7 +203,7 @@ void hifrog_symex_target_equationt::convert_assertions(check_opensmt2t &decider)
                     step.cond_expr);
 
             // do the conversion
-            step.cond_literal= decider.bool_expr_to_literal(implication);
+            step.cond_literal= decider.convert_bool_expr(implication);
 
             // store disjunct
             disjuncts.push_back(literal_exprt(!step.cond_literal));

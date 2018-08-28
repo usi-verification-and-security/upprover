@@ -7,6 +7,7 @@
 import subprocess
 import os
 import sys
+import re
 from datetime import datetime
 
 RED   = "\033[1;31m"
@@ -18,92 +19,70 @@ def filtercomments(input_text):
     comment_start = ';'
     filtered = [ line for line in input_text.splitlines() if not line.startswith(comment_start) ]
     return '\n'.join(filtered)
-#-------------------------------------------------------
-def run_single(args, shouldSuccess, folderpath, testname):
-    computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))
-    summaries_name = '__summaries'
-    summaries_path = os.path.join(folderpath, summaries_name)
-    if os.path.exists(summaries_path):
-        os.remove(summaries_path)
-    newargs = args + ['--save-summaries', summaries_path]
-    command = ' '.join(newargs)
-    note('Executing command:' + command)
-    out = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    stdoutput = out.stdout.decode('utf-8')   #First output
-    stderror = out.stderr.decode('utf-8')
-    filteredOutput = filtercomments(stdoutput)
-    # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
-    collect_data(stdoutput , testname , command)
-    # get the line containing the verification result
-    resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
-    if not resultLines:
-        error("No verification result! --> " + testname)
-        return False
-    if len(resultLines) > 1:
-        error("Got multiple lines with verification result when only one was expected!")
-        return False
-    resultLine = resultLines[0]
-    expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
-    testPassed = (resultLine == expectedResult)
-    if not testPassed:
-        error('Test result is different than the expected one! --> '+ testname)
-        return False
-    success('Test result as expected!')
-    if (not shouldSuccess) or (not computes_summaries):
-        return True
 
-    #rerun with the computed summaries
-    assert os.path.exists(summaries_path), 'Summaries for rerun not found!'
-    newargs = newargs + ['--load-summaries', summaries_path]
-    command = ' '.join(newargs)
-    note('Reruning the command to check the summaries:' + command)
+def purge(dir, pattern):
+    for f in os.listdir(dir):
+        if re.search(pattern, f):
+            os.remove(os.path.join(dir, f))
+            
+#-------------------------------------------------------
+def run_single(path_to_bin, configs_str, path_to_test):
+    note("Running test: " + path_to_test)
+    command = path_to_bin + ' --sum-theoref ' + path_to_test
     out = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
-    stderror = out.stderr.decode('utf-8')
+    stdoutput = out.stdout.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    collect_data(stdoutput, testname, command)  # collect rerun time and results;
-    
-    # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
-    if not resultLines:
-        error('The rerun did not return verification result!'+ testname)
+    refinementLines = [line for line in filteredOutput.splitlines() if 'verified by ' in line]
+    configs = configs_str.split('\n')
+    claim = 0
+    incorrect = 0
+    wrong_level = 0
+    refinementLine = 0
+    for config_line in configs:
+        config_line.strip()
+        if not config_line:
+            continue
+        fields = config_line.split(';')
+        fields = list(map(str.strip, fields))
+        assert(fields[0] == 'sum-theoref')
+        claim_field = fields[1]
+        expected_str = fields[2]
+        logic_field = fields[3]
+        expected = should_succeed(expected_str)
+        res = resultLines[claim]
+        failed =  (res != "VERIFICATION SUCCESSFUL") if expected else (res != "VERIFICATION FAILED")
+        if failed:
+            incorrect = incorrect + 1
+        if expected :
+            levelLine = refinementLines[refinementLine]
+            refinementLine = refinementLine + 1
+            if not logic_field in levelLine.lower():
+                wrong_level = wrong_level + 1
+        claim = claim + 1
+    if incorrect > 0:
+        error("Some claims returned different results then they should!")
         return False
-    if len(resultLines) > 1:
-        error('The rerun did not finish in one iteretion!')
+    if wrong_level > 0:
+        error("Some claims were verified on a different level than expected!")
         return False
-    resultLine = resultLines[0]
-    if resultLine != expectedResult:
-        error('The rerun verification was not successful')
-        return False
-    #get the line containing the number of iteration
-    iterationlines = [line for line in filteredOutput.splitlines() if 'Total number of steps' in line]
-    if len(iterationlines) != 1:
-        error("The output of rerun does not contain information about the number of iteration")
-        return False
-    iter_split = iterationlines[0].split(":")
-    if len(iter_split) < 2:
-        error("Cannot get the number of iterations!")
-        return False
-    iteration_count = int(iter_split[1])
-    if iteration_count > 1:
-        error("Summaries were not re-used successfully and refinement occured!")
-        return False
-    if iteration_count != 1:
-        error("Weird situation with number of iterations!")
-        return False
-    success('Re-verification with summaries successful!')
-    os.remove(summaries_path)
+    assert(incorrect == 0 and wrong_level == 0)
+    success("Test successful!")
     return True
+        
+
 #-------------------------------------------------------
 def run(path_to_exec):
     # where the testcases are located
-    testdir = './testcases'
+    testdir = './testcases-sumtheoref'
     fails_in_tests = 0
+    purge('./', '^__summaries.*')
     # process each configuration file you find there
     for subdirs, dirs, files in os.walk(testdir):
         for file in files:
             if file.endswith('.conf'):
                 res = run_test_case(path_to_exec, testdir, file)
+                purge('./', '^__summaries.*')
                 if not res:
                     fails_in_tests = fails_in_tests + 1
     print('')
@@ -131,31 +110,13 @@ def run_test_case(path_to_exec, testdir, configfile):
     # path to configuration path, we assume it exists
     configpath = os.path.join(testdir, configfile)
     with open(configpath) as cfg:
-        configurations = cfg.read().splitlines()
-    # each configuration on one line, arguments separated from expected result by ';'
-    separator = ';'
-    fail_count = 0
-    for configuration in configurations:
-        # ignore empty lines or lines starting wiht '#' -> comments
-        if not configuration or configuration.startswith('#'):
-            continue
-        fields = configuration.split(separator)
-        if len(fields) < 2:
-            error('Configuration not in correct format: ' + configuration)
-            error('bad config file is: '+ configpath +' for -->  '+ testname)  
-            continue
-        # arguments with which to run hifrog
-        args = fields[0].strip().split()
-        # expected result
-        exp_res = fields[1].strip()
-        res = run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir, testname)
-        if not res:
-            fail_count = fail_count + 1
-        print('')
-    return fail_count == 0
+        configurations = cfg.read()
+        return run_single(path_to_exec, configurations, sourcepath)
+    
+
 #-------------------------------------------------------
 # maps string representation of expected result to boolean
-def should_success(expected):
+def should_succeed(expected):
     if expected in ['success','succes', 'sucess']:
         return True
     if expected in ['fail', 'failed']:
@@ -229,6 +190,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    exec_path=' ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ' + exec_path 
+    exec_path=' ulimit -Sv 12000000; ulimit -St 300; /usr/bin/time -p ' + exec_path 
     run(exec_path)
 

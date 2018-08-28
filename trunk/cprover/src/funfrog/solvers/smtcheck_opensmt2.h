@@ -42,7 +42,7 @@ public:
 
   void set_equal(literalt l1, literalt l2) override; // Common to all
 
-  virtual literalt bool_expr_to_literal(const exprt & expr) override{
+  virtual literalt convert_bool_expr(const exprt &expr) override{
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
       // FIXME: PTRef to literal should maybe consider negation, caching...
@@ -50,8 +50,6 @@ public:
   }
 
   literalt land(literalt l1, literalt l2) override; // Common to all
-
-  virtual literalt land(bvt b); // Common to all
 
   literalt lor(literalt l1, literalt l2) override; // Common to all
 
@@ -143,6 +141,9 @@ protected:
   //using expr_hasht = irep_full_hash;
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
+
+  // Hold uninterpreted functions that the solver was told about
+  std::map<std::string,SymRef> decl_uninterperted_func;
 
   unsupported_operationst unsupported_info;
   
