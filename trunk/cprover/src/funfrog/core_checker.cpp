@@ -556,7 +556,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   absolute_timet initial, final;
   initial=current_time();
   
-  const bool no_slicing_option = options.get_bool_option("no-slicing");
+  const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
     const auto & const_summary_store = *summary_store;
