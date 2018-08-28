@@ -6,6 +6,8 @@
 #define PROJECT_CONTAINERS_UTILS_H
 
 #include <algorithm>
+#include <map>
+#include <set>
 
 template<typename Cont, typename Elem>
 bool contains(const Cont & container, const Elem& elem)
@@ -15,6 +17,12 @@ bool contains(const Cont & container, const Elem& elem)
 
 template <typename Elem, typename... Ts>
 bool contains(const std::map<Ts...>& c, const Elem& x)
+{
+    return c.find(x) != std::end(c);
+}
+
+template <typename Elem, typename... Ts>
+bool contains(const std::set<Ts...>& c, const Elem& x)
 {
     return c.find(x) != std::end(c);
 }
