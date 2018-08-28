@@ -67,13 +67,23 @@ bool is_in_blacklist(std::string fname)
     return  (black_list_func.count(fname) > 0);
 }
 
+// Check if variable name was created as part of unsupported mechanism
+bool is_unsupported_var_name(std::string name)
+{
+    return (name.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) 
+            != std::string::npos);
+}
+    
 /*******************************************************************/
+// SUMMARY REFINEMENT 
 // Purpose: create non-linear fresh variable with a separate(independent) counter for summary refinement
+// No need to store this information. Once needed shall use the class functionality!
 std::string fresh_var_name_nonlinear(){
     static int counter = 0;
     return quote_if_necessary( unsupported_symbol(std::string{"_sumtheoref_"}) + std::to_string(counter++) );
 }
 
+// SUMMARY REFINEMENT
 // Purpose: extract all unsupported function calls (uns_* e.g.,)
 std::vector<std::string> get_unsupported_funct_exprs(std::string const & text) {
     std::vector<std::string> res;

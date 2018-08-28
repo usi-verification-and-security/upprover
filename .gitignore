@@ -41,12 +41,14 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/*.d
 /trunk/cprover/src/*.o
 /trunk/cprover/src/*.do
+/trunk/cprover/src/*.cmake
 
 # /cprover/src/funfrog/
 /trunk/cprover/src/funfrog/funfrog
 /trunk/cprover/src/funfrog/*.d
 /trunk/cprover/src/funfrog/*.do
 /trunk/cprover/src/funfrog/*.o
+/trunk/cprover/src/funfrog/*.cmake
 /trunk/cprover/src/funfrog/CVS
 /trunk/cprover/src/funfrog/.cvsignore
 /trunk/cprover/src/funfrog/sumo
@@ -66,6 +68,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/xmllang/*.o
 /trunk/cprover/src/xmllang/*.do
 /trunk/cprover/src/xmllang/*.a
+/trunk/cprover/src/xmllang/*.cmake
 /trunk/cprover/src/xmllang/*.output
 /trunk/cprover/src/xmllang/*_y.tab.*
 /trunk/cprover/src/xmllang/*_lex.yy.cpp
@@ -75,6 +78,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/util/*.o
 /trunk/cprover/src/util/*.do
 /trunk/cprover/src/util/*.a
+/trunk/cprover/src/util/*.cmake
 /trunk/cprover/src/util/ieee_float_test
 /trunk/cprover/src/util/irep_ids.h
 /trunk/cprover/src/util/irep_ids.inc
@@ -85,36 +89,41 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/linking/*.o
 /trunk/cprover/src/linking/*.do
 /trunk/cprover/src/linking/*.a
+/trunk/cprover/src/linking/*.cmake
 
 # /cprover/src/pointer-analysis/
 /trunk/cprover/src/pointer-analysis/*.d
 /trunk/cprover/src/pointer-analysis/*.o
 /trunk/cprover/src/pointer-analysis/*.do
 /trunk/cprover/src/pointer-analysis/*.a
+/trunk/cprover/src/pointer-analysis/*.cmake
 
 # /cprover/src/langapi/
 /trunk/cprover/src/langapi/*.d
 /trunk/cprover/src/langapi/*.o
 /trunk/cprover/src/langapi/*.do
 /trunk/cprover/src/langapi/*.a
+/trunk/cprover/src/langapi/*.cmake
 
-<<<<<<< HEAD
 # /cprover/src/path-symex/
 /trunk/cprover/src/path-symex/*.d
 /trunk/cprover/src/path-symex/*.o
 /trunk/cprover/src/path-symex/*.a
+/trunk/cprover/src/path-symex/*.cmake
 
 # /cprover/src/goto-diff/
 /trunk/cprover/src/goto-diff/*.d
 /trunk/cprover/src/goto-diff/*.o
 /trunk/cprover/src/goto-diff/*.a
 /trunk/cprover/src/goto-diff/goto-diff
+/trunk/cprover/src/goto-diff/*.cmake
 
 # /cprover/src/goto-analyzer/
 /trunk/cprover/src/goto-analyzer/*.d
 /trunk/cprover/src/goto-analyzer/*.o
 /trunk/cprover/src/goto-analyzer/*.a
 /trunk/cprover/src/goto-analyzer/goto-analyzer
+/trunk/cprover/src/goto-analyzer/*.cmake
 
 # /cprover/src/goto-instrument/
 /trunk/cprover/src/goto-instrument/*.d
@@ -122,30 +131,35 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/goto-instrument/*.do
 /trunk/cprover/src/goto-instrument/*.a
 /trunk/cprover/src/goto-instrument/goto-instrument
+/trunk/cprover/src/goto-instrument/*.cmake
 
 # /cprover/src/goto-instrument/wmm/
 /trunk/cprover/src/goto-instrument/wmm/*.d
 /trunk/cprover/src/goto-instrument/wmm/*.o
 /trunk/cprover/src/goto-instrument/wmm/*.do
 /trunk/cprover/src/goto-instrument/wmm/*.a
+/trunk/cprover/src/goto-instrument/wmm/*.cmake
 
 # /cprover/src/goto-instrument/accelerate/
 /trunk/cprover/src/goto-instrument/accelerate/*.d
 /trunk/cprover/src/goto-instrument/accelerate/*.o
 /trunk/cprover/src/goto-instrument/accelerate/*.do
 /trunk/cprover/src/goto-instrument/accelerate/*.a
+/trunk/cprover/src/goto-instrument/accelerate/*.cmake
 
 # /cprover/src/java_bytecode/
 /trunk/cprover/src/java_bytecode/*.d
 /trunk/cprover/src/java_bytecode/*.o
 /trunk/cprover/src/java_bytecode/*.do
 /trunk/cprover/src/java_bytecode/*.a
+/trunk/cprover/src/java_bytecode/*.cmake
 
 # /cprover/src/goto-symex/
 /trunk/cprover/src/goto-symex/*.d
 /trunk/cprover/src/goto-symex/*.o
 /trunk/cprover/src/goto-symex/*.do
 /trunk/cprover/src/goto-symex/*.a
+/trunk/cprover/src/goto-symex/*.cmake
 /trunk/cprover/src/symex/symex
 
 # /cprover/src/goto-cc/
@@ -153,6 +167,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/goto-cc/*.o
 /trunk/cprover/src/goto-cc/*.do
 /trunk/cprover/src/goto-cc/*.a
+/trunk/cprover/src/goto-cc/*.cmake
 /trunk/cprover/src/goto-cc/goto-cc
 
 # /cprover/src/cpp/
@@ -160,6 +175,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/cpp/*.o
 /trunk/cprover/src/cpp/*.do
 /trunk/cprover/src/cpp/*.a
+/trunk/cprover/src/cpp/*.cmake
 /trunk/cprover/src/cpp/*.output
 /trunk/cprover/src/cpp/*_y.tab.*
 /trunk/cprover/src/cpp/*_lex.yy.cpp
@@ -169,6 +185,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/ansi-c/*.o
 /trunk/cprover/src/ansi-c/*.do
 /trunk/cprover/src/ansi-c/*.a
+/trunk/cprover/src/ansi-c/*.cmake
 /trunk/cprover/src/ansi-c/*.inc
 /trunk/cprover/src/ansi-c/file_converter
 /trunk/cprover/src/ansi-c/*.output
@@ -180,6 +197,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/ansi-c/literals/*.o
 /trunk/cprover/src/ansi-c/literals/*.do
 /trunk/cprover/src/ansi-c/literals/*.a
+/trunk/cprover/src/ansi-c/literals/*.cmake
 
 # /cprover/src/ansi-c/library/
 /trunk/cprover/src/ansi-c/library/converter
@@ -189,6 +207,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/big-int/*.o
 /trunk/cprover/src/big-int/*.do
 /trunk/cprover/src/big-int/*.a
+/trunk/cprover/src/big-int/*.cmake
 /trunk/cprover/src/big-int/test-bigint
 
 # /cprover/src/analyses/
@@ -196,12 +215,14 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/analyses/*.o
 /trunk/cprover/src/analyses/*.do
 /trunk/cprover/src/analyses/*.a
+/trunk/cprover/src/analyses/*.cmake
 
 # /cprover/src/cbmc/
 /trunk/cprover/src/cbmc/*.d
 /trunk/cprover/src/cbmc/*.o
 /trunk/cprover/src/cbmc/*.do
 /trunk/cprover/src/cbmc/*.a
+/trunk/cprover/src/cbmc/*.cmake
 /trunk/cprover/src/cbmc/cbmc
 
 # /cprover/src/assembler/
@@ -209,6 +230,7 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/assembler/*.o
 /trunk/cprover/src/assembler/*.do
 /trunk/cprover/src/assembler/*.a
+/trunk/cprover/src/assembler/*.cmake
 /trunk/cprover/src/assembler/*.output
 /trunk/cprover/src/assembler/*_y.tab.*
 /trunk/cprover/src/assembler/*_lex.yy.cpp
@@ -218,71 +240,84 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/goto-programs/*.o
 /trunk/cprover/src/goto-programs/*.do
 /trunk/cprover/src/goto-programs/*.a
+/trunk/cprover/src/goto-programs/*.cmake
 
 # /cprover/src/solvers/
 /trunk/cprover/src/solvers/*.d
 /trunk/cprover/src/solvers/*.o
 /trunk/cprover/src/solvers/*.do
 /trunk/cprover/src/solvers/*.a
+/trunk/cprover/src/solvers/*.cmake
 
 # /cprover/src/solvers/sat/
 /trunk/cprover/src/solvers/sat/*.d
 /trunk/cprover/src/solvers/sat/*.o
 /trunk/cprover/src/solvers/sat/*.do
 /trunk/cprover/src/solvers/sat/*.a
+/trunk/cprover/src/solvers/sat/*.cmake
 
 # /cprover/src/solvers/qbf/
 /trunk/cprover/src/solvers/qbf/*.d
 /trunk/cprover/src/solvers/qbf/*.o
 /trunk/cprover/src/solvers/qbf/*.do
 /trunk/cprover/src/solvers/qbf/*.a
+/trunk/cprover/src/solvers/qbf/*.cmake
 
 # /cprover/src/solvers/prop/
 /trunk/cprover/src/solvers/prop/*.d
 /trunk/cprover/src/solvers/prop/*.o
 /trunk/cprover/src/solvers/prop/*.do
 /trunk/cprover/src/solvers/prop/*.a
+/trunk/cprover/src/solvers/prop/*.cmake
 
 # /cprover/src/solvers/floatbv/
 /trunk/cprover/src/solvers/floatbv/*.d
 /trunk/cprover/src/solvers/floatbv/*.o
 /trunk/cprover/src/solvers/floatbv/*.do
 /trunk/cprover/src/solvers/floatbv/*.a
+/trunk/cprover/src/solvers/floatbv/*.cmake
 
 # /cprover/src/solvers/flattening/
 /trunk/cprover/src/solvers/flattening/*.d
 /trunk/cprover/src/solvers/flattening/*.o
 /trunk/cprover/src/solvers/flattening/*.do
 /trunk/cprover/src/solvers/flattening/*.a
+/trunk/cprover/src/solvers/flattening/*.cmake
 
 # /cprover/src/solvers/cvc/
 /trunk/cprover/src/solvers/cvc/*.d
 /trunk/cprover/src/solvers/cvc/*.o
 /trunk/cprover/src/solvers/cvc/*.do
 /trunk/cprover/src/solvers/cvc/*.a
+/trunk/cprover/src/solvers/cvc/*.cmake
 
 # /cprover/src/solvers/dplib/
 /trunk/cprover/src/solvers/dplib/*.d
 /trunk/cprover/src/solvers/dplib/*.o
 /trunk/cprover/src/solvers/dplib/*.do
 /trunk/cprover/src/solvers/dplib/*.a
+/trunk/cprover/src/solvers/dplib/*.cmake
 
 # /cprover/src/solvers/smt1/
 /trunk/cprover/src/solvers/smt1/*.d
 /trunk/cprover/src/solvers/smt1/*.o
 /trunk/cprover/src/solvers/smt1/*.do
 /trunk/cprover/src/solvers/smt1/*.a
+/trunk/cprover/src/solvers/smt1/*.cmake
 
 # /cprover/src/solvers/smt2/
 /trunk/cprover/src/solvers/smt2/*.d
 /trunk/cprover/src/solvers/smt2/*.o
 /trunk/cprover/src/solvers/smt2/*.do
 /trunk/cprover/src/solvers/smt2/*.a
+/trunk/cprover/src/solvers/smt2/*.cmake
 
 # /cprover/src/loopfrog/
 /trunk/cprover/src/loopfrog/loopfrog
 /trunk/cprover/src/loopfrog/*.d
 /trunk/cprover/src/loopfrog/*.o
+/trunk/cprover/src/loopfrog/*.a
+/trunk/cprover/src/loopfrog/*.cmake
 /trunk/cprover/src/loopfrog/*.do
 
 # /cprover/src/loopfrog/invariants/
@@ -304,6 +339,24 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/loopfrog/tests/*.d
 /trunk/cprover/src/loopfrog/tests/*.o
 /trunk/cprover/src/loopfrog/tests/*.do
+
+# /cprover/src/jsil/
+/trunk/cprover/src/jsil/*.d
+/trunk/cprover/src/jsil/*.o
+/trunk/cprover/src/jsil/*.a
+/trunk/cprover/src/jsil/*.cmake
+
+# /cprover/src/json/
+/trunk/cprover/src/json/*.d
+/trunk/cprover/src/json/*.o
+/trunk/cprover/src/json/*.a
+/trunk/cprover/src/json/*.cmake
+
+# /cprover/src/miniz/
+/trunk/cprover/src/miniz/*.d
+/trunk/cprover/src/miniz/*.o
+/trunk/cprover/src/miniz/*.a
+/trunk/cprover/src/miniz/*.cmake
 
 # /minisat2/
 /trunk/minisat2/*.d
@@ -392,3 +445,37 @@ trunk/minisat-2.2.1/core/*.o
 /trunk/cprover/src/xmllang/.cproject
 /trunk/cprover/src/xmllang/.project
 
+#Netbeans project
+/trunk/cprover/src/nbproject/
+
+#CMAKE output build dir
+/trunk/cprover/build/
+
+#Regression outputs
+/trunk/cprover/regression/hifrog/mainReg_output/
+
+#CMAKE out-folders
+/trunk/cprover/src/CMakeCache.txt
+/trunk/cprover/src/CMakeFiles/
+/trunk/cprover/src/analyses/CMakeFiles/
+/trunk/cprover/src/ansi-c/CMakeFiles/
+/trunk/cprover/src/assembler/CMakeFiles/
+/trunk/cprover/src/big-int/CMakeFiles/
+/trunk/cprover/src/cpp/CMakeFiles/
+/trunk/cprover/src/funfrog/CMakeFiles/
+/trunk/cprover/src/goto-analyzer/CMakeFiles/
+/trunk/cprover/src/goto-cc/CMakeFiles/
+/trunk/cprover/src/goto-diff/CMakeFiles/
+/trunk/cprover/src/goto-instrument/CMakeFiles/
+/trunk/cprover/src/goto-programs/CMakeFiles/
+/trunk/cprover/src/goto-symex/CMakeFiles/
+/trunk/cprover/src/java_bytecode/CMakeFiles/
+/trunk/cprover/src/jsil/CMakeFiles/
+/trunk/cprover/src/json/CMakeFiles/
+/trunk/cprover/src/langapi/CMakeFiles/
+/trunk/cprover/src/linking/CMakeFiles/
+/trunk/cprover/src/miniz/CMakeFiles/
+/trunk/cprover/src/pointer-analysis/CMakeFiles/
+/trunk/cprover/src/solvers/CMakeFiles/
+/trunk/cprover/src/util/CMakeFiles/
+/trunk/cprover/src/xmllang/CMakeFiles/

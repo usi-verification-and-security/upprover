@@ -23,6 +23,9 @@ std::vector<std::string> get_unsupported_funct_exprs(std::string const & text);
 // Token we ignore and do not model
 bool is_in_blacklist(std::string fname);
 
+// Check if variable name was created as part of unsupported mechanism
+bool is_unsupported_var_name(std::string name);
+
 class unsupported_operationst
 {
 public:

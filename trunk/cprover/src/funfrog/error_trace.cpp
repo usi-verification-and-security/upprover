@@ -61,7 +61,7 @@ void error_tracet::build_goto_trace (
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
 
-    if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (is_unsupported_var_name(str))
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -182,7 +182,7 @@ void error_tracet::build_goto_trace_formula (
         continue;
 
 
-    if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (is_unsupported_var_name(str))
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -327,7 +327,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &de
                 continue;
        
             std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-            if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos) {
+            if (is_unsupported_var_name(str)) {
                 isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
                 break;
             }
@@ -398,6 +398,7 @@ void error_tracet::show_goto_trace(
             case goto_trace_stept::typet::SHARED_WRITE:
               // Unsupported here, probably is unsupported var
               isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
+              // FIXME: change against unsupported tables
               break;
 
             case goto_trace_stept::typet::ASSERT:
