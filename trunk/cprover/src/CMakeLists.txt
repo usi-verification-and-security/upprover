@@ -106,11 +106,11 @@ add_subdirectory(java_bytecode) # needed for solvers (!)
 add_subdirectory(miniz) # needed from java_bytecode
 #add_subdirectory(clobber)
 
-#add_subdirectory(cbmc)
+add_subdirectory(cbmc)
 #add_subdirectory(jbmc)
 add_subdirectory(goto-cc)
 add_subdirectory(goto-instrument)
 add_subdirectory(goto-analyzer)
-add_subdirectory(goto-diff)
+#add_subdirectory(goto-diff)
 
 add_subdirectory(funfrog)
