@@ -12,6 +12,7 @@ Module: Wrapper for OpenSMT2
 
 #include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
 #include "check_opensmt2.h"
+#include <funfrog/utils/expressions_utils.h>
 #include <util/expr.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
@@ -22,89 +23,65 @@ class symbol_exprt;
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
-// FIXME: add inheritance for class messaget, and replace couts in status/warning/error
-// This shall be to all smt interface classes
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
-  // C'tor to pass the value to main interface check_opensmt2
-  smtcheck_opensmt2t(bool _reduction, int _reduction_graph, int _reduction_loops, 
-#ifdef DISABLE_OPTIMIZATIONS  
-          bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name,
-#endif              
-          bool _store_unsupported_info=false) :
-        check_opensmt2t(_reduction, _reduction_graph, _reduction_loops
-#ifdef DISABLE_OPTIMIZATIONS  
-        , _dump_queries, _dump_pre_queries, _dump_query_name 
-#endif        
-        ),
-        no_literals(0),
-        no_literals_last_solved(0),
-        unsupported_info(unsupported_operationst(_store_unsupported_info))
-  { /* No init of solver - done for inherit check_opensmt2 */}
+    smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false}
+    {}
 
   virtual ~smtcheck_opensmt2t(); // d'tor
 
-  virtual void freeSolver() override { if (osmt != nullptr) delete osmt; }
- 
-  virtual bool solve(); // Common to all
+  bool solve() override;
 
-  virtual bool is_assignemt_true(literalt a) const; // Common to all, refiner+error_trace
+  bool is_overapproximating() const override {return true;}
 
-  virtual exprt get_value(const exprt &expr)=0;
+  bool is_assignment_true(literalt a) const override; // Common to all
 
-  virtual literalt convert(const exprt &expr) =0;
+  using check_opensmt2t::set_to_true;
+  void set_to_true(PTRef); // Common to all
 
-  void set_to_false(const exprt &expr); // Common to all - dependency checker
-  virtual void set_to_true(const exprt &expr); // Common to all
+  void set_equal(literalt l1, literalt l2) override; // Common to all
 
-  virtual void set_equal(literalt l1, literalt l2); // Common to all
+  virtual literalt convert_bool_expr(const exprt &expr) override{
+      assert(is_boolean(expr));
+      const PTRef ptref = expression_to_ptref(expr);
+      // FIXME: PTRef to literal should maybe consider negation, caching...
+      return push_variable(ptref);
+  }
 
-  virtual literalt lconst(bool val); // Common to all
+  literalt land(literalt l1, literalt l2) override; // Common to all
 
-  virtual literalt limplies(literalt l1, literalt l2); // Common to all
+  literalt lor(literalt l1, literalt l2) override; // Common to all
 
-  virtual literalt land(literalt l1, literalt l2); // Common to all
+  literalt lor(const bvt & b) override; // Common to all
 
-  virtual literalt land(bvt b); // Common to all
+  virtual void lcnf(const bvt& bv) override;
 
-  virtual literalt lor(literalt l1, literalt l2); // Common to all
-
-  virtual literalt lor(bvt b); // Common to all
-
-  virtual literalt lnot(literalt l); // Common to all
-
-  virtual literalt lassert(const exprt &expr)
-  { return convert(expr); }
+  void assert_literal(literalt lit) override{
+      set_to_true(literalToPTRef(lit));
+  }
   
 #ifdef PRODUCE_PROOF
-  void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants); // Common to all
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants) const override;
 
-  bool can_interpolate() const; // Common to all
+  virtual bool can_interpolate() const override;
 
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
-  virtual void generalize_summary(itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
-                          const std::string& fun_name, bool substitute);
+  void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
+
+  void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
+
+  std::set<PTRef> get_non_linears() const;
 #endif
-  std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!
 
   // Common to all
-  virtual void start_encoding_partitions() {
-	if (partition_count > 0){
-#ifdef PRODUCE_PROOF
-            if (ready_to_interpolate) std::cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
-		assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
-#endif		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
+  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
 
-		std::cout << "Incrementally adding partitions to the SMT solver\n";
-	}
-  }
-  
-  // Common to all
   std::string getSimpleHeader(); // Get all the declarations without the variables
+  std::set<PTRef> get_constants() const;
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
 
@@ -112,44 +89,71 @@ public:
   virtual std::string getStringSMTlibDatatype(const typet& type)=0;
   SRef getSMTlibDatatype(const exprt& expr);
   virtual SRef getSMTlibDatatype(const typet& type)=0;
-  
-  virtual SRef get_sort_ref(PTRef item) { return logic->getSortRef(item); }
-  
-  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
-  
-  vec<Tterm>& get_functions() { return logic->getFunctions();} // Common to all
 
-  void dump_function(ostream& dump_out, const Tterm& t) { logic->dumpFunction(dump_out, t); }
-  
-  Logic* getLogic() { return logic; }
-  
-  virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols);
-  
-/////////////////////////////////// Protected //////////////////////////////////  
+  virtual exprt get_value(const exprt &expr) override;
+
+  void dump_function(std::ostream& out, const Tterm& templ) {
+      logic->dumpFunction(out, templ);
+  }
+
+    virtual bool is_overapprox_encoding() const override
+    { return (has_unsupported_vars() && !has_overappox_mapping());}
+
 protected:
+    /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
+    virtual PTRef expression_to_ptref(const exprt& expr) = 0;
+
+    PTRef get_from_cache(const exprt& expr) const;
+
+    void store_to_cache(const exprt& expr, PTRef ptref);
+
+    virtual PTRef symbol_to_ptref(const exprt& expr);
+
+    virtual PTRef new_num_var(const std::string & var_name) = 0;
+
+    virtual PTRef new_bool_var(const std::string& var_name) {
+        return logic->mkBoolVar(var_name.c_str());
+    }
+
+    virtual PTRef constant_to_ptref(const exprt& expr);
+
+    PTRef constant_bool(bool val) const {
+        return val ? logic->getTerm_true() : logic->getTerm_false();
+    }
+
+    virtual PTRef complex_symbol_to_ptref(const exprt& expr);
+
+    virtual PTRef type_cast(const exprt & expr) = 0;
+
+    virtual PTRef numeric_constant(const exprt &expr) = 0;
+
+    virtual void add_symbol_constraints(const exprt &expr, const PTRef var) {}
+
+  /* ***************************************************************************************************************/
+
 
   vec<SymRef> function_formulas;
 
-  std::map<size_t, literalt> converted_exprs;
+  using expr_hasht = irep_hash;
+  //using expr_hasht = irep_full_hash;
+  std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
+  std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
-  unsigned no_literals;
-
-  unsigned no_literals_last_solved; // Check if in incremental solver mode
-
-  //  Mapping from boolean variable indexes to their PTRefs
-  std::vector<PTRef> literals;
-  typedef std::vector<PTRef>::iterator it_literals;
+  // Hold uninterpreted functions that the solver was told about
+  std::map<std::string,SymRef> decl_uninterperted_func;
 
   unsupported_operationst unsupported_info;
   
-  virtual bool has_unsupported_vars() const override { return unsupported_info.has_unsupported_vars(); }
-  virtual bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
+  bool has_unsupported_vars() const { return unsupported_info.has_unsupported_vars(); }
+  bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
+
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
   virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
 
-  literalt store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var=true); // common to all
+  void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
-  virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  // virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual PTRef unsupported_to_var(const exprt & expr) = 0;
 
   PTRef create_equation_for_unsupported(const exprt &expr); // common to all
 
@@ -157,26 +161,24 @@ protected:
 
   void get_unsupported_op_args(const exprt &expr, vec<PTRef> &args); // common to all
 
-  literalt new_variable(); // Common to all
-
   literalt push_variable(PTRef ptl); // Common to all
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 
-  void set_to_true(PTRef); // Common to all
+  template<typename Pred, typename Cont_Ret, typename Cont_Cache>
+  void collect_rec(const Pred predicate, PTRef ptref, Cont_Ret& collected, Cont_Cache& seen) const {
+      if (contains(seen, ptref)) { return; } // already processed
+      if (predicate(ptref)) {
+          collected.insert(ptref);
+      }
+      seen.insert(ptref);
+      // recurse on children
+      auto const & pterm = logic->getPterm(ptref);
+      for (auto i = 0; i < pterm.size(); ++i) {
+          collect_rec(predicate, pterm[i], collected, seen);
+      }
+  }
 
-  virtual literalt lconst_number(const exprt &expr)=0;
-
-  virtual literalt ltype_cast(const exprt &expr)=0;
-
-  literalt lvar(const exprt &expr);
-  
-  virtual PTRef evar(const exprt &expr, std::string var_name)=0;
-  
-  literalt lconst(const exprt &expr); // Common to all, except to LRA (and LIA)
-
-  PTRef convert_symbol(const exprt &expr); // Common to all
-  
 #ifdef PRODUCE_PROOF
   void setup_reduction();
 
@@ -186,11 +188,9 @@ protected:
 
 #endif
 
-  virtual bool can_have_non_linears()=0;
+  virtual bool can_have_non_linears() const {return true;}
 
-  virtual bool is_non_linear_operator(PTRef tr)=0;
-
-  virtual void initializeSolver(const char*)=0;
+  virtual bool is_non_linear_operator(PTRef tr) const = 0;
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
@@ -208,7 +208,7 @@ protected:
     else
     {
         ValPair v1 = mainSolver->getValue(ptrf);
-        assert(v1.val != NULL);
+        assert(v1.val != nullptr);
         irep_idt value(v1.val);
 
         return value;
@@ -225,31 +225,22 @@ protected:
 
 #ifdef DISABLE_OPTIMIZATIONS
   std::map <std::string,std::string> ite_map_str;
-  std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;
-  typedef std::set<std::string>::iterator it_var_set_str;
-#endif
-  void dump_on_error(std::string location);
-  char* getPTermString(const literalt &l) { return getPTermString(literals[l.var_no()]); }
-  char* getPTermString(const exprt &expr) {
-    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
-        return getPTermString(converted_exprs[expr.hash()]);
-    return 0;
+
+  std::string getVarData(const PTRef &var) {
+	  return string(logic->getSortName(logic->getSortRef(var)));
   }
-   
+#endif
+  // Basic prints for debug - KE: Hope I did it right :-)
+  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+
   // build the string of the upper and lower bounds
-  std::string create_bound_string(std::string base, int exp); 
-  
-  // Add L2 counter to symex objects in summaries
-  void add_instance_no_symex_symbol(
-        Map<PTRef, PtAsgn, PTRefHash>& subst,
-        const std::vector<symbol_exprt> & symbols, 
-        unsigned summary_instance_no); // common to all
-  
-  PTRef convert_symex_symbol(std::string argument_name, unsigned summary_instance_no); // common to all
-  
-  virtual PTRef make_var(const std::string name)=0;
-  
+  std::string create_bound_string(std::string base, int exp);
+
+public:
+
+  void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+
 };
 
 #endif

@@ -9,8 +9,7 @@ Author: Ondrej Sery
 #include <iostream>
 #include <fstream>
 
-#include <time_stopping.h>
-#include "function_info.h"
+#include <funfrog/utils/time_utils.h>
 
 void list_summaries(summary_storet& summary_store, 
         const function_infost& f_infos) 
@@ -82,12 +81,12 @@ int main(int argc, const char** argv) {
     
   } else if (do_optimize) {
     // Try to optimize
-    auto before=current_time();
+    auto before=timestamp();
   
     // TODO: KE - need to fix this code to work for summary of smt or sat
     function_infot::optimize_all_summaries(summary_store, f_infos);
     
-    auto after=current_time();
+    auto after=timestamp();
     std::cerr << "TOTAL OPTIMIZATION TIME: "<< time_gap(after,before) << std::endl;
     
     std::ofstream out;

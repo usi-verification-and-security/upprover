@@ -16,14 +16,12 @@
 #include <langapi/language_util.h>
 #include <goto-instrument/accelerate/acceleration_utils.h>
 
-#include "partitioning_slice.h"
 #include "partition_iface.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
-#include "hifrog.h"
-#include "summary_store.h"
 #include "assertion_info.h"
 #include "utils/time_utils.h"
+#include "utils/expressions_utils.h"
 
 #include <memory>
 #include <algorithm>
@@ -40,24 +38,13 @@
  Constructor
 
 \*******************************************************************/
-symex_assertion_sumt::symex_assertion_sumt(
-          const summary_storet & _summary_store,
-          const goto_functionst & _goto_functions,
-          call_tree_nodet &_root,
-          symbol_tablet &_symbol_table,
-          partitioning_target_equationt &_target,
-          message_handlert &_message_handler,
-          const goto_programt &_goto_program,
-          const optionst &_options,
-          path_storaget &_path_storage,          
-          unsigned _last_assertion_loc,
-          bool _single_assertion_check,
-          bool _use_slicing,
-	  bool _do_guard_expl,
-          bool _use_smt,
-          unsigned int _max_unwind) :
-  goto_symext(_message_handler, _symbol_table, _target, _options, _path_storage),
-  summary_store(_summary_store),
+symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root,
+                                           const optionst &_options, path_storaget &_path_storage, symbol_tablet & _new_symbol_table,
+                                           partitioning_target_equationt & _target,
+                                           message_handlert & _message_handler, const goto_programt & _goto_program,
+                                           unsigned _last_assertion_loc, bool _single_assertion_check,
+                                           bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
+  goto_symext(_message_handler, _new_symbol_table, _target, _options, _path_storage),
   goto_functions(_goto_functions),
   call_tree_root(_root),
   current_call_tree_node(&_root),
@@ -65,9 +52,7 @@ symex_assertion_sumt::symex_assertion_sumt(
   goto_program(_goto_program),
   last_assertion_loc(_last_assertion_loc),
   single_assertion_check(_single_assertion_check),
-  use_slicing(_use_slicing),
   do_guard_expl(_do_guard_expl),
-  use_smt(_use_smt),
   max_unwind(_max_unwind)
 {
   //options.set_option("partial-loops", partial_loops); // Why do we need to set it twice?! it is already set in parseoptions!
@@ -94,41 +79,6 @@ symex_assertion_sumt::~symex_assertion_sumt() {
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::loop_free_check
-
- Inputs:
-
- Outputs:
-
- Purpose: Sanity check, we expect loop-free programs only.
- * 
- * KE: DEAD CODE
-
- * KE: not compiling, comment + assert(0);
-
-\*******************************************************************/
-
-void symex_assertion_sumt::loop_free_check(){
-# ifndef NDEBUG
-  assert(0); // Dead code
-/*
-  forall_goto_program_instructions(it, goto_program)
-    assert(!it->is_backwards_goto());
-  forall_goto_functions(it, summarization_context.get_functions()) {
-    forall_goto_program_instructions(it2, it->second.body) {
-      if (it2->is_backwards_goto()) {
-        std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
-        goto_program.output_instruction(ns, "", std::cout, it2);
-        // assert(!it2->is_backwards_goto());
-      }
-    }
-  }
-*/
-# endif
-}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::prepare_SSA
 
  Inputs:
@@ -140,12 +90,10 @@ void symex_assertion_sumt::loop_free_check(){
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
+bool symex_assertion_sumt::prepare_SSA()
 {
-  current_assertion = &assertion;
-
   // these are quick...
-  if(assertion.is_trivially_true())
+  if(current_assertion == nullptr || current_assertion->is_trivially_true())
   {
     log.statistics() << "ASSERTION IS TRUE" << log.eom;
     return true;
@@ -169,47 +117,6 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::prepare_subtree_SSA
-
- Inputs:
-
- Outputs:
-
- Purpose: Generate SSA statements for the subtree of a specific function and
- compare to its summary
-
-\*******************************************************************/
-
-//bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
-//{
-//  current_assertion = &assertion;
-//
-//  // Clear the state
-//  reset_state();
-//
-//  // Prepare a partition for the ROOT function and defer
-//  partition_ifacet &partition_iface = new_partition_iface(call_tree_root, partitiont::NO_PARTITION, 0);
-//  call_tree_root.set_inline();
-//  defer_function(deferred_functiont(call_tree_root, partition_iface));
-//
-//  // Make all the interface symbols shared between
-//  // the inverted summary and the function.
-//  prepare_fresh_arg_symbols(state, partition_iface);
-//
-//  // Prepare a partition for the inverted SUMMARY
-//  fill_inverted_summary(call_tree_root, state, partition_iface);
-//
-//  // Old: ??? state.value_set = value_sets;
-//  state.source.pc = get_function(partition_iface.function_id).body.instructions.begin();
-//
-//  // Plan the function for processing
-//  dequeue_deferred_function(state);
-//
-//  return process_planned(state, true);
-//}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::refine_SSA
 
  Inputs:
@@ -221,8 +128,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA( 
-        const std::list<call_tree_nodet*> &refined_functions, bool force_check)
+bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refined_functions)
 {
   // Defer the functions
   for (const auto & refined_function : refined_functions)
@@ -236,7 +142,7 @@ bool symex_assertion_sumt::refine_SSA(
                 if (partition_iface->partition_id != NO_PARTITION_ID) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
                     assert(partition.has_abstract_representation());
-                    std::cerr << "Refining partition: " << partition_iface->partition_id << '\n';
+                    log.status() << "Refining partition: " << partition_iface->partition_id << messaget::eom;
                     //equation.invalidate_partition(partition_iface->partition_id);
                     equation.refine_partition(partition_iface->partition_id);
                 }
@@ -246,9 +152,9 @@ bool symex_assertion_sumt::refine_SSA(
                 }
             }
         } else {
-          std::cerr << "WARNING: Invalid call to refine_SSA <- " << 
+          log.warning() << "WARNING: Invalid call to refine_SSA <- " <<
                   "refining previously unseen call \"" << 
-                  refined_function->get_function_id().c_str() << "\" (skipped)" << std::endl;
+                  refined_function->get_function_id().c_str() << "\" (skipped)" << messaget::eom;
         }
     }
   }
@@ -256,7 +162,7 @@ bool symex_assertion_sumt::refine_SSA(
   // Plan the function for processing
   dequeue_deferred_function(state);
   
-  return process_planned(state, force_check);
+  return process_planned(state);
 }
 
 /*******************************************************************\
@@ -271,8 +177,8 @@ Function: symex_assertion_sumt::process_planned
  as well as all the deferred functions
 
 \*******************************************************************/
- 
-bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
+
+bool symex_assertion_sumt::process_planned(statet & state)
 {
   // Proceed with symbolic execution
   auto before=timestamp();
@@ -292,22 +198,14 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   // Statistics - not related to the algorithm:
   log.statistics() << "SYMEX TIME: " << time_gap(after,before) << log.eom;
 
-  if(remaining_vccs!=0 || force_check)
-  {
-    if (use_slicing) {
-      before=timestamp();
-      log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
-      partitioning_slice(equation, summary_store, use_smt);
-      log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
-      after=timestamp();
-      log.statistics() << "SLICER TIME: " << time_gap(after,before) << log.eom;
-    }
 #ifdef DEBUG_SSA
     print_SSA_steps(equation.SSA_steps, ns, std::cout);
 #endif //DEBUG_SSA
-  } else {
-    log.statistics() << "Assertion(s) hold trivially." << log.eom;
-    return true;
+
+  if(remaining_vccs == 0)
+  {
+      log.statistics() << "Assertion(s) hold trivially." << log.eom;
+      return true;
   }
   return false;
 }
@@ -1160,51 +1058,9 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-  assert(summary_store.has_summaries(id2string(function_id)));
-  equation.fill_summary_partition(partition_id, summary_store.get_summaries(id2string(function_id)));
+
+  equation.fill_summary_partition(partition_id, id2string(function_id));
 }
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::fill_inverted_summary
-
- Inputs:
-
- Outputs:
-
- Purpose: Prepares a partition with an inverted summary. This is used
- to verify that a function still implies its summary (in upgrade check).
-
-\*******************************************************************/
-//void symex_assertion_sumt::fill_inverted_summary(
-//        call_tree_nodet& summary_info,
-//        statet& state,
-//        partition_ifacet& inlined_iface)
-//{
-//  // We should use an already computed summary as an abstraction
-//  // of the function body
-//  const irep_idt& function_id = summary_info.get_function_id();
-//
-//  log.statistics() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
-//
-//  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
-//
-//  partition_iface.share_symbols(inlined_iface);
-//
-//  partition_idt partition_id = equation.reserve_partition(partition_iface);
-//
-//  log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
-//
-//  std::string function_name = id2string(function_id);
-////# ifdef DEBUG_PARTITIONING
-//  log.statistics() << "   summaries available: " << summary_store.get_summaries(function_name).size() << log.eom;
-//  log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
-////# endif
-//
-//  equation.fill_inverted_summary_partition(partition_id,
-//          &summary_store.get_summaries(function_name),
-//          summary_info.get_used_summaries());
-//}
 
 /*******************************************************************
 

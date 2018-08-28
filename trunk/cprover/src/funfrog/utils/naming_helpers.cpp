@@ -67,6 +67,12 @@ std::string stripGlobalSuffix(const std::string & name) {
   throw std::logic_error("stripGlobalSuffix called on a name that does not belong to global variable");
 }
 
+unsigned int get_unique_index() {
+    static unsigned int index = 0;
+    index += 1;
+    return index;
+}
+
 const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX{"#out"};
 const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX{"#in"};
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';
@@ -79,3 +85,23 @@ const std::string HifrogStringConstants::ERROR_SYMBOL{"hifrog::?err"};
 
 const std::string CProverStringConstants::INITIALIZE_METHOD{"__CPROVER_initialize"};
 const std::string CProverStringConstants::IO_CONST{"symex::io::"};
+
+const std::string CProverStringConstants::ROUNDING_MODE{"__CPROVER_rounding_mode!"};
+const std::string CProverStringConstants::CPROVER_BUILDINS{"__CPROVER_"};
+const std::string CProverStringConstants::DYNAMIC_OBJ{"symex_dynamic::dynamic_object"};
+const std::string CProverStringConstants::GOTO_GUARD{"goto_symex::\\guard#"};
+const std::string CProverStringConstants::NIL{"nil"};
+const std::string CProverStringConstants::NONDETv1{"symex::"};
+const std::string CProverStringConstants::NONDETv2{"symex::nondet"};
+const std::string CProverStringConstants::SYMEX_NONDET{"nondet#"};
+
+const std::string SMTConstants::SMT_BOOL{"Bool"};
+const std::string SMTConstants::SMT_REAL{"Real"};
+const std::string SMTConstants::SMT_UREAL{"UReal"};
+const std::string SMTConstants::SMT_INT{"Int"};
+const std::string SMTConstants::SMT_UNKNOWN{"?"};
+
+const std::string HiFrogOptions::UNWIND{"unwind"};
+const std::string HiFrogOptions::NO_SLICING{"no-slicing"};
+const std::string HiFrogOptions::NO_ERROR_TRACE{"no-error-trace"};
+const std::string HiFrogOptions::LOGIC{"logic"};

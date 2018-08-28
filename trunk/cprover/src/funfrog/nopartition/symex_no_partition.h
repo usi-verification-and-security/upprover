@@ -8,39 +8,22 @@
 #ifndef SYMEX_ASSERTION_NO_PARTITIONT_H
 #define SYMEX_ASSERTION_NO_PARTITIONT_H
 
-#include <goto-programs/goto_program.h>
-#include <goto-programs/goto_functions.h>
 #include <goto-symex/goto_symex.h>
-#include <goto-symex/goto_symex_state.h>
-#include <cbmc/symex_bmc.h>
-#include <util/namespace.h>
-#include <util/symbol.h>
-#include <util/ui_message.h>
-#include <util/options.h>
+class hifrog_symex_target_equationt;
+class assertion_infot;
+class path_storaget;
 
-#include "../assertion_info.h"
-#include "smt_symex_target_equation.h"
-
-class symex_no_partitiont : public symex_bmct {
+class symex_no_partitiont : public goto_symext {
 public:
     symex_no_partitiont(
-            const namespacet &_ns,
-            symbol_tablet &_symbol_table,
-            smt_symex_target_equationt &_target,
+            const optionst &_options, 
+            path_storaget &_path_storage,
+            symbol_tablet &_new_symbol_table,
+            hifrog_symex_target_equationt &_target,
             message_handlert &_message_handler,
             const goto_programt &_goto_program,
-            const optionst &_options,
-            path_storaget &_path_storage,
             bool _use_slicing=true
-          ) :
-          symex_bmct(_message_handler, _symbol_table, _target, _options, _path_storage),
-          equation(_target),
-          goto_program(_goto_program),
-          current_assertion(nullptr),
-          loc(0),
-          use_slicing(_use_slicing),
-          new_symbol_table(_symbol_table)        
-          {}
+          );
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
 
@@ -61,13 +44,20 @@ public:
         return log.statistics();
     }
 
+    void setup_unwind(unsigned int max_unwind) { this->max_unwind = max_unwind; }
 
 // Data Members    
     std::map<irep_idt, std::string> guard_expln;
+protected:
+    bool get_unwind(
+    const symex_targett::sourcet &source,
+    const goto_symex_statet::call_stackt &context,
+    unsigned unwind) override;
 
 private:
+    unsigned int max_unwind = 1;
     // Store for the symex result
-    smt_symex_target_equationt &equation;
+    hifrog_symex_target_equationt &equation;
     
     const goto_programt &goto_program;
 

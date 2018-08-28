@@ -1,13 +1,11 @@
 #include "check_opensmt2.h"
+#include <solvers/prop/literal.h>
 
+// Shall be static - no need to allocate these all the time!
 const char* check_opensmt2t::false_str = "false";
 const char* check_opensmt2t::true_str = "true";
-  
-check_opensmt2t::check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops
-#ifdef DISABLE_OPTIMIZATIONS          
-          , bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name
-#endif
-      ) :
+
+check_opensmt2t::check_opensmt2t() :
       osmt  (nullptr),
       logic (nullptr),
       mainSolver (nullptr),              
@@ -17,23 +15,18 @@ check_opensmt2t::check_opensmt2t(bool _reduction, unsigned int _reduction_graph,
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
       itp_lra_algorithm(itp_lra_alg_strong),
-      itp_lra_factor(nullptr),
-      reduction(_reduction),
-      reduction_graph(_reduction_graph),
-      reduction_loops(_reduction_loops),
+      itp_lra_factor("0"),
+      reduction(false),
+      reduction_graph(3),
+      reduction_loops(2),
 #endif
       random_seed(1),
       verbosity(0),
       certify(0)
-#ifdef DISABLE_OPTIMIZATIONS
-      , dump_queries(_dump_queries)
-      , dump_pre_queries(_dump_pre_queries)
-      , pre_queries_file_name(_dump_query_name) // .smt2 file       
-#endif
 { 
 #ifdef DISABLE_OPTIMIZATIONS    
-    set_dump_query(dump_queries);
-    set_dump_query_name(pre_queries_file_name);
+    set_dump_query(false);
+    set_dump_query_name("__pre_query_default");
 #endif
 }
 
@@ -49,9 +42,9 @@ void check_opensmt2t::set_random_seed(unsigned int i)
 {
   random_seed = i;
   if (osmt != nullptr) {
-      const char* msg=nullptr;
+      const char* msg = nullptr;
       osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
-      if (msg != nullptr) free((char *)msg); // If there is an error consider printing the msg
+      assert(msg && std::strcmp(msg, "ok") == 0); // The message is set to "ok" if option is set successfully in OpenSMT
   }
 }
 
@@ -66,6 +59,8 @@ void check_opensmt2t::set_dump_query(bool f)
 
   dump_queries = f;
 }
+
+void check_opensmt2t::set_dump_pre_query(bool f) {dump_pre_queries = f;}
 
 void check_opensmt2t::set_dump_query_name(const string& n)
 {
@@ -154,8 +149,22 @@ void check_opensmt2t::insert_top_level_formulas() {
     pushed_formulas = top_level_formulas.size();
 }
 
+
+void check_opensmt2t::convert(const std::vector<literalt> &bv, vec<PTRef> &args)
+{
+    for(const auto & lit : bv) {
+        // we never use 'unused_var_no' (cnf.cpp)
+        assert(lit.var_no()!=literalt::unused_var_no());
+
+        PTRef var = literalToPTRef(lit);
+        args.push(var);
+    }
+}
+
+#ifdef PRODUCE_PROOF
+
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
-                                                      std::vector<PTRef> & interpolants) {
+                                                      std::vector<PTRef> & interpolants) const {
     SimpSMTSolver& solver = osmt->getSolver();
 
     // First interpolant is true -> all partitions in B
@@ -168,5 +177,6 @@ void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vec
         }
         solver.getSingleInterpolant(interpolants, mask);
     }
-
 }
+
+#endif

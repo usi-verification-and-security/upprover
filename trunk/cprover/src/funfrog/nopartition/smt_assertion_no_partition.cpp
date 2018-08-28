@@ -107,7 +107,7 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
     error_trace.build_goto_trace(get_steps_exec_order(), decider);
 
     result() << "\nCounterexample:" << eom;
-    error_trace.show_goto_trace(result (), ns, guard_expln);
+    error_trace.show_goto_trace(result(), ns, guard_expln);
     result () << eom;
 }
 

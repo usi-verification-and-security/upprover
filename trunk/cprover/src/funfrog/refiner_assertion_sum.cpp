@@ -12,23 +12,11 @@
 
 #include "subst_scenario.h"
 #include "summary_store.h"
-
+#include "partitioning_target_equation.h"
+#include "partition_iface.h"
+#include "solvers/check_opensmt2.h"
 
 //#define DEBUG_REFINER
-
-namespace{
-    void set_valid_summaries(const summary_storet& store, const std::string& function_id, bool value){
-        if(store.has_summaries(function_id)){
-            const summary_idst& itps = store.get_summaries(function_id);
-            for (auto it = itps.begin();
-                 it != itps.end(); ++it) {
-                summaryt& sum = store.find_summary(*it);
-                sum.set_valid(value);
-            }
-        }
-
-    }
-}
 
 void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& node)
 {
@@ -38,7 +26,6 @@ void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& node)
     node.set_inline();
     refined_functions.push_back(&node);
   }
-  set_valid_summaries(summary_store, function_name, valid);
 }
 
 void refiner_assertion_sumt::reset_inline(call_tree_nodet& node)
@@ -79,30 +66,73 @@ void refiner_assertion_sumt::reset_random(call_tree_nodet& node)
                                        // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-// something old
-void refiner_assertion_sumt::reset_depend_rec(std::vector<call_tree_nodet*>& dep, call_tree_nodet& node)
-{
-  for (call_sitest::iterator it = node.get_call_sites().begin();
-          it != node.get_call_sites().end(); ++it)
-  {
-    call_tree_nodet& call = it->second;
-    if (call.get_precision() != INLINE){
-      for (unsigned j = 0; j < dep.size(); j++){
-        if (dep[j] == &call){
-          /*if (call.is_unwind_exceeded()){
-            std::cout << "The call " << call.get_function_id() << " cannot be refined because the maximum unwinding bound is exceeded\n";
-          } else {*/
-            if (call.is_recursion_nondet()){
-              status() << "Automatically increasing unwinding bound for " << call.get_function_id() << eom;
-              omega.refine_recursion_call(call);
-            }
-            set_inline_sum(call);
+/*******************************************************************
+
+ Function: refiner_assertion_sumt::refine
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Analyses the results of slicing in order to refine,
+          Which function call to inline, which to summarize and which to havoc
+
+\*******************************************************************/
+void refiner_assertion_sumt::mark_sum_for_refine(
+        const check_opensmt2t &decider,
+        call_tree_nodet &summary,
+        partitioning_target_equationt &equation) {
+    refined_functions.clear();
+    switch (mode) {
+        case refinement_modet::FORCE_INLINING:
+            reset_inline(summary);
             break;
-          //}
-        }
-      }
-    } else {
-      reset_depend_rec(dep, call);
+        case refinement_modet::RANDOM_SUBSTITUTION:
+            reset_random(summary);
+            break;
+        case refinement_modet::SLICING_RESULT:
+            reset_depend(decider, summary, equation);
+            break;
+        default:
+            assert(false);
+            break;
     }
-  }
 }
+
+void refiner_assertion_sumt::reset_depend(
+        const check_opensmt2t &decider,
+        call_tree_nodet &summary,
+        partitioning_target_equationt &equation) {
+    std::vector<call_tree_nodet *> tmp;
+
+    partitionst & parts = equation.get_partitions();
+    for (unsigned i = 0; i < parts.size(); i++) {
+        partitiont part = parts[i];
+        if (!part.ignore && (part.has_abstract_representation())) {
+            partition_ifacet ipart = part.get_iface();
+#     ifdef DEBUG_REFINER
+            std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
+#     endif
+            /*if (part.summary && part.applicable_summaries.empty()) {
+      #       ifdef DEBUG_REFINER
+              std::cout<< "    -- no applicable summaries" << std::endl;
+      #       endif
+              tmp.push_back(&ipart.call_tree_node);
+            }*/
+            if (decider.is_assignment_true(ipart.callstart_literal)) {
+#       ifdef DEBUG_REFINER
+                std::cout<< "    -- callstart literal is true" << std::endl;
+#       endif
+                if (ipart.call_tree_node.get_precision() != INLINE) {
+                    if (ipart.call_tree_node.is_recursion_nondet()) {
+                        status() << "Automatically increasing unwinding bound for "
+                                 << ipart.call_tree_node.get_function_id() << eom;
+                        omega.refine_recursion_call(ipart.call_tree_node);
+                    }
+                    set_inline_sum(ipart.call_tree_node);
+                }
+            }
+        }
+    }
+}
+

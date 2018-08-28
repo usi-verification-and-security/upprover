@@ -18,7 +18,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/invariant.h>
 #include <util/pointer_offset_size.h>
 
-#include <pointer-analysis/value_set_dereference.h>
+//#include <pointer-analysis/value_set_dereference.h>
+#include "../pointer-analysis/value_set_dereference.h"
 
 #include "symex_dereference_state.h"
 

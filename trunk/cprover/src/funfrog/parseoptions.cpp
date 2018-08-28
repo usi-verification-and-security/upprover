@@ -65,6 +65,7 @@
 #include <goto-programs/show_properties.h>
 #include "UserDefinedSummary.h" // TODO: doesn't work yet, only contains original code
 #include <limits>
+#include <funfrog/utils/naming_helpers.h>
 
 #include <funfrog/utils/time_utils.h>
 
@@ -189,9 +190,9 @@ bool funfrog_parseoptionst::process_goto_program(
     //remove_asm(goto_model);
 
     // KE: Only to prop logic
-    if(cmdline.isset("logic")) 
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
     {
-        if (cmdline.get_value("logic") == "prop") 
+        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
         {
             // add the library
             link_to_library(
@@ -237,9 +238,9 @@ bool funfrog_parseoptionst::process_goto_program(
     goto_check(options, goto_model);
             
     // HIFROG: We remove built-ins from smt logics
-    if(cmdline.isset("logic")) 
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
     {
-        if (cmdline.get_value("logic") == "prop") 
+        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
         {
             // checks don't know about adjusted float expressions
             adjust_float_expressions(goto_model);
@@ -929,6 +930,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("random-seed")) {
     options.set_option("random-seed", cmdline.get_value("random-seed"));
+  } else {
+    options.set_option("random-seed", "1");  
   }
   if (cmdline.isset("color-proof")) {
     options.set_option("color-proof", cmdline.get_value("color-proof"));
@@ -937,6 +940,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
+  } else {
+    options.set_option("verbose-solver", "0");  
   }
   //options.set_option("simplify-if", false); // Try to avoid compications with if
   //if (cmdline.isset("refine-mode")) {

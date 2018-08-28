@@ -158,8 +158,9 @@ def run_test_case(path_to_exec, testdir, configfile):
 def should_success(expected):
     if expected in ['success','succes', 'sucess']:
         return True
-    if expected == 'fail':
+    if expected in ['fail', 'failed']:
         return False
+    error('Incorrect expected result in config file: ' + expected)
     assert False, 'Unknown expect status'
 #-------------------------------------------------------
 #collects and dumps the verification results into a collected*.txt file 
@@ -228,6 +229,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    exec_path=' ulimit -Sv 12000000; ulimit -St 300; /usr/bin/time -p ' + exec_path 
+    exec_path=' ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ' + exec_path 
     run(exec_path)
 

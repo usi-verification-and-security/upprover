@@ -9,38 +9,45 @@ Module: Wrapper for OpenSMT2
 
 #include "smtcheck_opensmt2.h"
 #include <util/mp_arith.h>
-#include "../hifrog.h"
 
 class BitBlaster;
 
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name
-#ifdef DISABLE_OPTIMIZATIONS          
-        , bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name
-#endif
+  smtcheck_opensmt2t_cuf(solver_optionst solver_options, const char* name
   ) :
-        smtcheck_opensmt2t(false, 3, 2
-#ifdef DISABLE_OPTIMIZATIONS
-        , _dump_queries, _dump_pre_queries, _dump_query_name 
-#endif         
-        ), // Is last always! // TODO: pass parameters once itp works for CUF
-        bitwidth(bitwidth),
-        type_constraints_level(_type_constraints_level)      
+        smtcheck_opensmt2t(),
+        bitwidth(solver_options.m_bitwidth),
+        type_constraints_level(solver_options.m_byte_type_constraints)      
   {
-    initializeSolver(name);
+    initializeSolver(solver_options, name);
   }
 
   virtual ~smtcheck_opensmt2t_cuf(); // d'tor
 
   virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr) override;
-  
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
 
+  virtual PTRef numeric_constant(const exprt & expr) override;
+
+  virtual PTRef new_num_var(const std::string & var_name) override;
+
+  virtual PTRef type_cast(const exprt & expr) override;
+  
+  PTRef var_bv(const exprt &expr); // lvar for bv logic
+  
+  PTRef get_bv_var(const char* name);
+
+  PTRef get_bv_const(const char* val);
+
+  PTRef convert_bv(const exprt &expr);
+
+  bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
+  
+  PTRef type_cast_bv(const exprt &expr);
+  
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
                std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep);
 
@@ -67,10 +74,18 @@ protected:
   std::map<size_t, PTRef> converted_bitblasted_exprs;
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
-          
-  virtual void initializeSolver(const char*) override;  
+        
+  void bindBB(const exprt& expr, PTRef ptl);
+
+  void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
+
+  virtual PTRef unsupported_to_var(const exprt & expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
-  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  PTRef unsupported2var_bv(const exprt &expr); // for BVs
+  
+  PTRef lconst_bv(const exprt &expr); // For bv only!
+  
+  virtual void initializeSolver(const solver_optionst solver_options, const char*) override;
 
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   
@@ -79,44 +94,18 @@ protected:
   void add_constraints4chars_bv_bool(const exprt &expr, PTRef &var, int size, const irep_idt type_id);
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
-  
-  virtual PTRef make_var(const std::string name) override
-  { return uflogic->mkCUFNumVar(name.c_str()); }
 
-  virtual bool can_have_non_linears() override { return true; } ;
-  
-  virtual bool is_non_linear_operator(PTRef tr) override;
-  
-  virtual literalt lconst_number(const exprt &expr) override;
-
-  virtual literalt ltype_cast(const exprt &expr) override;
- 
-  virtual PTRef evar(const exprt &expr, std::string var_name) override;
+  virtual bool is_non_linear_operator(PTRef tr) const override;
   
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
   
-  void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
-
-  void bindBB(const exprt& expr, PTRef ptl);
-
-  PTRef unsupported2var_bv(const exprt &expr); // for BVs
-  
-  PTRef lconst_bv(const exprt &expr); // For bv only!
-  
-  PTRef var_bv(const exprt &expr); // lvar for bv logic
-  
-  PTRef get_bv_var(const char* name);
-
-  PTRef get_bv_const(const char* val);
-
-  PTRef convert_bv(const exprt &expr);
-
-  bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
-  
-  PTRef type_cast_bv(const exprt &expr);
-  
   PTRef labs_bv(const exprt &expr); // from convert for ID_abs
+
+  // Inner use only to create UF functions (needed in UF and Mix-Encoding)  
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
+
 };
 
 #endif

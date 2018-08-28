@@ -7,7 +7,6 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 
 #include "smtcheck_opensmt2_cuf.h"
-#include "../hifrog.h"
 #include <opensmt/BitBlaster.h>
 #include <funfrog/utils/naming_helpers.h>
 
@@ -27,13 +26,26 @@ Function: smtcheck_opensmt2t_cuf::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
+void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
     logic = &(osmt->getCUFLogic());
     uflogic = &(osmt->getCUFLogic());
     bvlogic = &((BVLogic&)osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
+ 
+    // Initialize parameters
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
+  
+#ifdef PRODUCE_PROOF  
+    // TODO: add sets once interpolation is working for LIA
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    set_dump_query(solver_options.m_dump_query);
+    this->dump_pre_queries { solver_options.m_dump_pre_query };
+    set_dump_query_name(solver_options.m_dump_query_name);
+#endif // DISABLE_OPTIMIZATIONS    
 
     SolverId id = { 0 };
     vec<PtAsgn> asgns;
@@ -41,21 +53,10 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
     vec<PTRef> foo;
     bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
 
-    const char* msg2=NULL;
+    const char* msg2 = nullptr;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
-    //if (msg2 != NULL) { free((char *)msg2);}
-    // KE: Fix a strange bug can be related to the fact we are pushing
-    // a struct into std::vector and use [] before any push_back
-    literals.push_back(PTRef());
-    literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
-    (void)l;
-    literals[0] = logic->getTerm_true(); // Which is .x =0
-    assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
-    // KE: End of fix
-    
-
-    max_num.setPower2(bitwidth);  
+    max_num.setPower2(bitwidth);
 
     // how the check is implemented in malloc.c in the GNU C Library (glibc)
     assert("Please re-run with bit-width parameter that is a pow of 2!" && ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))));
@@ -95,9 +96,8 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     std::string str;
     
     // Tries to map unsupported to another unsupported
-    if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
-        literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-        PTRef ptrf = literals[l.var_no()];
+    if (unsupported_expr2ptrefMap.find(expr) != unsupported_expr2ptrefMap.end()) {
+        PTRef ptrf = unsupported_expr2ptrefMap[expr];
         char *s = logic->printTerm(ptrf);
         str = std::string(s);
         free(s);
@@ -117,7 +117,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     
     // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
     // If need to register the abstracted functions - add it here
-    store_new_unsupported_var(expr, var, false);
+    store_new_unsupported_var(expr, var);
     
     return var;
 }
@@ -261,7 +261,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     assert(expr.is_constant()); // If not a constant then assert
     
 #ifdef DEBUG_SMT_BB
-    const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert    
+    const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert
     std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
             << type_id << std::endl;
 #endif       
@@ -1281,100 +1281,26 @@ Function: smtcheck_opensmt2t_cuf::get_value
 /* Used for both - uf values and bit-blasted values */
 exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 {
-    PTRef ptrf;
-    
     // Check if it was bit-blasted or else, check if in the cuf values
     bool is_expr_bb = (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end()); // In use: bindBB and here
-    bool is_expr_uf = (converted_exprs.find(expr.hash()) != converted_exprs.end());
-    
-    if (is_expr_bb || is_expr_uf) {
-        if (is_expr_bb)
-            ptrf = converted_bitblasted_exprs[expr.hash()];
-        else {
-            literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-            ptrf = literals[l.var_no()];
-        }
+    if (is_expr_bb) {
+        PTRef ptrf = converted_bitblasted_exprs[expr.hash()];
+        bitblaster->computeModel();
+        ValPair v1 = bitblaster->getValue(ptrf);
+        assert(v1.val != NULL);
+        irep_idt value(v1.val);
 
-#ifdef DEBUG_SMT_BB
-        char *s = logic->printTerm(ptrf);
-        std::cout << "Getting value for " << s 
-                << " which " << ((is_expr_bb)? "was bb" : "was not bb") 
-                << std::endl;
-        free(s); s=nullptr;
-#endif
-        
-        // Get the value of the PTRef
-        if (is_expr_bb) {
-            bitblaster->computeModel();
-            ValPair v1 = bitblaster->getValue(ptrf);
-            assert(v1.val != NULL);
-            irep_idt value(v1.val);
-            
-            // Create the expr with it
-            constant_exprt tmp = constant_exprt();
-            tmp.set_value(value);
-
-            return tmp;
-        }
-        else if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
-        {
-            if (smtcheck_opensmt2t::is_value_from_solver_false(ptrf))
-                return false_exprt();
-            else
-                return true_exprt();
-        }
-        else if (logic->isTrue(ptrf)) //true only
-        {
-            return true_exprt();
-        }
-        else if (logic->isFalse(ptrf)) //false only
-        {
-            return false_exprt();
-        }
-        else if (logic->isVar(ptrf)) // Constant value
-        {
-            // Create the value
-            irep_idt value = smtcheck_opensmt2t::get_value_from_solver(ptrf);
-
-            // Create the expr with it
-            constant_exprt tmp = constant_exprt();
-            tmp.set_value(value);
-
-            return tmp;
-        }
-        else if (logic->isConstant(ptrf))
-        {
-            // Constant?
-            irep_idt value = smtcheck_opensmt2t::get_value_from_solver(ptrf);
-
-            // Create the expr with it
-            constant_exprt tmp = constant_exprt();
-            tmp.set_value(value);
-
-            return tmp;
-        }
-        else
-        {
-            throw std::logic_error("Unknown case in get_value!");
-        }
-    }
-    else // Find the value inside the expression - recursive call
-    {
-        exprt tmp=expr;
-
-        Forall_operands(it, tmp)
-        {
-            exprt tmp_op=get_value(*it);
-            it->swap(tmp_op);
-        }
-
+        // Create the expr with it
+        constant_exprt tmp;
+        tmp.set_value(value);
         return tmp;
     }
+    return smtcheck_opensmt2t::get_value(expr);
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_cuf::const_var_Real
+Function: smtcheck_opensmt2t_cuf::numeric_constant
 
   Inputs:
 
@@ -1383,17 +1309,13 @@ Function: smtcheck_opensmt2t_cuf::const_var_Real
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::lconst_number(const exprt &expr)
+PTRef smtcheck_opensmt2t_cuf::numeric_constant(const exprt & expr)
 {
-    //TODO: Check this
-    literalt l;
     std::string num = extract_expr_str_number(expr);
     PTRef rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast 
     assert(rconst != PTRef_Undef);
 
-    l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return rconst;
 }
 
 /*******************************************************************\
@@ -1413,7 +1335,7 @@ Function: smtcheck_opensmt2t_cuf::type_cast
 //    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
 //     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::ltype_cast(const exprt &expr) {
+PTRef smtcheck_opensmt2t_cuf::type_cast(const exprt & expr) {
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -1422,18 +1344,18 @@ literalt smtcheck_opensmt2t_cuf::ltype_cast(const exprt &expr) {
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code: 
     if (expr.type().id() == (expr.operands())[0].type().id()) {
-        return convert((expr.operands())[0]);
+        return expression_to_ptref((expr.operands())[0]);
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef SMT_DEBUG       
         std::cout << " IS THIS ZERO? :" << val_const_zero << std::endl;
 #endif
-        return lconst(!val_const_zero);
+        return constant_bool(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
-        literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
+        PTRef ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
+        PTRef ptl = logic->mkIte(ptref, uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
         
 #ifdef DISABLE_OPTIMIZATIONS
         if (dump_pre_queries)
@@ -1446,15 +1368,15 @@ literalt smtcheck_opensmt2t_cuf::ltype_cast(const exprt &expr) {
         }
 #endif          
         
-        return push_variable(ptl); // Keeps the new literal + index it
+        return ptl;
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
-        literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
+        PTRef ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
         // TODO: to cuf, look many locations!
-        PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], uflogic->mkCUFConst(0)));
-        return push_variable(ptl); // Keeps the new literal + index it
+        PTRef ptl = logic->mkNot(logic->mkEq(ptref, uflogic->mkCUFConst(0)));
+        return ptl;
     } else {
-        return convert((expr.operands())[0]);
+        return expression_to_ptref((expr.operands())[0]);
     }
 }
 
@@ -1469,7 +1391,7 @@ Function: smtcheck_opensmt2t_cuf::convert
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
+PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
 {
 // GF: disabling hash for a while, since it leads to bugs at some particular cases,
 //     e.g., for (= |goto_symex::guard#3| (< |c::f::a!0#7| 10))
@@ -1481,31 +1403,32 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     std::cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ std::endl;
 #endif
+    PTRef ptref = get_from_cache(expr);
+    if(ptref != PTRef_Undef) { return ptref; }
 
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
     
     /* Check which case it is */
-    literalt l;
     if (_id==ID_code || expr.type().id()==ID_code) { //Init structs, arrays etc.
         
-        l = lunsupported2var(expr);
+        ptref = unsupported_to_var(expr);
         // No support to this data type
 
     } else if (_id==ID_address_of) {
-        
-        l = lunsupported2var(expr);
+
+        ptref = unsupported_to_var(expr);
         // NO support to this type
              
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
         std::cout << "; IT IS A VAR" << std::endl;
 #endif
-        l = lvar(expr);
+        ptref = symbol_to_ptref(expr);
     } else if (_id==ID_constant) {
 #ifdef SMT_DEBUG
         std::cout << "; IT IS A CONSTANT " << std::endl;
 #endif
-        l = lconst(expr);
+        ptref = constant_to_ptref(expr);
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
@@ -1513,7 +1436,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #endif
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
-        l = ltype_cast(expr);
+        ptref = type_cast(expr);
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     std::cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
@@ -1524,7 +1447,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         std::cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << std::endl;
         assert(false); // Need to take care of - typecast no operands
 #else
-        l = lunsupported2var(expr);
+        ptref = unsupported_to_var(expr);
         // TODO: write a better support to this data type
 #endif
     } else {
@@ -1533,21 +1456,19 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #endif
         vec<PTRef> args;
         int i = 0;
-        forall_operands(it, expr)
+        for(auto const & operand : expr.operands())
         {
             // KE: recursion in case the expr is not simple - shall be in a visitor
-            if (is_cprover_rounding_mode_var(*it)) {
+            if (is_cprover_rounding_mode_var(operand)) {
                 // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
             } else { // All the rest of the operators
-                literalt cl = convert(*it);
-                PTRef cp = literals[cl.var_no()];
+                PTRef cp = expression_to_ptref(operand);
                 assert(cp != PTRef_Undef);
                 args.push(cp);
                 i++; // Only if really add an item to mult/div inc the counter
             }
         }
 
-        PTRef ptl;
         if ((args.size() > 2) &&
             ((_id==ID_plus) ||
              (_id==ID_minus) ||
@@ -1570,242 +1491,241 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         {
             //std::cout << "Before build size of " << args.size() << " items " << std::endl;
             // KE:  patching code - check when it is fixed in OpenSMT2 and disable it here.
-            ptl = split_exprs(expr.id(), args);
+            ptref = split_exprs(expr.id(), args);
         } else if (_id==ID_notequal) {
             // TODO: to cuf, look many locations!
-            ptl = logic->mkNot(logic->mkEq(args));
+            ptref = logic->mkNot(logic->mkEq(args));
         } else if (_id == ID_equal) {
-            ptl = logic->mkEq(args);
+            ptref = logic->mkEq(args);
         } else if (_id==ID_if) {
             assert(args.size() >= 2); // KE: check the case if so and add the needed code!
             
             // If a then b, (without else) is a => b
             if (args.size() == 2)
             { 
-                ptl = logic->mkImpl(args);
+                ptref = logic->mkImpl(args);
             } else {            
-                ptl = logic->mkIte(args);
+                ptref = logic->mkIte(args);
 #ifdef DISABLE_OPTIMIZATIONS
                 if (dump_pre_queries)
                 {
-                    char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-                    ite_map_str.insert(make_pair(string(getPTermString(ptl)), std::string(s)));
-                    free(s); s=nullptr;    
+                    char *s = logic->printTerm(logic->getTopLevelIte(ptref));
+                    ite_map_str.insert(make_pair(string(getPTermString(ptref)), std::string(s)));
+                    free(s);
                 }
 #endif
             }
         } else if (_id == ID_ifthenelse) {
             assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             
-            ptl = logic->mkIte(args);
+            ptref = logic->mkIte(args);
 #ifdef DISABLE_OPTIMIZATIONS
             if (dump_pre_queries)
             {
-                char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-                ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s); s=nullptr;
+                char *s = logic->printTerm(logic->getTopLevelIte(ptref));
+                ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
+                free(s);
             }
 #endif
         } else if (_id == ID_and) {
             // TODO: to cuf
-            ptl = logic->mkAnd(args); 
+            ptref = logic->mkAnd(args);
         } else if (_id == ID_or) {
             // TODO: to cuf
-            ptl = logic->mkOr(args);
+            ptref = logic->mkOr(args);
         } else if (_id == ID_bitand) {
-            ptl = uflogic->mkCUFBwAnd(args);
+            ptref = uflogic->mkCUFBwAnd(args);
         } else if (_id == ID_bitxor) {
-            ptl = uflogic->mkCUFBwXor(args); 
+            ptref = uflogic->mkCUFBwXor(args);
         } else if (_id == ID_bitor) {
-            ptl = uflogic->mkCUFBwOr(args);  
+            ptref = uflogic->mkCUFBwOr(args);
         } else if (_id == ID_bitnot) { // KE: not sure about it
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_not) {
             // TODO: to cuf, look many locations!
-            ptl = uflogic->mkCUFNot(args);
+            ptref = uflogic->mkCUFNot(args);
         } else if (_id == ID_implies) {
-            ptl = uflogic->mkImpl(args);
+            ptref = uflogic->mkImpl(args);
         } else if (_id == ID_ge) {
             // uflogic To avoid dynamic cast - till the end of this section            
-            ptl = uflogic->mkCUFGeq(args);
+            ptref = uflogic->mkCUFGeq(args);
         } else if (_id == ID_le) {
-            ptl = uflogic->mkCUFLeq(args);
+            ptref = uflogic->mkCUFLeq(args);
         } else if (_id == ID_gt) {
-            ptl = uflogic->mkCUFGt(args);
+            ptref = uflogic->mkCUFGt(args);
         } else if (_id == ID_lt) {
-            ptl = uflogic->mkCUFLt(args);
+            ptref = uflogic->mkCUFLt(args);
         } else if (_id == ID_plus) {
-            ptl = uflogic->mkCUFPlus(args);
+            ptref = uflogic->mkCUFPlus(args);
         } else if (_id==ID_minus) {
-            ptl = uflogic->mkCUFMinus(args);
+            ptref = uflogic->mkCUFMinus(args);
         } else if (_id==ID_unary_minus) {
-            ptl = uflogic->mkCUFMinus(args);
+            ptref = uflogic->mkCUFMinus(args);
         } else if (_id==ID_unary_plus) {
-            ptl = uflogic->mkCUFPlus(args);
+            ptref = uflogic->mkCUFPlus(args);
         } else if (_id==ID_mult) {
-            ptl = uflogic->mkCUFTimes(args);
+            ptref = uflogic->mkCUFTimes(args);
         } else if (_id==ID_div) {
-            ptl = uflogic->mkCUFDiv(args);
+            ptref = uflogic->mkCUFDiv(args);
         } else if (_id==ID_mod) {
-            ptl = uflogic->mkCUFMod(args);
+            ptref = uflogic->mkCUFMod(args);
         } else if (_id==ID_assign) {
-            ptl = logic->mkEq(args);
+            ptref = logic->mkEq(args);
         } else if (_id==ID_ieee_float_equal) {
-            ptl = logic->mkEq(args);
+            ptref = logic->mkEq(args);
         } else if (_id==ID_ieee_float_notequal) {
-            ptl = uflogic->mkCUFNeq(args);
+            ptref = uflogic->mkCUFNeq(args);
         } else if (_id==ID_floatbv_plus) {
-            ptl = uflogic->mkCUFPlus(args);
+            ptref = uflogic->mkCUFPlus(args);
         } else if (_id==ID_floatbv_minus) {
-            ptl = uflogic->mkCUFMinus(args);
+            ptref = uflogic->mkCUFMinus(args);
         } else if (_id==ID_floatbv_div) {
-            ptl = uflogic->mkCUFDiv(args);
+            ptref = uflogic->mkCUFDiv(args);
         } else if (_id==ID_floatbv_mult) {
-            ptl = uflogic->mkCUFTimes(args);
+            ptref = uflogic->mkCUFTimes(args);
         } else if (_id==ID_shl) {
-            ptl = uflogic->mkCUFLshift(args);
+            ptref = uflogic->mkCUFLshift(args);
         } else if (_id==ID_shr) { // KE: Not sure about shr
-            ptl = uflogic->mkCUFLRshift(args); 
+            ptref = uflogic->mkCUFLRshift(args);
         } else if (_id==ID_lshr) {
-            ptl = uflogic->mkCUFLRshift(args); 
+            ptref = uflogic->mkCUFLRshift(args);
         } else if (_id==ID_ashr) {
-            ptl = uflogic->mkCUFARshift(args);     
+            ptref = uflogic->mkCUFARshift(args);
         } else if (_id==ID_byte_extract_little_endian) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO                 
         } else if (_id==ID_byte_update_little_endian) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO              
         } else if (_id == ID_address_of) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO
         } else if (_id==ID_with) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
                                    
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO            
         } else if (_id==ID_index) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))             
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO
         } else if (_id==ID_array) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
            
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
-            //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))             
+            //set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO    
         } else if (_id==ID_union) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             // KE: TODO              
         } else if (_id==ID_struct) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             // KE: TODO                          
         } else if (_id==ID_member) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             // KE: TODO       
         } else if (_id==ID_member_name) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             // KE: TODO   
         } else if (_id==ID_C_member_name) {
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptref = unsupported_to_var(expr);
             // KE: TODO       
         } else if (_id==ID_pointer) {
-            ptl =literals[lunsupported2var(expr).var_no()];
+            ptref =unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: when active, also change the code in lvar
         } else if (_id==ID_pointer_offset) {
-            ptl =literals[lunsupported2var(expr).var_no()];
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: when active, also change the code in lvar 
         } else if (_id==ID_pointer_object) {
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptref =unsupported_to_var(expr);
         } else if (_id==ID_dynamic_object) {
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptref =unsupported_to_var(expr);
         } else if (_id == ID_string_constant) {
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptref =unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))             
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isnan) {
-            ptl =literals[lunsupported2var(expr).var_no()];   
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isinf) {
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isfinite) {
-            ptl =literals[lunsupported2var(expr).var_no()];    
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isnormal) {
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_sign) { // for macro signbit
-            ptl =literals[lunsupported2var(expr).var_no()];
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_abs) { // Can't in UF
-            ptl =literals[lunsupported2var(expr).var_no()];    
+            ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else {
             std::cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << std::endl;
             assert(false); // KE: tell me if you get here!
         }
-        l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
     }
-    converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG
-    PTRef ptr = literals[l.var_no()];
-    char *s = logic->printTerm(ptr);
+    char *s = logic->printTerm(ptref);
     std::cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
-    free(s); s=nullptr;
+    free(s);
 #endif
-    return l;
+    assert(ptref != PTRef_Undef);
+    store_to_cache(expr, ptref);
+    return ptref;
 }
 
 /*******************************************************************\
@@ -1892,43 +1812,16 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
  *        unsupported data type please use: lnsupportedDatatype2var
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::lunsupported2var(const exprt &expr)
+PTRef smtcheck_opensmt2t_cuf::unsupported_to_var(const exprt & expr)
 {
-    // Tries to map unsupported to another unsupported
-    if (converted_exprs.find(expr.hash()) != converted_exprs.end())
-        return converted_exprs[expr.hash()]; // TODO: might be buggy;
-    
-    
+    auto it = unsupported_expr2ptrefMap.find(expr);
+    if( it != unsupported_expr2ptrefMap.end()) { return it->second;}
     // Create a new unsupported var
-    std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
-    
-    // Create the correct type in opensmt
-    PTRef var;
-    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
-        var = logic->mkBoolVar(str.c_str());
-    else
-        var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support 
+    const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
-    return store_new_unsupported_var(expr, var);
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::evar
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-PTRef smtcheck_opensmt2t_cuf::evar(const exprt &expr, std::string var_name)
-{
-    assert(var_name.size() > 0);
-    return  ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
-            ? logic->mkBoolVar(var_name.c_str()) : uflogic->mkCUFNumVar(var_name.c_str());
+    const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str()) : uflogic->mkCUFNumVar(str.c_str());
+    store_new_unsupported_var(expr, var);
+    return var;
 }
 
 /*******************************************************************\
@@ -2116,7 +2009,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 
     const exprt lhs_expr = exprs[i].operands()[0];
     if(lhs_expr.id() == ID_symbol){
-        PTRef lhs = literals[convert(lhs_expr).var_no()];
+        PTRef lhs = expression_to_ptref(lhs_expr);
         bindBB(lhs_expr, lhs);
     }
     
@@ -2126,7 +2019,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     getVarsInExpr(exprs[i].operands()[1], se);
 
     for (auto it = se.begin(); it != se.end(); ++it){
-        PTRef rhs = literals[convert(*it).var_no()];
+        PTRef rhs = expression_to_ptref(*it);
         bindBB(*it, rhs);
     }
     
@@ -2248,11 +2141,11 @@ Function: smtcheck_opensmt2t_cuf::getStringSMTlibDatatype
 std::string smtcheck_opensmt2t_cuf::getStringSMTlibDatatype(const typet& type)
 { 
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMT_BOOL;
+        return SMTConstants::SMT_BOOL;
     if (is_number(type))
-        return SMT_UREAL;
+        return SMTConstants::SMT_UREAL;
     
-    return SMT_UNKNOWN; // Shall not get here 
+    return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
 /*******************************************************************\
@@ -2278,7 +2171,7 @@ SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const typet& type)
 }
 
 // Check if a literal is non-linear in the solver side
-bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr)
+bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr) const
 {
     if (!uflogic->isCUFDiv(tr) && !uflogic->isCUFTimes(tr) && !uflogic->isCUFMod(tr))
         return false;
@@ -2297,3 +2190,8 @@ bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr)
     
     return (count_var > 1);
 }
+
+PTRef smtcheck_opensmt2t_cuf::new_num_var(const std::string & var_name) {
+    return uflogic->mkCUFNumVar(var_name.c_str());
+}
+

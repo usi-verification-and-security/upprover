@@ -7,35 +7,32 @@
 
 \*******************************************************************/
 #include "core_checker.h"
-#include "dependency_checker.h"
 
+#include "refiner_assertion_sum.h"
 #include "solvers/smtcheck_opensmt2_lia.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "smt_refiner_assertion_sum.h"
-#include "prop_refiner_assertion_sum.h"
-#include "smt_dependency_checker.h"
-#include "prop_dependency_checker.h"
+#include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
 #include "nopartition/smt_assertion_no_partition.h"
-#include "prop_partitioning_target_equation.h"
-#include "smt_partitioning_target_equation.h"
-#include "prop_assertion_sum.h"
-#include "prepare_smt_formula.h"
+#include "partitioning_target_equation.h"
+#include "prepare_formula.h"
 #include "symex_assertion_sum.h"
-#include <solvers/flattening/bv_pointers.h>
 #include <funfrog/utils/naming_helpers.h>
 #include <funfrog/utils/string_utils.h>
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
-#include <stdio.h>
+#include "partitioning_slice.h"
 #include "utils/unsupported_operations.h"
 
 #include <langapi/language_util.h>
+#include <goto-symex/path_storage.h>
+#include <stdio.h>
+#include <memory>
 
 namespace{
     /*******************************************************************\
@@ -89,20 +86,14 @@ Function: get_initial_mode
     }
 }
 
-core_checkert::core_checkert(
-        const goto_programt &_goto_program,
-        const goto_functionst &_goto_functions,
-        const symbol_tablet &_symbol_table,
-        const optionst& _options,
-        ui_message_handlert &_message_handler,
-        unsigned long &_max_memory_used
-) :
-        goto_program(_goto_program),
-        symbol_table(_symbol_table),
+core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
+                             ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
+        goto_model{_goto_model},
+        ns{goto_model.symbol_table, new_symbol_table},
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
-        omega(_goto_functions, options.get_unsigned_int_option("unwind")),
+        omega(_goto_model.goto_functions, options.get_unsigned_int_option("unwind")),
         summary_store{nullptr}
 {
     set_message_handler(_message_handler);
@@ -114,29 +105,34 @@ core_checkert::~core_checkert(){
 
 void core_checkert::initialize_solver()
 {
-    std::string _logic = options.get_option("logic");
+    std::string _logic = options.get_option(HiFrogOptions::LOGIC);
     if(_logic == "qfuf") 
     {
+        initialize__euf_option_solver();
         decider = initialize__euf_solver(); 
         status() << ("Use QF_UF logic.") << eom;
     }
     else if(_logic == "qfcuf")
     {
+        initialize__cuf_option_solver();
         decider = initialize__cuf_solver();
         status() << ("Use QF_CUF logic.") << eom;
     }
     else if(_logic == "qflra") 
     {
+        initialize__lra_option_solver();
         decider = initialize__lra_solver();
         status() << ("Use QF_LRA logic.") << eom;
     }
     else if(_logic == "qflia") 
     {
+        initialize__lia_option_solver();
         decider = initialize__lia_solver();
         status() << ("Use QF_LIA logic.") << eom;
     }
     else if (_logic == "prop")
     {
+        initialize__prop_option_solver();
         decider = initialize__prop_solver();
         status() << ("Use propositional logic.") << eom;
     }
@@ -145,80 +141,89 @@ void core_checkert::initialize_solver()
         error() << ("Unsupported theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
- 
-    initialize_solver_options(decider); // Init all options in the solver
 }
 
-// Generic creation for any solver - euf
-check_opensmt2t* core_checkert::initialize__euf_solver()
+// Generic initialise for any solver - euf
+void core_checkert::initialize__euf_option_solver()
 {
-    return new smtcheck_opensmt2t_uf("uf checker",
-#ifdef PRODUCE_PROOF                 
-                options.get_unsigned_int_option("itp-uf-algorithm"),
-                options.get_bool_option("reduce-proof"),
-                options.get_unsigned_int_option("reduce-proof-graph"),
-                options.get_unsigned_int_option("reduce-proof-loops"),
-#endif 
-#ifdef DISABLE_OPTIMIZATIONS  
-                options.get_bool_option("dump-query"),
-                options.get_bool_option("dump-pre-query"),
-                options.get_option("dump-query-name"),
-#endif                
-                false);
+#ifdef PRODUCE_PROOF
+    if (is_option_set("itp-uf-algorithm")) 
+        solver_options.m_uf_itp_algorithm = options.get_signed_int_option("itp-uf-algorithm");
+#endif
+        
+    initialize_solver_options();
+        
+    initialize_solver_debug_options();
+}
+// Generic creation for any solver - euf
+smtcheck_opensmt2t_uf * core_checkert::initialize__euf_solver()
+{
+    return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
+}
+
+// Generic initialise for OpenSMT solver - cuf
+void core_checkert::initialize__cuf_option_solver()
+{
+    solver_options.initialize_mix_encoding_solver_options(
+            options.get_unsigned_int_option("type-byte-constraints"), 
+            options.get_unsigned_int_option("bitwidth"));
     
+    //initialize_solver_options(); // TODO: when we have interpolation
+    
+    initialize_solver_debug_options();
 }
 
 // Only for OpenSMT solver - cuf
-check_opensmt2t* core_checkert::initialize__cuf_solver()
+smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
-    return new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
-                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker"
-#ifdef DISABLE_OPTIMIZATIONS  
-                , options.get_bool_option("dump-query")
-                , options.get_bool_option("dump-pre-query")
-                , options.get_option("dump-query-name")
-#endif                
-                );
+    return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
 }
-  
-// Generic creation for any solver - lra
-check_opensmt2t* core_checkert::initialize__lra_solver()
+
+// Generic initialise for any solver - lra
+void core_checkert::initialize__lra_option_solver()
 {
-    return new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker", 
-#ifdef PRODUCE_PROOF                 
-                options.get_unsigned_int_option("itp-lra-algorithm"),
-                ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
-                options.get_bool_option("reduce-proof"),
-                options.get_unsigned_int_option("reduce-proof-graph"),
-                options.get_unsigned_int_option("reduce-proof-loops"),
-#endif
-#ifdef DISABLE_OPTIMIZATIONS  
-                options.get_bool_option("dump-query"),
-                options.get_bool_option("dump-pre-query"),
-                options.get_option("dump-query-name"),
-#endif                
-                false);
+    solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
+    
+    initialize_solver_options();
+        
+    initialize_solver_debug_options();    
 }
 
 // Generic creation for any solver - lra
-check_opensmt2t* core_checkert::initialize__lia_solver()
+smtcheck_opensmt2t_lra * core_checkert::initialize__lra_solver()
 {
-    return new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker", 
-#ifdef PRODUCE_PROOF                 
-                options.get_bool_option("reduce-proof"),
-                options.get_unsigned_int_option("reduce-proof-graph"),
-                options.get_unsigned_int_option("reduce-proof-loops"),
-#endif
-#ifdef DISABLE_OPTIMIZATIONS  
-                options.get_bool_option("dump-query"),
-                options.get_bool_option("dump-pre-query"),
-                options.get_option("dump-query-name"),
-#endif                
-                false);
+    return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
+}
+
+// Generic initialise for any solver - lia
+void core_checkert::initialize__lia_option_solver()
+{
+    solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
+    
+    //initialize_solver_options(); // TODO: when we have interpolation
+        
+    initialize_solver_debug_options();    
+}
+
+// Generic creation for any solver - lra
+smtcheck_opensmt2t_lia * core_checkert::initialize__lia_solver()
+{
+    return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
+}
+
+// Generic initialise for any solver - lia
+void core_checkert::initialize__prop_option_solver()
+{
+    if (is_option_set("itp-algorithm")) 
+        solver_options.m_prop_itp_algorithm = options.get_signed_int_option("itp-algorithm");
+ 
+    initialize_solver_options();
+        
+    initialize_solver_debug_options();    
 }
 
 // Only for OpenSMT solver - prop
-check_opensmt2t* core_checkert::initialize__prop_solver()
+satcheck_opensmt2t * core_checkert::initialize__prop_solver()
 {
     if (options.get_bool_option("no-partitions")) {
         error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
@@ -226,33 +231,37 @@ check_opensmt2t* core_checkert::initialize__prop_solver()
     }
 
     // If all OK, create the decider
-    return new satcheck_opensmt2t("prop checker"
-#ifdef PRODUCE_PROOF                 
-                , options.get_unsigned_int_option("itp-algorithm")
-                , options.get_bool_option("reduce-proof")
-                , options.get_unsigned_int_option("reduce-proof-graph")
-                , options.get_unsigned_int_option("reduce-proof-loops")
-#endif
-#ifdef DISABLE_OPTIMIZATIONS  
-                , options.get_bool_option("dump-query")
-                , options.get_bool_option("dump-pre-query")
-                , options.get_option("dump-query-name")
-#endif                
-                );
+    return new satcheck_opensmt2t(solver_options, "prop checker", ns);
 }
 
-void core_checkert::initialize_solver_options(check_opensmt2t* _decider)
+void core_checkert::initialize_solver_debug_options()
 {
-  // Set all the rest of the option - KE: check what to shift to the part of SMT only
-  _decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
-  
-  if(options.get_unsigned_int_option("random-seed")) 
-      _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-
-#ifdef PRODUCE_PROOF   
-  _decider->set_certify(options.get_unsigned_int_option("check-itp"));
-#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    solver_options.initialize_solver_debug_options(
+    options.get_bool_option("dump-query"),
+    options.get_bool_option("dump-pre-query"),
+    options.get_option("dump-query-name"));
+#endif // DISABLE_OPTIMIZATIONS   
 }
+
+void core_checkert::initialize_solver_options()
+{
+    // Set all the rest of the option - KE: check what to shift to the part of SMT only
+    solver_options.m_verbosity = options.get_unsigned_int_option("verbose-solver");
+  
+    if(options.get_unsigned_int_option("random-seed")) 
+        solver_options.m_random_seed = options.get_unsigned_int_option("random-seed");
+        
+#ifdef PRODUCE_PROOF
+    solver_options.m_certify = options.get_unsigned_int_option("check-itp");
+    bool do_reduce = options.get_bool_option("reduce-proof");
+    if (do_reduce) {
+        solver_options.m_do_reduce = true;
+        solver_options.m_reduction_loops = options.get_unsigned_int_option("reduce-proof-loops");
+        solver_options.m_reduction_graph = options.get_unsigned_int_option("reduce-proof-graph");
+    }
+#endif 
+} 
 
 void core_checkert::initialize()
 {
@@ -261,7 +270,7 @@ void core_checkert::initialize()
     // Init the summary storage
     // Prop and SMT have different mechanism to load/store summaries
     // TODO: unify this mechanism
-    if (options.get_option("logic") == "prop")
+    if (options.get_option(HiFrogOptions::LOGIC) == "prop")
         summary_store = std::unique_ptr<summary_storet>(new prop_summary_storet());
     else{
         auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
@@ -281,7 +290,7 @@ void core_checkert::initialize()
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
 
-  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
+  omega.initialize_summary_info (omega.get_call_tree_root(), get_main_function());
   //omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
@@ -338,246 +347,15 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
     return true;
   }
   
-  // TODO: need to split this class and create a version for prop and smt
-  // Unless we wish to unify mechanism also for error_trace!
-  if (options.get_option("logic") == "prop")
-    return assertion_holds_prop(assertion, store_summaries_with_assertion);
-  else if (options.get_bool_option("no-partitions")) // BMC alike version
+  if (options.get_bool_option("no-partitions")) // BMC alike version
     return assertion_holds_smt_no_partition(assertion);
-  else 
-    return assertion_holds_smt(assertion, store_summaries_with_assertion);
+  else
+    return assertion_holds_(assertion, store_summaries_with_assertion);
 }
 
 /*******************************************************************
 
- Function: core_checkert::assertion_holds
-
- Inputs:
-
- Outputs:
-
- Purpose: Checks if the given assertion of the GP holds for prop logic
-
-\*******************************************************************/
-
-bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
-        bool store_summaries_with_assertion)
-{
-  auto before=timestamp();
-  
-  const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool no_ce_option = options.get_bool_option("no-error-trace");
-  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
-
-  const auto & const_summary_store = *summary_store;
-  auto has_summary = [&const_summary_store](const std::string & function_name){
-      return const_summary_store.has_summaries(function_name);
-  };
-  omega.set_initial_precision(assertion, has_summary);
-  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
-  const bool single_assertion_check = omega.is_single_assertion_check();
-
-  std::vector<unsigned> ints;
-  get_ints(ints, options.get_option("part-itp"));
-  symbol_tablet temp_table;
-  namespacet ns{this->symbol_table, temp_table};
-
-  prop_partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
-
-#ifdef DISABLE_OPTIMIZATIONS
-  if (options.get_bool_option("dump-SSA-tree")) {
-    equation.set_dump_SSA_tree(true);
-    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
-  }
-#endif
-  
-  call_tree_nodet& summary_info = omega.get_call_tree_root();
-  std::unique_ptr<path_storaget> worklist; 
-  symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), summary_info, temp_table,
-            equation, message_handler, goto_program, options, *worklist, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, 
-            false, unwind_bound };
-
-//  setup_unwind(symex);
-
-  prop_refiner_assertion_sumt refiner = prop_refiner_assertion_sumt(
-              *summary_store, omega,
-              get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true);
-
-  prop_assertion_sumt prop = prop_assertion_sumt(equation, message_handler);
-  unsigned count = 0;
-  bool end = false;
-  std::cout <<"";
-
-  std::unique_ptr<prop_conv_solvert> decider_prop;
-  std::unique_ptr<interpolating_solvert> interpolator;
-  while (!end)
-  {
-    count++;
-    
-    // Init the next iteration context
-    {
-        assert(!options.get_bool_option("no-partitions")); // Cannot work with no-partition
-        decider = (new satcheck_opensmt2t("prop checker"
-#ifdef PRODUCE_PROOF                 
-                , options.get_unsigned_int_option("itp-algorithm")
-                , options.get_bool_option("reduce-proof")
-                , options.get_unsigned_int_option("reduce-proof-graph")
-                , options.get_unsigned_int_option("reduce-proof-loops")
-#endif                
-#ifdef DISABLE_OPTIMIZATIONS  
-                , options.get_bool_option("dump-query")
-                , options.get_bool_option("dump-pre-query")
-                , options.get_option("dump-query-name")
-#endif                 
-        ));                
-        initialize_solver_options(decider);
-
-        interpolator.reset(decider);
-        bv_pointerst *deciderp = new bv_pointerst(ns, *(dynamic_cast<satcheck_opensmt2t *> (decider)));
-        deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
-        decider_prop.reset(deciderp);
-    }
-    
-    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (refiner.get_refined_functions());
-
-    if (!end){
-      if (options.get_bool_option("claims-opt") && count == 1){
-        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
-                .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
-      }
-
-      end = prop.assertion_holds(assertion, ns, *(dynamic_cast<prop_conv_solvert *> (decider_prop.get())), *(interpolator.get())); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
-      unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count();
-#ifdef PRODUCE_PROOF      
-      if (end && interpolator->can_interpolate())
-#else
-      if (end)
-#endif
-      {
-        if (options.get_bool_option("no-itp")){
-          status() << ("Skip generating interpolants") << eom;
-        } else {
-#ifdef PRODUCE_PROOF            
-          status() << ("Start generating interpolants...") << eom;
-          extract_interpolants_prop(prop, equation, *decider_prop.get(), *interpolator.get());
-#else
-          assert(0);
-#endif
-        }
-        if (summaries_count == 0)
-        {
-          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
-        } else {
-          status() << "FUNCTION SUMMARIES (for " << summaries_count
-        	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-        }
-        report_success();
-        status() << ("\n---Go to next assertion; claim verified by prop logic ---\n") <<eom;
-      } else {
-        if (summaries_count > 0 || nondet_count > 0) {
-          if (summaries_count > 0){
-            status() << "FUNCTION SUMMARIES (for " << summaries_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          if (nondet_count > 0){
-            status() << "HAVOCING (of " << nondet_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          refiner.refine(*decider_prop, omega.get_call_tree_root(), equation);
-
-          if (refiner.get_refined_functions().size() == 0){
-            if (!options.get_bool_option("no-error-trace"))   
-              prop.error_trace(*decider_prop, ns);
-            status() << ("A real bug found.") << endl << eom;
-            report_failure();
-            status() << ("\n---Go to next assertion; claim checked by prop logic ---\n") <<eom;
-            break;
-          } else {
-            //status("Counterexample is spurious");
-            status() << ("Go to next iteration\n") << eom;
-          }
-        } else {
-          if (!options.get_bool_option("no-error-trace"))
-            prop.error_trace(*decider_prop, ns);
-          status() << ("ASSERTION(S) DO(ES)N'T HOLD") << endl;
-          status() << ("A real bug found") << endl << eom;
-          report_failure();
-          status() << ("\n---Go to next assertion; claim checked by prop logic ---\n") <<eom;
-          break;
-        }
-      }
-    }
-      else{
-        // end is true -> report success (It is needed when the assertion trivially holds)
-        report_success();
-        status() << ("\n---Go to next assertion; claim verified by prop logic ---\n") <<eom;
-    }
-  }
-  auto after = timestamp();
-  omega.get_unwinding_depth();
-
-  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
-  status() << "Total number of steps: " << count << eom;
-  if (omega.get_recursive_total() > 0){
-    status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
-  }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
-  
-#ifdef PRODUCE_PROOF  
-    if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << ((assertion.is_assert_grouping()) 
-                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
-              "\n  file " << assertion.get_location()->source_location.get_file() <<
-              " line " << assertion.get_location()->source_location.get_line() <<
-              " function " << assertion.get_location()->source_location.get_function() << 
-              "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
-              "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
-              << eom; 
-#endif
-  
-  return end;
-}
-/*******************************************************************
-
- Function: core_checkert::assertion_holds_smt
-
- Inputs:
-
- Outputs:
-
- Purpose: Helper function Checks if the given equation holds in smt encoding
-
-\*******************************************************************/
-/*namespace{
-    bool is_satisfiable(smtcheck_opensmt2t & decider) {
-        auto before=timestamp();
-        bool is_sat = decider.solve();
-        auto after=timestamp();
-        //solving_time = time_gap(after,before);
-        //for the report we should have proper method, since status cannot be used here directly
-        status << "SOLVER TIME: " << time_gap(after,before) << eom;
-        status() << "RESULT: ";
-
-        // solve it
-        if (!is_sat)
-        {
-            status() << "UNSAT - it holds!" << eom;
-            return false;
-        } else {
-            status() << "SAT - doesn't hold" << eom;
-            return true;
-        }
-        return is_sat;
-    }
-}*/
-/*******************************************************************
-
- Function: core_checkert::assertion_holds_smt
+ Function: core_checkert::assertion_holds_
 
  Inputs:
 
@@ -587,16 +365,14 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 
 \*******************************************************************/
 
-bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
-        bool store_summaries_with_assertion)
+bool core_checkert::assertion_holds_(const assertion_infot & assertion,
+                                     bool store_summaries_with_assertion)
 {
     auto before = timestamp();
  
     // Init the objects:
-    const bool no_slicing_option = options.get_bool_option("no-slicing");
-    const bool no_ce_option = options.get_bool_option("no-error-trace");
-    assert(options.get_option("logic") != "prop");
-    const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+    const bool no_ce_option = options.get_bool_option(HiFrogOptions::NO_ERROR_TRACE);
+    const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
     // prepare omega
     const auto & const_summary_store = *summary_store;
@@ -607,9 +383,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
-    symbol_tablet temp_table;
-    namespacet ns{this->symbol_table, temp_table};
-    smt_partitioning_target_equationt equation(ns, *summary_store,
+    partitioning_target_equationt equation(ns, *summary_store,
                                                 store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -621,39 +395,25 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     std::unique_ptr<path_storaget> worklist;
-    symex_assertion_sumt symex {
-                *summary_store,
-                get_goto_functions(),
-                call_tree_root,
-                temp_table,
-                equation,
-                message_handler,
-                goto_program,
-                options,
-                *worklist,
-                last_assertion_loc,
-                single_assertion_check,
-                !no_slicing_option,
-                !no_ce_option,
-                true,
-                unwind_bound,
-    };
-    
-    smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
+    symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, new_symbol_table,
+                                                      equation,
+                                                      message_handler, get_main_function(), last_assertion_loc,
+                                                      single_assertion_check, !no_ce_option,
+                                                      unwind_bound,
+                                                      options.get_bool_option("partial-loops"),
+                                };
+    symex.set_assertion_info_to_verify(&assertion);
+
+    refiner_assertion_sumt refiner {
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true);
+              message_handler, last_assertion_loc};
 
-    prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
-
-    unsigned iteration_counter = 0;
-    // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
-    bool end = symex.prepare_SSA(assertion);
-
+    bool end = prepareSSA(symex);
     if(!end && options.get_bool_option("claims-opt")){
-        smt_dependency_checkert(ns, 
+        dependency_checkert(ns,
                     message_handler, 
-                    goto_program, 
+                    get_main_function(),
                     omega, 
                     options.get_unsigned_int_option("claims-opt"), 
                     equation.SSA_steps.size())
@@ -661,16 +421,19 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
     }
 
+
     // the checker main loop:
     unsigned summaries_used = 0;
+    unsigned iteration_counter = 0;
+    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
     while (!end) {
         iteration_counter++;
 
         //Converts SSA to SMT formula
-        ssaTosmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+        ssaToFormula.convert_to_formula( *decider, *(decider));
 
         // Decides the equation
-        bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+        bool is_sat = ssaToFormula.is_satisfiable(*decider);
         summaries_used = omega.get_summaries_count();
         
         end = !is_sat;
@@ -695,7 +458,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
             // END of REPORT
 
             // figure out functions that can be refined
-            refiner.mark_sum_for_refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_call_tree_root(), equation);
+            refiner.mark_sum_for_refine(*decider, omega.get_call_tree_root(), equation);
             bool refined = !refiner.get_refined_functions().empty();
             if (!refined) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
@@ -703,9 +466,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
             } else {
                 // REPORT
                 status() << ("Go to next iteration\n") << eom;
-
                 // do the actual refinement of ssa
-                symex.refine_SSA(refiner.get_refined_functions());
+                refineSSA(symex, refiner.get_refined_functions());
             }
         }
     } // end of refinement loop
@@ -723,7 +485,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
             #ifdef PRODUCE_PROOF
             if (decider->can_interpolate()) {
                 status() << ("Start generating interpolants...") << eom;
-                extract_interpolants_smt(ssaTosmt, equation);
+                extract_interpolants(equation);
             } else {
                 status() << ("Skip generating interpolants") << eom;
             }
@@ -750,7 +512,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     } // End of UNSAT section
     else // assertion was falsified
     {
-        assertion_violated(ssaTosmt, symex.guard_expln);
+        assertion_violated(ssaToFormula, symex.guard_expln);
     }
     // FINAL REPORT
 
@@ -804,20 +566,10 @@ bool core_checkert::assertion_holds_smt_no_partition(
         return const_summary_store.has_summaries(function_name);
     };
   omega.set_initial_precision(assertion, has_summary);
-  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
+//  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 
-  std::vector<unsigned> ints;
-  get_ints(ints, options.get_option("part-itp"));
-  
-  // KE:  remove the message once smt_symex_target_equationt supports interpolation
-  // Notify that there is no support to interpolations
-  status() << "--no-partition activates also --no-itp flag, as there is no (yet) support for summaries/interpolations in this version" << eom;
-
-  symbol_tablet temp_table;
-  namespacet ns {this->symbol_table, temp_table};
-
-  smt_symex_target_equationt equation(ns, ints);
+  hifrog_symex_target_equationt equation(ns);
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
     equation.set_dump_SSA_tree(true);
@@ -826,23 +578,8 @@ bool core_checkert::assertion_holds_smt_no_partition(
 #endif
   
   std::unique_ptr<path_storaget> worklist;
-  symex_no_partitiont symex { ns, 
-                              temp_table, 
-                              equation, 
-                              message_handler, 
-                              goto_program, 
-                              options, 
-                              *worklist, 
-                              !no_slicing_option,
-  };
-  
-  setup_unwind(symex);
-  
-  // KE: I think this says the same
-  smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
-              *summary_store, omega,
-              get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true);
+  symex_no_partitiont symex {options, *worklist, new_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option};
+  symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
   smt_assertion_no_partitiont prop = smt_assertion_no_partitiont(
@@ -869,7 +606,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
+        dependency_checkert(ns, message_handler, get_main_function(), omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
@@ -956,23 +693,18 @@ bool core_checkert::assertion_holds_smt_no_partition(
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void core_checkert::assertion_violated (prepare_smt_formulat& prop,
+void core_checkert::assertion_violated (prepare_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
-    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    namespacet ns{this->symbol_table};
-
     if (!options.get_bool_option("no-error-trace"))
-        prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->is_overapprox_encoding()){
-    	status() << "\nA bug found." << endl;
+        prop.error_trace(*decider, ns, guard_expln);
+    if (decider->is_overapprox_encoding()){
+    	status() << "\nA bug found." << eom;
     	status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
     	status() << "A real bug found." << eom;
     }
     report_failure();
-
-    decider_smt = nullptr;
 }
 
 /*******************************************************************
@@ -990,7 +722,6 @@ void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    namespacet ns{this->symbol_table};
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
     if (decider_smt->is_overapprox_encoding()){
@@ -1016,14 +747,12 @@ Function: core_checkert::extract_interpolants_smt
  Purpose: Extract and store the interpolation summaries for smt only
 
 \*******************************************************************/
-void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
+void core_checkert::extract_interpolants (partitioning_target_equationt& equation)
 {
   //SA & prop is not needed here; the entire class prepare_smt_formulat is useless.
   auto before=timestamp();
   
-  smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-  equation.extract_interpolants(*decider_smt);
-  decider_smt = nullptr;
+  equation.extract_interpolants(*decider);
 
   auto after=timestamp();
   status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
@@ -1033,69 +762,10 @@ void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_pa
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
-    decider->dump_header_to_file(out);
-    summary_store->serialize(out);
-  }
-}
-
-/*******************************************************************\
-
-Function: core_checkert::extract_interpolants_prop
-
-  Inputs:
-
- Outputs:
-
- Purpose: Extract and store the interpolation summaries for prop only
-
-\*******************************************************************/
-void core_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            prop_conv_solvert& decider_prop, interpolating_solvert& interpolator)
-{
-  auto before=timestamp();
-
-  equation.extract_interpolants(interpolator, decider_prop);
-
-  auto after=timestamp();
-  status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
-  
-  // Store the summaries
-  std::string summary_file;
-#ifdef PRODUCE_PROOF  
-  if(options.get_bool_option("sum-theoref")) {
-      summary_file = "__summaries_prop";
-  }
-  else {
-      summary_file = options.get_option("save-summaries");
-  }
-#else
-  summary_file = options.get_option("save-summaries");
-#endif
-  if (!summary_file.empty()) {
-    std::ofstream out;
-    out.open(summary_file.c_str());
     summary_store->serialize(out);
   }
 }
 #endif
-
-/*******************************************************************\
-
-Function: core_checkert::setup_unwind
-
-  Inputs:
-
- Outputs:
-
- Purpose: Setup the unwind bounds.
-
-\*******************************************************************/
-
-void core_checkert::setup_unwind(symex_bmct& symex)
-{
-    symex.unwindset.parse_unwind(options.get_option("unwind"));
-    symex.unwindset.parse_unwindset(options.get_option("unwindset"));
-}
 
 /*******************************************************************\
 
@@ -1185,7 +855,7 @@ namespace{
 //Purpose: extracts summaries after successful verification; and dumps the summaries
 // in a specific summary-file for uf and lra separately based on the solver.
 
-    void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
+    void extract_and_store_summaries(partitioning_target_equationt & equation, summary_storet & store,
                                       smtcheck_opensmt2t & decider , std::string & summary_file_name){
         equation.extract_interpolants(decider);
 
@@ -1217,14 +887,14 @@ void reload_summaries(const namespacet &ns,
     std::vector<std::string> unsupp_func = get_unsupported_funct_exprs(sm);
 
     // Detect if there are non-linear parts (searching for non-linear / or *):
-    std::set<PTRef>* non_linears = prev_solver.get_non_linears();
-    if (non_linears->size() > 0 || !unsupp_func.empty())
+    std::set<PTRef> non_linears = prev_solver.get_non_linears();
+    if (non_linears.size() > 0 || !unsupp_func.empty())
     {
         const Logic& logic = *prev_solver.getLogic();
-        std::transform(non_linears->begin(), non_linears->end(), std::back_inserter(unsupp_func),
+        std::transform(non_linears.begin(), non_linears.end(), std::back_inserter(unsupp_func),
                        [&logic](PTRef pt){ return std::string{logic.printTerm(pt)};});
         // Notify the user
-        std::cerr << "Non linear operation encounter. Ignoring " << non_linears->size() << " expressions in the file.\n";
+        std::cerr << "Non linear operation encounter. Ignoring " << non_linears.size() << " expressions in the file.\n";
 
         std::sort(unsupp_func.begin(), unsupp_func.end(), [](const std::string & first, const std::string & second){
             return first.size() > second.size();
@@ -1234,14 +904,10 @@ void reload_summaries(const namespacet &ns,
         for(auto old_token : unsupp_func)
         {
             // Get the old token we wish to abstract
-//              std::string new_token = decider.create_new_unsupported_var("_sumref", false); // unsupported operator symbol name
             std::string new_token = fresh_var_name_nonlinear();
-            //Add the declaration to in the solver
-//              prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", false)).c_str());
-//              prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", true)).c_str());
             prev_solver.getLogic()->mkVar(prev_solver.getURealSortRef(), new_token.c_str());
-//              decider.getLogic()->mkVar(decider.getLogic()->getSortRef(*nl), (decider.create_new_unsupported_var("_sumref", false)).c_str());
-
+            // New Unsupported Var with no specific mapping or information saved
+            
             // The symbol name in the old token
             std::string::size_type n_before = 0;
             std::string::size_type n_after = 0;
@@ -1282,9 +948,6 @@ void reload_summaries(const namespacet &ns,
 //              std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
         }
 
-        // Clean the data in use
-        delete(non_linears);
-
         // Store to Temp. file
         std::ofstream out;
         out.open("__summaries_linear_temp");
@@ -1318,8 +981,9 @@ void reload_summaries(const namespacet &ns,
 // Purpose: reset means changing the partition information according
 // to the current state of the summary store. so first we updated the
 // store using method read_lra_summaries(), then we update the summary information
-    void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
+    void reset_partition_info(partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
+            partition.event_solver_reseted();
             // check if we have summary in the store for this partition
             const auto & function_name = id2string(partition.get_iface().function_id);
             bool should_summarize = partition.get_iface().call_tree_node.get_precision() == summary_precisiont::SUMMARY;
@@ -1329,7 +993,7 @@ void reload_summaries(const namespacet &ns,
             if(should_summarize){
                 // clear the old information and load new information from the store
                 // fill the partition with new summaries
-                eq.fill_summary_partition(partition.get_iface().partition_id, store.get_summaries(function_name));
+                eq.fill_summary_partition(partition.get_iface().partition_id, function_name);
                 assert(partition.has_summary_representation());
             }
             else{
@@ -1358,22 +1022,15 @@ Function: core_checkert::check_sum_theoref_single
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
+    new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
-    smtcheck_opensmt2t_uf uf_solver {"uf checker",
-            options.get_unsigned_int_option("itp-uf-algorithm"),
-            options.get_bool_option("reduce-proof"),
-            options.get_unsigned_int_option("reduce-proof-graph"),
-            options.get_unsigned_int_option("reduce-proof-loops")
-#ifdef DISABLE_OPTIMIZATIONS  
-            , options.get_bool_option("dump-query")
-            , options.get_bool_option("dump-pre-query")
-            , options.get_option("dump-query-name")
-#endif  
-    };
-    initialize_solver_options(&uf_solver);
+    initialize__euf_option_solver();
+    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{initialize__euf_solver()};
+    auto & uf_solver = *uf_solver_ptr;
 
-    smt_summary_storet summary_store {&uf_solver};
+
+    smt_summary_storet summary_store {uf_solver_ptr.get()};
     //reading summary by uf
     status() << "\n--Reading UF summary file: " << uf_summary_file_name << eom;
     summary_store.deserialize({uf_summary_file_name});
@@ -1383,28 +1040,25 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         return const_summary_store.has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary);
-    symbol_tablet temp_table;
-    namespacet ns{this->symbol_table, temp_table};
-    smt_partitioning_target_equationt equation {ns, summary_store, false};
-
     std::unique_ptr<path_storaget> worklist;
-    symex_assertion_sumt symex {summary_store,
-                                get_goto_functions(),
-                                omega.get_call_tree_root(),
-                                temp_table,
-                                equation,
-                                message_handler,
-                                goto_program,
-                                options, *worklist,
-                                omega.get_last_assertion_loc(),
-                                omega.is_single_assertion_check(),
-                                !options.get_bool_option("no-slicing"),
-                                !options.get_bool_option("no-error-trace"),
-                                true,
-                                options.get_unsigned_int_option("unwind"),
-    };
+    partitioning_target_equationt equation {ns, summary_store, false};
 
-    bool assertion_holds = symex.prepare_SSA(assertion);
+    symex_assertion_sumt symex{get_goto_functions(),
+                               omega.get_call_tree_root(),
+                               options, *worklist,
+                               new_symbol_table,
+                               equation,
+                               message_handler,
+                               get_main_function(),
+                               omega.get_last_assertion_loc(),
+                               omega.is_single_assertion_check(),
+                               !options.get_bool_option("no-error-trace"),
+                               options.get_unsigned_int_option("unwind"),
+                               options.get_bool_option("partial-loops"),
+    };
+    symex.set_assertion_info_to_verify(&assertion);
+
+    bool assertion_holds = prepareSSA(symex);
     if (assertion_holds){
         // report results
         report_success();
@@ -1426,16 +1080,16 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 //---------------------------------------------------------------------------
     //UF summary refinement
     status() << "\n---trying to locally refine the summary in UF---\n" <<eom;
-    smt_refiner_assertion_sumt localRefine{summary_store, omega,
+    refiner_assertion_sumt localRefine{summary_store, omega,
                                            refinement_modet::SLICING_RESULT,
                                            this->get_message_handler(),
-                                           omega.get_last_assertion_loc(), true};
+                                           omega.get_last_assertion_loc()};
 
 
     localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
     bool can_refine = !localRefine.get_refined_functions().empty();
     while(can_refine) {
-        symex.refine_SSA(localRefine.get_refined_functions());
+        refineSSA(symex, localRefine.get_refined_functions());
         equation.convert(uf_solver, uf_solver);
         is_sat = uf_solver.solve();
         if (!is_sat) {
@@ -1450,24 +1104,13 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
-    unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
-    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker",
-            options.get_unsigned_int_option("itp-lra-algorithm"),
-            ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
-            options.get_bool_option("reduce-proof"),
-            options.get_unsigned_int_option("reduce-proof-graph"),
-            options.get_unsigned_int_option("reduce-proof-loops")
-#ifdef DISABLE_OPTIMIZATIONS  
-            , options.get_bool_option("dump-query")
-            , options.get_bool_option("dump-pre-query")
-            , options.get_option("dump-query-name")
-#endif     
-    };
-    initialize_solver_options(&lra_solver);
+    initialize__lra_option_solver();
+    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{initialize__lra_solver()};
+    auto & lra_solver = *lra_solver_ptr;
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
     omega.set_initial_precision(assertion, has_summary);
-    reset_partition_summary_info(equation, summary_store);
+    reset_partition_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
@@ -1484,48 +1127,19 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
     can_refine = !localRefine.get_refined_functions().empty();
     while(can_refine){
-        symex.refine_SSA(localRefine.get_refined_functions());
-        // new lra_solver here, because of LRA incrementality problems in OpenSMT
-        smtcheck_opensmt2t_lra lra_solver2 {_type_constraints_level, "lra checker (in loop)",
-            options.get_unsigned_int_option("itp-lra-algorithm"),
-            ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
-            options.get_bool_option("reduce-proof"),
-            options.get_unsigned_int_option("reduce-proof-graph"),
-            options.get_unsigned_int_option("reduce-proof-loops")
-#ifdef DISABLE_OPTIMIZATIONS  
-            , options.get_bool_option("dump-query")
-            , options.get_bool_option("dump-pre-query")
-            , options.get_option("dump-query-name")
-#endif         
-        };
-        initialize_solver_options(&lra_solver2);
-        // we have new solver, but summary store has references from the old solver, we need to reload
-        status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
-        reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2, uf_solver);
-        equation.convert(lra_solver2, lra_solver2);
-        is_sat = lra_solver2.solve();
+        refineSSA(symex,localRefine.get_refined_functions());
+        equation.convert(lra_solver, lra_solver);
+        is_sat = lra_solver.solve();
         if(!is_sat){
-            extract_and_store_summaries(equation, summary_store, lra_solver2, lra_summary_file_name);
+            extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
             // report results
             report_success();
             status() << ("\n---Go to next assertion; claim verified by LRA with some local Refinement---\n") << eom;
             return true; // claim verified by LRA encoding -> go to next claim
         }
-        localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
+        localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
         can_refine = !localRefine.get_refined_functions().empty();
     }
-//---------------------------------------------------------------------------
-    // call theory refinement
-  /*  status() << "\n---EUF and LRA were not enough; trying to refine with theory-refinement using CUF + BV ---\n" <<eom;
-    // MB: we need fresh secondary table for the symex in the theory refiner
-    theory_refinert th_checker(this->goto_program,
-                               get_goto_functions(),
-                               this->symbol_table,
-                               options,
-                               message_handler);
-    th_checker.initialize();
-    return th_checker.assertion_holds_smt(assertion, false);*/
-
     //cal prop --------------------------------------------------------------------------
     status() << "\n---EUF and LRA were not enough; trying to use prop logic ---\n" <<eom;
     std::string prop_summary_filename {"__summaries_prop"};
@@ -1536,6 +1150,41 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
         this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
     }
-    return this->assertion_holds_prop(assertion, false);
+    // MB: workaround around assertion_holds_ expecting to have a decider set already
+    delete decider;
+    initialize__prop_option_solver();
+    decider = initialize__prop_solver();
+    new_symbol_table.clear();
+    auto res = this->assertion_holds_(assertion, false);
+    if (res) {
+        status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;
+    }
+    return res;
 }
-#endif
+
+#endif // PRODUCE_PROOF
+
+void core_checkert::slice_target(partitioning_target_equationt & equation) {
+    auto before = timestamp();
+    statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+    partitioning_slice(equation);
+    statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+    auto after = timestamp();
+    statistics() << "SLICER TIME: " << time_gap(after,before) << eom;
+}
+
+bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
+    auto verified = symex.prepare_SSA();
+    if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
+        slice_target(symex.get_target_equation());
+    }
+    return verified;
+}
+
+bool core_checkert::refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine) {
+    auto verified = symex.refine_SSA(functions_to_refine);
+    if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
+        slice_target(symex.get_target_equation());
+    }
+    return verified;
+}

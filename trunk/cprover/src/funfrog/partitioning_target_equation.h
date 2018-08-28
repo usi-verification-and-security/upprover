@@ -18,7 +18,7 @@ Author: Ondrej Sery
 
 #include <util/symbol.h>
 #ifdef DISABLE_OPTIMIZATIONS
-#include <iostream>
+#include <sstream>
 #include "expr_pretty_print.h"
 #endif
 
@@ -28,6 +28,8 @@ Author: Ondrej Sery
 #include "partition.h"
 
 class partition_ifacet;
+class check_opensmt2t;
+class interpolating_solvert;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -57,14 +59,10 @@ public:
     void refine_partition(partition_idt partition_id);
 
   // Fill the (reserved) partition with the given summaries.
-  void fill_summary_partition(partition_idt partition_id, const summary_idst & summaries);
+  void fill_summary_partition(partition_idt partition_id, const std::string & function_id);
 
   // Fill the (reserved) partition with the stub summary.
   void fill_stub_partition(partition_idt partition_id);
-
-  // Fill the (reserved) partition with the given summaries.
-  void fill_inverted_summary_partition(partition_idt partition_id,
-    const summary_idst* summaries, const summary_ids_sett& used_summaries);
 
   // Begin processing of the given (previously reserved) partition.
   // The following SSA statements will be part of the given partition until
@@ -90,9 +88,17 @@ public:
     return SSA_steps_exec_order;
   }
 
+  void extract_interpolants(check_opensmt2t& decider);
+
+  void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator);
+
   partitionst& get_partitions() { return partitions; }
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
+
+  std::vector<exprt> get_exprs_to_refine();
+
+  const summary_storet & get_summary_store() const { return summary_store; }
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
@@ -103,6 +109,29 @@ public:
 #endif
   
 protected:
+    void convert_partition(check_opensmt2t & decider,
+                           interpolating_solvert & interpolator, partitiont & partition);
+    void convert_partition_guards(check_opensmt2t &decider,
+                                       partitiont& partition);
+
+    void convert_partition_assignments(check_opensmt2t &decider,
+                                       partitiont& partition);
+
+  // Convert a specific partition assumptions of SSA steps
+    void convert_partition_assumptions(check_opensmt2t &decider,
+                                       partitiont& partition);
+    // Convert a specific partition assertions of SSA steps
+    void convert_partition_assertions(check_opensmt2t &decider,
+                                      partitiont& partition);
+    // Convert a specific partition io of SSA steps
+    void convert_partition_io(check_opensmt2t &decider,
+                              partitiont& partition);
+    // Convert a summary partition (i.e., assert its summary)
+    void convert_partition_summary(check_opensmt2t & decider,
+                                   partitiont & partition);
+    // Convert a specific partition gotos of SSA steps
+    void convert_partition_goto_instructions(check_opensmt2t &decider,
+                                             partitiont& partition);
 
   // Id of the currently selected partition
   partition_idt current_partition_id;
@@ -115,17 +144,11 @@ protected:
   
   // For SMT-Lib Translation - Move it later to a new class
   std::map <std::string,exprt>* partition_smt_decl;
-  std::ostream out_local_terms; //for prints SSA - remove later
-  std::ostream& out_terms; // for prints SSA - remove later
-  std::stringbuf terms_buf; // for prints SSA - remove later
+  std::stringstream out_terms; // for prints SSA - remove later
 
-  std::ostream out_local_basic; //for prints SSA - remove later
-  std::ostream& out_basic; // for prints SSA - remove later
-  std::stringbuf basic_buf; // for prints SSA - remove later
+  std::stringstream out_basic; // for prints SSA - remove later
 
-  std::ostream out_local_partition; //for prints SSA - remove later
-  std::ostream& out_partition; // for prints SSA - remove later
-  std::stringbuf partition_buf; // for prints SSA - remove later
+  std::stringstream out_partition; // for prints SSA - remove later
 
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
@@ -147,11 +170,6 @@ protected:
   partitiont& get_current_partition() {
     return partitions[current_partition_id];
   }
-
-  // Fills in the list of symbols that the partition has in common with its
-  // environment
-  virtual void fill_common_symbols(const partitiont& partition,
-    std::vector<symbol_exprt>& common_symbols) const;
 
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);

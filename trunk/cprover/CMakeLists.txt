@@ -35,13 +35,13 @@ set(sat_impl "minisat2" CACHE STRING
     "This setting controls the SAT library which is used. Valid values are 'minisat2' and 'glucose'"
 )
 
-add_subdirectory(src)
-
+if(${enable_cbmc_tests})
+    enable_testing()
+endif()
 if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
-
-#add_subdirectory(src)
+add_subdirectory(src)
 #add_subdirectory(regression)
 #add_subdirectory(unit)
 
@@ -74,22 +74,11 @@ set_target_properties(
     #mmcc
     pointer-analysis
     solvers
-    #test-bigint
+    test-bigint
     #testing-utils
     #unit
     util
     xml
-
-    #java_bytecode
-    #java-models-library
-    #jbmc
-    #jbmc-lib
-    #janalyzer
-    #janalyzer-lib
-    #jdiff
-    #jdiff-lib
-    #java-testing-utils
-    #java-unit
     #miniz
 
     PROPERTIES

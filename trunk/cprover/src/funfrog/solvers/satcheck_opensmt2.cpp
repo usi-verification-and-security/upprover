@@ -8,27 +8,47 @@ Author: Grigory Fedyukovich
 
 #include "satcheck_opensmt2.h"
 #include "prop_itp.h"
+#include "naming_boolbv.h"
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 #include <iostream>
-#include "../hifrog.h"
 #endif
 
-void satcheck_opensmt2t::initializeSolver(const char* name)
+satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, const char * name, const namespacet & ns)
+        : check_opensmt2t()
+{
+    initializeSolver(solver_options, name);
+    // TODO: move to separate method?
+    auto bv_pointers = new naming_boolbv(ns, *this);
+    bv_pointers->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
+    auto prop_conv_solver = std::unique_ptr<boolbvt>(bv_pointers);
+    this->set_prop_conv_solvert(std::move(prop_conv_solver));
+}
+
+void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_bool, name);
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
-    const char* msg=NULL;
+    const char* msg = nullptr;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
-    //if (msg != NULL) free((char *)msg); // if finds an error consider to print it
-}
+    
+    // Initialize parameters
+    this->verbosity = solver_options.m_verbosity;
+    set_random_seed(solver_options.m_random_seed);
+  
+#ifdef PRODUCE_PROOF  
+    this->itp_algorithm.x = solver_options.m_prop_itp_algorithm;
 
-// Free all resources related to OpenSMT2
-void satcheck_opensmt2t::freeSolver()
-{
-    if (osmt != NULL) delete osmt;
+    this->certify = solver_options.m_certify;
+    this->reduction = solver_options.m_do_reduce;
+    this->reduction_loops = solver_options.m_reduction_loops;
+    this->reduction_graph = solver_options.m_reduction_graph;
+#endif
+#ifdef DISABLE_OPTIMIZATIONS
+    // TODO: add when Debug options works for Proporsitional logic
+#endif // DISABLE_OPTIMIZATIONS    
 }
 
 /*******************************************************************\
@@ -43,31 +63,14 @@ Function: satcheck_opensmt2t::convert
 
 \*******************************************************************/
 
-void satcheck_opensmt2t::convert(const bvt &bv, vec<PTRef> &args)
-{
-  for(unsigned i=0; i<bv.size(); i++) {
-    const literalt& lit = bv[i];
-    
-    // we never use 'unused_var_no' (cnf.cpp)
-    assert(lit.var_no()!=literalt::unused_var_no());
-
-    PTRef var = ptrefs[lit.var_no()];
-
-    if (lit.sign()) {
-      args.push(logic->mkNot(var));
-    } else {
-      args.push(var);
-    }
-  }
-}
-
 #ifdef PRODUCE_PROOF
 void satcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
 {
   ptref_cachet cache;
   target_itp.set_no_original_variables(_no_variables);
-  target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
+  target_itp.set_no_variables(_no_variables);
+  target_itp.set_root_literal(extract_itp_rec(ptref, target_itp, cache));
 }
 
 literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
@@ -139,17 +142,10 @@ Function: satcheck_opensmt2t::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
-#ifdef PRODUCE_PROOF 
 void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants)
+    interpolantst& interpolants) const
 {
   assert(ready_to_interpolate);
-
-  // Set labeling function
-  //  const char* msg=NULL;
-  //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
-  //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
-  //  if (msg != NULL) free((char *)msg);
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
@@ -166,12 +162,12 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(auto itp_ptref : itp_ptrefs)
   {
+//      std::cout << "Computed interpolant:\n" << logic->printTerm(itp_ptref) << '\n' << '\n';
       itpt* itp = new prop_itpt();
       extract_itp(itp_ptref, *(dynamic_cast <prop_itpt*> (itp)));
       interpolants.push_back(itp);
   }
 }
-#endif
 
 
 /*******************************************************************\
@@ -190,6 +186,97 @@ bool satcheck_opensmt2t::can_interpolate() const
 {
   return ready_to_interpolate;
 }
+
+void satcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
+    auto prop_itp = dynamic_cast<prop_itpt*>(interpolant);
+    if(!prop_itp){
+        throw std::logic_error{"SAT decider got non-propositional interpolant!"};
+    }
+    generalize_summary(*prop_itp, common_symbols);
+}
+
+void satcheck_opensmt2t::generalize_summary(prop_itpt & prop_itp, const std::vector<symbol_exprt> & symbols) {
+    prop_itp.get_symbol_mask().clear();
+    if (prop_itp.is_trivial()) {
+        return;
+    }
+    auto & bv_converter = this->get_bv_converter();
+    auto totalVars = prop_itp.get_no_variables();
+    auto originalVars = prop_itp.get_no_original_variables();
+    auto isTseitinVariable = [totalVars, originalVars](literalt lit){
+        (void)totalVars; // for compilation warning in Release mode
+        assert(lit.var_no() < totalVars);
+        return lit.var_no() >= originalVars;
+    };
+    std::unordered_map<literalt::var_not, literalt::var_not> renaming;
+
+    // Fill the renaming table
+    unsigned cannon_var_no = 1;
+//    unsigned current_symbol_idx = 0;
+    // do not forget to increment current_symbol
+    for (auto const & symbol : symbols) {
+        auto const & bv = bv_converter.convert_bv(symbol);
+        for(auto lit : bv){
+//            MB: it can happen that some of the interface symbols were never converted, e.g. because of some optimizations
+//            assert(lit.var_no() < originalVars);
+            assert(!lit.sign()); // Can it be negated literal?
+            renaming[lit.var_no()] = cannon_var_no++;
+        }
+    }
+    const auto new_original_vars = cannon_var_no;
+    const auto & const_renaming = renaming;
+    // Do the renaming itself
+
+    for (auto & clause : prop_itp.get_clauses()) {
+        for (auto & lit : clause) {
+            if(const_renaming.find(lit.var_no()) != const_renaming.end()) // literal from interface symbol
+            {
+                lit.set(const_renaming.at(lit.var_no()), lit.sign());
+            }
+            else // literal NOT from interface symbol, should be literal corresponding to Tseitin encoding
+            {
+                if(!isTseitinVariable(lit)){ // it is not Tseiting variable
+                    // this can happen e.g. when function works with pointers
+                    // this interpolant cannot be generalized in meaningful way
+//                    warning() << "Propositional interpolant contained variables it should not caontain\n" << eom;
+                    prop_itp.set_trivial();
+                    return;
+                }
+                else // it is Tseitin variable
+                {
+                    assert(lit.var_no() < prop_itp.get_no_variables());
+                    literalt renamed{cannon_var_no++, lit.sign()};
+                    renaming[lit.var_no()] = renamed.var_no();
+                    lit = renamed;
+                }
+            }
+        }
+    }
+
+    const literalt root_literal = prop_itp.get_root_literal();
+    const auto root_literal_var = root_literal.var_no();
+    if(const_renaming.find(root_literal_var) != const_renaming.end()){
+        prop_itp.set_root_literal(literalt{const_renaming.at(root_literal_var), root_literal.sign()});
+    }
+    else{
+        assert(false);
+        throw std::logic_error{"Root literal of propositional interpolant is unknown variable!"};
+    }
+
+//  std::cout << "_cannon_vars: " << cannon_var_no << std::endl;
+//  std::cout << "_no_vars: " << _no_variables << std::endl;
+//  std::cout << "_no_orig_vars: " << _no_orig_variables << std::endl;
+    prop_itp.set_no_variables(cannon_var_no);
+    prop_itp.set_no_original_variables(new_original_vars);
+
+    // TODO: we should probaly not consider used symbols at all
+    auto & symbol_mask = prop_itp.get_symbol_mask();
+    symbol_mask.reserve(symbols.size());
+    for (unsigned i = 0; i < symbols.size(); ++i) {
+        symbol_mask.push_back(true);
+    }
+}
+
 #endif // PRODUCE_PROOF
 
 /*******************************************************************\
@@ -264,12 +351,28 @@ Function: satcheck_opensmt2t::add_variables
 
 void satcheck_opensmt2t::add_variables()
 {
+//    ptrefs.reserve(_no_variables);
+//    while (ptrefs.size() < _no_variables) {
+//        increase_id();
+//        const char* vid = id_str.c_str();
+//        ptrefs.push_back(logic->mkBoolVar(vid));
+//    }
+
   ptrefs.reserve(_no_variables);
 
   while (ptrefs.size() < _no_variables) {
-    increase_id();
-    const char* vid = id_str.c_str();
-    ptrefs.push_back(logic->mkBoolVar(vid));
+      if(ptrefs.size() >= lits_names.size() || ptrefs.empty() || lits_names[ptrefs.size()].empty()){
+          increase_id();
+          set_variable_name(literalt{static_cast<unsigned>(ptrefs.size()), false}, id_str);
+      }
+      //assert(!lits_names[ptrefs.size()].empty());
+      if(lits_names[ptrefs.size()].empty()){
+         for(auto & name : lits_names){
+             std::cout << name << '\n';
+         }
+         assert(false);
+      }
+      ptrefs.push_back(logic->mkBoolVar(lits_names[ptrefs.size()].c_str()));
   }
 }
 
@@ -332,7 +435,7 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   // Print Pre-query to file
   if (dump_pre_queries) {
       ofstream out_sat_pre_query;
-      out_sat_pre_query.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
+      out_sat_pre_query.open(pre_queries_file_name+"_"+std::to_string(get_unique_index())+".smt2");
       
       // Print Header
       mainSolver->getLogic().dumpHeaderToFile(out_sat_pre_query);
@@ -474,13 +577,84 @@ Function: satcheck_opensmt2t::decode_id
 
 unsigned satcheck_opensmt2t::decode_id(const char* id) const
 {
-  unsigned base = 1;
-  unsigned i = 0;
+    std::string name{id};
+    auto it = std::find(lits_names.begin(), lits_names.end(), name);
+    assert(it != lits_names.end());
+    return it - lits_names.begin();
+//  unsigned base = 1;
+//  unsigned i = 0;
+//
+//  while (*id != 0) {
+//    i += base * (*id++ - 'A' + 1);
+//    base *= 'Z'-'A'+1;
+//  }
+//  return i-1;
+}
 
-  while (*id != 0) {
-    i += base * (*id++ - 'A' + 1);
-    base *= 'Z'-'A'+1;
-  }
-  return i-1;
+void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
+    assert(!itp.is_trivial());
+    const prop_itpt & prop_itp = dynamic_cast<const prop_itpt &>(itp);
+    auto & bv_converter = this->get_bv_converter();
+    std::vector<literalt> renaming {prop_itp.get_no_variables(), literalt{}};
+
+    // Fill the renaming table
+    unsigned cannon_var_no = 1;
+    for (const auto & symbol : symbols) {
+        auto const & bv = bv_converter.convert_bv(symbol);
+        for (auto lit : bv) {
+            renaming[cannon_var_no++] = lit;
+        }
+    }
+    // Allocate new variables for the auxiliary ones (present due to the Tseitin
+    // encoding to CNF)
+    for (unsigned i = prop_itp.get_no_original_variables(); i < prop_itp.get_no_variables(); ++i) {
+        renaming[i] = this->new_variable();
+    }
+
+    // Rename and output the clauses
+    bvt tmp_clause;
+    for (const auto & clause : prop_itp.get_clauses())
+        {
+        tmp_clause = clause;
+
+        for (auto & lit : tmp_clause) {
+            // Rename
+            bool sign = lit.sign();
+            lit = renaming[lit.var_no()];
+            assert(literalt::unused_var_no() != lit.var_no());
+            if (sign){
+                lit.invert();
+            }
+        }
+        // Assert the clause
+        this->lcnf(tmp_clause);
+    }
+
+    const literalt root_literal = prop_itp.get_root_literal();
+    // Handle the root
+    bool sign = root_literal.sign();
+    literalt new_root_literal = renaming[root_literal.var_no()];
+    assert(literalt::unused_var_no() != new_root_literal.var_no());
+    if (sign)
+        new_root_literal.invert();
+
+    this->l_set_to_true(new_root_literal);
+}
+
+void satcheck_opensmt2t::set_variable_name(literalt a, const std::string & name) {
+    while(lits_names.size() <= a.var_no()){
+        lits_names.emplace_back("");
+    }
+    assert(lits_names[a.var_no()].empty());
+    assert(!name.empty());
+    lits_names[a.var_no()] = name;
+}
+
+literalt satcheck_opensmt2t::new_variable() {
+    return cnft::new_variable();
+}
+
+bool satcheck_opensmt2t::is_overapprox_encoding() const {
+    return false;
 }
 

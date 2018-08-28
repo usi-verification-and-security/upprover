@@ -70,8 +70,7 @@ public:
   
   // SSA Location of the call
   unsigned call_loc;
-  
-  std::map<symbol_exprt, std::vector<unsigned> > common_symbols;
+
   std::vector<unsigned> A_vars;
   std::vector<unsigned> B_vars;
   std::vector<unsigned> AB_vars;
@@ -87,6 +86,7 @@ public:
     error_symbol = other.error_symbol;
     returns_value = other.returns_value;
     call_loc = other.call_loc;
+
     
 #   if 0 && defined(DISABLE_OPTIMIZATIONS) // KE: unknown old debug code
     std::cerr << " === Sharing symbols:" << std::endl;
@@ -124,6 +124,7 @@ public:
     expr_pretty_print(std::cerr << "Error: ", error_symbol);
 #   endif
   }
+  std::vector<symbol_exprt> get_iface_symbols() const;
 
 };
 

@@ -14,55 +14,70 @@ Author: Ondrej Sery
 #include "itp.h"
 
 class symbol_exprt;
+class prop_conv_solvert;
 
 class prop_itpt: public itpt
 {
 public:
-  prop_itpt() :itpt() {}
+    typedef std::vector<bvt> clausest;
+
+  prop_itpt() :itpt(), _no_variables(1), _no_orig_variables(1) {}
   ~prop_itpt() {} 
 
   virtual bool is_trivial() const override { return root_literal.is_constant(); }
+  void set_trivial() {root_literal = const_literal(true);}
 
   literalt land(literalt a, literalt b);
   literalt lor(literalt a, literalt b);
   literalt lnot(literalt a);
-  virtual void print(std::ostream& out) const override;
-
-  // These 3 methods are needed in partitioning_target_equation (called from)
-  static void reserve_variables(prop_conv_solvert& decider,
-    		  const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, 
-		  std::vector<unsigned> >& symbol_vars);
-
-  void generalize(const prop_conv_solvert& mapping,
-    		  const std::vector<symbol_exprt>& symbols);
-
-  void substitute(prop_conv_solvert& decider,
-    const std::vector<symbol_exprt>& symbols,
-    bool inverted = false) const;
-
-  virtual literalt raw_assert(propt& decider) const override;
+  void print(std::ostream& out) const;
 
   // Serialization
   virtual void serialize(std::ostream& out) const override;
-  virtual void deserialize(std::istream& in) override;
+  void deserialize(std::istream& in);
 
-  bool usesVar(symbol_exprt& symb, unsigned idx) override
-  { 
-      return get_symbol_mask()[idx];
-  }
-  
-  // Only for SMT logics
-  virtual void setTterm(Tterm& t) override {}
-  virtual void setDecider(check_opensmt2t *_s) override {}
+  const clausest & get_clauses() const {return clauses;}
+  clausest & get_clauses() {return clauses;}
+
+    literalt new_variable() {
+        return literalt(_no_variables++, false);
+    }
+
+    std::vector<bool>& get_symbol_mask() { return symbol_mask; }
+
+    literalt get_root_literal() const {return root_literal;}
+    void set_root_literal(literalt new_root) {root_literal = new_root;}
+
+    unsigned get_no_variables() const { return _no_variables; }
+
+    void set_no_original_variables(unsigned no) {
+        _no_orig_variables = no;
+    }
+
+    void set_no_variables(unsigned no) {
+        _no_variables = no;
+    }
+
+    unsigned get_no_original_variables() const {return _no_orig_variables;}
+
+    bool equals(itpt * other) const override;
 
 protected:
-  typedef std::vector<bvt> clausest;
-
   // Clauses of the interpolant representation
   clausest clauses;
   
   // Mask for used symbols
   std::vector<bool> symbol_mask;
+
+    // Literal equivalent to the interpolant root
+    literalt root_literal;
+
+    // Number of all used variables
+    unsigned _no_variables;
+
+    // Upper bound on the number of variables in the interpolant. Variables with
+    // a higher number are due to Tseitin encoding
+    unsigned _no_orig_variables;
 
   void gate_and(literalt a, literalt b, literalt o);
   void gate_or(literalt a, literalt b, literalt o);

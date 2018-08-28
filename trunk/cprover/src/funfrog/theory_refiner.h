@@ -5,9 +5,11 @@
 #include <util/options.h>
 #include <util/ui_message.h>
 #include "subst_scenario.h"
+#include <funfrog/solvers/solver_options.h>
 
 class smtcheck_opensmt2t_cuf;
 class symex_assertion_sumt;
+class partitioning_target_equationt;
 
 class theory_refinert:public messaget
 {
@@ -33,6 +35,7 @@ public:
   
   void initialize();
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
+    void slice_target(partitioning_target_equationt & equation);
   
 private:
   const goto_programt &goto_program;
@@ -41,6 +44,7 @@ private:
   ui_message_handlert &message_handler;
   smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;
+  solver_optionst solver_options;
   
   //void setup_unwind(symex_assertion_sumt& symex);
   void report_success();

@@ -12,65 +12,36 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name, 
-#ifdef PRODUCE_PROOF   
-        unsigned int _itp_uf_algorithm,
-        bool _reduction, 
-        unsigned int _reduction_graph, 
-        unsigned int _reduction_loops,   
-#endif
-#ifdef DISABLE_OPTIMIZATIONS          
-        bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name,
-#endif          
-        bool _store_unsupported_info=false) :
-    smtcheck_opensmt2t(
-#ifdef PRODUCE_PROOF  
-        _reduction, _reduction_graph, _reduction_loops 
-#else
-        false, 3, 2
-#endif // Is last always!
-#ifdef DISABLE_OPTIMIZATIONS
-        , _dump_queries, _dump_pre_queries, _dump_query_name 
-#endif    
-    , _store_unsupported_info)
+  smtcheck_opensmt2t_uf(const solver_optionst solver_options, const char* name) :
+      smtcheck_opensmt2t()
   {
-    initializeSolver(name);
-    
-// Init of Interpolation
-#ifdef PRODUCE_PROOF
-    itp_euf_algorithm.x = _itp_uf_algorithm;
-#endif    
+    initializeSolver(solver_options, name);
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
-  
-  virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr) override;
-       
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
+
+  virtual PTRef numeric_constant(const exprt &expr) override;
+  
+  virtual PTRef type_cast(const exprt & expr) override;
+  
+  SRef getURealSortRef() const {return sort_ureal;}
+
+protected:
+
+  PTRef new_num_var(const std::string & var_name) override;
+    
+  virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+
+  virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
+  
+  virtual bool is_non_linear_operator(PTRef tr) const override;
+
+  // Inner use only to create UF functions (needed in UF and Mix-Encoding)
   virtual std::string getStringSMTlibDatatype(const typet& type) override;
   virtual SRef getSMTlibDatatype(const typet& type) override;
-  SRef getURealSortRef() const {return sort_ureal;}
   
-protected:
-  
-    virtual void initializeSolver(const char* name) override;
-    
-    virtual literalt lconst_number(const exprt &expr) override;
-
-    virtual literalt ltype_cast(const exprt &expr) override;
-  
-    virtual PTRef evar(const exprt &expr, std::string var_name) override;
-    
-    virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
-
-    virtual PTRef make_var(const std::string name) override
-    { return logic->mkVar(sort_ureal, name.c_str()); }
-  
-    virtual bool can_have_non_linears() override { return true; }
-  
-     virtual bool is_non_linear_operator(PTRef tr) override;
- 
 private:  
 
   static const char *tk_sort_ureal;

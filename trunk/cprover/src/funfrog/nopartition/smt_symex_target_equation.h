@@ -9,17 +9,13 @@
 
 #include <goto-symex/symex_target_equation.h>
 
-class smtcheck_opensmt2t;
+class check_opensmt2t;
 
-// No need to take anything from partition_target_equation, only from the
-// sub smt class of it
-class smt_symex_target_equationt:public symex_target_equationt 
+class hifrog_symex_target_equationt:public symex_target_equationt
 {
 public:
-    smt_symex_target_equationt(const namespacet &_ns,
-            std::vector<unsigned>& _clauses) :
+    hifrog_symex_target_equationt(const namespacet &_ns) :
         symex_target_equationt(),
-        clauses(_clauses),
 #       ifdef DISABLE_OPTIMIZATIONS
         dump_SSA_tree(false),
         ssa_tree_file_name("__ssa_tree_default"),
@@ -43,7 +39,7 @@ public:
 #endif            
     }
         
-    virtual ~smt_symex_target_equationt() 
+    virtual ~hifrog_symex_target_equationt()
     {
 #         ifdef DISABLE_OPTIMIZATIONS        
 	  partition_smt_decl->clear();
@@ -54,8 +50,8 @@ public:
 
     // Convert all the SSA steps into the corresponding formulas in
     // the corresponding partitions
-    void convert(smtcheck_opensmt2t &decider);
-  
+    void convert(check_opensmt2t &decider);
+
     std::vector<exprt>& get_exprs_to_refine () { return exprs; }; 
     
 #ifdef DISABLE_OPTIMIZATIONS  
@@ -68,31 +64,24 @@ public:
   
 protected:
     // Convert a specific partition guards of SSA steps
-    void convert_guards(smtcheck_opensmt2t &decider);
+    void convert_guards(check_opensmt2t &decider);
     // Convert a specific partition assignments of SSA steps
-    void convert_assignments(smtcheck_opensmt2t &decider);
+    void convert_assignments(check_opensmt2t &decider);
     // Convert a specific partition assumptions of SSA steps
-    void convert_assumptions(smtcheck_opensmt2t &decider);
+    void convert_assumptions(check_opensmt2t &decider);
     // Convert a specific partition assertions of SSA steps
-    void convert_assertions(smtcheck_opensmt2t &decider);
+    void convert_assertions(check_opensmt2t &decider);
     // Convert a specific partition io of SSA steps
-    void convert_io(smtcheck_opensmt2t &decider);
+    void convert_io(check_opensmt2t &decider);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_summary(smtcheck_opensmt2t &decider);
+    void convert_summary(check_opensmt2t &decider);
     // Convert Gotos of SSA steps
-    void convert_goto_instructions(smtcheck_opensmt2t &decider);
+    void convert_goto_instructions(check_opensmt2t &decider);
     // Convert constraints
-    void convert_constraints(smtcheck_opensmt2t &decider) const;  
-  
-  
-    virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
+    void convert_constraints(check_opensmt2t &decider) const;
 
     std::vector<exprt> exprs; // Expr to refine method
 public:
-    // MB: FIXME: this field is not used! Why it is here?
-    // KE: a good question, maybe Grigory will have an answer. It is also in the partition version
-    std::vector<unsigned>& clauses;
-    
 #ifdef DISABLE_OPTIMIZATIONS 
     bool dump_SSA_tree;
     std::string ssa_tree_file_name;

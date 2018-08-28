@@ -14,6 +14,7 @@
 #include "partition_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition_representation.h"
+#include "utils/containers_utils.h"
 
 #include <goto-symex/symex_target_equation.h>
 
@@ -51,11 +52,16 @@ public:
   }
 
   void add_fle_part_id(fle_part_idt _fle_part_id) {
-    this->fle_part_indices.insert(_fle_part_id);
+    assert(!contains(fle_part_indices, _fle_part_id));
+    this->fle_part_indices.push_back(_fle_part_id);
   }
 
-  const std::unordered_set<fle_part_idt>& get_fle_part_ids(){
+  const std::vector<fle_part_idt>& get_fle_part_ids(){
       return this->fle_part_indices;
+  }
+
+  void event_solver_reseted(){
+      this->fle_part_indices.clear();
   }
   
   partition_ifacet& get_iface() { return *partition_iface; }
@@ -97,8 +103,6 @@ public:
 
  // =========== PARTITION FLAGS ==============================
 
-  unsigned clauses;
-  unsigned vars;
   // All summaries for the associated function
   summary_idst summaries;
   // Summaries that are applicable after slicing //MB: TODO investigate this
@@ -114,7 +118,7 @@ public:
 private:
     partition_representation representation;
     partition_ifacet * partition_iface;
-    std::unordered_set<fle_part_idt> fle_part_indices;
+    std::vector<fle_part_idt> fle_part_indices;
 
 };
 

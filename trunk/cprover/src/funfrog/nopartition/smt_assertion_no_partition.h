@@ -15,7 +15,8 @@
 #include "../utils/time_utils.h"
 #include "../assertion_info.h"
 #include "smt_symex_target_equation.h"
-#include "../partitioning_target_equation.h"
+
+class smtcheck_opensmt2;
 
 extern timet global_satsolver_time;
 
@@ -24,7 +25,7 @@ class smt_assertion_no_partitiont:public messaget
     
 public:
     smt_assertion_no_partitiont(
-            smt_symex_target_equationt &_target,
+            hifrog_symex_target_equationt &_target,
             ui_message_handlert &_message_handler,
             unsigned long &_max_memory_used) 
         : equation(_target),
@@ -32,7 +33,9 @@ public:
           message_handler(_message_handler),
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);}
-        
+
+    using SSA_steps_orderingt = std::vector<symex_target_equationt::SSA_stept*>;
+
     virtual ~smt_assertion_no_partitiont() {}    
           
     bool assertion_holds(smtcheck_opensmt2t& decider);
@@ -49,7 +52,7 @@ public:
     }
 
     // Store for the symex result
-    smt_symex_target_equationt &equation;
+    hifrog_symex_target_equationt &equation;
     
     // SAT solving time
     timet solving_time;

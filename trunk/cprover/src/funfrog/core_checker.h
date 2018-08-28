@@ -13,43 +13,45 @@
 #include <memory>
 #include <util/options.h>
 #include <util/ui_message.h>
+#include <goto-programs/goto_model.h>
+#include <funfrog/solvers/smtcheck_opensmt2_uf.h>
+#include <funfrog/solvers/smtcheck_opensmt2_cuf.h>
+#include <funfrog/solvers/smtcheck_opensmt2_lra.h>
+#include <funfrog/solvers/smtcheck_opensmt2_lia.h>
+#include <funfrog/solvers/satcheck_opensmt2.h>
+#include <funfrog/solvers/solver_options.h>
 #include "subst_scenario.h"
 
 class smt_assertion_no_partitiont;
-class prop_partitioning_target_equationt;
-class smt_partitioning_target_equationt;
+class partitioning_target_equationt;
 class prop_assertion_sumt;
-class prepare_smt_formulat;
+class prepare_formulat;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
+class symex_assertion_sumt;
 
-class core_checkert:public messaget
+class core_checkert : private messaget
 {
 public:
-  core_checkert(
-      const goto_programt &_goto_program,
-      const goto_functionst &_goto_functions,
-      const symbol_tablet &_symbol_table,
-      const optionst& _options,
-      ui_message_handlert &_message_handler,
-      unsigned long &_max_memory_used
-      );
+  core_checkert(const goto_modelt & _goto_model, const optionst & _options,
+                  ui_message_handlert & _message_handler, unsigned long & _max_memory_used);
 
   ~core_checkert() override;
 
   void initialize();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
 
+#ifdef PRODUCE_PROOF
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
-    
-protected:
+#endif // PRODUCE_PROOF
 
-  const goto_programt &goto_program;
-//  const namespacet &ns;
-  const symbol_tablet &symbol_table;
+protected:
+    const goto_modelt & goto_model;
+    symbol_tablet new_symbol_table;
+    const namespacet ns;
   const optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
@@ -57,39 +59,50 @@ protected:
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
+   solver_optionst solver_options; // Init once, use when ever create a new solver
 
   void initialize_solver();
-  void initialize_solver_options(check_opensmt2t* _decider);
-  check_opensmt2t* initialize__euf_solver();
-  check_opensmt2t* initialize__cuf_solver();
-  check_opensmt2t* initialize__lra_solver();
-  check_opensmt2t* initialize__lia_solver();
-  check_opensmt2t* initialize__prop_solver();
+  smtcheck_opensmt2t_uf * initialize__euf_solver();
+  smtcheck_opensmt2t_cuf * initialize__cuf_solver();
+  smtcheck_opensmt2t_lra * initialize__lra_solver();
+  smtcheck_opensmt2t_lia * initialize__lia_solver();
+  satcheck_opensmt2t * initialize__prop_solver();
+  
+  void initialize_solver_options();
+  void initialize_solver_debug_options();
+  void initialize__euf_option_solver();
+  void initialize__cuf_option_solver();
+  void initialize__lra_option_solver();
+  void initialize__lia_option_solver();
+  void initialize__prop_option_solver();
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
-  void extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation);
-  void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            prop_conv_solvert& decider_prop, interpolating_solvert& interpolator);
+  void extract_interpolants(partitioning_target_equationt& equation);
 #endif
-
-  bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
 
   void report_success();
   void report_failure();
-  void assertion_violated(prepare_smt_formulat& prop,
+  void assertion_violated(prepare_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
   void assertion_violated (smt_assertion_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);
 
     const goto_functionst & get_goto_functions() const {
-        return omega.get_goto_functions();
+        return goto_model.goto_functions;
     }
-    
-    // FIXME
-    void delete_and_initialize_solver();
+
+    const goto_programt & get_main_function() const {
+        return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;
+    }
+
+    bool assertion_holds_(const assertion_infot & assertion, bool store_summaries_with_assertion);
+    bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
+    void slice_target(partitioning_target_equationt&);
+    bool prepareSSA(symex_assertion_sumt& symex);
+    bool refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine);
+
+    bool is_option_set(std::string const & o) { return !options.get_option(o).empty();}
 
 };
 
