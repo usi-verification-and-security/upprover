@@ -43,7 +43,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, co
 #endif
 #ifdef DISABLE_OPTIMIZATIONS
     set_dump_query(solver_options.m_dump_query);
-    set_dump_pre_query(solver_options.m_dump_pre_query);
+    dump_pre_queries = solver_options.m_dump_pre_query;
     set_dump_query_name(solver_options.m_dump_query_name);
 #endif // DISABLE_OPTIMIZATIONS    
 

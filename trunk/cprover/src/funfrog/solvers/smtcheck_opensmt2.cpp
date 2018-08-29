@@ -251,6 +251,7 @@ bool smtcheck_opensmt2t::solve() {
 #ifdef DISABLE_OPTIMIZATIONS
     ofstream out_smt;
     if (dump_pre_queries) {
+        //std::cout << ";; Open file " << (pre_queries_file_name + "_X.smt2") << " for pre queries" << std::endl;
         out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
 
