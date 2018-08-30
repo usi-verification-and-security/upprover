@@ -515,8 +515,10 @@ void partitioning_target_equationt::convert_partition_assertions(
         assert(partition_iface.assertion_in_subtree);
 
         if (!partition.has_parent()) {
-            assert(error_lits.size() == 1); // MB at the top level, there should be just from error literal coming from the child which is program's main
-            decider.lcnf(error_lits);
+            // MB: at the moment top-level function is artificial nil from CPROVER that calls CPROVER_initialize and main;
+            // therefore exactly one error literal (that of main) should be collected at this point
+            assert(error_lits.size() == 1);
+            decider.assert_literal(error_lits[0]);
 
 #       ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error in ROOT: " << std::endl;
