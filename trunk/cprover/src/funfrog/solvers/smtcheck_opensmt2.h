@@ -11,12 +11,10 @@ Module: Wrapper for OpenSMT2
 
 #include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
 #include <funfrog/utils/expressions_utils.h>
-#include <util/expr.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
 
 #include <map>
-#include <vector>
 
 class smt_itpt;
 class symbol_exprt;
@@ -27,7 +25,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
-    smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false}
+    smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false, this}
     {}
 
   virtual ~smtcheck_opensmt2t(); // d'tor
@@ -90,14 +88,15 @@ public:
 
     virtual bool is_overapprox_encoding() const override
     { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping());}
-
-    
-  SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
     
     virtual SRef get_numeric_sort() const=0; // used in core
 
     SRef get_smtlib_datatype(const typet type); // Shall be public
-  
+    
+    std::string to_string_smtlib_datatype(const typet type); 
+    
+    bool get_function_args(const exprt &expr, vec<PTRef>& args); // common to all
+    
 protected:
     /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
     virtual PTRef expression_to_ptref(const exprt& expr) = 0;
@@ -140,26 +139,19 @@ protected:
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
-  // Hold uninterpreted functions that the solver was told about
-  std::map<std::string,SymRef> decl_uninterperted_func;
-
-  unsupported_operationst unsupported_info;
+  unsupported_operations_opensmt2t unsupported_info;
   
   bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
 
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
-  virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
+  virtual unsupported_operationst& get_unsupported_info() { return unsupported_info;}
 
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
   // virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   virtual PTRef unsupported_to_var(const exprt & expr) = 0;
 
-  PTRef create_equation_for_unsupported(const exprt &expr); // common to all
-
-  SymRef get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args); // common to all
-
-  void get_unsupported_op_args(const exprt &expr, vec<PTRef> &args); // common to all
+  PTRef create_unsupported_uf_call(const exprt &expr); // common to all
 
   literalt push_variable(PTRef ptl); // Common to all
 
@@ -195,8 +187,6 @@ protected:
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
-    std::string to_string_smtlib_datatype(const typet type); // private - solver
-  
   irep_idt get_value_from_solver(PTRef ptrf)
   {
     if (logic->hasSortBool(ptrf))

@@ -281,57 +281,12 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                  &&
                  ((expr.operands()).size() > 2));
 
+        // Convert first the arguments
         vec<PTRef> args;
-        int i = 0;
-        bool is_no_support = false;
-        for(auto const & operand : expr.operands())
-        {
-            assert(!is_cprover_rounding_mode_var(operand)); // KE: we remove this before!
-            if (is_div_wtrounding && i >= 2)
-            {
-#ifdef SMT_DEBUG
-                cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
-                                << _id << ")" << endl;
-                assert(false); // No support yet for rounding operator
-#else
-                is_no_support = true; // Will cause to over approx all
-#endif
-            }
-            else
-            {
-                // All the rest of the operators
-                PTRef cp = expression_to_ptref(operand);
-                assert(cp != PTRef_Undef);
-                args.push(cp);
-                i++; // Only if really add an item to mult/div inc the counter
-#ifdef SMT_DEBUG
-                char *s = logic->printTerm(cp);
-                std::cout << "; On inner iteration " << i
-                    << " Op to command is var no " << cl.var_no()
-                    << " inner index " << cp.x
-                    << " with hash code " << (*it).full_hash()
-                    << " and the other one " << (*it).hash()
-                    << " in address " << (void *)&(*it)
-                    << " of term " << s
-                    << " from |" << (*it).get(ID_identifier)
-                    << "| these should be the same !" << endl; // Monitor errors in the table!
-
-                // Auto catch this kind if problem and throws and assert!
-                if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol)
-                {
-                    std::stringstream convert, convert2; // stringstream used for the conversion
-                    convert << s; std::string str_expr1 = convert.str();
-                    convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
-                    str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-                    if((*it).id() == ID_nondet_symbol && (str_expr2.find(NONDET) != std::string::npos))
-                            str_expr2 = str_expr2.insert(7, SYMEX_NONDET);
-                    assert(str_expr1.compare(str_expr2) == 0);
-                }
-                free(s);
-#endif
-            }
-        }
-
+        get_function_args(expr, args);
+        bool is_no_support = (is_div_wtrounding && args.size() > 2);
+        
+        // Convert the whole expression with args<>
         if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
             ptref = unsupported_to_var(expr);
 
@@ -531,7 +486,7 @@ PTRef smtcheck_opensmt2t_la::unsupported_to_var(const exprt &expr)
     const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
     const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str()) : new_num_var(str);
-    store_new_unsupported_var(expr, var);
+    store_new_unsupported_var(expr, var); // for convert purpose only
     return var;
 }
 

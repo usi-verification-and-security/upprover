@@ -4,9 +4,13 @@
 #ifndef UNSUPPORTEDOPERATIONS_H
 #define UNSUPPORTEDOPERATIONS_H
 
+#include <opensmt/opensmt2.h>
+
 #include <string>
 #include <vector>
 #include <util/expr.h>
+
+class smtcheck_opensmt2t;
 
 struct HifrogStringUnsupportOpConstants {
   static const std::string UNSUPPORTED_VAR_NAME;
@@ -42,8 +46,16 @@ public:
     // Create new unsupported L2 Variable
     std::string create_new_unsupported_var(std::string type_name, bool no_rename=false);
     
+    // Declare new unsupported function as UF
+    virtual std::string declare_unsupported_function(const exprt &expr) =0;
+    
+    // Info. during error trace creating (in case of failure)
     std::string get_failure_reason(std::string _fails_type_id);
     
+    
+    
+    
+    /// TODO: REFACTOR ///
     bool is_store_unsupported_info() { return store_unsupported_info; }
     
     bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
@@ -56,18 +68,50 @@ public:
     // The storage itself
     void store_new_unsupported_var(const exprt& expr, std::string var);
     
-    unsigned get_unsupported_info_map_size() { return unsupported_info_items.size();}
-    std::vector<std::pair<std::string,exprt>>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_items.begin(); }
-    std::vector<std::pair<std::string,exprt>>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_items.end(); }
+    unsigned get_unsupported_info_map_size() { return global_unsupported_str2expr_info.size();}
+    std::vector<std::pair<std::string,exprt>>::const_iterator get_itr_unsupported_info_map() const { return global_unsupported_str2expr_info.begin(); }
+    std::vector<std::pair<std::string,exprt>>::const_iterator get_itr_end_unsupported_info_map() const { return global_unsupported_str2expr_info.end(); }
+    /// TODO: REFACTOR - END ///
     
 protected:  
     static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
   
-    static std::vector<std::pair<std::string,exprt>> unsupported_info_items;
-    
+    static std::vector<std::pair<std::string,exprt>> global_unsupported_str2expr_info; // String to Expression - can pass between solvers!
+      
     bool store_unsupported_info;
   
 };
 
-#endif /* UNSUPPORTEDOPERATIONS_H */
+// Any function with SRRef or PTRef
+class unsupported_operations_opensmt2t : public unsupported_operationst
+{
+public:
+    unsupported_operations_opensmt2t(bool _store_unsupported_info, smtcheck_opensmt2t* _decider)
+            :unsupported_operationst(_store_unsupported_info),
+             m_decider(_decider),
+             m_can_overapprox(_decider == nullptr)
+    {}
+    
+    virtual ~unsupported_operations_opensmt2t() {}
+    
+    virtual std::string declare_unsupported_function(const exprt &expr) override; 
+    
+    std::pair<SymRef,vec<PTRef> &> get_declaration(std::string decl_str)
+    { assert(m_decl_uf.count(decl_str) > 0); return m_decl_uf.at(decl_str); }
+    
+private:
+    // Hold uninterpreted functions that the solver was told about
+    std::map<std::string,std::pair<SymRef,vec<PTRef>& >> m_decl_uf;
+    
+    // Decider which we use
+    smtcheck_opensmt2t* m_decider;
+    
+    // Can overapprox expression in the current theory in decider?
+    bool m_can_overapprox;
+    
+    SymRef add_func_decl2solver(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
+};
 
+// Add here derived class per solver
+
+#endif /* UNSUPPORTEDOPERATIONS_H */

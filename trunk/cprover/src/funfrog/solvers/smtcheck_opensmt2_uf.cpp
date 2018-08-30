@@ -405,30 +405,11 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
 #endif
+        
+        // Convert first the arguments
         vec<PTRef> args;
-        int i = 0;
-        bool is_expr_has_unsupported = false;
-        for(auto const & operand : expr.operands())
-        {
-            // KE: recursion in case the expr is not simple - shall be in a visitor
-            if (is_cprover_rounding_mode_var(operand)) {
-                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-            } else { // All the rest of the operators
-                PTRef cp = expression_to_ptref(operand);
-                assert(cp != PTRef_Undef);
-                args.push(cp);
-                i++; // Only if really add an item to mult/div inc the counter
-                
-                char* s_trm = logic->printTerm(cp);
-                if (std::string(s_trm).find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
-                    is_expr_has_unsupported = true;
-                free(s_trm);
-            }
-        }
+        get_function_args(expr, args);
 
-        // Add to the list of unsupported expressions
-        if (is_expr_has_unsupported)
-            unsupported_info.unsupported_info_equations.push_back(expr); // Currently only for lattice refinement
         if (_id==ID_notequal) {
             ptref = logic->mkNot(logic->mkEq(args));
         } else if(_id == ID_equal) {
@@ -542,7 +523,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
@@ -554,7 +535,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
                       
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
         } else if ((_id == ID_pointer_object) || (_id==ID_array)) {
@@ -576,7 +557,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
@@ -614,7 +595,7 @@ PTRef smtcheck_opensmt2t_uf::unsupported_to_var(const exprt & expr)
 
     const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str())
             : logic->mkVar(sort_ureal, str.c_str());
-    store_new_unsupported_var(expr, var);
+    store_new_unsupported_var(expr, var); // for convert purpose only
     return var;
 }
 
