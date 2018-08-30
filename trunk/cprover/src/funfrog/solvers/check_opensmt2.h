@@ -42,10 +42,6 @@ public:
     {
         return lor(!a, b);
     }
-    // virtual void set_equal(literalt l1, literalt l2) = 0;  //SA: moved to interface class convertort
-
-    // assert this clause to the solver
-    virtual void lcnf(const std::vector<literalt> & lits) = 0;
 
     template<typename Container>
     void assert_literals(const Container& c){

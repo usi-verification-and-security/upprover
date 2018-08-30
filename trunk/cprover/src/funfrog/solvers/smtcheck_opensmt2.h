@@ -56,8 +56,6 @@ public:
 
   literalt lor(const bvt & b) override; // Common to all
 
-  virtual void lcnf(const bvt& bv) override;
-
   void assert_literal(literalt lit) override{
       set_to_true(literalToPTRef(lit));
   }

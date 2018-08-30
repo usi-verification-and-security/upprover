@@ -249,8 +249,8 @@ bool smtcheck_opensmt2t::solve() {
 
   // Dump pre-queries if needed
 #ifdef DISABLE_OPTIMIZATIONS
-    ofstream out_smt;
     if (dump_pre_queries) {
+        ofstream out_smt;
         //std::cout << ";; Open file " << (pre_queries_file_name + "_X.smt2") << " for pre queries" << std::endl;
         out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
@@ -268,10 +268,7 @@ bool smtcheck_opensmt2t::solve() {
             char * s = logic->printTerm(top_level_formulas[i]);
             out_smt << "(assert \n" << s << "\n)\n";
             free(s);
-            s=nullptr;
         }
-    } 
-    if (dump_pre_queries) {
         out_smt << "(check-sat)\n" << endl;
         out_smt.close();
     }
@@ -781,14 +778,6 @@ void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
   logic->varsubstitute(old_root, subst, new_root);
   this->set_to_true(new_root);
   ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
-}
-
-void smtcheck_opensmt2t::lcnf(const bvt & bv) {
-    vec<PTRef> args;
-    for(auto lit : bv){
-        args.push(literalToPTRef(lit));
-    }
-    current_partition.push_back(logic->mkOr(args));
 }
 
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {

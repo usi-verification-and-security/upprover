@@ -462,29 +462,27 @@ void partitioning_target_equationt::convert_partition_assertions(
 #		ifdef DISABLE_OPTIMIZATIONS
                 //out_terms << "XXX Call START equality: \n";
                     terms_counter++;
-                    std::ostream out_temp2(0);
-                    std::stringbuf temp2_buf;
-                    out_temp2.rdbuf(&temp2_buf); // Pre-order printing
                     int assume_counter = 0;
                     expr_ssa_print(out_terms << "    (= ",
                         target_partition_iface.callstart_symbol, partition_smt_decl, false);
 
-                    for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
+                    std::stringstream out_temp;
+                    for (auto it2 = partition.start_it; it2 != it; ++it2) {
                         if (it2->is_assume() && !it2->ignore) {
                             assume_counter++;
-                            expr_ssa_print(out_temp2 << "        ", it2->cond_expr, partition_smt_decl, false);
+                            expr_ssa_print(out_temp << "        ", it2->cond_expr, partition_smt_decl, false);
                         }
                     }
                     // If there are more than one term - add and
                     switch (assume_counter) {
                     case 0:
-                        out_terms << temp2_buf.str() << "        true\n" << "    )\n";
+                        out_terms << out_temp.str() << "        true\n" << "    )\n";
                         break; // Shall be called only once at the beginning of the code
                     case 1:
-                        out_terms << temp2_buf.str() << "    )\n";
+                        out_terms << out_temp.str() << "    )\n";
                         break;
                     default:
-                        out_terms << "      (and \n" << temp2_buf.str() << "      )\n" << "    )\n";
+                        out_terms << "      (and \n" << out_temp.str() << "      )\n" << "    )\n";
                         break;
                     }
 #               endif
@@ -517,33 +515,32 @@ void partitioning_target_equationt::convert_partition_assertions(
         assert(partition_iface.assertion_in_subtree);
 
         if (!partition.has_parent()) {
-            assert(error_lits.size() == 1); // MB at the top level, there should be just from error literal coming from the child which is program's main
-            decider.lcnf(error_lits);
+            // MB: at the moment top-level function is artificial nil from CPROVER that calls CPROVER_initialize and main;
+            // therefore exactly one error literal (that of main) should be collected at this point
+            assert(error_lits.size() == 1);
+            decider.assert_literal(error_lits[0]);
 
 #       ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error in ROOT: " << std::endl;
 
             // Pre-order printing
-            std::ostream out_temp1(0);
-            std::stringbuf temp1_buf;
-            out_temp1.rdbuf(&temp1_buf);
+            std::stringstream out_temp;
 
             int assert_counter = 0;
-            for (SSA_stepst::iterator it = partition.start_it; it
+            for (auto it = partition.start_it; it
                             != partition.end_it; ++it) {
                 if (it->is_assert() && !it->ignore) {
                     assert_counter++;
                     if (assert_counter == 1)
-                        expr_ssa_print(out_temp1, it->cond_expr,
+                        expr_ssa_print(out_temp, it->cond_expr,
                                         partition_smt_decl, false);
                     else
-                        expr_ssa_print(out_temp1 << "        ", it->cond_expr,
+                        expr_ssa_print(out_temp << "        ", it->cond_expr,
                                         partition_smt_decl, false);
                 }
             }
-            for (partition_idst::const_iterator it = partition.child_ids.begin();
-                    it != partition.child_ids.end(); ++it) {
-                const partitiont& target_partition = partitions[*it];
+            for (auto partition_id : partition.child_ids) {
+                const partitiont& target_partition = partitions[partition_id];
                 const partition_ifacet& target_partition_iface =
                                                 target_partition.get_iface();
 
@@ -551,10 +548,10 @@ void partitioning_target_equationt::convert_partition_assertions(
                                     && target_partition_iface.assertion_in_subtree) {
                     assert_counter++;
                     if (assert_counter == 1)
-                        expr_ssa_print(out_temp1, target_partition_iface.error_symbol,
+                        expr_ssa_print(out_temp, target_partition_iface.error_symbol,
                                                 partition_smt_decl, false);
                     else
-                        expr_ssa_print(out_temp1 << "        ",
+                        expr_ssa_print(out_temp << "        ",
                                                 target_partition_iface.error_symbol,
                                                 partition_smt_decl, false);
                 }
@@ -562,9 +559,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             if (assert_counter > 0) {
                 terms_counter++;
                 if (assert_counter == 1)
-                    out_terms << "    " << temp1_buf.str().substr(4);
+                    out_terms << "    " << out_temp.str().substr(4);
                 else
-                    out_terms << "    (or \n      (" << temp1_buf.str()
+                    out_terms << "    (or \n      (" << out_temp.str()
                                             << "      )\n" << "    )\n";
             }
 #       endif // DISABLE_OPTIMIZATIONS
@@ -575,11 +572,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             terms_counter++;
             expr_ssa_print(out_terms << "    (= ",
                             partition_iface.error_symbol, partition_smt_decl, false);
-            std::ostream out_temp_assert(0);
-            std::stringbuf temp_assert_buf;
-            out_temp_assert.rdbuf(&temp_assert_buf); // Pre-order printing
+            std::stringstream out_temp_assert; // Pre-order printing
             int assert_counter = 0;
-            for (SSA_stepst::iterator it = partition.start_it; it
+            for (auto it = partition.start_it; it
                             != partition.end_it; ++it) {
                 if (it->is_assert() && !it->ignore) {
                     assert_counter++;
@@ -587,9 +582,8 @@ void partitioning_target_equationt::convert_partition_assertions(
                                 it->cond_expr, partition_smt_decl, false);
                 }
             }
-            for (partition_idst::const_iterator it = partition.child_ids.begin();
-                        it != partition.child_ids.end(); ++it) {
-                const partitiont& target_partition = partitions[*it];
+            for (auto partition_id : partition.child_ids) {
+                const partitiont& target_partition = partitions[partition_id];
                 const partition_ifacet& target_partition_iface = target_partition.get_iface();
 
                 if (!target_partition.ignore
@@ -600,9 +594,7 @@ void partitioning_target_equationt::convert_partition_assertions(
                                         partition_smt_decl, false);
                 }
             }
-            std::ostream out_temp_assume(0);
-            std::stringbuf temp_assume_buf;
-            out_temp_assume.rdbuf(&temp_assume_buf); // Pre-order printing
+            std::stringstream out_temp_assume; // Pre-order printing
             int assume_counter = 0;
             for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it;
                         it2 != partition.end_it; ++it2) {
@@ -614,32 +606,23 @@ void partitioning_target_equationt::convert_partition_assertions(
             }
             std::string assume_code = "";
             if (assume_counter > 1)
-                assume_code = "          (and \n" + temp_assume_buf.str() + "          )\n";
+                assume_code = "          (and \n" + out_temp_assume.str() + "          )\n";
             else
-                assume_code = temp_assume_buf.str();
+                assume_code = out_temp_assume.str();
             if (assert_counter > 0) {
                 terms_counter++;
                 if (assert_counter == 1)
                     out_terms << "      (not\n        (=>\n" << assume_code
-                                << temp_assert_buf.str()
+                                << out_temp_assert.str()
                                 << "        )\n      )\n    )\n";
                 else
                     out_terms << "      (not\n        (=>\n" << assume_code
-                                << "          (or \n  " << temp_assert_buf.str()
+                                << "          (or \n  " << out_temp_assert.str()
                                 << "          )\n        )\n      )\n    )\n";
             }
 #endif
         }
     }
-
-    //  // Emit error_root = true for the ROOT partition
-    //  if (partition.parent_id == partitiont::NO_PARTITION) {
-    //    decider.prop.l_set_to_true(partition_iface.error_literal);
-    //    #if defined(DEBUG_SSA) && defined(DISABLE_OPTIMIZATIONS)
-    //    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
-    //            partition_iface.error_symbol);
-    //    #endif
-    //  }
 
     if (partition.has_parent()) {
         assert(number_of_assumptions > 0);
@@ -659,12 +642,9 @@ void partitioning_target_equationt::convert_partition_assertions(
         terms_counter++;
         expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol,
                         partition_smt_decl, false, true);
-        std::ostream out_temp(0);
-        std::stringbuf temp_buf;
-        out_temp.rdbuf(&temp_buf); // Pre-order printing
+        std::stringstream out_temp; // Pre-order printing
         int assume_counter = 0;
-        for (symex_target_equationt::SSA_stepst::iterator it2 =
-                        partition.start_it; it2 != partition.end_it; ++it2) {
+        for (auto it2 = partition.start_it; it2 != partition.end_it; ++it2) {
             if (it2->is_assume() && !it2->ignore) {
                 if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {
                     assume_counter++;
@@ -677,9 +657,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             }
         }
         if (assume_counter > 1)
-            out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
+            out_terms << "\n      (and \n" << out_temp.str() << "      )\n" << "    )\n";
         else
-            out_terms << "\n" << temp_buf.str() << "    )\n";
+            out_terms << "\n" << out_temp.str() << "    )\n";
 #   endif
     }
 }
