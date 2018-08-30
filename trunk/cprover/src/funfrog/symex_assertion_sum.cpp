@@ -104,6 +104,7 @@ bool symex_assertion_sumt::prepare_SSA()
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
+  produce_callsite_symbols(partition_iface, state); // MB: adding producing call site symbols for top level (nil) function to avoid nil symbols in conversion
   defer_function(deferred_functiont(call_tree_root, partition_iface));
   equation.select_partition(partition_iface.partition_id);
 
