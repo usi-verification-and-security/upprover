@@ -11,35 +11,20 @@
 #ifndef CPROVER_PARTITION_IFACE_H
 #define	CPROVER_PARTITION_IFACE_H
 
-#ifdef DISABLE_OPTIMIZATIONS
-#include <iostream>
-#include "expr_pretty_print.h"
-#endif
-
-#include "summary_info.h"
 #include "partition_fwd.h"
 
 #include <util/type.h>
 #include <util/symbol.h>
+#include <util/std_expr.h>
 #include <solvers/prop/literal.h>
 #include <list>
+
+class call_tree_nodet;
 
 class partition_ifacet {
 public:
 
-  partition_ifacet(call_tree_nodet& _summary_info, partition_idt _parent_id, 
-          unsigned _call_loc) :
-          function_id(_summary_info.get_function_id()),
-          call_tree_node(_summary_info),
-          callstart_symbol(ID_nil, typet(ID_bool)),
-          callend_symbol(ID_nil, typet(ID_bool)),
-          error_symbol(ID_nil, typet(ID_bool)),
-          assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
-          returns_value(false),
-          partition_id(NO_PARTITION_ID),
-          parent_id(_parent_id),
-          call_loc(_call_loc)
-  {}
+  partition_ifacet(call_tree_nodet& _summary_info, partition_idt _parent_id, unsigned _call_loc);
 
   // Represented function
   irep_idt function_id;
@@ -75,55 +60,6 @@ public:
   std::vector<unsigned> B_vars;
   std::vector<unsigned> AB_vars;
 
-  void share_symbols(const partition_ifacet& other) {
-    argument_symbols = other.argument_symbols;
-    in_arg_symbols = other.in_arg_symbols;
-    out_arg_symbols = other.out_arg_symbols;
-    retval_symbol = other.retval_symbol;
-    //retval_tmp = other.retval_tmp;
-    callstart_symbol = other.callstart_symbol;
-    callend_symbol = other.callend_symbol;
-    error_symbol = other.error_symbol;
-    returns_value = other.returns_value;
-    call_loc = other.call_loc;
-
-    
-#   if 0 && defined(DISABLE_OPTIMIZATIONS) // KE: unknown old debug code
-    std::cerr << " === Sharing symbols:" << std::endl;
-    std::cerr << " = Argument symbols:" << std::endl;
-    {
-      const std::vector<symbol_exprt>& symbols = argument_symbols;
-      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
-              it != symbols.end(); ++it) {
-        expr_pretty_print(std::cerr, *it);
-      }
-      std::cerr << std::endl;
-    }
-    std::cerr << " = Input argument symbols:" << std::endl;
-    {
-      const std::vector<symbol_exprt>& symbols = in_arg_symbols;
-      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
-              it != symbols.end(); ++it) {
-        expr_pretty_print(std::cerr, *it);
-      }
-      std::cerr << std::endl;
-    }
-    std::cerr << " = Output argument symbols:" << std::endl;
-    {
-      const std::vector<symbol_exprt>& symbols = out_arg_symbols;
-      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
-              it != symbols.end(); ++it) {
-        expr_pretty_print(std::cerr, *it);
-      }
-      std::cerr << std::endl;
-    }
-    expr_pretty_print(std::cerr << "Ret val: ", retval_symbol);
-    expr_pretty_print(std::cerr << "Ret tmp: ", retval_tmp);
-    expr_pretty_print(std::cerr << "Callstart: ", callstart_symbol);
-    expr_pretty_print(std::cerr << "Callend: ", callend_symbol);
-    expr_pretty_print(std::cerr << "Error: ", error_symbol);
-#   endif
-  }
   std::vector<symbol_exprt> get_iface_symbols() const;
 
 };

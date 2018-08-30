@@ -16,6 +16,7 @@
 #include <util/base_type.h>
 
 #include "partition_iface.h"
+#include "summary_info.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
 #include "assertion_info.h"

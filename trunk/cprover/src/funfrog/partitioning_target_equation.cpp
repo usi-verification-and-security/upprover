@@ -8,6 +8,7 @@
 
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
+#include "summary_info.h"
 #include "solvers/check_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"

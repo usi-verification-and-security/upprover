@@ -4,6 +4,20 @@
 
 #include "partition_iface.h"
 
+#include "summary_info.h"
+
+partition_ifacet::partition_ifacet(call_tree_nodet & _summary_info, partition_idt _parent_id, unsigned _call_loc) :
+        function_id(_summary_info.get_function_id()),
+        call_tree_node(_summary_info),
+        callstart_symbol(ID_nil, typet(ID_bool)),
+        callend_symbol(ID_nil, typet(ID_bool)),
+        error_symbol(ID_nil, typet(ID_bool)),
+        assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
+        returns_value(false),
+        partition_id(NO_PARTITION_ID),
+        parent_id(_parent_id),
+        call_loc(_call_loc) {}
+
 std::vector<symbol_exprt> partition_ifacet::get_iface_symbols() const {
     std::vector<symbol_exprt> iface_symbols;
     iface_symbols.reserve(this->argument_symbols.size() +
@@ -22,3 +36,4 @@ std::vector<symbol_exprt> partition_ifacet::get_iface_symbols() const {
     }
     return iface_symbols;
 }
+
