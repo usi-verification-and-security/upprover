@@ -21,10 +21,13 @@ public:
     virtual ~smtcheck_opensmt2t_la(); // d'tor
 
     virtual PTRef expression_to_ptref(const exprt & expr) override;
+    
 
     virtual literalt const_from_str(const char* num);
 
     virtual PTRef numeric_constant(const exprt & expr) override;
+    
+    virtual SRef get_numeric_sort() const override {return lalogic->getSort_num();}
 
     virtual literalt get_and_clear_var_constraints() override
     {

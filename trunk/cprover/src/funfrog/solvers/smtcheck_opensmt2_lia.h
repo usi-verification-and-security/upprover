@@ -19,10 +19,6 @@ public:
 
     virtual ~smtcheck_opensmt2t_lia(); // d'tor
 
-    virtual std::string getStringSMTlibDatatype(const typet & type) override;
-
-    virtual SRef getSMTlibDatatype(const typet & type) override;
-
 #ifdef PRODUCE_PROOF
 
     virtual bool can_interpolate() const override { return false; }

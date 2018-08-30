@@ -618,47 +618,6 @@ PTRef smtcheck_opensmt2t_uf::unsupported_to_var(const exprt & expr)
     return var;
 }
 
-/*******************************************************************\
-Function: smtcheck_opensmt2t_uf::getStringSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose: Get the SMT-lib data type in UF
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t_uf::getStringSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMTConstants::SMT_BOOL;
-    if (is_number(type))
-        return SMTConstants::SMT_UREAL;
-
-    return SMTConstants::SMT_UNKNOWN; // Shall not get here
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_uf::getSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return logic->getSort_bool();//SMT_BOOL;
-    if (is_number(type))
-        return sort_ureal; //SMT_UREAL;
-
-    throw std::logic_error("Unknown datatype encountered!");
-}
-
 // Check if a literal is non-linear in the solver side
 bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr) const
 {

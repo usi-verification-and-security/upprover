@@ -62,6 +62,14 @@ public:
       set_to_true(literalToPTRef(lit));
   }
   
+  virtual SRef get_numeric_sort() const=0;
+  
+  SRef get_smtlib_datatype(const typet type);
+  
+  const char* to_string_numeric_sort() const;
+  
+  std::string to_string_smtlib_datatype(const typet type);
+  
 #ifdef PRODUCE_PROOF
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants) const override;
@@ -86,11 +94,6 @@ public:
   std::set<PTRef> get_constants() const;
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
-
-  std::string getStringSMTlibDatatype(const exprt& expr);
-  virtual std::string getStringSMTlibDatatype(const typet& type)=0;
-  SRef getSMTlibDatatype(const exprt& expr);
-  virtual SRef getSMTlibDatatype(const typet& type)=0;
 
   virtual exprt get_value(const exprt &expr) override;
 

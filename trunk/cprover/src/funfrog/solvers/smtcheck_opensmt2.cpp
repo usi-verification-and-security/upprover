@@ -537,8 +537,8 @@ SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<
     
     // First declare the function, if not exist
     std::string key_func(func_id.c_str());
-    key_func += "," + getStringSMTlibDatatype(expr);
-    SRef out = getSMTlibDatatype(expr);
+    key_func += "," + to_string_smtlib_datatype(expr.type());
+    SRef out = get_smtlib_datatype(expr.type());
 
     vec<SRef> args_decl;
     for (int i=0; i < args.size(); i++) 
@@ -608,7 +608,8 @@ PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getStringSMTlibDatatype
+Function: smtcheck_opensmt2t::to_string_smtlib_datatype
+ * getStringSMTlibDatatype -> to_string_smtlib_datatype
 
   Inputs:
 
@@ -616,23 +617,39 @@ Function: smtcheck_opensmt2t::getStringSMTlibDatatype
 
  Purpose:
 
+ * For exprt, use typet type = expr.type(); // Get the current type
 \*******************************************************************/
-std::string smtcheck_opensmt2t::getStringSMTlibDatatype(const exprt& expr)
+std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet type)
 {
-    typet var_type = expr.type(); // Get the current type
-    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
-        return getStringSMTlibDatatype(var_type);
-    else {
-
-        PTRef var = unsupported_to_var(expr);
-        
-        return std::string(logic->getSortName(logic->getSortRef(var)));
-    }
+    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
+        return SMTConstants::SMT_BOOL;
+    if (is_number(type)) 
+        return std::string(to_string_numeric_sort());
+    
+    return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getSMTlibDatatype
+Function: to_string_numeric_sort
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: get ch
+
+\*******************************************************************/
+const char* smtcheck_opensmt2t::to_string_numeric_sort() const 
+{
+    SRef name = get_numeric_sort();
+    return logic->getSortName(name); 
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::get_smtlib_datatype
+ * getSMTlibDatatype --> get_smtlib_datatype
 
   Inputs:
 
@@ -641,15 +658,14 @@ Function: smtcheck_opensmt2t::getSMTlibDatatype
  Purpose:
 
 \*******************************************************************/
-SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
+SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet type)
 {
-    typet var_type = expr.type(); // Get the current type
-    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
-        return getSMTlibDatatype(var_type);
-    else {
-        PTRef var = unsupported_to_var(expr);
-        return logic->getSortRef(var);
-    }
+    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
+        return logic->getSort_bool();
+    if (is_number(type))
+        return get_numeric_sort();
+    
+    throw std::logic_error("Unknown datatype encountered!");
 }
 
 #ifdef PRODUCE_PROOF

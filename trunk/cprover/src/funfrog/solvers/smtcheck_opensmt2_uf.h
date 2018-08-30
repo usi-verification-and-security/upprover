@@ -26,8 +26,8 @@ public:
   
   virtual PTRef type_cast(const exprt & expr) override;
   
-  SRef getURealSortRef() const {return sort_ureal;}
-
+  virtual SRef get_numeric_sort() const override {return sort_ureal;}
+  
 protected:
 
   PTRef new_num_var(const std::string & var_name) override;
@@ -37,10 +37,6 @@ protected:
   virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
   
   virtual bool is_non_linear_operator(PTRef tr) const override;
-
-  // Inner use only to create UF functions (needed in UF and Mix-Encoding)
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
   
 private:  
 

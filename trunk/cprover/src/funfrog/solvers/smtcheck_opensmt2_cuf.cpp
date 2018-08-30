@@ -2127,49 +2127,6 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     return solve();
 }
 
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::getStringSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t_cuf::getStringSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMTConstants::SMT_BOOL;
-    if (is_number(type))
-        return SMTConstants::SMT_UREAL;
-    
-    return SMTConstants::SMT_UNKNOWN; // Shall not get here
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::getSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return uflogic->getSort_bool();//SMT_BOOL;
-    if (is_number(type))
-        return uflogic->getSort_CUFNUM(); //SMT_UREAL;
-    
-    //assert(0); // Shall not get here
-    throw std::logic_error("Unknown datatype encountered!");
-}
-
 // Check if a literal is non-linear in the solver side
 bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr) const
 {
