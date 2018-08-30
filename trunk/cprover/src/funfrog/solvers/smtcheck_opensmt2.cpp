@@ -574,28 +574,15 @@ std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet type)
 {
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
         return SMTConstants::SMT_BOOL;
-    if (is_number(type)) 
-        return std::string(to_string_numeric_sort());
+    
+    if (is_number(type)) {
+        SRef name = get_numeric_sort();
+        return std::string(logic->getSortName(name));
+    }
     
     return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
-/*******************************************************************\
-
-Function: to_string_numeric_sort
-
-  Inputs:
-
- Outputs:
-
- Purpose: get ch
-
-\*******************************************************************/
-const char* smtcheck_opensmt2t::to_string_numeric_sort() const 
-{
-    SRef name = get_numeric_sort();
-    return logic->getSortName(name); 
-}
 
 /*******************************************************************\
 
@@ -616,7 +603,9 @@ SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet type)
     if (is_number(type))
         return get_numeric_sort();
     
-    throw std::logic_error("Unknown datatype encountered!");
+    // Assume arrays/pointer assume an numeric presentation
+    //std::cout << "Warning: Unknown datatype encountered!\n";
+    return get_numeric_sort();
 }
 
 #ifdef PRODUCE_PROOF

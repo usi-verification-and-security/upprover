@@ -952,3 +952,22 @@ PTRef smtcheck_opensmt2t_la::type_cast(const exprt & expr)
         return expression_to_ptref((expr.operands())[0]);
     }
 }
+
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Free all inner objects
+
+\*******************************************************************/
+literalt smtcheck_opensmt2t_la::get_and_clear_var_constraints()
+{
+    literalt res = push_variable(ptr_assert_var_constraints);
+    ptr_assert_var_constraints = logic->getTerm_true();
+    return res;
+}

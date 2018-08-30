@@ -60,14 +60,6 @@ public:
       set_to_true(literalToPTRef(lit));
   }
   
-  virtual SRef get_numeric_sort() const=0;
-  
-  SRef get_smtlib_datatype(const typet type);
-  
-  const char* to_string_numeric_sort() const;
-  
-  std::string to_string_smtlib_datatype(const typet type);
-  
 #ifdef PRODUCE_PROOF
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants) const override;
@@ -89,10 +81,7 @@ public:
   // Common to all
   
   std::string getSimpleHeader(); // Get all the declarations without the variables
-  std::set<PTRef> get_constants() const;
-
-  SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
-
+ 
   virtual exprt get_value(const exprt &expr) override;
 
   void dump_function(std::ostream& out, const Tterm& templ) {
@@ -100,8 +89,15 @@ public:
   }
 
     virtual bool is_overapprox_encoding() const override
-    { return (has_unsupported_vars() && !has_overappox_mapping());}
+    { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping());}
 
+    
+  SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
+    
+    virtual SRef get_numeric_sort() const=0; // used in core
+
+    SRef get_smtlib_datatype(const typet type); // Shall be public
+  
 protected:
     /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
     virtual PTRef expression_to_ptref(const exprt& expr) = 0;
@@ -118,6 +114,8 @@ protected:
         return logic->mkBoolVar(var_name.c_str());
     }
 
+    std::set<PTRef> get_constants() const;
+    
     virtual PTRef constant_to_ptref(const exprt& expr);
 
     PTRef constant_bool(bool val) const {
@@ -131,7 +129,7 @@ protected:
     virtual PTRef numeric_constant(const exprt &expr) = 0;
 
     virtual void add_symbol_constraints(const exprt &expr, const PTRef var) {}
-
+    
   /* ***************************************************************************************************************/
 
 
@@ -147,7 +145,6 @@ protected:
 
   unsupported_operationst unsupported_info;
   
-  bool has_unsupported_vars() const { return unsupported_info.has_unsupported_vars(); }
   bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
 
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
@@ -198,6 +195,8 @@ protected:
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
+    std::string to_string_smtlib_datatype(const typet type); // private - solver
+  
   irep_idt get_value_from_solver(PTRef ptrf)
   {
     if (logic->hasSortBool(ptrf))

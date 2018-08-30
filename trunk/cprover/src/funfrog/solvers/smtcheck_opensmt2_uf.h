@@ -21,23 +21,23 @@ public:
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
 
   virtual PTRef expression_to_ptref(const exprt & expr) override;
+  
+  virtual SRef get_numeric_sort() const override {return sort_ureal;}
 
   virtual PTRef numeric_constant(const exprt &expr) override;
   
   virtual PTRef type_cast(const exprt & expr) override;
   
-  virtual SRef get_numeric_sort() const override {return sort_ureal;}
-  
 protected:
-
-  PTRef new_num_var(const std::string & var_name) override;
-    
-  virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
   
-  virtual bool is_non_linear_operator(PTRef tr) const override;
+  PTRef new_num_var(const std::string & var_name) override;
+    
+  bool is_non_linear_operator(PTRef tr) const override;
   
+  PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+
 private:  
 
   static const char *tk_sort_ureal;
