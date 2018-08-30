@@ -7,15 +7,16 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-#include <map>
-#include <vector>
+#include "check_opensmt2.h"
 
 #include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
-#include "check_opensmt2.h"
 #include <funfrog/utils/expressions_utils.h>
 #include <util/expr.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
+
+#include <map>
+#include <vector>
 
 class smt_itpt;
 class symbol_exprt;
@@ -77,9 +78,10 @@ public:
   std::set<PTRef> get_non_linears() const;
 #endif
 
+  void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+  
   // Common to all
-  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
-
+  
   std::string getSimpleHeader(); // Get all the declarations without the variables
   std::set<PTRef> get_constants() const;
 
@@ -150,6 +152,8 @@ protected:
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
   virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
 
+  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
+  
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
   // virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
@@ -236,11 +240,7 @@ protected:
 
   // build the string of the upper and lower bounds
   std::string create_bound_string(std::string base, int exp);
-
-public:
-
-  void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
-
+  
 };
 
 #endif

@@ -8,6 +8,7 @@
 
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
+#include "summary_info.h"
 #include "solvers/check_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
@@ -516,6 +517,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         assert(partition_iface.assertion_in_subtree);
 
         if (!partition.has_parent()) {
+            assert(error_lits.size() == 1); // MB at the top level, there should be just from error literal coming from the child which is program's main
             decider.lcnf(error_lits);
 
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -565,7 +567,7 @@ void partitioning_target_equationt::convert_partition_assertions(
                     out_terms << "    (or \n      (" << temp1_buf.str()
                                             << "      )\n" << "    )\n";
             }
-#       endif
+#       endif // DISABLE_OPTIMIZATIONS
         } else {
             decider.set_equal(decider.lor(error_lits), partition_iface.error_literal);
 #ifdef DISABLE_OPTIMIZATIONS

@@ -68,7 +68,7 @@ protected:
   /* Set of functions that add constraints to take care of overflow and underflow */
   void add_constraints2type(const exprt & expr, const PTRef var); // add assume/assert on the data type
 
-  void push_constraints2type(
+  bool push_constraints2type(
           const PTRef var,
           bool is_non_det,
           std::string lower_b,

@@ -60,8 +60,6 @@ void check_opensmt2t::set_dump_query(bool f)
   dump_queries = f;
 }
 
-void check_opensmt2t::set_dump_pre_query(bool f) {dump_pre_queries = f;}
-
 void check_opensmt2t::set_dump_query_name(const string& n)
 {
     if (osmt != nullptr) {

@@ -611,7 +611,7 @@ Function: smtcheck_opensmt2t_la::push_constraints2type
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_la::push_constraints2type(
+bool smtcheck_opensmt2t_la::push_constraints2type(
         const PTRef var,
         bool is_non_det,
         std::string lower_b,
@@ -621,6 +621,7 @@ void smtcheck_opensmt2t_la::push_constraints2type(
         push_assumes2type(var, lower_b, upper_b);
     else // Add assert
         push_asserts2type(var, lower_b, upper_b);
+    return true;
 }
 
 /*******************************************************************\

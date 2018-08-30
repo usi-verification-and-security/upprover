@@ -7,8 +7,6 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #ifndef CPROVER_CHECK_OPENSMT2_H
 #define CPROVER_CHECK_OPENSMT2_H
 
-#include <vector>
-
 #include <util/threeval.h>
 #include <opensmt/opensmt2.h>
 #include <util/std_expr.h>
@@ -17,6 +15,8 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/solver.h"
 #include "solver_options.h"
 #include "funfrog/interface/convertor.h"
+
+#include <vector>
 
 //class literalt;  //SA: Is not this declaration redundant?
 class exprt;

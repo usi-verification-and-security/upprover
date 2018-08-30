@@ -60,8 +60,8 @@ set_target_properties(
     goto-analyzer-lib
     goto-cc
     goto-cc-lib
-    goto-diff
-    goto-diff-lib
+    #goto-diff
+    #goto-diff-lib
     goto-instrument
     goto-instrument-lib
     goto-programs

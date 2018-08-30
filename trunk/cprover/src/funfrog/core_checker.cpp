@@ -158,6 +158,7 @@ void core_checkert::initialize__euf_option_solver()
 // Generic creation for any solver - euf
 smtcheck_opensmt2t_uf * core_checkert::initialize__euf_solver()
 {
+    // OpenSMT:
     return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
 }
 
@@ -176,6 +177,7 @@ void core_checkert::initialize__cuf_option_solver()
 // Only for OpenSMT solver - cuf
 smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
+    // OpenSMT:
     return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
 }
 
@@ -192,6 +194,7 @@ void core_checkert::initialize__lra_option_solver()
 // Generic creation for any solver - lra
 smtcheck_opensmt2t_lra * core_checkert::initialize__lra_solver()
 {
+    // OpenSMT:
     return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
 }
 
@@ -205,18 +208,21 @@ void core_checkert::initialize__lia_option_solver()
     initialize_solver_debug_options();    
 }
 
-// Generic creation for any solver - lra
+// Generic creation for any solver - lia
 smtcheck_opensmt2t_lia * core_checkert::initialize__lia_solver()
 {
+    // OpenSMT:
     return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
 }
 
 // Generic initialise for any solver - lia
 void core_checkert::initialize__prop_option_solver()
 {
+#ifdef PRODUCE_PROOF     
     if (is_option_set("itp-algorithm")) 
         solver_options.m_prop_itp_algorithm = options.get_signed_int_option("itp-algorithm");
- 
+#endif 
+    
     initialize_solver_options();
         
     initialize_solver_debug_options();    
@@ -229,8 +235,9 @@ satcheck_opensmt2t * core_checkert::initialize__prop_solver()
         error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
         exit(0); //Unsupported 
     }
-
     // If all OK, create the decider
+    
+    // OpenSMT:
     return new satcheck_opensmt2t(solver_options, "prop checker", ns);
 }
 
@@ -558,7 +565,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 {
   auto before=timestamp();
   
-  const bool no_slicing_option = options.get_bool_option("no-slicing");
+  const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
     const auto & const_summary_store = *summary_store;
@@ -697,12 +704,14 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     if (!options.get_bool_option("no-error-trace"))
+    {
         prop.error_trace(*decider, ns, guard_expln);
-    if (decider->is_overapprox_encoding()){
-    	status() << "\nA bug found." << eom;
-    	status() << "WARNING: Possibly due to the Theory conversion." << eom;
-    } else {
-    	status() << "A real bug found." << eom;
+        if (decider->is_overapprox_encoding()){
+            status() << "\nA bug found." << eom;
+            status() << "WARNING: Possibly due to the Theory conversion." << eom;
+        } else {
+            status() << "A real bug found." << eom;
+        }
     }
     report_failure();
 }

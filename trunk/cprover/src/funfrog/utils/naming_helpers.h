@@ -35,6 +35,7 @@ struct CProverStringConstants {
     static const std::string DYNAMIC_OBJ;
     static const std::string GOTO_GUARD;
     static const std::string NIL;
+    static const std::string QUOTE_NIL;
     static const std::string NONDETv1;
     static const std::string NONDETv2;
     static const std::string SYMEX_NONDET;

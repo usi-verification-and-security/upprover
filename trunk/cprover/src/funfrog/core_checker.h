@@ -10,17 +10,13 @@
 #ifndef CPROVER_SUMMARIZING_CHECKER_H
 #define CPROVER_SUMMARIZING_CHECKER_H
 
-#include <memory>
 #include <util/options.h>
 #include <util/ui_message.h>
 #include <goto-programs/goto_model.h>
-#include <funfrog/solvers/smtcheck_opensmt2_uf.h>
-#include <funfrog/solvers/smtcheck_opensmt2_cuf.h>
-#include <funfrog/solvers/smtcheck_opensmt2_lra.h>
-#include <funfrog/solvers/smtcheck_opensmt2_lia.h>
-#include <funfrog/solvers/satcheck_opensmt2.h>
 #include <funfrog/solvers/solver_options.h>
 #include "subst_scenario.h"
+
+#include <memory>
 
 class smt_assertion_no_partitiont;
 class partitioning_target_equationt;
@@ -31,6 +27,12 @@ class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
 class symex_assertion_sumt;
+class smtcheck_opensmt2t_cuf;
+class smtcheck_opensmt2t_uf;
+class smtcheck_opensmt2t_lra;
+class smtcheck_opensmt2t_lia;
+class satcheck_opensmt2t;
+
 
 class core_checkert : private messaget
 {

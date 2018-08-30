@@ -251,6 +251,7 @@ bool smtcheck_opensmt2t::solve() {
 #ifdef DISABLE_OPTIMIZATIONS
     ofstream out_smt;
     if (dump_pre_queries) {
+        //std::cout << ";; Open file " << (pre_queries_file_name + "_X.smt2") << " for pre queries" << std::endl;
         out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
 
@@ -418,10 +419,10 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     //////////////////// TEST TO ASSURE THE NAME IS VALID! ///////////////////// 
     assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
-    bool is_nil_or_symex = (str.compare(CProverStringConstants::NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
+    bool is_IO = (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
     assert("Error: using non-SSA symbol in the SMT encoding"
-         && (is_L2_SSA_symbol(expr) || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
-    // If appears - please fix the code in smt_partition_target_euqationt
+         && (is_L2_SSA_symbol(expr) || is_IO)); // KE: can be new type that we don't take care of yet
+    // If appears - please fix the code in partition_target_euqationt
     // DO NOT COMMNET OUT!!! 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -776,9 +777,12 @@ void smtcheck_opensmt2t::lcnf(const bvt & bv) {
 
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_if_necessary(str);
-    assert(str.compare(CProverStringConstants::NIL) != 0);
     assert(!str.empty());
+    assert(expr.is_not_nil()); // MB: this assert should be stronger then the string one, the string one can probably go away
+    assert(!(str.compare(CProverStringConstants::NIL) == 0 || str.compare(CProverStringConstants::QUOTE_NIL) == 0));
+    if (expr.type().is_nil()) return constant_bool(true); // TODO: MB: check if this can happen
+    
+    str = quote_if_necessary(str);
     PTRef symbol_ptref;
     if(is_number(expr.type()))
         symbol_ptref = new_num_var(str);

@@ -91,6 +91,7 @@ const std::string CProverStringConstants::CPROVER_BUILDINS{"__CPROVER_"};
 const std::string CProverStringConstants::DYNAMIC_OBJ{"symex_dynamic::dynamic_object"};
 const std::string CProverStringConstants::GOTO_GUARD{"goto_symex::\\guard#"};
 const std::string CProverStringConstants::NIL{"nil"};
+const std::string CProverStringConstants::QUOTE_NIL{"|nil|"};
 const std::string CProverStringConstants::NONDETv1{"symex::"};
 const std::string CProverStringConstants::NONDETv2{"symex::nondet"};
 const std::string CProverStringConstants::SYMEX_NONDET{"nondet#"};

@@ -9,9 +9,10 @@ Author: Ondrej Sery
 #ifndef CPROVER_PROP_ITP_H
 #define CPROVER_PROP_ITP_H
 
-#include <iosfwd>
 #include <solvers/prop/literal.h>
 #include "itp.h"
+
+#include <iosfwd>
 
 class symbol_exprt;
 class prop_conv_solvert;

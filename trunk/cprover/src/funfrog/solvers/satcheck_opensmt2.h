@@ -9,18 +9,18 @@ Author: Grigory Fedyukovich
 #ifndef CPROVER_SATCHECK_OPENSMT2_H
 #define CPROVER_SATCHECK_OPENSMT2_H
 
-#include <vector>
-#include <memory>
-
-#include <solvers/sat/cnf.h>
-#include <util/threeval.h>
 #include "check_opensmt2.h"
-#include "funfrog/interface/solver/interpolating_solver.h"
+#include <funfrog/interface/solver/interpolating_solver.h>
+#include <funfrog/utils/expressions_utils.h>
 #include <opensmt/opensmt2.h>
 
+#include <solvers/sat/cnf.h>
 #include <solvers/prop/prop_conv.h>
-#include <funfrog/utils/expressions_utils.h>
 #include <solvers/flattening/boolbv.h>
+#include <util/threeval.h>
+
+#include <vector>
+#include <memory>
 
 class prop_itpt;
 class boolbv_mapt;
