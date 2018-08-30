@@ -5,6 +5,7 @@
 
 // General/Global Data
 const std::string HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME {"hifrog::c::unsupported_op2var"};
+const std::string HifrogStringUnsupportOpConstants::UNSUPPORTED_PREFIX_FUNC_NAME {"uns_"};
 unsigned unsupported_operationst::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
 std::vector<std::pair<std::string,exprt>> unsupported_operationst::unsupported_info_items;
 
@@ -72,6 +73,15 @@ bool is_unsupported_var_name(std::string name)
 {
     return (name.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) 
             != std::string::npos);
+}
+
+// Create unsupported function name
+std::string unsupported_function_name(const exprt& expr)
+{
+    const irep_idt &_func_id=expr.id(); // Which function we will add as uninterpurted
+    std::string func_id(_func_id.c_str());
+    func_id = HifrogStringUnsupportOpConstants::UNSUPPORTED_PREFIX_FUNC_NAME + func_id;
+    return func_id;
 }
     
 /*******************************************************************/

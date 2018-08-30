@@ -10,6 +10,7 @@
 
 struct HifrogStringUnsupportOpConstants {
   static const std::string UNSUPPORTED_VAR_NAME;
+  static const std::string UNSUPPORTED_PREFIX_FUNC_NAME;
 };
 
 #define unsupported_symbol(x) HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME + x // To create in general unsupported symbol
@@ -25,6 +26,9 @@ bool is_in_blacklist(std::string fname);
 
 // Check if variable name was created as part of unsupported mechanism
 bool is_unsupported_var_name(std::string name);
+
+// Create unsupported UF function name
+std::string unsupported_function_name(const exprt& expr);
 
 class unsupported_operationst
 {

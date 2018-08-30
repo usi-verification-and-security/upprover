@@ -292,29 +292,6 @@ bool smtcheck_opensmt2t::solve() {
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getVars
-
-  Inputs: -
-
- Outputs: a set of all variables that used in the smt formula
-
- Purpose: get all the vars to create later on the counter example path
-
-\*******************************************************************/
-set<PTRef> smtcheck_opensmt2t::getVars() const
-{
-    std::set<PTRef> ret;
-    std::set<PTRef> seen;
-    auto is_var = [this](const PTRef ptref) { return logic->isVar(ptref); };
-    for(const PTRef ptref : ptrefs)
-    {
-        collect_rec(is_var, ptref, ret, seen);
-    }
-    return ret;
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::getSimpleHeader
 
   Inputs: -
@@ -427,27 +404,6 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 }
 
 /*******************************************************************\
-
-Function: smtcheck_opensmt2t::create_bound_string
-
- Inputs: 
-
- Outputs: 
-
- Purpose: for type constraints of CUF and LRA
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
-{
-    std::string ret = base;
-    int size = exp - base.size() + 1; // for format 3.444444
-    for (int i=0; i<size;i++)
-        ret+= "0";
-
-    return ret;
-}
-
-/*******************************************************************\
  * 
 Function: smtcheck_opensmt2t::store_new_unsupported_var
 
@@ -528,9 +484,7 @@ Function: smtcheck_opensmt2t::get_unsupported_op_func
 \*******************************************************************/
 SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args)
 {
-    const irep_idt &_func_id=expr.id(); // Which function we will add as uninterpurted
-    std::string func_id(_func_id.c_str());
-    func_id = "uns_" + func_id;
+    std::string func_id(unsupported_function_name(expr));
     
     // First declare the function, if not exist
     std::string key_func(func_id.c_str());

@@ -153,8 +153,6 @@ protected:
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
   virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
 
-  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
-  
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
   // virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
@@ -239,9 +237,6 @@ protected:
   // Basic prints for debug - KE: Hope I did it right :-)
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 
-  // build the string of the upper and lower bounds
-  std::string create_bound_string(std::string base, int exp);
-  
 };
 
 #endif

@@ -78,7 +78,7 @@ const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX{"#in"};
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';
 const char HifrogStringConstants::COUNTER_SEP = '#';
 const std::string HifrogStringConstants::FUN_RETURN{"#return_value"};
-const std::string HifrogStringConstants::TMP_RETURN{"$tmp::return_value"};
+const std::string HifrogStringConstants::TMP_RETURN{"$tmp::return_value"}; 
 const std::string HifrogStringConstants::CALLSTART_SYMBOL{"hifrog::fun_start"};
 const std::string HifrogStringConstants::CALLEND_SYMBOL{"hifrog::fun_end"};
 const std::string HifrogStringConstants::ERROR_SYMBOL{"hifrog::?err"};
