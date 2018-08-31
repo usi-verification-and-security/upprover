@@ -429,12 +429,18 @@ Function: smtcheck_opensmt2t::create_unsupported_uf_call
 \*******************************************************************/
 PTRef smtcheck_opensmt2t::create_unsupported_uf_call(const exprt &expr)
 {  
+    // Interface function - declare_unsupported_function shall work for any solver 
+    // KE: do not refactor and sent args to the method, shall work for any solver!
     std::string decl_str = unsupported_info.declare_unsupported_function(expr);
     if (decl_str.size() == 0)
         return PTRef_Undef;
     
-    std::pair<SymRef,vec<PTRef>&> decl = unsupported_info.get_declaration(decl_str);
-    return mkFun(decl.first, decl.second);
+    SymRef decl = unsupported_info.get_declaration(decl_str);
+    
+    vec<PTRef> args;
+    get_function_args(expr, args);
+    
+    return mkFun(decl,args);
 }
 
 /*******************************************************************\
@@ -458,6 +464,8 @@ bool smtcheck_opensmt2t::get_function_args(const exprt &expr, vec<PTRef>& args)
     {	
         if (is_cprover_rounding_mode_var(operand)) continue;
         // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+        // Solves the case of arithmetics with extra rounding model
+        // for equations shall be taken care in parseoptionst + partition_target_euqationst
 
         // Convert
         PTRef cp = expression_to_ptref(operand);
@@ -513,12 +521,11 @@ std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet type)
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
         return SMTConstants::SMT_BOOL;
     
-    if (is_number(type)) {
-        SRef name = get_numeric_sort();
-        return std::string(logic->getSortName(name));
-    }
+    // If not bool we assume it is a number
+    SRef name = get_numeric_sort();
+    return std::string(logic->getSortName(name));
     
-    return SMTConstants::SMT_UNKNOWN; // Shall not get here
+    //return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
 

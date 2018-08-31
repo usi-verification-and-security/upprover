@@ -128,10 +128,13 @@ std::string unsupported_operations_opensmt2t::declare_unsupported_function(const
     
     // extract parameters to the call
     vec<PTRef> args;
+    m_decider->get_function_args(expr, args);
+    /* KE: Check later
     bool is_expr_has_unsupported = m_decider->get_function_args(expr, args);
     if (is_expr_has_unsupported)
         std::cout << "Warning: unsupported operators exist in the original unsupported operator" << std::endl;
     // TODO: check when we have such case!
+    */
     
     // Get the function name
     std::string func_id(unsupported_function_name(expr));
@@ -152,8 +155,7 @@ std::string unsupported_operations_opensmt2t::declare_unsupported_function(const
     if (m_decl_uf.count(key_func) == 0) {
         SymRef decl = SymRef_Undef;
         decl = add_func_decl2solver(func_id.c_str(), out, args_decl);
-        std::pair<SymRef,vec<PTRef>&> data(std::pair<SymRef,vec<PTRef>&>(decl,args));
-        m_decl_uf.insert(std::pair<std::string, std::pair<SymRef,vec<PTRef>&>> (key_func,data));
+        m_decl_uf.insert(std::pair<std::string, SymRef> (key_func,decl));
         assert(decl != SymRef_Undef);
     } 
     
@@ -186,7 +188,6 @@ std::vector<std::string> get_unsupported_funct_exprs(std::string const & text) {
         }
         auto end = current + 1;
         res.push_back(text.substr(beg, end - beg));
-//                std::cout << res.back() << '\n';
         last_pos = end;
     }
     return res;

@@ -121,6 +121,9 @@ inline std::string normalize_name(const exprt & expr) {
     return name_expr;
 }
 
+// For skipping (= cprover_XXX 0) in theories other than prop logic
+bool is_cprover_builtins_prop_eq(const exprt &expr, const std::string logic);
+  
 // For CUF trace
 void getVarsInExpr(exprt& e, std::set<exprt>& vars);
 

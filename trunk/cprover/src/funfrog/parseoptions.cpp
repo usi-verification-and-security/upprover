@@ -49,7 +49,7 @@
 
 #include "check_claims.h"
 #include "version.h"
-#include <goto-programs/link_to_library.h>
+#include <goto-programs/link_to_library.h> // Only for prop logic!
 #include <goto-programs/mm_io.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/remove_virtual_functions.h>

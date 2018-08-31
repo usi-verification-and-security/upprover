@@ -89,19 +89,19 @@ public:
     unsupported_operations_opensmt2t(bool _store_unsupported_info, smtcheck_opensmt2t* _decider)
             :unsupported_operationst(_store_unsupported_info),
              m_decider(_decider),
-             m_can_overapprox(_decider == nullptr)
-    {}
+             m_can_overapprox(true)
+    { m_can_overapprox = (m_decider!=0);}
     
     virtual ~unsupported_operations_opensmt2t() {}
     
     virtual std::string declare_unsupported_function(const exprt &expr) override; 
     
-    std::pair<SymRef,vec<PTRef> &> get_declaration(std::string decl_str)
+    SymRef get_declaration(std::string decl_str)
     { assert(m_decl_uf.count(decl_str) > 0); return m_decl_uf.at(decl_str); }
     
 private:
     // Hold uninterpreted functions that the solver was told about
-    std::map<std::string,std::pair<SymRef,vec<PTRef>& >> m_decl_uf;
+    std::map<std::string,SymRef> m_decl_uf;
     
     // Decider which we use
     smtcheck_opensmt2t* m_decider;

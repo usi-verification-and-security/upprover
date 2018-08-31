@@ -403,13 +403,13 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #endif
     } else {
 #ifdef SMT_DEBUG
-        cout << "; IT IS AN OPERATOR" << endl;
+        cout << "; IT IS AN OPERATOR " << _id.c_str() << endl;
 #endif
         
         // Convert first the arguments
         vec<PTRef> args;
         get_function_args(expr, args);
-
+          
         if (_id==ID_notequal) {
             ptref = logic->mkNot(logic->mkEq(args));
         } else if(_id == ID_equal) {
