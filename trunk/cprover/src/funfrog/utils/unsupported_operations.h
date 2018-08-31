@@ -26,10 +26,10 @@ std::string fresh_var_name_nonlinear();
 std::vector<std::string> get_unsupported_funct_exprs(std::string const & text);
 
 // Token we ignore and do not model
-bool is_in_blacklist(std::string fname);
+bool is_in_blacklist(const std::string & fname);
 
 // Check if variable name was created as part of unsupported mechanism
-bool is_unsupported_var_name(std::string name);
+bool is_unsupported_var_name(const std::string & name);
 
 // Create unsupported UF function name
 std::string unsupported_function_name(const exprt& expr);

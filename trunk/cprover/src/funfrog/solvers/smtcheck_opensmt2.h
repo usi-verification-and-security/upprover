@@ -91,9 +91,9 @@ public:
     
     virtual SRef get_numeric_sort() const=0; // used in core
 
-    SRef get_smtlib_datatype(const typet type); // Shall be public
+    SRef get_smtlib_datatype(const typet & type); // Shall be public
     
-    std::string to_string_smtlib_datatype(const typet type); 
+    std::string to_string_smtlib_datatype(const typet & type);
     
     bool get_function_args(const exprt &expr, vec<PTRef>& args); // common to all
     

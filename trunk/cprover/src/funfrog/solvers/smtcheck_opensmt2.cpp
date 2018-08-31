@@ -521,7 +521,7 @@ Function: smtcheck_opensmt2t::to_string_smtlib_datatype
 
  * For exprt, use typet type = expr.type(); // Get the current type
 \*******************************************************************/
-std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet type)
+std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet & type)
 {
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
         return SMTConstants::SMT_BOOL;
@@ -546,7 +546,7 @@ Function: smtcheck_opensmt2t::get_smtlib_datatype
  Purpose:
 
 \*******************************************************************/
-SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet type)
+SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet & type)
 {
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
         return logic->getSort_bool();

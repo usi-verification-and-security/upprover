@@ -13,14 +13,14 @@ unsigned unsupported_operationst::unsupported2var = 0; // Count how many instanc
 std::vector<std::pair<std::string,exprt>> unsupported_operationst::global_unsupported_str2expr_info;
 
 // Skip these functions and never try to refine these
-bool is_in_blacklist(std::string fname)
+bool is_in_blacklist(const string & fname)
 {
     static std::set<std::string> black_list_func = {"nil","","exit","thread","nondet"};
     return  (black_list_func.count(fname) > 0);
 }
 
 // Check if variable name was created as part of unsupported mechanism
-bool is_unsupported_var_name(std::string name)
+bool is_unsupported_var_name(const std::string & name)
 {
     return (name.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) 
             != std::string::npos);
@@ -84,7 +84,7 @@ void unsupported_operationst::store_new_unsupported_var(const exprt& expr, std::
     if ((_id==ID_symbol) || (_id==ID_nondet_symbol) || (_id==ID_constant)) return;
     
     // Add the abstracted expression
-    global_unsupported_str2expr_info.push_back(std::pair<std::string, exprt> (var, expr)); // PTRef sometimes turn into 0
+    global_unsupported_str2expr_info.push_back(std::make_pair(var, expr)); // PTRef sometimes turn into 0
 }
 
 
