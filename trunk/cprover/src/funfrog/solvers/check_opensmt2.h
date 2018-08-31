@@ -62,7 +62,7 @@ public:
         assert_literal(!l); // assert the negation
     }
 
-    Logic* getLogic() {return logic;}
+    Logic* getLogic() const {return logic;}
 
     void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
 
@@ -175,7 +175,7 @@ protected:
     virtual void set_random_seed(unsigned int i) override;
      
     // Used only in check_opensmt2 sub-classes
-    PTRef literalToPTRef(literalt l) {
+    PTRef literal_to_ptref(literalt l) const {
         if(l.is_constant()){
             return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
         }

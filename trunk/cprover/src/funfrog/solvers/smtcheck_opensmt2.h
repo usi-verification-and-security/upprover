@@ -45,7 +45,7 @@ public:
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
       // FIXME: PTRef to literal should maybe consider negation, caching...
-      return push_variable(ptref);
+      return ptref_to_literal(ptref);
   }
 
   literalt land(literalt l1, literalt l2) override; // Common to all
@@ -55,7 +55,7 @@ public:
   literalt lor(const bvt & b) override; // Common to all
 
   void assert_literal(literalt lit) override{
-      set_to_true(literalToPTRef(lit));
+      set_to_true(literal_to_ptref(lit));
   }
   
 #ifdef PRODUCE_PROOF
@@ -153,7 +153,7 @@ protected:
 
   PTRef create_unsupported_uf_call(const exprt &expr); // common to all
 
-  literalt push_variable(PTRef ptl); // Common to all
+  literalt ptref_to_literal(PTRef ptl); // Common to all
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 

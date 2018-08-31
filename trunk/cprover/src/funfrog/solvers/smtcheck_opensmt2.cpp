@@ -40,8 +40,9 @@ Function: smtcheck_opensmt2t::push_variable
 
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
+literalt smtcheck_opensmt2t::ptref_to_literal(PTRef ptl) {
     assert(getLogic()->hasSortBool(ptl));
+    if (getLogic()->isTrue(ptl)) { return const_literal(true); }
 	literalt l (ptrefs.size(), false);
 	ptrefs.push_back(ptl);
 	return l;
@@ -55,7 +56,7 @@ bool smtcheck_opensmt2t::is_assignment_true(literalt a) const
   else if (a.is_false())
     return false;
 
-  ValPair a_p = mainSolver->getValue(ptrefs[a.var_no()]);
+  ValPair a_p = mainSolver->getValue(literal_to_ptref(a));
   return ((*a_p.val == *true_str) ^ (a.sign()));
 }
 
@@ -67,8 +68,8 @@ void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
@@ -77,33 +78,33 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkOr(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 literalt smtcheck_opensmt2t::lor(const bvt& bv){
     vec<PTRef> args;
     for(auto lit : bv)
     {
-        PTRef tmpp = literalToPTRef(lit);
+        PTRef tmpp = literal_to_ptref(lit);
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 PTRef smtcheck_opensmt2t::constant_to_ptref(const exprt & expr){

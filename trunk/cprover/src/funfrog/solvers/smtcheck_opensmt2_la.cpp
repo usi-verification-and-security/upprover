@@ -100,7 +100,7 @@ Function: smtcheck_opensmt2t_la::const_from_str
 literalt smtcheck_opensmt2t_la::const_from_str(const char* num)
 {
     PTRef rconst = lalogic->mkConst(num); // Can have a wrong conversion sometimes!
-    return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
+    return ptref_to_literal(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 /*******************************************************************\
@@ -922,7 +922,7 @@ Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
 \*******************************************************************/
 literalt smtcheck_opensmt2t_la::get_and_clear_var_constraints()
 {
-    literalt res = push_variable(ptr_assert_var_constraints);
+    literalt res = ptref_to_literal(ptr_assert_var_constraints);
     ptr_assert_var_constraints = logic->getTerm_true();
     return res;
 }
