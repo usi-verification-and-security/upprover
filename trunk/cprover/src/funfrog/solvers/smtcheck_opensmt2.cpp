@@ -380,8 +380,11 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
     std::string str = normalize_name(expr);
     
-    if (is_cprover_builtins_var(str))
+    if (is_cprover_builtins_var(str)) {
+        std::cout << ";; Mapping " << str;
         str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
+        std::cout << " to " << str << std::endl;
+    }
     
     //////////////////// TEST TO ASSURE THE NAME IS VALID! ///////////////////// 
     assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
@@ -462,10 +465,15 @@ bool smtcheck_opensmt2t::get_function_args(const exprt &expr, vec<PTRef>& args)
     // The we create the new call
     for(auto const & operand : expr.operands())
     {	
-        if (is_cprover_rounding_mode_var(operand)) continue;
+        if (is_cprover_rounding_mode_var(operand)) 
+        {
+            if (expr.id() == ID_mult) continue;
+            if (expr.id() == ID_div) continue;
+            if (expr.id() == ID_floatbv_mult) continue;
+            if (expr.id() == ID_floatbv_div) continue;
+        }
         // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-        // Solves the case of arithmetics with extra rounding model
-        // for equations shall be taken care in parseoptionst + partition_target_euqationst
+        // if crush right after this call, add the skip case to the list above
 
         // Convert
         PTRef cp = expression_to_ptref(operand);
