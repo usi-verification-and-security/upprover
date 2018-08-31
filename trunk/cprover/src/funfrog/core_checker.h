@@ -52,7 +52,7 @@ public:
 
 protected:
     const goto_modelt & goto_model;
-    symbol_tablet new_symbol_table;
+    symbol_tablet symex_symbol_table;
     const namespacet ns;
   const optionst &options;
   ui_message_handlert &message_handler;

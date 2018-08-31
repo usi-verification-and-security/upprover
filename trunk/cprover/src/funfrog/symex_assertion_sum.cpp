@@ -40,12 +40,12 @@
 
 \*******************************************************************/
 symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root,
-                                           const optionst &_options, path_storaget &_path_storage, symbol_tablet & _new_symbol_table,
+                                           const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
                                            partitioning_target_equationt & _target,
                                            message_handlert & _message_handler, const goto_programt & _goto_program,
                                            unsigned _last_assertion_loc, bool _single_assertion_check,
                                            bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
-  goto_symext(_message_handler, _new_symbol_table, _target, _options, _path_storage),
+  goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
   goto_functions(_goto_functions),
   call_tree_root(_root),
   current_call_tree_node(&_root),
@@ -185,14 +185,11 @@ bool symex_assertion_sumt::process_planned(statet & state)
   // Proceed with symbolic execution
   auto before=timestamp();
 
-  ns = namespacet(outer_symbol_table, state.symbol_table);
-  symex_symbol_table = &state.symbol_table; // Set the symex local table as the current state
   get_goto_functiont get_goto_function = constuct_get_goto_function(goto_functions);
   while (has_more_steps(state))
   {
     symex_step(get_goto_function, state);
   }
-  ns = namespacet(outer_symbol_table);
   auto after=timestamp();
   
   
@@ -1581,7 +1578,7 @@ symbolt symex_assertion_sumt::get_tmp_ret_val_symbol(const partition_ifacet & if
 \*******************************************************************/
 void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, const typet & type, bool is_dead) {
   // TODO do we need the location for this symbol? But what location would an artificial symbol had?
-  assert(!symex_symbol_table->has_symbol(id));
+  assert(!get_symbol_table().has_symbol(id));
   if(is_dead){
     dead_identifiers.insert(id);
   }
@@ -1591,7 +1588,7 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   symbol.type = type;
   symbol.is_thread_local = true;
 
-  symex_symbol_table->add(symbol);
+  get_symbol_table().add(symbol);
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version

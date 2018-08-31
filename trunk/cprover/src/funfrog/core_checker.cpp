@@ -89,7 +89,7 @@ Function: get_initial_mode
 core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
                              ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
         goto_model{_goto_model},
-        ns{goto_model.symbol_table, new_symbol_table},
+        ns{goto_model.get_symbol_table(), symex_symbol_table},
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
@@ -402,7 +402,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     std::unique_ptr<path_storaget> worklist;
-    symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, new_symbol_table,
+    symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
                                                       message_handler, get_main_function(), last_assertion_loc,
                                                       single_assertion_check, !no_ce_option,
@@ -585,7 +585,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 #endif
   
   std::unique_ptr<path_storaget> worklist;
-  symex_no_partitiont symex {options, *worklist, new_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option};
+  symex_no_partitiont symex {options, *worklist, symex_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option};
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
@@ -1031,7 +1031,7 @@ Function: core_checkert::check_sum_theoref_single
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
-    new_symbol_table.clear(); // MB: this needs to be empty before use in symex
+    symex_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     initialize__euf_option_solver();
@@ -1055,7 +1055,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
                                options, *worklist,
-                               new_symbol_table,
+                               symex_symbol_table,
                                equation,
                                message_handler,
                                get_main_function(),
@@ -1163,7 +1163,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     delete decider;
     initialize__prop_option_solver();
     decider = initialize__prop_solver();
-    new_symbol_table.clear();
+    symex_symbol_table.clear();
     auto res = this->assertion_holds_(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;

@@ -148,6 +148,8 @@ protected:
 
     std::vector<std::string> lits_names;
 
+    virtual void set_variable_name(literalt a, const irep_idt & name) override
+    { set_variable_name(a, std::string{name.c_str()}); }
     void set_variable_name(literalt a, const std::string & name);
 
   // Initialize the OpenSMT context

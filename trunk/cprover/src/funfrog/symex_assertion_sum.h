@@ -31,14 +31,14 @@ class symex_assertion_sumt : public goto_symext
 {
 public:
   symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _summary_info,
-                       const optionst &_options, path_storaget &_path_storage, symbol_tablet & _new_symbol_table,
+                       const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
                        partitioning_target_equationt & _target,
                        message_handlert & _message_handler, const goto_programt & _goto_program,
                        unsigned _last_assertion_loc, bool _single_assertion_check,
                        bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops);
   
     symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const optionst &, path_storaget &,
-            symbol_tablet&, partitioning_target_equationt&, message_handlert&,
+            const symbol_tablet&, partitioning_target_equationt&, message_handlert&,
   const goto_programt&, unsigned int,
   bool, bool, bool, bool) = delete; // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
           
@@ -264,7 +264,7 @@ protected:
     }  
     
     /* Even if dead adds it, else cannot get L1 name later on */
-    if (!symex_symbol_table->has_symbol(base_id)) {
+    if (!get_symbol_table().has_symbol(base_id)) {
         symbolt s;
         s.base_name = base_id;
         s.name = base_id;
@@ -272,7 +272,7 @@ protected:
         s.mode=irep_idt();
         s.location = source_location;
         s.is_thread_local = !is_shared;
-        symex_symbol_table->add(s);
+        get_symbol_table().add(s);
     }
   }
 
@@ -346,7 +346,10 @@ protected:
   /// names of those object are stored in the symbol table passed as the
   /// `symex_symbol_table` argument to the `symex_*` methods.
   // const symbol_tablet &outer_symbol_table; <--- this is a const method in goto_symex.h
-  symbol_tablet* symex_symbol_table;  // We use this to all our dynamic allocations! (as done in bmc.h
+//  symbol_tablet* symex_symbol_table;  // We use this to all our dynamic allocations! (as done in bmc.h
+
+    symbol_tablet& get_symbol_table() { return state.symbol_table; }
+    const symbol_tablet& get_symbol_table() const { return state.symbol_table; }
 
 private:
 
@@ -365,12 +368,12 @@ private:
 
   // this should be used only for artificial symbols that we have created with create_new_artificial_symbol method
   bool knows_artificial_symbol(const irep_idt & symbol_id) const {
-    return symex_symbol_table->has_symbol(symbol_id);
+    return get_symbol_table().has_symbol(symbol_id);
   }
 
   // this should be used only for symbols that we have created with create_new_artificial_symbol method
   const symbolt & get_artificial_symbol(const irep_idt & id){
-    const auto * symbol_p = symex_symbol_table->lookup(id);
+    const auto * symbol_p = get_symbol_table().lookup(id);
     if(symbol_p){
       return *symbol_p;
     }
@@ -416,6 +419,7 @@ private:
   // to be able to start with a fresh state
   void reset_state(){
     state = goto_symext::statet();
+    ns = namespacet{outer_symbol_table, state.symbol_table};
     // since not supporting multiple threads, we do not need to record events;
     turn_off_recording_events();
   }
