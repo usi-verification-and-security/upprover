@@ -178,6 +178,8 @@ Function: symex_assertion_sumt::process_planned
  Purpose: Processes current code (pointed to by the state member variable) 
  as well as all the deferred functions
 
+ * 
+ * UPDATE CPROVER: check changes in: void goto_symext::symex_with_state
 \*******************************************************************/
 
 bool symex_assertion_sumt::process_planned(statet & state)
@@ -188,7 +190,11 @@ bool symex_assertion_sumt::process_planned(statet & state)
   get_goto_functiont get_goto_function = constuct_get_goto_function(goto_functions);
   while (has_more_steps(state))
   {
+    state.has_saved_jump_target = false; // Will crush in goto_symex else
+    state.has_saved_next_instruction = false; // Will crush in goto_symex else
     symex_step(get_goto_function, state);
+    //if(should_pause_symex) // KE: not sure if we need this
+    //  return;
   }
   auto after=timestamp();
   

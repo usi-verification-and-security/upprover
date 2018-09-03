@@ -19,7 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/replace_symbol.h>
 #include <util/make_unique.h>
 
-#include <analyses/dirty.h>
+//#include <analyses/dirty.h> - Remove dirty check
 
 void goto_symext::symex_transition(
   statet &state,
@@ -140,7 +140,7 @@ void goto_symext::initialize_entry_point(
   if(emplace_safe_pointers_result.second)
     emplace_safe_pointers_result.first->second(entry_point_function.body);
 
-  state.dirty.populate_dirty_for_function(pc->function, entry_point_function);
+  //state.dirty.populate_dirty_for_function(pc->function, entry_point_function); - Remove Dirty check
 
   symex_transition(state, state.source.pc);
 }

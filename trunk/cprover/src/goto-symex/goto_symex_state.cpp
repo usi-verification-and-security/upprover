@@ -538,9 +538,9 @@ bool goto_symex_statet::l2_thread_read_encoding(
 
   // is it a shared object?
   const irep_idt &obj_identifier=expr.get_object_name();
-  if(
-    obj_identifier == "goto_symex::\\guard" ||
-    (!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier)))
+  if(obj_identifier == "goto_symex::\\guard" || !ns.lookup(obj_identifier).is_shared())
+    //obj_identifier == "goto_symex::\\guard" ||
+    //(!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier))) - Remove dirty
     return false;
 
   ssa_exprt ssa_l1=expr;
@@ -688,9 +688,9 @@ bool goto_symex_statet::l2_thread_write_encoding(
 
   // is it a shared object?
   const irep_idt &obj_identifier=expr.get_object_name();
-  if(
-    obj_identifier == "goto_symex::\\guard" ||
-    (!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier)))
+  if(obj_identifier == "goto_symex::\\guard" || !ns.lookup(obj_identifier).is_shared())
+    //obj_identifier == "goto_symex::\\guard" ||
+    //(!ns.lookup(obj_identifier).is_shared() && !(dirty)(obj_identifier))) - Remove dirty
     return false; // not shared
 
   // see whether we are within an atomic section

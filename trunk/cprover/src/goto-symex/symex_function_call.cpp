@@ -223,7 +223,7 @@ void goto_symext::symex_function_call_code(
   const goto_functionst::goto_functiont &goto_function =
     get_goto_function(identifier);
 
-  state.dirty.populate_dirty_for_function(identifier, goto_function);
+  //state.dirty.populate_dirty_for_function(identifier, goto_function);
 
   auto emplace_safe_pointers_result =
     safe_pointers.emplace(identifier, local_safe_pointerst{ns});
@@ -338,9 +338,9 @@ void goto_symext::pop_frame(statet &state)
       const irep_idt l1_o_id=c_it->second.first.get_l1_object_identifier();
       // could use iteration over local_objects as l1_o_id is prefix
       if(
-        frame.local_objects.find(l1_o_id) == frame.local_objects.end() ||
-        (state.threads.size() > 1 &&
-         state.dirty(c_it->second.first.get_object_name())))
+        frame.local_objects.find(l1_o_id) == frame.local_objects.end()/* ||
+         (state.threads.size() > 1 &&
+         state.dirty(c_it->second.first.get_object_name())) - Remove Dirty*/)
       {
         ++c_it;
         continue;

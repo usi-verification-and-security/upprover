@@ -97,10 +97,11 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
       symex_targett::assignment_typet::HIDDEN:
       symex_targett::assignment_typet::STATE);
 
+  /* Remove Dirty things
   if(state.dirty(ssa.get_object_name()) && state.atomic_section_id == 0)
     target.shared_write(
       state.guard.as_expr(),
       ssa,
       state.atomic_section_id,
-      state.source);
+      state.source); */
 }
