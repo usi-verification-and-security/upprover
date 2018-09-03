@@ -239,6 +239,7 @@ void goto_symext::dereference_rec(
 
     bool expr_is_not_null = false;
 
+    /*
     if(state.threads.size() == 1)
     {
       const irep_idt &expr_function = state.source.pc->function;
@@ -252,6 +253,7 @@ void goto_symext::dereference_rec(
             to_check, state.source.pc);
       }
     }
+    */ // KE: always false, as long as we don't use pointer analysis for 0
 
     exprt tmp1;
     tmp1.swap(expr.op0());
