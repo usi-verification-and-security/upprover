@@ -3,8 +3,6 @@
 Module: Symex target equation which tracks different partitions for
 different deferred functions.
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITIONING_TARGET_EQUATION_H
@@ -112,10 +110,10 @@ public:
 protected:
     void convert_partition(convertort &convertor,
                            interpolating_solvert &interpolator, partitiont &partition);
-    void convert_partition_guards(convertort &decider,
+    void convert_partition_guards(convertort &convertor,
                                   partitiont &partition);
 
-    void convert_partition_assignments(convertort &decider,
+    void convert_partition_assignments(convertort &convertor,
                                        partitiont &partition);
 
   // Convert a specific partition assumptions of SSA steps

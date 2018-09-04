@@ -2,8 +2,6 @@
 
 Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
-Author: Grigory Fedyukovich
-
 \*******************************************************************/
 #include "smtcheck_opensmt2_lia.h"
 #include <util/type.h>

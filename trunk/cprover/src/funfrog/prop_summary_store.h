@@ -2,8 +2,6 @@
 
 Module: Storage class for function summaries (union-find).
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PROP_SUMMARY_STORE_H

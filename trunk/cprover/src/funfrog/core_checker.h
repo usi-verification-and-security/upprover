@@ -2,9 +2,6 @@
 
  Module: Assertion checker that extracts and uses function 
  summaries
-
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_SUMMARIZING_CHECKER_H

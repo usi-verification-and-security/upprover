@@ -2,9 +2,6 @@
 
  Module: Assertion checker that extracts and uses function 
  summaries
-
- Author: Ondrej Sery
-
 \*******************************************************************/
 #include "core_checker.h"
 
@@ -429,15 +426,15 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     // the checker main loop:
     unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
-    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
+    prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
     while (!end) {
         iteration_counter++;
 
         //Converts SSA to SMT formula
-        ssaToFormula.convert_to_formula( *decider, *(decider));
+        ssa_to_formula.convert_to_formula( *decider, *(decider));
 
         // Decides the equation
-        bool is_sat = ssaToFormula.is_satisfiable(*decider);
+        bool is_sat = ssa_to_formula.is_satisfiable(*decider);
         summaries_used = omega.get_summaries_count();
         
         end = !is_sat;
@@ -516,7 +513,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     } // End of UNSAT section
     else // assertion was falsified
     {
-        assertion_violated(ssaToFormula, symex.guard_expln);
+        assertion_violated(ssa_to_formula, symex.guard_expln);
     }
     // FINAL REPORT
 

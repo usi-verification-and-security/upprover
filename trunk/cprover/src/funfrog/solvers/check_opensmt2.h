@@ -32,11 +32,6 @@ public:
           
     virtual ~check_opensmt2t();
 
-   // virtual literalt bool_expr_to_literal(const exprt & expr) = 0; //moved to iface
-   // virtual literalt land(literalt l1, literalt l2) = 0;
-   // virtual literalt lor(literalt l1, literalt l2) = 0;
-   // virtual literalt lor(const bvt & bv) = 0;
-
     template<typename Container>
     void assert_literals(const Container& c){
         for(auto lit : c){

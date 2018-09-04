@@ -4,8 +4,6 @@
  i.e., to each function call it assigns a level of summarization 
  used in the symex analysis.
 
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_SUMMARY_INFO_H

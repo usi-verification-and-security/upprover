@@ -3,8 +3,6 @@
 Module: Interface for a decision procedure with (symmetric) 
 interpolation.
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_interpolating_solver_H

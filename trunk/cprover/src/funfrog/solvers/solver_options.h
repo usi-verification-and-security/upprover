@@ -1,11 +1,10 @@
-/* 
- * File:   solver_option.h
+/*******************************************************************\
+ * Module:   solver_options
  * Author: karinek
- *
- * Created on 24 August 2018, 18:44
+ * Created on 24 August 2018
  * 
  * Please Add any new option here (not manually to the class)
- */
+\*******************************************************************/
 
 #ifndef SOLVER_OPTIONS_H
 #define SOLVER_OPTIONS_H

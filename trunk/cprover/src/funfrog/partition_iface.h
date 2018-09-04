@@ -4,8 +4,6 @@
  partition (i.e., a block of SSA statements corresponding to a single
  function and its subtree).
 
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITION_IFACE_H

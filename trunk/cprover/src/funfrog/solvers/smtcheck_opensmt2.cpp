@@ -2,8 +2,6 @@
 
 Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 
-Author: Grigory Fedyukovich
-
 \*******************************************************************/
 #include <queue>
 #include <unordered_set>

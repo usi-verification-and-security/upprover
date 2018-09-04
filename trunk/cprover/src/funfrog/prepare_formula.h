@@ -1,9 +1,3 @@
-/*
- * File:   smt_assertion_sum.h
- * Author: karinek
- *
- * Created on 10 January 2017, 16:30
- */
 
 #ifndef SMT_ASSERTION_SUM_H
 #define SMT_ASSERTION_SUM_H

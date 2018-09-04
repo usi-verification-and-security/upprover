@@ -2,8 +2,6 @@
 
  Module: Theory refiner
 
- Author: all
-
 \*******************************************************************/
 #include "theory_refiner.h"
 #include "error_trace.h"

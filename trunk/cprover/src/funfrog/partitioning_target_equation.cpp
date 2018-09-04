@@ -2,8 +2,6 @@
  Module: Symex target equation which tracks different partitions for
  different deferred functions. Based on symex_target_equation.cpp.
 
- Author: Ondrej Sery
-
  \*******************************************************************/
 
 #include "partitioning_target_equation.h"
@@ -813,6 +811,8 @@ void partitioning_target_equationt::convert_partition(
     convert_partition_io(convertor, partition);
 }
 
+/*******************************************************************/
+
 #ifdef PRODUCE_PROOF
 namespace{
     // helper methods for extract_interpolants
@@ -877,7 +877,16 @@ void partitioning_target_equationt::convert(check_opensmt2t &decider,
       }
 #endif
 }
+/*******************************************************************
+ Function: partitioning_target_equationt::extract_interpolants()
 
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decider) {
 #ifdef PRODUCE_PROOF
     // Prepare the interpolation task. NOTE: ignore the root partition!
@@ -971,7 +980,16 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
     assert(0);
 #endif
 }
+/*******************************************************************
+ Function: partitioning_target_equationt::get_exprs_to_refine()
 
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ \*******************************************************************/
 std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
     std::vector<exprt> res;
     for (auto const & partition : partitions) {
@@ -1009,8 +1027,8 @@ std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
     return res;
 }
 
-void partitioning_target_equationt::convert_partition_guards(convertort &decider, partitiont &partition) {
-    ::convert_guards(decider, partition.start_it, partition.end_it);
+void partitioning_target_equationt::convert_partition_guards(convertort &convertor, partitiont &partition) {
+    ::convert_guards(convertor, partition.start_it, partition.end_it);
 #ifdef DISABLE_OPTIMIZATIONS
     for(auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->ignore) { continue; }
@@ -1022,8 +1040,8 @@ void partitioning_target_equationt::convert_partition_guards(convertort &decider
 
 }
 
-void partitioning_target_equationt::convert_partition_assignments(convertort &decider, partitiont &partition) {
-    ::convert_assignments(decider, partition.start_it, partition.end_it);
+void partitioning_target_equationt::convert_partition_assignments(convertort &convertor, partitiont &partition) {
+    ::convert_assignments(convertor, partition.start_it, partition.end_it);
 #ifdef DISABLE_OPTIMIZATIONS
     for(auto it = partition.start_it; it != partition.end_it; ++it) {
         if(it->is_assignment() && !it->ignore){

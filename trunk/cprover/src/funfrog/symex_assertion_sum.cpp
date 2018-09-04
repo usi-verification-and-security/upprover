@@ -3,8 +3,6 @@
  Module: Symbolic execution and deciding of a given goto-program
  using and generating function summaries. Based on symex_asserion.cpp
 
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #include "symex_assertion_sum.h"

@@ -1,16 +1,11 @@
 /*******************************************************************\
 
 Module: Main Module
-
-Author: Daniel Kroening, kroening@kroening.com
+Contributors: Daniel Kroening, CM Wintersteiger, Ondrej Sery,
+                       Grigory Fedyukovich, Karine Even Mendoza,
+                       Martin Blicha, Sepideh Asadi
 
 \*******************************************************************/
-
-/*
-
-  FUNFROG
-
-*/
 
 #include <signal.h>
 #include "parseoptions.h"

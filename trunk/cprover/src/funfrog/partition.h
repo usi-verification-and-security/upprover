@@ -3,8 +3,6 @@
  Module: Represents a block of SSA statements corresponding to 
  a single function.
 
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITION_H

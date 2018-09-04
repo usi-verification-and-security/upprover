@@ -1,9 +1,6 @@
 /*******************************************************************
 
- Module: Convert an SSA-form to smt,
-         And checking of its satisfiability
-
- Author:
+ Module: Convert an SSA-form to smt, and checking of its satisfiability
 
 \*******************************************************************/
 

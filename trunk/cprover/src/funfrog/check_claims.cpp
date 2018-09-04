@@ -2,8 +2,6 @@
 
  Module: Loopfrog's final claim checking
 
- Author: CM Wintersteiger
-
 \*******************************************************************/
 
 #include "check_claims.h"
