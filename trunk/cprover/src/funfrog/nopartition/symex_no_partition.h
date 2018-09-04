@@ -16,14 +16,14 @@ class path_storaget;
 class symex_no_partitiont : public goto_symext {
 public:
     symex_no_partitiont(
-            const optionst &_options, 
-            path_storaget &_path_storage,
-            symbol_tablet &_new_symbol_table,
-            hifrog_symex_target_equationt &_target,
-            message_handlert &_message_handler,
-            const goto_programt &_goto_program,
-            bool _use_slicing=true
-          );
+            const optionst & _options,
+            path_storaget & _path_storage,
+            const symbol_tablet & _outer_symbol_table,
+            hifrog_symex_target_equationt & _target,
+            message_handlert & _message_handler,
+            const goto_programt & _goto_program,
+            bool _use_slicing = true
+    );
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
 

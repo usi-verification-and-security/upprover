@@ -585,7 +585,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 #endif
   
   std::unique_ptr<path_storaget> worklist;
-  symex_no_partitiont symex {options, *worklist, symex_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option};
+  symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler, get_main_function(),!no_slicing_option};
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
@@ -1055,7 +1055,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
                                options, *worklist,
-                               symex_symbol_table,
+                               ns.get_symbol_table(),
                                equation,
                                message_handler,
                                get_main_function(),

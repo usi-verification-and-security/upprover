@@ -34,7 +34,6 @@ public:
   {
     const symbolt *symbol;
     if(lookup(name, symbol)) {
-        assert(0);
       throw "identifier "+id2string(name)+" not found";
     }
     return *symbol;

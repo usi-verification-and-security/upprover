@@ -299,7 +299,11 @@ void symex_assertion_sumt::symex_step(
         store_expln = state.source.pc->guard.has_operands();
         if (store_expln) {
             try { str = from_expr(state.source.pc->guard.op0()); }
-            catch (const std::string &s) { str = ""; }
+            catch (const std::string &s) {
+                // TODO: MB: investigate why this happens, I encountered this in s3.c
+                // assert(false);
+                str = "";
+            }
         }
       
         prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;

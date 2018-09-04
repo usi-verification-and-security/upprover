@@ -115,11 +115,12 @@ bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, cons
     return unwind >= max_unwind;
 }
 
-symex_no_partitiont::symex_no_partitiont(const optionst &_options, path_storaget &_path_storage, symbol_tablet & _new_symbol_table,
+symex_no_partitiont::symex_no_partitiont(const optionst & _options, path_storaget & _path_storage,
+                                         const symbol_tablet & _outer_symbol_table,
                                          hifrog_symex_target_equationt & _target, message_handlert & _message_handler,
                                          const goto_programt & _goto_program, bool _use_slicing)
  :
-    goto_symext(_message_handler, _new_symbol_table, _target, _options, _path_storage),
+    goto_symext(_message_handler, _outer_symbol_table, _target, _options, _path_storage),
             equation(_target),
             goto_program(_goto_program),
             current_assertion(nullptr),
