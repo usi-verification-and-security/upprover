@@ -11,12 +11,12 @@
 
 namespace hifrog {
 
-inline literalt convert_expr(check_opensmt2t & decider, const exprt & expr) {
+inline literalt convert_expr(convertort &decider, const exprt &expr) {
     return decider.convert_bool_expr(expr);
 }
 
 template<typename Iter>
-void convert_guards(check_opensmt2t & decider, Iter const & beg, Iter const & end) {
+void convert_guards(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         auto & ssa_step = *it;
         ssa_step.guard_literal = ssa_step.ignore ? const_literal(false)
@@ -25,7 +25,7 @@ void convert_guards(check_opensmt2t & decider, Iter const & beg, Iter const & en
 }
 
 template<typename Iter>
-void convert_assignments(check_opensmt2t & decider, Iter const & beg, Iter const & end) {
+void convert_assignments(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         if (it->is_assignment() && !it->ignore) {
             decider.set_to_true(it->cond_expr);
@@ -34,7 +34,7 @@ void convert_assignments(check_opensmt2t & decider, Iter const & beg, Iter const
 }
 
 template<typename Iter>
-void convert_assumptions(check_opensmt2t & decider, Iter const & beg, Iter const & end) {
+void convert_assumptions(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         if (it->is_assume() && !it->ignore) {
             it->cond_literal = it->ignore ? const_literal(true) : convert_expr(decider, it->cond_expr);

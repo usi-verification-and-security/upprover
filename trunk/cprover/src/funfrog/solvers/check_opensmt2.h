@@ -36,12 +36,6 @@ public:
    // virtual literalt land(literalt l1, literalt l2) = 0;
    // virtual literalt lor(literalt l1, literalt l2) = 0;
    // virtual literalt lor(const bvt & bv) = 0;
-    virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
-
-    literalt limplies(literalt a, literalt b)
-    {
-        return lor(!a, b);
-    }
 
     template<typename Container>
     void assert_literals(const Container& c){
@@ -49,8 +43,6 @@ public:
             assert_literal(lit);
         }
     }
-
-    virtual void assert_literal(literalt) = 0;
 
     void set_to_true(const exprt &expr) override {
         literalt l = convert_bool_expr(expr);
@@ -65,10 +57,6 @@ public:
     Logic* getLogic() const {return logic;}
 
     void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
-
-    literalt get_const_literal(bool val){
-        return const_literal(val);
-    }
     
     unsigned get_random_seed() override { return random_seed; }
     

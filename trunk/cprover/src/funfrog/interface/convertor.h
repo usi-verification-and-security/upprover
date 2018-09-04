@@ -20,5 +20,19 @@ public:
     virtual literalt lor(literalt l1, literalt l2) = 0;
 
     virtual literalt lor(const bvt & bv) = 0;
+
+    virtual literalt limplies(literalt a, literalt b)
+    {
+        return lor(!a, b);
+    }
+
+    virtual literalt get_const_literal(bool val){
+        return const_literal(val);
+    }
+
+    virtual void assert_literal(literalt) = 0;
+
+    virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
+
 };
 #endif //PROJECT_CONVERTOR_H

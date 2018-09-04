@@ -23,6 +23,7 @@ Author: Ondrej Sery
 #endif
 
 #include <goto-symex/symex_target_equation.h>
+#include <funfrog/interface/convertor.h>
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"
@@ -109,26 +110,26 @@ public:
 #endif
   
 protected:
-    void convert_partition(check_opensmt2t & decider,
-                           interpolating_solvert & interpolator, partitiont & partition);
-    void convert_partition_guards(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition(convertort &convertor,
+                           interpolating_solvert &interpolator, partitiont &partition);
+    void convert_partition_guards(convertort &decider,
+                                  partitiont &partition);
 
-    void convert_partition_assignments(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition_assignments(convertort &decider,
+                                       partitiont &partition);
 
   // Convert a specific partition assumptions of SSA steps
-    void convert_partition_assumptions(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition_assumptions(convertort &convertor,
+                                       partitiont &partition);
     // Convert a specific partition assertions of SSA steps
-    void convert_partition_assertions(check_opensmt2t &decider,
-                                      partitiont& partition);
+    void convert_partition_assertions(convertort &convertor,
+                                      partitiont &partition);
     // Convert a specific partition io of SSA steps
-    void convert_partition_io(check_opensmt2t &decider,
-                              partitiont& partition);
+    void convert_partition_io(convertort &convertor,
+                              partitiont &partition);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_partition_summary(check_opensmt2t & decider,
-                                   partitiont & partition);
+    void convert_partition_summary(interpolating_solvert &decider,
+                                   partitiont &partition);
     // Convert a specific partition gotos of SSA steps
     void convert_partition_goto_instructions(check_opensmt2t &decider,
                                              partitiont& partition);

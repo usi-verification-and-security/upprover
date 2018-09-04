@@ -425,22 +425,22 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assertions(
-        check_opensmt2t &decider, partitiont& partition)
+        convertort &convertor, partitiont &partition)
 {
     unsigned number_of_assumptions = 0;
     const partition_ifacet& partition_iface = partition.get_iface();
 
     bvt error_lits;
 
-    literalt assumption_literal = decider.get_const_literal(true);
-    literalt var_constraints_lit = decider.get_and_clear_var_constraints();
+    literalt assumption_literal = convertor.get_const_literal(true);
+    literalt var_constraints_lit = convertor.get_and_clear_var_constraints();
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if(it->ignore) {continue;} // ignored instructions can be skippied
         if (it->is_assert()) {
 
             // Collect ass \in assertions(f) in bv
-            literalt tmp_literal = decider.land(decider.convert_bool_expr(it->cond_expr), var_constraints_lit);
-            it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
+            literalt tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
+            it->cond_literal = convertor.limplies(assumption_literal, tmp_literal);
             error_lits.push_back(!it->cond_literal); // negated literal
         } else if (it->is_assume()) {
             // If the assumption represents a call of the function g,
@@ -456,8 +456,8 @@ void partitioning_target_equationt::convert_partition_assertions(
                 const partition_ifacet& target_partition_iface =
                         target_partition->get_iface();
 
-                literalt tmp = decider.land(assumption_literal,it->guard_literal);
-                decider.set_equal(tmp, target_partition_iface.callstart_literal);
+                literalt tmp = convertor.land(assumption_literal,it->guard_literal);
+                convertor.set_equal(tmp, target_partition_iface.callstart_literal);
 
 #		ifdef DISABLE_OPTIMIZATIONS
                 //out_terms << "XXX Call START equality: \n";
@@ -492,7 +492,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             //
             //     assumption_literal = \land_{ass \in assumptions(f)} ass
             //
-            assumption_literal = decider.land(assumption_literal, it->cond_literal);
+            assumption_literal = convertor.land(assumption_literal, it->cond_literal);
             number_of_assumptions++;
         }
     }
@@ -518,7 +518,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             // MB: at the moment top-level function is artificial nil from CPROVER that calls CPROVER_initialize and main;
             // therefore exactly one error literal (that of main) should be collected at this point
             assert(error_lits.size() == 1);
-            decider.assert_literal(error_lits[0]);
+            convertor.assert_literal(error_lits[0]);
 
 #       ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error in ROOT: " << std::endl;
@@ -566,7 +566,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             }
 #       endif // DISABLE_OPTIMIZATIONS
         } else {
-            decider.set_equal(decider.lor(error_lits), partition_iface.error_literal);
+            convertor.set_equal(convertor.lor(error_lits), partition_iface.error_literal);
 #ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error_f: \n";
             terms_counter++;
@@ -634,8 +634,8 @@ void partitioning_target_equationt::convert_partition_assertions(
         // NOTE: callstart_f \in assumptions(f)
         //
 
-        literalt tmp = decider.limplies(partition_iface.callend_literal, assumption_literal);
-        decider.assert_literal(tmp);
+        literalt tmp = convertor.limplies(partition_iface.callend_literal, assumption_literal);
+        convertor.assert_literal(tmp);
 
 #       ifdef DISABLE_OPTIMIZATIONS
         //out_terms << "XXX Call END implication: \n";
@@ -697,10 +697,10 @@ void partitioning_target_equationt::convert_partition_goto_instructions(
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assumptions(
-        check_opensmt2t &decider, partitiont& partition) {
+        convertort &convertor, partitiont &partition) {
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assume()) {
-            it->cond_literal = it->ignore ? const_literal(true) : decider.convert_bool_expr(it->cond_expr);
+            it->cond_literal = it->ignore ? const_literal(true) : convertor.convert_bool_expr(it->cond_expr);
         }
     }
 }
@@ -717,7 +717,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_io(
-        check_opensmt2t & decider, partitiont & partition) {
+        convertort &convertor, partitiont &partition) {
     for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (!it->ignore) {
             for (std::list<exprt>::const_iterator o_it = it->io_args.begin(); o_it
@@ -728,7 +728,7 @@ void partitioning_target_equationt::convert_partition_io(
                 else {
                     symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)),
                                         tmp.type());
-                    decider.set_to_true(equal_exprt(tmp, symbol));
+                    convertor.set_to_true(equal_exprt(tmp, symbol));
                     it->converted_io_args.push_back(symbol);
                 }
             }
@@ -748,7 +748,7 @@ void partitioning_target_equationt::convert_partition_io(
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
-        check_opensmt2t & decider, partitiont & partition)
+        interpolating_solvert &decider, partitiont &partition)
 {
     auto common_symbs = partition.get_iface().get_iface_symbols();
     unsigned i = 0;
@@ -778,19 +778,19 @@ void partitioning_target_equationt::convert_partition_summary(
 
  \*******************************************************************/
 void partitioning_target_equationt::convert_partition(
-        check_opensmt2t & decider, interpolating_solvert & interpolator,
-        partitiont & partition) {
+        convertort &convertor, interpolating_solvert &interpolator,
+        partitiont &partition) {
     if (partition.ignore) {
         return;
     }
     // Convert the assumption propagation symbols
     partition_ifacet &partition_iface = partition.get_iface();
-    partition_iface.callstart_literal = decider.convert_bool_expr(
+    partition_iface.callstart_literal = convertor.convert_bool_expr(
             partition_iface.callstart_symbol);
-    partition_iface.callend_literal = decider.convert_bool_expr(
+    partition_iface.callend_literal = convertor.convert_bool_expr(
             partition_iface.callend_symbol);
     if (partition_iface.assertion_in_subtree) {
-        partition_iface.error_literal = decider.convert_bool_expr(partition_iface.error_symbol);
+        partition_iface.error_literal = convertor.convert_bool_expr(partition_iface.error_symbol);
     }
     if (partition.is_stub()) {
         return;
@@ -801,16 +801,16 @@ void partitioning_target_equationt::convert_partition(
 
     // If this is a summary partition, apply the summary
     if (partition.has_summary_representation()) {
-        convert_partition_summary(decider, partition);
+        convert_partition_summary(interpolator, partition);
         return;
     }
     // Convert the corresponding SSA steps
 
-    convert_partition_guards(decider, partition);
-    convert_partition_assignments(decider, partition);
-    convert_partition_assumptions(decider, partition);
-    convert_partition_assertions(decider, partition);
-    convert_partition_io(decider, partition);
+    convert_partition_guards(convertor, partition);
+    convert_partition_assignments(convertor, partition);
+    convert_partition_assumptions(convertor, partition);
+    convert_partition_assertions(convertor, partition);
+    convert_partition_io(convertor, partition);
 }
 
 #ifdef PRODUCE_PROOF
@@ -1009,7 +1009,7 @@ std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
     return res;
 }
 
-void partitioning_target_equationt::convert_partition_guards(check_opensmt2t & decider, partitiont & partition) {
+void partitioning_target_equationt::convert_partition_guards(convertort &decider, partitiont &partition) {
     ::convert_guards(decider, partition.start_it, partition.end_it);
 #ifdef DISABLE_OPTIMIZATIONS
     for(auto it = partition.start_it; it != partition.end_it; ++it) {
@@ -1022,7 +1022,7 @@ void partitioning_target_equationt::convert_partition_guards(check_opensmt2t & d
 
 }
 
-void partitioning_target_equationt::convert_partition_assignments(check_opensmt2t & decider, partitiont & partition) {
+void partitioning_target_equationt::convert_partition_assignments(convertort &decider, partitiont &partition) {
     ::convert_assignments(decider, partition.start_it, partition.end_it);
 #ifdef DISABLE_OPTIMIZATIONS
     for(auto it = partition.start_it; it != partition.end_it; ++it) {
