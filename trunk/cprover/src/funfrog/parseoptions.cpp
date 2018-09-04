@@ -165,6 +165,31 @@ namespace {
     }
 }
 */
+
+/*******************************************************************
+
+ Function: funfrog_parseoptionst::set_default_options
+
+ MB: taken from cbmc_parse_optionst::set_default_options;
+ especially simplify must be set to true
+
+\*******************************************************************/
+void funfrog_parseoptionst::set_default_options(optionst &options)
+{
+    // Default true
+    options.set_option("assertions", true);
+    options.set_option("assumptions", true);
+    options.set_option("built-in-assertions", true);
+    options.set_option("pretty-names", true);
+    options.set_option("propagation", true);
+    options.set_option("sat-preprocessor", true);
+    options.set_option("simplify", true);
+    options.set_option("simplify-if", true);
+
+    // Other default
+    options.set_option("arrays-uf", "auto");
+}
+
 /*******************************************************************
 
  Function: funfrog_parseoptionst::process_goto_program
@@ -752,6 +777,8 @@ bool funfrog_parseoptionst::check_function_summarization()
 \*******************************************************************/
 void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
+  set_default_options(options);
+
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("div-by-zero-check", cmdline.isset("div-by-zero-check"));
