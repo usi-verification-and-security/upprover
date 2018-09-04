@@ -24,7 +24,7 @@ public:
     
     void convert_to_formula(check_opensmt2t &decider,interpolating_solvert &interpolator);
 
-    void error_trace(check_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
+    void error_trace(solvert &solver, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
 
     bool is_satisfiable(solvert & decider);
 private:

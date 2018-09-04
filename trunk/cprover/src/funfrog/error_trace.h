@@ -3,6 +3,7 @@
 
 #include <util/expr.h>
 #include <goto-programs/goto_trace.h>
+#include <funfrog/interface/solver/solver.h>
 #include "partitioning_target_equation.h"
 
 class check_opensmt2t;
@@ -25,15 +26,15 @@ public:
 	virtual ~error_tracet() {}
 
 	void build_goto_trace(
-			  const SSA_steps_orderingt& SSA_steps,
-			  check_opensmt2t &decider);
+			const SSA_steps_orderingt &SSA_steps,
+			solvert &solver);
         
 	void show_goto_trace(
 	  std::ostream &out,
 	  const namespacet &ns,
 	  std::map<irep_idt, std::string> &guard_expln); // MAIN: from prepare_smt_formula
 
-     error_tracet::isOverAppoxt is_trace_overapprox(check_opensmt2t &decider, const SSA_steps_orderingt& SSA_steps);
+     error_tracet::isOverAppoxt is_trace_overapprox(solvert &solver, const SSA_steps_orderingt &SSA_steps);
 
 
         ////////////////////////////////////////////

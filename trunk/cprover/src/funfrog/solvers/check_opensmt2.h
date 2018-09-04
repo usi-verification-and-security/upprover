@@ -62,8 +62,7 @@ public:
     { logic->dumpHeaderToFile(dump_out); }
 
     vec<Tterm> & get_functions() { return getLogic()->getFunctions();}
-  
-    virtual bool is_overapprox_encoding() const = 0;
+
 
     fle_part_idt new_partition() override;
 
