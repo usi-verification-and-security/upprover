@@ -16,6 +16,7 @@ class namespacet;
 class partitioning_target_equationt;
 class check_opensmt2t;
 class interpolating_solvert;
+class solvert;
 
 class prepare_formulat
 {
@@ -31,7 +32,7 @@ public:
 
     void error_trace(check_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
 
-    bool is_satisfiable(check_opensmt2t& decider);
+    bool is_satisfiable(solvert & decider);
 private:
 
     // Store for the symex result

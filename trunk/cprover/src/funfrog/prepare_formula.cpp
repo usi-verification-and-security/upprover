@@ -12,6 +12,7 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2.h"
 #include "partitioning_target_equation.h"
+#include "interface/solver/solver.h"
 
 time_periodt global_satsolver_time;
 
@@ -50,7 +51,7 @@ void prepare_formulat::convert_to_formula(check_opensmt2t &decider, interpolatin
 \*******************************************************************/
 
 bool prepare_formulat::is_satisfiable(
-		check_opensmt2t& decider)
+		solvert& decider)
 {
   absolute_timet before, after;
   before=current_time();
