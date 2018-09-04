@@ -914,7 +914,7 @@ void reload_summaries(const namespacet &ns,
         {
             // Get the old token we wish to abstract
             std::string new_token = fresh_var_name_nonlinear();
-            prev_solver.getLogic()->mkVar(prev_solver.getURealSortRef(), new_token.c_str());
+            prev_solver.getLogic()->mkVar(prev_solver.get_numeric_sort(), new_token.c_str());
             // New Unsupported Var with no specific mapping or information saved
             
             // The symbol name in the old token

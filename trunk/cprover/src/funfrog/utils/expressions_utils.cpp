@@ -18,3 +18,25 @@ void getVarsInExpr(exprt & e, std::set<exprt> & vars) {
     }
 }
 
+
+/*******************************************************************\
+
+Function: create_bound_string
+
+ Inputs: 
+
+ Outputs: 
+
+ Purpose: for type constraints of CUF and LRA
+ * Was part of smtcheck_opensmt2t originally
+
+\*******************************************************************/
+std::string create_bound_string(std::string base, int exp)
+{
+    std::string ret = base;
+    int size = exp - base.size() + 1; // for format 3.444444
+    for (int i=0; i<size;i++)
+        ret+= "0";
+
+    return ret;
+}

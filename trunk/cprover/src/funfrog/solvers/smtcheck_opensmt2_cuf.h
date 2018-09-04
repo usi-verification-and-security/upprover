@@ -59,6 +59,8 @@ public:
 
   std::string get_refinement_failure_reason() { return unsupported_info.get_failure_reason(id2string(_fails_type_id)); } 
   
+  virtual SRef get_numeric_sort() const override {return uflogic->getSort_CUFNUM();}
+  
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -101,10 +103,6 @@ protected:
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
   
   PTRef labs_bv(const exprt &expr); // from convert for ID_abs
-
-  // Inner use only to create UF functions (needed in UF and Mix-Encoding)  
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
 
 };
 

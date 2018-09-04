@@ -154,7 +154,7 @@ void check_opensmt2t::convert(const std::vector<literalt> &bv, vec<PTRef> &args)
         // we never use 'unused_var_no' (cnf.cpp)
         assert(lit.var_no()!=literalt::unused_var_no());
 
-        PTRef var = literalToPTRef(lit);
+        PTRef var = literal_to_ptref(lit);
         args.push(var);
     }
 }

@@ -20,19 +20,17 @@ public:
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor
 
-    virtual PTRef expression_to_ptref(const exprt & expr) override;
 
     virtual literalt const_from_str(const char* num);
+    
+    virtual literalt get_and_clear_var_constraints() override;
+    
+    virtual PTRef expression_to_ptref(const exprt & expr) override;
 
     virtual PTRef numeric_constant(const exprt & expr) override;
-
-    virtual literalt get_and_clear_var_constraints() override
-    {
-        literalt res = push_variable(ptr_assert_var_constraints);
-        ptr_assert_var_constraints = logic->getTerm_true();
-        return res;
-    }
-
+    
+    virtual SRef get_numeric_sort() const override {return lalogic->getSort_num();}
+    
 protected:
   LALogic* lalogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
@@ -40,12 +38,6 @@ protected:
   PTRef ptr_assert_var_constraints;
 
   unsigned int type_constraints_level; // The level of checks in LA for numerical checks of overflow
-
-    virtual void add_symbol_constraints(const exprt &expr, const PTRef var) override {
-        if(type_constraints_level > 0){
-            add_constraints2type(expr, var);
-        }
-    }
 
     virtual PTRef type_cast(const exprt & expr) override;
 
@@ -65,6 +57,13 @@ protected:
   
   virtual bool is_non_linear_operator(PTRef tr) const override;
 
+  
+    virtual void add_symbol_constraints(const exprt &expr, const PTRef var) override {
+        if(type_constraints_level > 0){
+            add_constraints2type(expr, var);
+        }
+    }
+      
   /* Set of functions that add constraints to take care of overflow and underflow */
   void add_constraints2type(const exprt & expr, const PTRef var); // add assume/assert on the data type
 

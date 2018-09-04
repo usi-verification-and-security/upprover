@@ -13,13 +13,6 @@ Author: Grigory Fedyukovich
 #include "../utils/naming_helpers.h"
 #include <funfrog/utils/containers_utils.h>
 
-// Debug flags of this class:
-//#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
-//#define DEBUG_SMT_ITP
-//#define DEBUG_SMT2SOLVER
-
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 using namespace std;
@@ -47,8 +40,9 @@ Function: smtcheck_opensmt2t::push_variable
 
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
+literalt smtcheck_opensmt2t::ptref_to_literal(PTRef ptl) {
     assert(getLogic()->hasSortBool(ptl));
+    if (getLogic()->isTrue(ptl)) { return const_literal(true); }
 	literalt l (ptrefs.size(), false);
 	ptrefs.push_back(ptl);
 	return l;
@@ -62,7 +56,7 @@ bool smtcheck_opensmt2t::is_assignment_true(literalt a) const
   else if (a.is_false())
     return false;
 
-  ValPair a_p = mainSolver->getValue(ptrefs[a.var_no()]);
+  ValPair a_p = mainSolver->getValue(literal_to_ptref(a));
   return ((*a_p.val == *true_str) ^ (a.sign()));
 }
 
@@ -74,8 +68,8 @@ void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
@@ -84,33 +78,33 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     vec<PTRef> args;
-    PTRef pl1 = literalToPTRef(l1);
-    PTRef pl2 = literalToPTRef(l2);
+    PTRef pl1 = literal_to_ptref(l1);
+    PTRef pl2 = literal_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkOr(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 literalt smtcheck_opensmt2t::lor(const bvt& bv){
     vec<PTRef> args;
     for(auto lit : bv)
     {
-        PTRef tmpp = literalToPTRef(lit);
+        PTRef tmpp = literal_to_ptref(lit);
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    return push_variable(ans);
+    return ptref_to_literal(ans);
 }
 
 PTRef smtcheck_opensmt2t::constant_to_ptref(const exprt & expr){
@@ -249,8 +243,8 @@ bool smtcheck_opensmt2t::solve() {
 
   // Dump pre-queries if needed
 #ifdef DISABLE_OPTIMIZATIONS
-    ofstream out_smt;
     if (dump_pre_queries) {
+        ofstream out_smt;
         //std::cout << ";; Open file " << (pre_queries_file_name + "_X.smt2") << " for pre queries" << std::endl;
         out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
@@ -268,10 +262,7 @@ bool smtcheck_opensmt2t::solve() {
             char * s = logic->printTerm(top_level_formulas[i]);
             out_smt << "(assert \n" << s << "\n)\n";
             free(s);
-            s=nullptr;
         }
-    } 
-    if (dump_pre_queries) {
         out_smt << "(check-sat)\n" << endl;
         out_smt.close();
     }
@@ -291,29 +282,6 @@ bool smtcheck_opensmt2t::solve() {
     }
 
     return false;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::getVars
-
-  Inputs: -
-
- Outputs: a set of all variables that used in the smt formula
-
- Purpose: get all the vars to create later on the counter example path
-
-\*******************************************************************/
-set<PTRef> smtcheck_opensmt2t::getVars() const
-{
-    std::set<PTRef> ret;
-    std::set<PTRef> seen;
-    auto is_var = [this](const PTRef ptref) { return logic->isVar(ptref); };
-    for(const PTRef ptref : ptrefs)
-    {
-        collect_rec(is_var, ptref, ret, seen);
-    }
-    return ret;
 }
 
 /*******************************************************************\
@@ -430,27 +398,6 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 }
 
 /*******************************************************************\
-
-Function: smtcheck_opensmt2t::create_bound_string
-
- Inputs: 
-
- Outputs: 
-
- Purpose: for type constraints of CUF and LRA
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
-{
-    std::string ret = base;
-    int size = exp - base.size() + 1; // for format 3.444444
-    for (int i=0; i<size;i++)
-        ret+= "0";
-
-    return ret;
-}
-
-/*******************************************************************\
  * 
 Function: smtcheck_opensmt2t::store_new_unsupported_var
 
@@ -459,7 +406,7 @@ Function: smtcheck_opensmt2t::store_new_unsupported_var
  Outputs: 
 
  Purpose: Keep which expressions are not supported and abstracted from 
- * the smt encoding
+ * the smt encoding - for convert purpose only (local use)
 
 \*******************************************************************/
 void smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var) {
@@ -469,26 +416,7 @@ void smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRe
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::get_smt_func_decl
-
- Inputs: name of the function and its signature
-
- Outputs: the function declarations
-
- Purpose: to create new custom function to smt from summaries
-
-\*******************************************************************/
-SymRef smtcheck_opensmt2t::get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt) {
-    char *msg=nullptr;
-    SymRef ret = logic->declareFun(op, in_dt, out_dt, &msg, true);
-    if (msg != nullptr) free(msg);
-
-    return ret;    
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::create_equation_for_unsupported
+Function: smtcheck_opensmt2t::create_unsupported_uf_call
 
   Inputs:
 
@@ -500,69 +428,25 @@ Function: smtcheck_opensmt2t::create_equation_for_unsupported
  *  function name+size of args+type. 
  *  Add a new ptref of the use for this expression
 \*******************************************************************/
-PTRef smtcheck_opensmt2t::create_equation_for_unsupported(const exprt &expr)
+PTRef smtcheck_opensmt2t::create_unsupported_uf_call(const exprt &expr)
 {  
-    // extract parameters to the call
+    // Interface function - declare_unsupported_function shall work for any solver 
+    // KE: do not refactor and sent args to the method, shall work for any solver!
+    std::string decl_str = unsupported_info.declare_unsupported_function(expr);
+    if (decl_str.size() == 0)
+        return PTRef_Undef;
+    
+    SymRef decl = unsupported_info.get_declaration(decl_str);
+    
     vec<PTRef> args;
-    get_unsupported_op_args(expr, args);
+    get_function_args(expr, args);
     
-    // Define the function if needed and check it is OK
-    SymRef decl = get_unsupported_op_func(expr, args);
-    
-#ifdef SMT_DEBUG    
-    std::cout << ";;; Use Unsupported function: " << logic->printSym(decl) << std::endl;
-#endif    
-    
-    return mkFun(decl, args);
+    return mkFun(decl,args);
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::get_unsupported_op_func
-
-  Inputs:
-
- Outputs: the usupported operator symbol to be used later in
- * mkFun method
-
- Purpose:
- *  If not exist yet, creates a new declartion in OpenSMT with 
- *  function name+size of args+type. 
-\*******************************************************************/
-SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args)
-{
-    const irep_idt &_func_id=expr.id(); // Which function we will add as uninterpurted
-    std::string func_id(_func_id.c_str());
-    func_id = "uns_" + func_id;
-    
-    // First declare the function, if not exist
-    std::string key_func(func_id.c_str());
-    key_func += "," + getStringSMTlibDatatype(expr);
-    SRef out = getSMTlibDatatype(expr);
-
-    vec<SRef> args_decl;
-    for (int i=0; i < args.size(); i++) 
-    {
-        args_decl.push(logic->getSortRef(args[i]));
-        key_func += "," + std::string(logic->getSortName(logic->getSortRef(args[i])));
-    }
-    
-    // Define the function if needed and check it is OK
-    SymRef decl = SymRef_Undef;
-    if (decl_uninterperted_func.count(key_func) == 0) {
-        decl = get_smt_func_decl(func_id.c_str(), out, args_decl);
-        decl_uninterperted_func.insert(std::pair<std::string, SymRef> (key_func,decl));
-    } else {
-        decl = decl_uninterperted_func.at(key_func);
-    }
-    assert(decl != SymRef_Undef);
-    
-    return decl;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::get_unsupported_op_args
+Function: smtcheck_opensmt2t::get_function_args
 
   Inputs:
 
@@ -571,18 +455,37 @@ Function: smtcheck_opensmt2t::get_unsupported_op_args
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t::get_unsupported_op_args(const exprt &expr, vec<PTRef> &args)
+bool smtcheck_opensmt2t::get_function_args(const exprt &expr, vec<PTRef>& args)
 {
+    // True: at least one arg is unsupported
+    bool res = false;
+    
     // The we create the new call
     for(auto const & operand : expr.operands())
     {	
-        if (is_cprover_rounding_mode_var(operand)) continue;
+        if (is_cprover_rounding_mode_var(operand)) 
+        {
+            if (expr.id() == ID_mult) continue;
+            if (expr.id() == ID_div) continue;
+            if (expr.id() == ID_floatbv_mult) continue;
+            if (expr.id() == ID_floatbv_div) continue;
+        }
         // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+        // if crush right after this call, add the skip case to the list above
 
+        // Convert
         PTRef cp = expression_to_ptref(operand);
         assert(cp != PTRef_Undef);
         args.push(cp); // Add to call
+        
+        // Check if unsupported by convert
+        char* s_trm = logic->printTerm(cp);
+        if (std::string(s_trm).find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+            res = true;
+        free(s_trm);
     }
+    
+    return res;
 }
 
 /*******************************************************************\
@@ -608,7 +511,8 @@ PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getStringSMTlibDatatype
+Function: smtcheck_opensmt2t::to_string_smtlib_datatype
+ * getStringSMTlibDatatype -> to_string_smtlib_datatype
 
   Inputs:
 
@@ -616,23 +520,25 @@ Function: smtcheck_opensmt2t::getStringSMTlibDatatype
 
  Purpose:
 
+ * For exprt, use typet type = expr.type(); // Get the current type
 \*******************************************************************/
-std::string smtcheck_opensmt2t::getStringSMTlibDatatype(const exprt& expr)
+std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet & type)
 {
-    typet var_type = expr.type(); // Get the current type
-    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
-        return getStringSMTlibDatatype(var_type);
-    else {
-
-        PTRef var = unsupported_to_var(expr);
-        
-        return std::string(logic->getSortName(logic->getSortRef(var)));
-    }
+    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
+        return SMTConstants::SMT_BOOL;
+    
+    // If not bool we assume it is a number
+    SRef name = get_numeric_sort();
+    return std::string(logic->getSortName(name));
+    
+    //return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
+
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getSMTlibDatatype
+Function: smtcheck_opensmt2t::get_smtlib_datatype
+ * getSMTlibDatatype --> get_smtlib_datatype
 
   Inputs:
 
@@ -641,15 +547,16 @@ Function: smtcheck_opensmt2t::getSMTlibDatatype
  Purpose:
 
 \*******************************************************************/
-SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
+SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet & type)
 {
-    typet var_type = expr.type(); // Get the current type
-    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
-        return getSMTlibDatatype(var_type);
-    else {
-        PTRef var = unsupported_to_var(expr);
-        return logic->getSortRef(var);
-    }
+    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
+        return logic->getSort_bool();
+    if (is_number(type))
+        return get_numeric_sort();
+    
+    // Assume arrays/pointer assume an numeric presentation
+    //std::cout << "Warning: Unknown datatype encountered!\n";
+    return get_numeric_sort();
 }
 
 #ifdef PRODUCE_PROOF
@@ -765,14 +672,6 @@ void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
   logic->varsubstitute(old_root, subst, new_root);
   this->set_to_true(new_root);
   ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
-}
-
-void smtcheck_opensmt2t::lcnf(const bvt & bv) {
-    vec<PTRef> args;
-    for(auto lit : bv){
-        args.push(literalToPTRef(lit));
-    }
-    current_partition.push_back(logic->mkOr(args));
 }
 
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {

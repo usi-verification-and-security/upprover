@@ -42,10 +42,6 @@ public:
     {
         return lor(!a, b);
     }
-    // virtual void set_equal(literalt l1, literalt l2) = 0;  //SA: moved to interface class convertort
-
-    // assert this clause to the solver
-    virtual void lcnf(const std::vector<literalt> & lits) = 0;
 
     template<typename Container>
     void assert_literals(const Container& c){
@@ -66,7 +62,7 @@ public:
         assert_literal(!l); // assert the negation
     }
 
-    Logic* getLogic() {return logic;}
+    Logic* getLogic() const {return logic;}
 
     void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
 
@@ -179,7 +175,7 @@ protected:
     virtual void set_random_seed(unsigned int i) override;
      
     // Used only in check_opensmt2 sub-classes
-    PTRef literalToPTRef(literalt l) {
+    PTRef literal_to_ptref(literalt l) const {
         if(l.is_constant()){
             return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
         }
