@@ -844,13 +844,13 @@ namespace{
  the corresponding partitions
 
  \*******************************************************************/
-void partitioning_target_equationt::convert(check_opensmt2t &decider,
-                                                interpolating_solvert &interpolator) {
+void partitioning_target_equationt::convert(convertort &convertor,
+                                            interpolating_solvert &interpolator) {
 #ifdef DISABLE_OPTIMIZATIONS
     getFirstCallExpr(); // Save the first call to the first function
 #endif
     for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
-        convert_partition(decider, interpolator, *it);
+        convert_partition(convertor, interpolator, *it);
 #   ifdef DISABLE_OPTIMIZATIONS
         if (it->get_fle_part_ids().empty()) { continue;} // NO conversion happend
         out_basic << "XXX Partition: " << it->get_fle_part_ids().back() << " (ass_in_subtree: "

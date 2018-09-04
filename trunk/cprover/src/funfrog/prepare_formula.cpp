@@ -24,11 +24,11 @@ time_periodt global_satsolver_time;
  Purpose: Converts SSA form to SMT formula
 
 \*******************************************************************/
-void prepare_formulat::convert_to_formula(check_opensmt2t &decider, interpolating_solvert &interpolator)
+void prepare_formulat::convert_to_formula(convertort &convertor, interpolating_solvert &interpolator)
 {
   absolute_timet before, after;
   before=current_time();
-  equation.convert(decider, interpolator);
+  equation.convert(convertor, interpolator);
 
   after=current_time();
 

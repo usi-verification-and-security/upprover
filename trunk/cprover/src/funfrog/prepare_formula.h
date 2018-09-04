@@ -4,6 +4,7 @@
 
 #include <util/message.h>
 #include <util/ui_message.h>
+#include <funfrog/interface/convertor.h>
 
 class assertion_infot;
 class namespacet;
@@ -22,7 +23,7 @@ public:
         : message{_message_handler},
           equation(_target) {};
     
-    void convert_to_formula(check_opensmt2t &decider,interpolating_solvert &interpolator);
+    void convert_to_formula(convertort &convertor, interpolating_solvert &interpolator);
 
     void error_trace(solvert &solver, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
 

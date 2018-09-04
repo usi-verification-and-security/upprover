@@ -89,7 +89,7 @@ public:
 
   void extract_interpolants(check_opensmt2t& decider);
 
-  void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator);
+  void convert(convertort &prop_conv, interpolating_solvert &interpolator);
 
   partitionst& get_partitions() { return partitions; }
 
