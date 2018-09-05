@@ -27,7 +27,6 @@ different deferred functions.
 #include "partition.h"
 
 class partition_ifacet;
-class check_opensmt2t;
 class interpolating_solvert;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
@@ -87,7 +86,7 @@ public:
     return SSA_steps_exec_order;
   }
 
-  void extract_interpolants(check_opensmt2t& decider);
+  void extract_interpolants(interpolating_solvert &interpolator);
 
   void convert(convertort &prop_conv, interpolating_solvert &interpolator);
 
@@ -126,11 +125,11 @@ protected:
     void convert_partition_io(convertort &convertor,
                               partitiont &partition);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_partition_summary(interpolating_solvert &decider,
+    void convert_partition_summary(interpolating_solvert &interpolator,
                                    partitiont &partition);
     // Convert a specific partition gotos of SSA steps
-    void convert_partition_goto_instructions(check_opensmt2t &decider,
-                                             partitiont& partition);
+    void convert_partition_goto_instructions(convertort &convertor,
+                                             partitiont &partition);
 
   // Id of the currently selected partition
   partition_idt current_partition_id;

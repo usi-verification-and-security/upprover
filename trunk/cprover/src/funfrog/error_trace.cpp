@@ -243,10 +243,10 @@ used in the theory-refinement algorithm
 
 Purpose: CEX extraction
 \*******************************************************************/
-void error_tracet::build_goto_trace_formula (
-  std::vector<exprt>& exprs,
-  std::map<const exprt, int>& model,
-  smtcheck_opensmt2t &decider)
+void error_tracet::build_goto_trace_formula(
+        std::vector<exprt> &exprs,
+        std::map<const exprt, int> &model,
+        solvert &solver)
 {
     std::set<exprt> vars;
     std::map<const irep_idt, std::vector<exprt>*> non_interp_classes;
@@ -259,7 +259,7 @@ void error_tracet::build_goto_trace_formula (
 
     for (auto it = vars.begin(); it != vars.end(); ++it)
     {
-        exprt val = decider.get_value(*it);
+        exprt val = solver.get_value(*it);
 
         const irep_idt val_val = val.get(ID_value);
         if (val_val.size() == 0) continue;

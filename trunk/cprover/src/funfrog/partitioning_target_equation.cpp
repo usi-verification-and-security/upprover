@@ -7,7 +7,6 @@
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
 #include "summary_info.h"
-#include "solvers/check_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
 #include "conversion_utils.h"
@@ -674,11 +673,11 @@ void partitioning_target_equationt::convert_partition_assertions(
  *  KE: added after the cprover upgrade
  \*******************************************************************/
 void partitioning_target_equationt::convert_partition_goto_instructions(
-        check_opensmt2t &decider, partitiont& partition)
+        convertort &convertor, partitiont &partition)
 {
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_goto()) {
-            it->cond_literal = it->ignore ? const_literal(true) : decider.convert_bool_expr(it->cond_expr);
+            it->cond_literal = it->ignore ? const_literal(true) : convertor.convert_bool_expr(it->cond_expr);
         }
     }
 }
@@ -746,7 +745,7 @@ void partitioning_target_equationt::convert_partition_io(
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
-        interpolating_solvert &decider, partitiont &partition)
+        interpolating_solvert &interpolator, partitiont &partition)
 {
     auto common_symbs = partition.get_iface().get_iface_symbols();
     unsigned i = 0;
@@ -760,7 +759,7 @@ void partitioning_target_equationt::convert_partition_summary(
         if ((!is_recursive || last_summary == i++)) {
             // we do not want to actually change the summary, because we might need the template later,
             // we just get a PTRef to the substituted version
-            decider.insert_substituted(summary, common_symbs);
+            interpolator.insert_substituted(summary, common_symbs);
         }
     }
 }
@@ -887,7 +886,7 @@ void partitioning_target_equationt::convert(convertort &convertor,
  Purpose:
 
  \*******************************************************************/
-void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decider) {
+void partitioning_target_equationt::extract_interpolants(interpolating_solvert &interpolator) {
 #ifdef PRODUCE_PROOF
     // Prepare the interpolation task. NOTE: ignore the root partition!
     unsigned valid_tasks = 0;
@@ -930,7 +929,7 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
     // Interpolate...
     interpolantst itp_result;
     itp_result.reserve(valid_tasks);
-    decider.get_interpolant(itp_task, itp_result);
+    interpolator.get_interpolant(itp_task, itp_result);
 
     // Interpret the result
     for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
@@ -968,7 +967,7 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
 
     std::cout << "Generalizing interpolant" << std::endl;
 #   endif
-        decider.generalize_summary(itp, common_symbs);
+        interpolator.generalize_summary(itp, common_symbs);
 
         if (itp->is_trivial()) {
             continue;
