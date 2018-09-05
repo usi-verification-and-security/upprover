@@ -135,11 +135,11 @@ void error_tracet::build_goto_trace(
   }
 }
 /*******************************************************************\
- * LRA-version of the CE-formula (obsolete).
- * analogous to the CUF-version (see next method)
- * used for debugging / comparison with CUF-version
- * (not in the theory-refinement algorithm)
+ * experimental LRA-version of the CE-formula (obsolete).
+ * Only used for debugging / comparison with CUF-version (see next method)
+(SA: Currently this is not in the theory-refinement core algorithm, but DONOT delete it)
 \*******************************************************************/
+/*
 void error_tracet::build_goto_trace_formula (
   partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider,
@@ -234,6 +234,7 @@ void error_tracet::build_goto_trace_formula (
   decider2.close_partition();
   std::cout << "CE-formula constructed\n";
 }
+*/
 
 /*******************************************************************\
 
@@ -264,6 +265,7 @@ void error_tracet::build_goto_trace_formula (
         if (val_val.size() == 0) continue;
 
         int ptr;
+        //handling CUF values (n, u, a) in the CE-formula construction
         if (val_val[0] == 'n'){
             ptr = atoi(val_val.c_str() + 1);
 		    // store the max value among n-values (will be used after the loop):

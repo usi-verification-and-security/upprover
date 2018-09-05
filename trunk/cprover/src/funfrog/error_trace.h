@@ -38,16 +38,16 @@ public:
 
 
         ////////////////////////////////////////////
-        // Versions for Specific paper(s): 
-	void build_goto_trace_formula (
+// Theoref lra experimental version; for now it is commented out
+/*	void build_goto_trace_formula (
 	  partitioning_target_equationt &target,
 	  smtcheck_opensmt2t &decider,
-	  smtcheck_opensmt2t_lra &decider2); // Theoref lra version
+	  smtcheck_opensmt2t_lra &decider2); */
 
-	void build_goto_trace_formula (
-	  std::vector<exprt>& exprs,
-	  std::map<const exprt, int>& model,
-	  smtcheck_opensmt2t &decider);
+	void build_goto_trace_formula(
+            std::vector<exprt> &exprs,
+            std::map<const exprt, int> &model,
+            solvert &solver);
 
 
 private:
