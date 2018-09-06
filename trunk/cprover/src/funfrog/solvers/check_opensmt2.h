@@ -44,7 +44,7 @@ public:
         assert_literal(l);
     }
 
-    void set_to_false(const exprt &expr){
+    void set_to_false(const exprt &expr) override{
         literalt l = convert_bool_expr(expr);
         assert_literal(!l); // assert the negation
     }

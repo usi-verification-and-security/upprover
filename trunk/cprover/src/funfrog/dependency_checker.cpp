@@ -14,7 +14,6 @@
 #include "nopartition/hifrog_symex_target_equation_no_partition.h"
 #include "subst_scenario.h"
 #include "partitioning_target_equation.h"
-#include "solvers/check_opensmt2.h"
 #include "solvers/satcheck_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "conversion_utils.h"
@@ -658,7 +657,7 @@ long dependency_checkert::find_implications() {
 }
 
 void dependency_checkert::convert_assumptions(
-        check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
+        convertort &convertor, SSA_steps_it &it1, SSA_steps_it &it2)
 {
     SSA_steps_it it=it1;
     while(it!=it2)
@@ -666,24 +665,24 @@ void dependency_checkert::convert_assumptions(
         if(((*it).is_assume() || ((*it).is_assert() && it != it2)) && !(*it).ignore)
         {
             //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
-            decider.set_to_true((*it).cond_expr);
-            set_guards_to_true(decider, ((*it).cond_expr));
+            convertor.set_to_true((*it).cond_expr);
+            set_guards_to_true(convertor, ((*it).cond_expr));
         }
         it++;
     }
 }
 
 void dependency_checkert::convert_assertions(
-        check_opensmt2t &decider, SSA_steps_it &it2)
+        convertort &convertor, SSA_steps_it &it2)
 {
     assert((*it2).is_assert());
     //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
-    set_guards_to_true(decider, ((*it2).cond_expr));
-    decider.set_to_false((*it2).cond_expr);
+    set_guards_to_true(convertor, ((*it2).cond_expr));
+    convertor.set_to_false((*it2).cond_expr);
 }
 
 void dependency_checkert::convert_io(
-        check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
+        convertort &convertor, SSA_steps_it &it1, SSA_steps_it &it2)
 {
     unsigned io_count=0;
     SSA_steps_it it=it1;
@@ -705,7 +704,7 @@ void dependency_checkert::convert_io(
                 symbol_exprt symbol;
                 symbol.type()=tmp.type();
                 symbol.set_identifier(CProverStringConstants::IO_CONST + std::to_string(io_count++));
-                decider.set_to_true(equal_exprt(tmp, symbol));
+                convertor.set_to_true(equal_exprt(tmp, symbol));
                 (*it).converted_io_args.push_back(symbol);
             }
         }
@@ -713,30 +712,30 @@ void dependency_checkert::convert_io(
     }
 }
 
-void dependency_checkert::set_guards_to_true(check_opensmt2t &decider, const exprt& exp){
+void dependency_checkert::set_guards_to_true(convertort &convertor, const exprt &exp){
     if (exp.has_operands())
     {
         for (unsigned i = 0; i < exp.operands().size(); i++){
-            set_guards_to_true(decider, exp.operands()[i] );
+            set_guards_to_true(convertor, exp.operands()[i] );
         }
     } else {
         // TODO: find a more clever way of identifying guards
         if ((from_expr(ns, "", exp)).find("guard") == 1){
             //std::cout << " -> set to true " << from_expr(SSA_map[exp]) << "\n";
-            decider.set_to_true(SSA_map[exp]);
+            convertor.set_to_true(SSA_map[exp]);
 
         }
     }
 }
 
-void dependency_checkert::convert_delta_SSA(check_opensmt2t &decider,
-                                                 SSA_steps_it &it1, SSA_steps_it &it2)
+void dependency_checkert::convert_delta_SSA(convertort &convertor,
+                                            SSA_steps_it &it1, SSA_steps_it &it2)
 {
-    convert_guards(decider, it1, it2);
-    convert_assignments(decider, it1, it2);
-    convert_assumptions(decider, it1, it2);
-    convert_assertions(decider, it2);
-    convert_io(decider, it1, it2);
+    convert_guards(convertor, it1, it2);
+    convert_assignments(convertor, it1, it2);
+    convert_assumptions(convertor, it1, it2);
+    convert_assertions(convertor, it2);
+    convert_io(convertor, it1, it2);
 }
 
 std::pair<bool, fine_timet>

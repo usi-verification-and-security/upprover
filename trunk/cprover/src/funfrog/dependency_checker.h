@@ -10,14 +10,13 @@
 
 #include <funfrog/utils/UnionFind.h>
 #include <map>
+#include <funfrog/interface/convertor.h>
 
-
-class hifrog_symex_target_equationt;
 class goto_programt;
 class namespacet;
 class subst_scenariot;
 class partitioning_target_equationt;
-class check_opensmt2t;
+class hifrog_symex_target_equationt;
 
 #define INDEPT false
 #define DEPT true
@@ -102,11 +101,11 @@ protected:
   
   void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);
 
-    void convert_delta_SSA(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
-    void convert_assumptions(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
-    void convert_assertions(check_opensmt2t &decider, SSA_steps_it &it2);
-    void convert_io(check_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
-    void set_guards_to_true(check_opensmt2t &decider, const exprt& exp);
+    void convert_delta_SSA(convertort &convertor, SSA_steps_it &it1, SSA_steps_it &it2);
+    void convert_assumptions(convertort &convertor, SSA_steps_it &it1, SSA_steps_it &it2);
+    void convert_assertions(convertort &convertor, SSA_steps_it &it2);
+    void convert_io(convertort &convertor, SSA_steps_it &it1, SSA_steps_it &it2);
+    void set_guards_to_true(convertort &convertor, const exprt &exp);
 };
 
 extern inline bool operator<(

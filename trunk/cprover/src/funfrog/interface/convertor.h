@@ -13,6 +13,8 @@ public:
 
     virtual void set_to_true(const exprt &expr) = 0; // Common to all
 
+    virtual void set_to_false(const exprt &expr) = 0;  // it is only used in dependency check and no-partition
+
     virtual void set_equal(literalt l1, literalt l2) = 0; // Common to all
 
     virtual literalt land(literalt l1, literalt l2) = 0; // Common to all

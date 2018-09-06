@@ -9,7 +9,6 @@
 class assertion_infot;
 class namespacet;
 class partitioning_target_equationt;
-class check_opensmt2t;
 class interpolating_solvert;
 class solvert;
 

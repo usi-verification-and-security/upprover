@@ -80,7 +80,7 @@ public:
   
   std::string getSimpleHeader(); // Get all the declarations without the variables
  
-  virtual exprt get_value(const exprt &expr) override;
+  exprt get_value(const exprt &expr) override;
 
   void dump_function(std::ostream& out, const Tterm& templ) {
       logic->dumpFunction(out, templ);
