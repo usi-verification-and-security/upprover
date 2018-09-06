@@ -1,11 +1,10 @@
-/* 
- * File:   smt_symex_target_equation.h
+/*******************************************************************
+ * File:   hifrog_symex_target_equation_no_partition.h
  * Author: karinek
- *
- * Created on 21 April 2017, 11:33
- */
-#ifndef SMT_SYMEX_TARGET_EQUATIONT_H
-#define SMT_SYMEX_TARGET_EQUATIONT_H
+ * Created on 21 April 2017
+ *******************************************************************/
+#ifndef HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H
+#define HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H
 
 #include <goto-symex/symex_target_equation.h>
 
@@ -117,4 +116,4 @@ public:
     unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 };
 
-#endif /* SMT_SYMEX_TARGET_EQUATIONT_H */
+#endif /* HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H */

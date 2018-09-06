@@ -1,9 +1,8 @@
-/* 
+/*******************************************************************
  * File:   smt_assertion_no_partition.cpp
  * Author: karinek
- * 
- * Created on 27 April 2017, 10:56
- */
+ * Created on 27 April 2017
+ *******************************************************************/
 
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>

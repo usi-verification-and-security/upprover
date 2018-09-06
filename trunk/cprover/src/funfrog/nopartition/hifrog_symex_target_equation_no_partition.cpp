@@ -1,11 +1,10 @@
-/* 
- * File:   hifrog_symex_target_equationt.cpp
+/********************************************************************
+ * File:   hifrog_symex_target_equationt_no_partition.cpp
  * Author: karinek
- * 
- * Created on 21 April 2017, 11:33
- */
+ * Created on 21 April 2017
+ ********************************************************************/
 
-#include "smt_symex_target_equation.h"
+#include "hifrog_symex_target_equation_no_partition.h"
 #include "../solvers/smtcheck_opensmt2.h"
 #include <solvers/prop/literal_expr.h>
 #include "../utils/naming_helpers.h"

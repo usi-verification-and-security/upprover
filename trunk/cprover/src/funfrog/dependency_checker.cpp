@@ -11,7 +11,7 @@
 
 #include <util/language.h>
 
-#include "nopartition/smt_symex_target_equation.h"
+#include "nopartition/hifrog_symex_target_equation_no_partition.h"
 #include "subst_scenario.h"
 #include "partitioning_target_equation.h"
 #include "solvers/check_opensmt2.h"

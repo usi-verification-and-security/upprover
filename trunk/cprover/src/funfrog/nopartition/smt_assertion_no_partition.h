@@ -1,9 +1,8 @@
-/* 
+/*******************************************************************
  * File:   smt_assertion_no_partition.h
  * Author: karinek
- *
- * Created on 27 April 2017, 10:56
- */
+ * Created on 27 April 2017
+ *******************************************************************/
 
 #ifndef SMT_ASSERTION_NO_PARTITION_H
 #define SMT_ASSERTION_NO_PARTITION_H
@@ -14,7 +13,7 @@
 #include <util/threeval.h>
 
 #include "../assertion_info.h"
-#include "smt_symex_target_equation.h"
+#include "hifrog_symex_target_equation_no_partition.h"
 
 class smtcheck_opensmt2;
 

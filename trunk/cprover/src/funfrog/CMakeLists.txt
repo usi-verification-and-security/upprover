@@ -1,8 +1,8 @@
 set(HIFROG_SOURCE_FILES
         nopartition/smt_assertion_no_partition.cpp
         nopartition/smt_assertion_no_partition.h
-        nopartition/smt_symex_target_equation.cpp
-        nopartition/smt_symex_target_equation.h
+        nopartition/hifrog_symex_target_equation_no_partition.cpp
+        nopartition/hifrog_symex_target_equation_no_partition.h
         nopartition/symex_no_partition.cpp
         nopartition/symex_no_partition.h
         solvers/check_opensmt2.h

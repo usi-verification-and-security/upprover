@@ -411,7 +411,7 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
 #endif
 
 /*******************************************************************
- Function: smt_partitioning_target_equationt::convert_partition_assertions
+ Function: partitioning_target_equationt::convert_partition_assertions
 
  Inputs:
 
@@ -734,7 +734,7 @@ void partitioning_target_equationt::convert_partition_io(
 }
 
 /*******************************************************************
- Function: smt_partitioning_target_equationt::convert_partition_summary
+ Function: partitioning_target_equationt::convert_partition_summary
 
  Inputs:
 
