@@ -52,7 +52,8 @@ public:
 
 protected:
     const goto_modelt & goto_model;
-    symbol_tablet symex_symbol_table;
+    //symbol_tablet symex_symbol_table; MB: Symbol table needed only if we need information out of SYMEX about new symbols created there.
+    // Currently, it seems we do not need this information
     const namespacet ns;
   const optionst &options;
   ui_message_handlert &message_handler;

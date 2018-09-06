@@ -89,7 +89,7 @@ Function: get_initial_mode
 core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
                              ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
         goto_model{_goto_model},
-        ns{goto_model.get_symbol_table(), symex_symbol_table},
+        ns{goto_model.get_symbol_table()},
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
@@ -1031,7 +1031,6 @@ Function: core_checkert::check_sum_theoref_single
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
-    symex_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     initialize__euf_option_solver();
@@ -1163,7 +1162,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     delete decider;
     initialize__prop_option_solver();
     decider = initialize__prop_solver();
-    symex_symbol_table.clear();
     auto res = this->assertion_holds_(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;
