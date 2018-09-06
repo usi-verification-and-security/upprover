@@ -11,24 +11,27 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <util/arith_tools.h>
-#include <util/std_expr.h>
 #include <util/byte_operators.h>
-#include <util/endianness_map.h>
+#include <util/pointer_offset_size.h>
+#include <util/std_expr.h>
+#include <util/throw_with_nested.h>
 
+#include "bv_conversion_exceptions.h"
+#include "bv_endianness_map.h"
+#include "flatten_byte_extract_exceptions.h"
 #include "flatten_byte_operators.h"
 
-bvt map_bv(const endianness_mapt &map, const bvt &src)
+bvt map_bv(const bv_endianness_mapt &map, const bvt &src)
 {
-  assert(map.number_of_bits()==src.size());
-
+  PRECONDITION(map.number_of_bits() == src.size());
   bvt result;
-  result.resize(src.size(), const_literal(false));
+  result.reserve(src.size());
 
   for(std::size_t i=0; i<src.size(); i++)
   {
-    size_t mapped_index=map.map_bit(i);
-    assert(mapped_index<src.size());
-    result[i]=src[mapped_index];
+    const size_t mapped_index = map.map_bit(i);
+    CHECK_RETURN(mapped_index < src.size());
+    result.push_back(src[mapped_index]);
   }
 
   return result;
@@ -36,17 +39,21 @@ bvt map_bv(const endianness_mapt &map, const bvt &src)
 
 bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 {
-  if(expr.operands().size()!=2)
-    throw "byte_extract takes two operands";
-
   // if we extract from an unbounded array, call the flattening code
   if(is_unbounded_array(expr.op().type()))
   {
-    exprt tmp=flatten_byte_extract(expr, ns);
-    return convert_bv(tmp);
+    try
+    {
+      return convert_bv(flatten_byte_extract(expr, ns));
+    }
+    catch(const flatten_byte_extract_exceptiont &)
+    {
+      util_throw_with_nested(
+        bitvector_conversion_exceptiont("Can't convert byte_extraction", expr));
+    }
   }
 
-  std::size_t width=boolbv_width(expr.type());
+  const std::size_t width = boolbv_width(expr.type());
 
   // special treatment for bit-fields and big-endian:
   // we need byte granularity
@@ -67,50 +74,59 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
   if(width==0)
     return conversion_failed(expr);
 
-  const exprt &op=expr.op();
-  const exprt &offset=expr.offset();
-
-  bool little_endian;
-
-  if(expr.id()==ID_byte_extract_little_endian)
-    little_endian=true;
-  else if(expr.id()==ID_byte_extract_big_endian)
-    little_endian=false;
-  else
+  // see if the byte number is constant and within bounds, else work from the
+  // root object
+  const mp_integer op_bytes = pointer_offset_size(expr.op().type(), ns);
+  auto index = numeric_cast<mp_integer>(expr.offset());
+  if(
+    (!index.has_value() || (*index < 0 || *index >= op_bytes)) &&
+    (expr.op().id() == ID_member || expr.op().id() == ID_index ||
+     expr.op().id() == ID_byte_extract_big_endian ||
+     expr.op().id() == ID_byte_extract_little_endian))
   {
-    little_endian=false;
-    assert(false);
+    object_descriptor_exprt o;
+    o.build(expr.op(), ns);
+    CHECK_RETURN(o.offset().id() != ID_unknown);
+    if(o.offset().type() != expr.offset().type())
+      o.offset().make_typecast(expr.offset().type());
+    byte_extract_exprt be(
+      expr.id(),
+      o.root_object(),
+      plus_exprt(o.offset(), expr.offset()),
+      expr.type());
+
+    return convert_bv(be);
   }
 
-  // first do op0
+  const exprt &op=expr.op();
+  const exprt &offset=expr.offset();
+  PRECONDITION(
+    expr.id() == ID_byte_extract_little_endian ||
+    expr.id() == ID_byte_extract_big_endian);
+  const bool little_endian = expr.id() == ID_byte_extract_little_endian;
 
-  endianness_mapt op_map(op.type(), little_endian, ns);
+  // first do op0
+  const bv_endianness_mapt op_map(op.type(), little_endian, ns, boolbv_width);
   const bvt op_bv=map_bv(op_map, convert_bv(op));
 
   // do result
-  endianness_mapt result_map(expr.type(), little_endian, ns);
+  bv_endianness_mapt result_map(expr.type(), little_endian, ns, boolbv_width);
   bvt bv;
   bv.resize(width);
 
   // see if the byte number is constant
   unsigned byte_width=8;
 
-  mp_integer index;
-  if(!to_integer(offset, index))
+  if(index.has_value())
   {
-    if(index<0)
-      throw "byte_extract flatting with negative offset: "+expr.pretty();
-
-    mp_integer offset=index*byte_width;
-
-    std::size_t offset_i=integer2unsigned(offset);
+    const mp_integer offset = *index * byte_width;
 
     for(std::size_t i=0; i<width; i++)
       // out of bounds?
-      if(offset<0 || offset_i+i>=op_bv.size())
+      if(offset + i < 0 || offset + i >= op_bv.size())
         bv[i]=prop.new_variable();
       else
-        bv[i]=op_bv[offset_i+i];
+        bv[i] = op_bv[numeric_cast_v<std::size_t>(offset) + i];
   }
   else
   {

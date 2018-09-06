@@ -11,7 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
-#include <linking/zero_initializer.h>
+#include <util/expr_initializer.h>
 
 void goto_symext::symex_start_thread(statet &state)
 {
@@ -97,9 +97,9 @@ void goto_symext::symex_start_thread(statet &state)
   // initialize all variables marked thread-local
   const symbol_tablet &symbol_table=ns.get_symbol_table();
 
-  forall_symbols(it, symbol_table.symbols)
+  for(const auto &symbol_pair : symbol_table.symbols)
   {
-    const symbolt &symbol=it->second;
+    const symbolt &symbol = symbol_pair.second;
 
     if(!symbol.is_thread_local ||
        !symbol.is_static_lifetime ||

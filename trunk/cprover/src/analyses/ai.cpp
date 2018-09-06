@@ -15,79 +15,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <memory>
 #include <sstream>
 
-#include <util/simplify_expr.h>
-#include <util/std_expr.h>
+#include <util/invariant.h>
 #include <util/std_code.h>
+#include <util/std_expr.h>
 
 #include "is_threaded.h"
-
-jsont ai_domain_baset::output_json(
-  const ai_baset &ai,
-  const namespacet &ns) const
-{
-  std::ostringstream out;
-  output(out, ai, ns);
-  json_stringt json(out.str());
-  return json;
-}
-
-xmlt ai_domain_baset::output_xml(
-  const ai_baset &ai,
-  const namespacet &ns) const
-{
-  std::ostringstream out;
-  output(out, ai, ns);
-  xmlt xml("abstract_state");
-  xml.data=out.str();
-  return xml;
-}
-
-/// Use the information in the domain to simplify the expression on the LHS of
-/// an assignment. This for example won't simplify symbols to their values, but
-/// does simplify indices in arrays, members of structs and dereferencing of
-/// pointers
-/// \param condition: the expression to simplify
-/// \param ns: the namespace
-/// \return True if condition did not change. False otherwise. condition will be
-///   updated with the simplified condition if it has worked
-bool ai_domain_baset::ai_simplify_lhs(
-  exprt &condition, const namespacet &ns) const
-{
-  // Care must be taken here to give something that is still writable
-  if(condition.id()==ID_index)
-  {
-    index_exprt ie=to_index_expr(condition);
-    bool no_simplification=ai_simplify(ie.index(), ns);
-    if(!no_simplification)
-      condition=simplify_expr(ie, ns);
-
-    return no_simplification;
-  }
-  else if(condition.id()==ID_dereference)
-  {
-    dereference_exprt de=to_dereference_expr(condition);
-    bool no_simplification=ai_simplify(de.pointer(), ns);
-    if(!no_simplification)
-      condition=simplify_expr(de, ns);  // So *(&x) -> x
-
-    return no_simplification;
-  }
-  else if(condition.id()==ID_member)
-  {
-    member_exprt me=to_member_expr(condition);
-    // Since simplify_ai_lhs is required to return an addressable object
-    // (so remains a valid left hand side), to simplify
-    // `(something_simplifiable).b` we require that `something_simplifiable`
-    // must also be addressable
-    bool no_simplification=ai_simplify_lhs(me.compound(), ns);
-    if(!no_simplification)
-      condition=simplify_expr(me, ns);
-
-    return no_simplification;
-  }
-  else
-    return true;
-}
 
 void ai_baset::output(
   const namespacet &ns,
@@ -119,7 +51,7 @@ void ai_baset::output(
     out << "**** " << i_it->location_number << " "
         << i_it->source_location << "\n";
 
-    find_state(i_it).output(out, *this, ns);
+    abstract_state_before(i_it)->output(out, *this, ns);
     out << "\n";
     #if 1
     goto_program.output_instruction(ns, identifier, out, *i_it);
@@ -170,7 +102,8 @@ jsont ai_baset::output_json(
       json_numbert(std::to_string(i_it->location_number));
     location["sourceLocation"]=
       json_stringt(i_it->source_location.as_string());
-    location["abstractState"]=find_state(i_it).output_json(*this, ns);
+    location["abstractState"] =
+      abstract_state_before(i_it)->output_json(*this, ns);
 
     // Ideally we need output_instruction_json
     std::ostringstream out;
@@ -231,7 +164,7 @@ xmlt ai_baset::output_xml(
       "source_location",
       i_it->source_location.as_string());
 
-    location.new_element(find_state(i_it).output_xml(*this, ns));
+    location.new_element(abstract_state_before(i_it)->output_xml(*this, ns));
 
     // Ideally we need output_instruction_xml
     std::ostringstream out;
@@ -288,7 +221,7 @@ void ai_baset::finalize()
 ai_baset::locationt ai_baset::get_next(
   working_sett &working_set)
 {
-  assert(!working_set.empty());
+  PRECONDITION(!working_set.empty());
 
   working_sett::iterator i=working_set.begin();
   locationt l=i->second;
@@ -316,6 +249,7 @@ bool ai_baset::fixedpoint(
   {
     locationt l=get_next(working_set);
 
+    // goto_program is really only needed for iterator manipulation
     if(visit(l, working_set, goto_program, goto_functions, ns))
       new_data=true;
   }
@@ -365,8 +299,7 @@ bool ai_baset::visit(
       // initialize state, if necessary
       get_state(to_l);
 
-      new_values.transform(
-        l, to_l, *this, ns, ai_domain_baset::edge_typet::FUNCTION_LOCAL);
+      new_values.transform(l, to_l, *this, ns);
 
       if(merge(new_values, l, to_l))
         have_new_values=true;
@@ -386,11 +319,13 @@ bool ai_baset::do_function_call(
   locationt l_call, locationt l_return,
   const goto_functionst &goto_functions,
   const goto_functionst::function_mapt::const_iterator f_it,
-  const exprt::operandst &arguments,
+  const exprt::operandst &,
   const namespacet &ns)
 {
   // initialize state, if necessary
   get_state(l_return);
+
+  PRECONDITION(l_call->is_function_call());
 
   const goto_functionst::goto_functiont &goto_function=
     f_it->second;
@@ -399,8 +334,7 @@ bool ai_baset::do_function_call(
   {
     // if we don't have a body, we just do an edige call -> return
     std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
-    tmp_state->transform(
-      l_call, l_return, *this, ns, ai_domain_baset::edge_typet::FUNCTION_LOCAL);
+    tmp_state->transform(l_call, l_return, *this, ns);
 
     return merge(*tmp_state, l_call, l_return);
   }
@@ -417,8 +351,7 @@ bool ai_baset::do_function_call(
 
     // do the edge from the call site to the beginning of the function
     std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
-    tmp_state->transform(
-      l_call, l_begin, *this, ns, ai_domain_baset::edge_typet::CALL);
+    tmp_state->transform(l_call, l_begin, *this, ns);
 
     bool new_data=false;
 
@@ -445,8 +378,7 @@ bool ai_baset::do_function_call(
       return false; // function exit point not reachable
 
     std::unique_ptr<statet> tmp_state(make_temporary_state(end_state));
-    tmp_state->transform(
-      l_end, l_return, *this, ns, ai_domain_baset::edge_typet::RETURN);
+    tmp_state->transform(l_end, l_return, *this, ns);
 
     // Propagate those
     return merge(*tmp_state, l_end, l_return);
@@ -460,69 +392,27 @@ bool ai_baset::do_function_call_rec(
   const goto_functionst &goto_functions,
   const namespacet &ns)
 {
-  assert(!goto_functions.function_map.empty());
+  PRECONDITION(!goto_functions.function_map.empty());
+
+  // This is quite a strong assumption on the well-formedness of the program.
+  // It means function pointers must be removed before use.
+  DATA_INVARIANT(
+    function.id() == ID_symbol,
+    "Function pointers and indirect calls must be removed before analysis.");
 
   bool new_data=false;
 
-  if(function.id()==ID_symbol)
-  {
-    const irep_idt &identifier=function.get(ID_identifier);
+  const irep_idt &identifier = to_symbol_expr(function).get_identifier();
 
-    goto_functionst::function_mapt::const_iterator it=
-      goto_functions.function_map.find(identifier);
+  goto_functionst::function_mapt::const_iterator it =
+    goto_functions.function_map.find(identifier);
 
-    if(it==goto_functions.function_map.end())
-      throw "failed to find function "+id2string(identifier);
+  DATA_INVARIANT(
+    it != goto_functions.function_map.end(),
+    "Function " + id2string(identifier) + "not in function map");
 
-    new_data=do_function_call(
-      l_call, l_return,
-      goto_functions,
-      it,
-      arguments,
-      ns);
-  }
-  else if(function.id()==ID_if)
-  {
-    if(function.operands().size()!=3)
-      throw "if has three operands";
-
-    bool new_data1=
-      do_function_call_rec(
-        l_call, l_return,
-        function.op1(),
-        arguments,
-        goto_functions,
-        ns);
-
-    bool new_data2=
-      do_function_call_rec(
-        l_call, l_return,
-        function.op2(),
-        arguments,
-        goto_functions,
-        ns);
-
-    if(new_data1 || new_data2)
-      new_data=true;
-  }
-  else if(function.id()==ID_dereference)
-  {
-    // We can't really do this here -- we rely on
-    // these being removed by some previous analysis.
-  }
-  else if(function.id()=="NULL-object")
-  {
-    // ignore, can't be a function
-  }
-  else if(function.id()==ID_member || function.id()==ID_index)
-  {
-    // ignore, can't be a function
-  }
-  else
-  {
-    throw "unexpected function_call argument: "+
-      function.id_string();
-  }
+  new_data =
+    do_function_call(l_call, l_return, goto_functions, it, arguments, ns);
 
   return new_data;
 }

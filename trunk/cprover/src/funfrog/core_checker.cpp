@@ -29,6 +29,8 @@
 #include "partitioning_slice.h"
 #include "utils/unsupported_operations.h"
 
+#include <langapi/language_util.h>
+#include <goto-symex/path_storage.h>
 #include <stdio.h>
 #include <memory>
 
@@ -87,7 +89,7 @@ Function: get_initial_mode
 core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
                              ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
         goto_model{_goto_model},
-        ns{goto_model.symbol_table, new_symbol_table},
+        ns{goto_model.get_symbol_table()},
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
@@ -373,8 +375,7 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_(const assertion_infot & assertion,
                                      bool store_summaries_with_assertion)
 {
-    absolute_timet initial, final;
-    initial = current_time();
+    auto before = timestamp();
  
     // Init the objects:
     const bool no_ce_option = options.get_bool_option(HiFrogOptions::NO_ERROR_TRACE);
@@ -400,12 +401,14 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
 #endif
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
-    symex_assertion_sumt symex = symex_assertion_sumt(get_goto_functions(), call_tree_root, ns, new_symbol_table,
+    std::unique_ptr<path_storaget> worklist;
+    symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
                                                       message_handler, get_main_function(), last_assertion_loc,
                                                       single_assertion_check, !no_ce_option,
                                                       unwind_bound,
-                                                      options.get_bool_option("partial-loops"));
+                                                      options.get_bool_option("partial-loops"),
+                                };
     symex.set_assertion_info_to_verify(&assertion);
 
     refiner_assertion_sumt refiner {
@@ -520,7 +523,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     }
     // FINAL REPORT
 
-    final = current_time();
+    auto after = timestamp();
     omega.get_unwinding_depth();
 
     status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
@@ -528,7 +531,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     if (omega.get_recursive_total() > 0){
         status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
     }
-    status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+    status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
  
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -560,8 +563,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
 bool core_checkert::assertion_holds_smt_no_partition(
         const assertion_infot& assertion)
 {
-  absolute_timet initial, final;
-  initial=current_time();
+  auto before=timestamp();
   
   const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
@@ -582,7 +584,8 @@ bool core_checkert::assertion_holds_smt_no_partition(
   }
 #endif
   
-  symex_no_partitiont symex = symex_no_partitiont(ns, new_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option);
+  std::unique_ptr<path_storaget> worklist;
+  symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler, get_main_function(),!no_slicing_option};
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
@@ -660,7 +663,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
       }
     }
   }
-  final = current_time();
+  auto after = timestamp();
   omega.get_unwinding_depth();
 
   status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
@@ -668,7 +671,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after, before) << eom;
  
 #ifdef PRODUCE_PROOF 
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -755,13 +758,13 @@ Function: core_checkert::extract_interpolants_smt
 \*******************************************************************/
 void core_checkert::extract_interpolants (partitioning_target_equationt& equation)
 {
-  absolute_timet before, after;
-  before=current_time();
+  //SA & prop is not needed here; the entire class prepare_smt_formulat is useless.
+  auto before=timestamp();
   
   equation.extract_interpolants(*decider);
 
-  after=current_time();
-  status() << "INTERPOLATION TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
   
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
@@ -911,7 +914,7 @@ void reload_summaries(const namespacet &ns,
         {
             // Get the old token we wish to abstract
             std::string new_token = fresh_var_name_nonlinear();
-            prev_solver.getLogic()->mkVar(prev_solver.getURealSortRef(), new_token.c_str());
+            prev_solver.getLogic()->mkVar(prev_solver.get_numeric_sort(), new_token.c_str());
             // New Unsupported Var with no specific mapping or information saved
             
             // The symbol name in the old token
@@ -1028,7 +1031,6 @@ Function: core_checkert::check_sum_theoref_single
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
-    new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     initialize__euf_option_solver();
@@ -1046,12 +1048,13 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         return const_summary_store.has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary);
+    std::unique_ptr<path_storaget> worklist;
     partitioning_target_equationt equation {ns, summary_store, false};
 
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
-                               ns,
-                               new_symbol_table,
+                               options, *worklist,
+                               ns.get_symbol_table(),
                                equation,
                                message_handler,
                                get_main_function(),
@@ -1159,7 +1162,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     delete decider;
     initialize__prop_option_solver();
     decider = initialize__prop_solver();
-    new_symbol_table.clear();
     auto res = this->assertion_holds_(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;
@@ -1170,12 +1172,12 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 #endif // PRODUCE_PROOF
 
 void core_checkert::slice_target(partitioning_target_equationt & equation) {
-    auto before = current_time();
+    auto before = timestamp();
     statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
     partitioning_slice(equation);
     statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
-    auto after = current_time();
-    statistics() << "SLICER TIME: " << (after - before) << eom;
+    auto after = timestamp();
+    statistics() << "SLICER TIME: " << time_gap(after,before) << eom;
 }
 
 bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {

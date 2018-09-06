@@ -8,22 +8,23 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "boolbv.h"
 
-#include <iostream>
-
 #include <util/std_expr.h>
 #include <util/base_type.h>
+#include <util/invariant.h>
 
-#include <langapi/language_util.h>
-
+#include "bv_conversion_exceptions.h"
 #include "flatten_byte_operators.h"
 
 literalt boolbvt::convert_equality(const equal_exprt &expr)
 {
-  if(!base_type_eq(expr.lhs().type(), expr.rhs().type(), ns))
+  const bool is_base_type_eq =
+    base_type_eq(expr.lhs().type(), expr.rhs().type(), ns);
+  if(!is_base_type_eq)
   {
-    std::cout << "######### lhs: " << expr.lhs().pretty() << '\n';
-    std::cout << "######### rhs: " << expr.rhs().pretty() << '\n';
-    throw "equality without matching types";
+    const std::string error_msg =
+      std::string("equality without matching types:\n") + "######### lhs: " +
+      expr.lhs().pretty() + '\n' + "######### rhs: " + expr.rhs().pretty();
+    throw bitvector_conversion_exceptiont(error_msg, expr);
   }
 
   // see if it is an unbounded array
@@ -43,14 +44,12 @@ literalt boolbvt::convert_equality(const equal_exprt &expr)
   const bvt &bv0=convert_bv(expr.lhs());
   const bvt &bv1=convert_bv(expr.rhs());
 
-  if(bv0.size()!=bv1.size())
-  {
-    std::cerr << "lhs: " << expr.lhs().pretty() << '\n';
-    std::cerr << "lhs size: " << bv0.size() << '\n';
-    std::cerr << "rhs: " << expr.rhs().pretty() << '\n';
-    std::cerr << "rhs size: " << bv1.size() << '\n';
-    throw "unexpected size mismatch on equality";
-  }
+  DATA_INVARIANT(
+    bv0.size() == bv1.size(),
+    std::string("unexpected size mismatch on equality:\n") + "lhs: " +
+      expr.lhs().pretty() + '\n' + "lhs size: " + std::to_string(bv0.size()) +
+      '\n' + "rhs: " + expr.rhs().pretty() + '\n' +
+      "rhs size: " + std::to_string(bv1.size()));
 
   if(bv0.empty())
   {
@@ -68,24 +67,23 @@ literalt boolbvt::convert_verilog_case_equality(
   // This is 4-valued comparison, i.e., z===z, x===x etc.
   // The result is always Boolean.
 
-  if(!base_type_eq(expr.lhs().type(), expr.rhs().type(), ns))
-  {
-    std::cout << "######### lhs: " << expr.lhs().pretty() << '\n';
-    std::cout << "######### rhs: " << expr.rhs().pretty() << '\n';
-    throw "verilog_case_equality without matching types";
-  }
+  const bool is_base_type_eq =
+    base_type_eq(expr.lhs().type(), expr.rhs().type(), ns);
+  DATA_INVARIANT(
+    is_base_type_eq,
+    std::string("verilog_case_equality without matching types:\n") +
+      "######### lhs: " + expr.lhs().pretty() + '\n' +
+      "######### rhs: " + expr.rhs().pretty());
 
   const bvt &bv0=convert_bv(expr.lhs());
   const bvt &bv1=convert_bv(expr.rhs());
 
-  if(bv0.size()!=bv1.size())
-  {
-    std::cerr << "lhs: " << expr.lhs().pretty() << '\n';
-    std::cerr << "lhs size: " << bv0.size() << '\n';
-    std::cerr << "rhs: " << expr.rhs().pretty() << '\n';
-    std::cerr << "rhs size: " << bv1.size() << '\n';
-    throw "unexpected size mismatch on verilog_case_equality";
-  }
+  DATA_INVARIANT(
+    bv0.size() == bv1.size(),
+    std::string("unexpected size mismatch on verilog_case_equality:\n") +
+      "lhs: " + expr.lhs().pretty() + '\n' + "lhs size: " +
+      std::to_string(bv0.size()) + '\n' + "rhs: " + expr.rhs().pretty() + '\n' +
+      "rhs size: " + std::to_string(bv1.size()));
 
   if(expr.id()==ID_verilog_case_inequality)
     return !bv_utils.equal(bv0, bv1);

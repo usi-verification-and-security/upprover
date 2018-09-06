@@ -12,10 +12,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/std_types.h>
 
+#include <solvers/floatbv/float_utils.h>
+
 #include "boolbv_type.h"
 #include "c_bit_field_replacement_type.h"
-
-#include "../floatbv/float_utils.h"
 
 bvt boolbvt::convert_bv_typecast(const typecast_exprt &expr)
 {
@@ -530,10 +530,8 @@ bool boolbvt::type_conversion(
           op_struct.components();
 
         // build offset maps
-        offset_mapt op_offsets, dest_offsets;
-
-        build_offset_map(op_struct, op_offsets);
-        build_offset_map(dest_struct, dest_offsets);
+        const offset_mapt op_offsets = build_offset_map(op_struct);
+        const offset_mapt dest_offsets = build_offset_map(dest_struct);
 
         // build name map
         typedef std::map<irep_idt, std::size_t> op_mapt;

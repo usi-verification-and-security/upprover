@@ -13,18 +13,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
+#include <util/base_type.h>
+#include <util/c_types.h>
 #include <util/fresh_symbol.h>
+#include <util/invariant.h>
+#include <util/message.h>
+#include <util/pointer_offset_size.h>
 #include <util/replace_expr.h>
 #include <util/source_location.h>
 #include <util/std_expr.h>
 #include <util/type_eq.h>
-#include <util/message.h>
-#include <util/base_type.h>
-#include <ansi-c/c_qualifiers.h>
-#include <analyses/does_remove_const.h>
-#include <util/invariant.h>
 
-#include <util/c_types.h>
+#include <analyses/does_remove_const.h>
 
 #include "remove_skip.h"
 #include "compute_called_functions.h"
@@ -61,7 +61,7 @@ protected:
     goto_programt &goto_program,
     goto_programt::targett target);
 
-  std::set<irep_idt> address_taken;
+  std::unordered_set<irep_idt> address_taken;
 
   typedef std::map<irep_idt, code_typet> type_mapt;
   type_mapt type_map;
@@ -80,8 +80,8 @@ protected:
     code_function_callt &function_call,
     goto_programt &dest);
 
-  void compute_address_taken_in_symbols(
-    std::set<irep_idt> &address_taken)
+  void
+  compute_address_taken_in_symbols(std::unordered_set<irep_idt> &address_taken)
   {
     const symbol_tablet &symbol_table=ns.get_symbol_table();
 
@@ -135,8 +135,8 @@ bool remove_function_pointerst::arg_is_type_compatible(
     return false;
   }
 
-  // structs/unions need to match,
-  // which could be made more generous
+  return pointer_offset_bits(call_type, ns) ==
+         pointer_offset_bits(function_type, ns);
 
   return false;
 }
@@ -233,18 +233,18 @@ void remove_function_pointerst::fix_return_type(
        code_type.return_type(), ns))
     return;
 
-  symbolt &tmp_symbol=
-    get_fresh_aux_symbol(
-      code_type.return_type(),
-      "remove_function_pointers",
-      "tmp_return_val",
-      function_call.source_location(),
-      irep_idt(),
-      symbol_table);
+  const symbolt &function_symbol =
+    ns.lookup(to_symbol_expr(function_call.function()).get_identifier());
 
-  symbol_exprt tmp_symbol_expr;
-  tmp_symbol_expr.type()=tmp_symbol.type;
-  tmp_symbol_expr.set_identifier(tmp_symbol.name);
+  symbolt &tmp_symbol = get_fresh_aux_symbol(
+    code_type.return_type(),
+    id2string(function_call.source_location().get_function()),
+    "tmp_return_val_" + id2string(function_symbol.base_name),
+    function_call.source_location(),
+    function_symbol.mode,
+    symbol_table);
+
+  const symbol_exprt tmp_symbol_expr = tmp_symbol.symbol_expr();
 
   exprt old_lhs=function_call.lhs();
   function_call.lhs()=tmp_symbol_expr;
@@ -285,9 +285,11 @@ void remove_function_pointerst::remove_function_pointer(
   const exprt &pointer=function.op0();
   remove_const_function_pointerst::functionst functions;
   does_remove_constt const_removal_check(goto_program, ns);
-  if(const_removal_check())
+  const auto does_remove_const = const_removal_check();
+  if(does_remove_const.first)
   {
-    warning() << "Cast from const to non-const pointer found, only worst case"
+    warning().source_location = does_remove_const.second;
+    warning() << "cast from const to non-const pointer found, only worst case"
               << " function pointer removal will be done." << eom;
     found_functions=false;
   }
@@ -341,10 +343,8 @@ void remove_function_pointerst::remove_function_pointer(
       if(t.first=="pthread_mutex_cleanup")
         continue;
 
-      symbol_exprt expr;
-      expr.type()=t.second;
-      expr.set_identifier(t.first);
-        functions.insert(expr);
+      symbol_exprt expr(t.first, t.second);
+      functions.insert(expr);
     }
   }
 
@@ -420,9 +420,8 @@ void remove_function_pointerst::remove_function_pointer(
 
   // We preserve the original dereferencing to possibly catch
   // further pointer-related errors.
-  code_expressiont code_expression;
+  code_expressiont code_expression(function);
   code_expression.add_source_location()=function.source_location();
-  code_expression.expression()=function;
   target->code.swap(code_expression);
   target->type=OTHER;
 
@@ -430,6 +429,25 @@ void remove_function_pointerst::remove_function_pointer(
   statistics().source_location=target->source_location;
   statistics() << "replacing function pointer by "
                << functions.size() << " possible targets" << eom;
+
+  // list the names of functions when verbosity is at debug level
+  conditional_output(
+    debug(),
+    [&functions](mstreamt &mstream) {
+      mstream << "targets: ";
+
+      bool first = true;
+      for(const auto &function : functions)
+      {
+        if(!first)
+          mstream << ", ";
+
+        mstream << function.get_identifier();
+        first = false;
+      }
+
+      mstream << eom;
+    });
 }
 
 bool remove_function_pointerst::remove_function_pointers(
@@ -451,10 +469,7 @@ bool remove_function_pointerst::remove_function_pointers(
     }
 
   if(did_something)
-  {
     remove_skip(goto_program);
-    goto_program.update();
-  }
 
   return did_something;
 }

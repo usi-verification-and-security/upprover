@@ -14,20 +14,21 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <util/arith_tools.h>
+#include <util/base_type.h>
 #include <util/c_types.h>
 #include <util/config.h>
-#include <util/std_types.h>
-#include <util/prefix.h>
 #include <util/cprover_prefix.h>
-#include <util/simplify_expr.h>
-#include <util/base_type.h>
-#include <util/std_expr.h>
+#include <util/ieee_float.h>
 #include <util/pointer_offset_size.h>
 #include <util/pointer_predicates.h>
+#include <util/simplify_expr.h>
+#include <util/string_constant.h>
 
+#include <goto-programs/adjust_float_expressions.h>
+
+#include "builtin_factory.h"
 #include "c_typecast.h"
 #include "c_qualifiers.h"
-#include "string_constant.h"
 #include "anonymous_member.h"
 #include "padding.h"
 
@@ -90,9 +91,9 @@ bool c_typecheck_baset::gcc_types_compatible_p(
   // read
   // http://gcc.gnu.org/onlinedocs/gcc-3.3.6/gcc/Other-Builtins.html
 
-  if(type1.id()==ID_symbol)
+  if(type1.id() == ID_symbol_type)
     return gcc_types_compatible_p(follow(type1), type2);
-  else if(type2.id()==ID_symbol)
+  else if(type2.id() == ID_symbol_type)
     return gcc_types_compatible_p(type1, follow(type2));
 
   // check qualifiers first
@@ -251,7 +252,12 @@ void c_typecheck_baset::typecheck_expr_main(exprt &expr)
   }
   else if(expr.id()==ID_clang_builtin_convertvector)
   {
+    // This has one operand and a type, and acts like a typecast
+    DATA_INVARIANT(expr.operands().size()==1, "clang_builtin_convertvector has one operand");
     typecheck_type(expr.type());
+    typecast_exprt tmp(expr.op0(), expr.type());
+    tmp.add_source_location()=expr.source_location();
+    expr.swap(tmp);
   }
   else if(expr.id()==ID_builtin_offsetof)
     typecheck_expr_builtin_offsetof(expr);
@@ -452,24 +458,20 @@ void c_typecheck_baset::typecheck_expr_builtin_va_arg(exprt &expr)
   typet arg_type=expr.type();
   typecheck_type(arg_type);
 
-  code_typet new_type;
-  new_type.return_type().swap(arg_type);
-  new_type.parameters().resize(1);
-  new_type.parameters()[0].type()=pointer_type(void_type());
+  const code_typet new_type(
+    {code_typet::parametert(pointer_type(void_type()))}, std::move(arg_type));
 
   assert(expr.operands().size()==1);
   exprt arg=expr.op0();
 
   implicit_typecast(arg, pointer_type(void_type()));
 
+  symbol_exprt function(ID_gcc_builtin_va_arg, new_type);
+  function.add_source_location() = expr.source_location();
+
   // turn into function call
-  side_effect_expr_function_callt result;
-  result.add_source_location()=expr.source_location();
-  result.function()=symbol_exprt(ID_gcc_builtin_va_arg);
-  result.function().add_source_location()=expr.source_location();
-  result.function().type()=new_type;
-  result.arguments().push_back(arg);
-  result.type()=new_type.return_type();
+  side_effect_expr_function_callt result(
+    function, {arg}, new_type.return_type(), expr.source_location());
 
   expr.swap(result);
 
@@ -525,8 +527,7 @@ void c_typecheck_baset::typecheck_expr_builtin_offsetof(exprt &expr)
 
   forall_operands(m_it, member)
   {
-    if(type.id()==ID_symbol)
-      type=follow(type);
+    type = follow(type);
 
     if(m_it->id()==ID_member)
     {
@@ -725,9 +726,8 @@ void c_typecheck_baset::typecheck_expr_operands(exprt &expr)
       throw 0;
     }
 
-    code_declt decl;
+    code_declt decl(symbol.symbol_expr());
     decl.add_source_location()=declaration.source_location();
-    decl.symbol()=symbol.symbol_expr();
 
     expr.op0()=decl;
 
@@ -837,7 +837,7 @@ void c_typecheck_baset::typecheck_expr_symbol(exprt &expr)
     if(expr.type().id()==ID_code) // function designator
     { // special case: this is sugar for &f
       address_of_exprt tmp(expr, pointer_type(expr.type()));
-      tmp.set("#implicit", true);
+      tmp.set(ID_C_implicit, true);
       tmp.add_source_location()=expr.source_location();
       expr=tmp;
     }
@@ -883,36 +883,29 @@ void c_typecheck_baset::typecheck_side_effect_statement_expression(
 
     code_function_callt &fc=to_code_function_call(last);
 
-    side_effect_expr_function_callt sideeffect;
-
-    sideeffect.function()=fc.function();
-    sideeffect.arguments()=fc.arguments();
-    sideeffect.add_source_location()=fc.source_location();
-
-    sideeffect.type()=
+    auto return_type =
       static_cast<const typet &>(fc.function().type().find(ID_return_type));
+
+    side_effect_expr_function_callt sideeffect(
+      fc.function(), fc.arguments(), return_type, fc.source_location());
 
     expr.type()=sideeffect.type();
 
     if(fc.lhs().is_nil())
     {
-      codet code_expr(ID_expression);
+      code_expressiont code_expr(sideeffect);
       code_expr.add_source_location() = fc.source_location();
-      code_expr.move_to_operands(sideeffect);
       last.swap(code_expr);
     }
     else
     {
-      codet code_expr(ID_expression);
+      side_effect_exprt assign(
+        ID_assign, sideeffect.type(), fc.source_location());
+      assign.move_to_operands(fc.lhs(), sideeffect);
+
+      code_expressiont code_expr(assign);
       code_expr.add_source_location() = fc.source_location();
 
-      exprt assign(ID_side_effect);
-      assign.set(ID_statement, ID_assign);
-      assign.add_source_location()=fc.source_location();
-      assign.move_to_operands(fc.lhs(), sideeffect);
-      assign.type()=assign.op1().type();
-
-      code_expr.move_to_operands(assign);
       last.swap(code_expr);
     }
   }
@@ -941,26 +934,30 @@ void c_typecheck_baset::typecheck_expr_sizeof(exprt &expr)
     throw 0;
   }
 
+  exprt new_expr;
+
   if(type.id()==ID_c_bit_field)
   {
     err_location(expr);
     error() << "sizeof cannot be applied to bit fields" << eom;
     throw 0;
   }
-
-  if(type.id()==ID_empty &&
-     expr.operands().size()==1 &&
-     expr.op0().id()==ID_dereference &&
-     expr.op0().op0().type()==pointer_type(void_type()))
-    type=char_type();
-
-  exprt new_expr=size_of_expr(type, *this);
-
-  if(new_expr.is_nil())
+  else if(type.id() == ID_empty)
   {
-    err_location(expr);
-    error() << "type has no size: " << to_string(type) << eom;
-    throw 0;
+    // This is a gcc extension.
+    // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
+    new_expr = size_of_expr(char_type(), *this);
+  }
+  else
+  {
+    new_expr = size_of_expr(type, *this);
+
+    if(new_expr.is_nil())
+    {
+      err_location(expr);
+      error() << "type has no size: " << to_string(type) << eom;
+      throw 0;
+    }
   }
 
   new_expr.swap(expr);
@@ -970,7 +967,8 @@ void c_typecheck_baset::typecheck_expr_sizeof(exprt &expr)
   // The type may contain side-effects.
   if(!clean_code.empty())
   {
-    side_effect_exprt side_effect_expr(ID_statement_expression, void_type());
+    side_effect_exprt side_effect_expr(
+      ID_statement_expression, void_type(), expr.source_location());
     code_blockt decl_block(clean_code);
     decl_block.set_statement(ID_decl_block);
     side_effect_expr.copy_to_operands(decl_block);
@@ -1026,7 +1024,8 @@ void c_typecheck_baset::typecheck_expr_typecast(exprt &expr)
   // The type may contain side-effects.
   if(!clean_code.empty())
   {
-    side_effect_exprt side_effect_expr(ID_statement_expression, void_type());
+    side_effect_exprt side_effect_expr(
+      ID_statement_expression, void_type(), expr.source_location());
     code_blockt decl_block(clean_code);
     decl_block.set_statement(ID_decl_block);
     side_effect_expr.copy_to_operands(decl_block);
@@ -1244,7 +1243,10 @@ void c_typecheck_baset::typecheck_expr_index(exprt &expr)
 
   make_index_type(index_expr);
 
-  const typet &final_array_type=follow(array_expr.type());
+  // array_expr is a reference to one of expr.operands(), when that vector is
+  // swapped below the reference is no longer valid. final_array_type exists
+  // beyond that point so can't be a reference
+  const typet final_array_type = follow(array_expr.type());
 
   if(final_array_type.id()==ID_array ||
      final_array_type.id()==ID_vector)
@@ -1431,25 +1433,30 @@ void c_typecheck_baset::typecheck_expr_ptrmember(exprt &expr)
 
   const typet &final_op0_type=follow(expr.op0().type());
 
-  if(final_op0_type.id()!=ID_pointer &&
-     final_op0_type.id()!=ID_array)
+  if(final_op0_type.id()==ID_array)
+  {
+    // a->f is the same as a[0].f
+    exprt zero=from_integer(0, index_type());
+    index_exprt index_expr(expr.op0(), zero, final_op0_type.subtype());
+    index_expr.set(ID_C_lvalue, true);
+    expr.op0().swap(index_expr);
+  }
+  else if(final_op0_type.id()==ID_pointer)
+  {
+    // turn x->y into (*x).y
+    dereference_exprt deref_expr(expr.op0());
+    deref_expr.add_source_location()=expr.source_location();
+    typecheck_expr_dereference(deref_expr);
+    expr.op0().swap(deref_expr);
+  }
+  else
   {
     err_location(expr);
-    error() << "ptrmember operator requires pointer type "
+    error() << "ptrmember operator requires pointer or array type "
                "on left hand side, but got `"
             << to_string(expr.op0().type()) << "'" << eom;
     throw 0;
   }
-
-  // turn x->y into (*x).y
-
-  exprt deref(ID_dereference);
-  deref.move_to_operands(expr.op0());
-  deref.add_source_location()=expr.source_location();
-
-  typecheck_expr_dereference(deref);
-
-  expr.op0().swap(deref);
 
   expr.id(ID_member);
   typecheck_expr_member(expr);
@@ -1467,7 +1474,7 @@ void c_typecheck_baset::typecheck_expr_member(exprt &expr)
   exprt &op0=expr.op0();
   typet type=op0.type();
 
-  follow_symbol(type);
+  type = follow(type);
 
   if(type.id()==ID_incomplete_struct)
   {
@@ -1915,35 +1922,45 @@ void c_typecheck_baset::typecheck_side_effect_function_call(
 
     if(symbol_table.symbols.find(identifier)==symbol_table.symbols.end())
     {
-      // This is an undeclared function. Let's just add it.
-      // We do a bit of return-type guessing, but just a bit.
-      typet return_type=signed_int_type();
+      // This is an undeclared function.
+      // Is this a builtin?
+      if(!builtin_factory(identifier, symbol_table, get_message_handler()))
+      {
+        // yes, it's a builtin
+      }
+      else
+      {
+        // This is an undeclared function that's not a builtin.
+        // Let's just add it.
+        // We do a bit of return-type guessing, but just a bit.
+        typet return_type=signed_int_type();
 
-      // The following isn't really right and sound, but there
-      // are too many idiots out there who use malloc and the like
-      // without the right header file.
-      if(identifier=="malloc" ||
-         identifier=="realloc" ||
-         identifier=="reallocf" ||
-         identifier=="valloc")
-        return_type=pointer_type(void_type()); // void *
+        // The following isn't really right and sound, but there
+        // are too many idiots out there who use malloc and the like
+        // without the right header file.
+        if(identifier=="malloc" ||
+           identifier=="realloc" ||
+           identifier=="reallocf" ||
+           identifier=="valloc")
+          return_type=pointer_type(void_type()); // void *
 
-      symbolt new_symbol;
+        symbolt new_symbol;
 
-      new_symbol.name=identifier;
-      new_symbol.base_name=identifier;
-      new_symbol.location=expr.source_location();
-      new_symbol.type=code_typet();
-      new_symbol.type.set(ID_C_incomplete, true);
-      new_symbol.type.add(ID_return_type)=return_type;
+        new_symbol.name=identifier;
+        new_symbol.base_name=identifier;
+        new_symbol.location=expr.source_location();
+        new_symbol.type=code_typet();
+        new_symbol.type.set(ID_C_incomplete, true);
+        new_symbol.type.add(ID_return_type)=return_type;
 
-      // TODO: should also guess some argument types
+        // TODO: should also guess some argument types
 
-      symbolt *symbol_ptr;
-      move_symbol(new_symbol, symbol_ptr);
+        symbolt *symbol_ptr;
+        move_symbol(new_symbol, symbol_ptr);
 
-      warning().source_location=f_op.find_source_location();
-      warning() << "function `" << identifier << "' is not declared" << eom;
+        warning().source_location=f_op.find_source_location();
+        warning() << "function `" << identifier << "' is not declared" << eom;
+      }
     }
   }
 
@@ -1971,10 +1988,9 @@ void c_typecheck_baset::typecheck_side_effect_function_call(
   }
   else
   {
-    exprt tmp(ID_dereference, f_op_type.subtype());
+    dereference_exprt tmp(f_op, f_op_type.subtype());
     tmp.set(ID_C_implicit, true);
     tmp.add_source_location()=f_op.source_location();
-    tmp.move_to_operands(f_op);
     f_op.swap(tmp);
   }
 
@@ -2035,9 +2051,8 @@ exprt c_typecheck_baset::do_special_functions(
 
     typecheck_function_call_arguments(expr);
 
-    exprt get_must_expr=
-      binary_predicate_exprt(
-        expr.arguments()[0], "get_must", expr.arguments()[1]);
+    binary_predicate_exprt get_must_expr(
+      expr.arguments()[0], "get_must", expr.arguments()[1]);
     get_must_expr.add_source_location()=source_location;
 
     return get_must_expr;
@@ -2053,9 +2068,8 @@ exprt c_typecheck_baset::do_special_functions(
 
     typecheck_function_call_arguments(expr);
 
-    exprt get_may_expr=
-      binary_predicate_exprt(
-        expr.arguments()[0], "get_may", expr.arguments()[1]);
+    binary_predicate_exprt get_may_expr(
+      expr.arguments()[0], "get_may", expr.arguments()[1]);
     get_may_expr.add_source_location()=source_location;
 
     return get_may_expr;
@@ -2069,8 +2083,7 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    predicate_exprt same_object_expr(ID_invalid_pointer);
-    same_object_expr.operands()=expr.arguments();
+    exprt same_object_expr = invalid_pointer(expr.arguments().front());
     same_object_expr.add_source_location()=source_location;
 
     return same_object_expr;
@@ -2149,10 +2162,7 @@ exprt c_typecheck_baset::do_special_functions(
     exprt pointer_offset_expr=pointer_offset(expr.arguments().front());
     pointer_offset_expr.add_source_location()=source_location;
 
-    if(expr.type()!=pointer_offset_expr.type())
-      pointer_offset_expr.make_typecast(expr.type());
-
-    return pointer_offset_expr;
+    return typecast_exprt::conditional_cast(pointer_offset_expr, expr.type());
   }
   else if(identifier==CPROVER_PREFIX "POINTER_OBJECT")
   {
@@ -2163,11 +2173,10 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt pointer_object_expr=exprt(ID_pointer_object, expr.type());
-    pointer_object_expr.operands()=expr.arguments();
-    pointer_object_expr.add_source_location()=source_location;
+    exprt pointer_object_expr = pointer_object(expr.arguments().front());
+    pointer_object_expr.add_source_location() = source_location;
 
-    return pointer_object_expr;
+    return typecast_exprt::conditional_cast(pointer_object_expr, expr.type());
   }
   else if(identifier=="__builtin_bswap16" ||
           identifier=="__builtin_bswap32" ||
@@ -2182,11 +2191,81 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt bswap_expr(ID_bswap, expr.type());
-    bswap_expr.operands()=expr.arguments();
+    // these are hard-wired to 8 bits according to the gcc manual
+    bswap_exprt bswap_expr(expr.arguments().front(), 8, expr.type());
     bswap_expr.add_source_location()=source_location;
 
     return bswap_expr;
+  }
+  else if(identifier=="__builtin_nontemporal_load")
+  {
+    typecheck_function_call_arguments(expr);
+
+    if(expr.arguments().size()!=1)
+    {
+      err_location(f_op);
+      error() << identifier << " expects one operand" << eom;
+      throw 0;
+    }
+
+    // these return the subtype of the argument
+    exprt &ptr_arg=expr.arguments().front();
+
+    if(ptr_arg.type().id()!=ID_pointer)
+    {
+      err_location(f_op);
+      error() << "__builtin_nontemporal_load takes pointer as argument" << eom;
+      throw 0;
+    }
+
+    expr.type()=expr.arguments().front().type().subtype();
+
+    return expr;
+  }
+  else if(
+    identifier == "__builtin_fpclassify" ||
+    identifier == CPROVER_PREFIX "fpclassify")
+  {
+    if(expr.arguments().size() != 6)
+    {
+      err_location(f_op);
+      error() << identifier << " expects six arguments" << eom;
+      throw 0;
+    }
+
+    // This gets 5 integers followed by a float or double.
+    // The five integers are the return values for the cases
+    // FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL and FP_ZERO.
+    // gcc expects this to be able to produce compile-time constants.
+
+    const exprt &fp_value = expr.arguments()[5];
+
+    if(fp_value.type().id() != ID_floatbv)
+    {
+      err_location(fp_value);
+      error() << "non-floating-point argument for " << identifier << eom;
+      throw 0;
+    }
+
+    const auto &floatbv_type = to_floatbv_type(fp_value.type());
+
+    const exprt zero = ieee_floatt::zero(floatbv_type).to_expr();
+
+    const auto &arguments = expr.arguments();
+
+    return if_exprt(
+      isnan_exprt(fp_value),
+      arguments[0],
+      if_exprt(
+        isinf_exprt(fp_value),
+        arguments[1],
+        if_exprt(
+          isnormal_exprt(fp_value),
+          arguments[2],
+          if_exprt(
+            ieee_float_equal_exprt(fp_value, zero),
+            arguments[4],
+            arguments[3])))); // subnormal
   }
   else if(identifier==CPROVER_PREFIX "isnanf" ||
           identifier==CPROVER_PREFIX "isnand" ||
@@ -2200,11 +2279,10 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt isnan_expr(ID_isnan, bool_typet());
-    isnan_expr.operands()=expr.arguments();
+    isnan_exprt isnan_expr(expr.arguments().front());
     isnan_expr.add_source_location()=source_location;
 
-    return isnan_expr;
+    return typecast_exprt::conditional_cast(isnan_expr, expr.type());
   }
   else if(identifier==CPROVER_PREFIX "isfinitef" ||
           identifier==CPROVER_PREFIX "isfinited" ||
@@ -2217,11 +2295,10 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt isfinite_expr(ID_isfinite, bool_typet());
-    isfinite_expr.operands()=expr.arguments();
+    isfinite_exprt isfinite_expr(expr.arguments().front());
     isfinite_expr.add_source_location()=source_location;
 
-    return isfinite_expr;
+    return typecast_exprt::conditional_cast(isfinite_expr, expr.type());
   }
   else if(identifier==CPROVER_PREFIX "inf" ||
           identifier=="__builtin_inf")
@@ -2265,8 +2342,7 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt abs_expr(ID_abs, expr.type());
-    abs_expr.operands()=expr.arguments();
+    abs_exprt abs_expr(expr.arguments().front());
     abs_expr.add_source_location()=source_location;
 
     return abs_expr;
@@ -2280,12 +2356,27 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt malloc_expr=side_effect_exprt(ID_allocate);
-    malloc_expr.type()=expr.type();
-    malloc_expr.add_source_location()=source_location;
+    side_effect_exprt malloc_expr(ID_allocate, expr.type(), source_location);
     malloc_expr.operands()=expr.arguments();
 
     return malloc_expr;
+  }
+  else if(
+    identifier == CPROVER_PREFIX "r_ok" || identifier == CPROVER_PREFIX "w_ok")
+  {
+    if(expr.arguments().size() != 2)
+    {
+      err_location(f_op);
+      error() << identifier << " expects two operands" << eom;
+      throw 0;
+    }
+
+    irep_idt id = identifier == CPROVER_PREFIX "r_ok" ? ID_r_ok : ID_w_ok;
+
+    predicate_exprt ok_expr(id, expr.arguments()[0], expr.arguments()[1]);
+    ok_expr.add_source_location() = source_location;
+
+    return ok_expr;
   }
   else if(identifier==CPROVER_PREFIX "isinff" ||
           identifier==CPROVER_PREFIX "isinfd" ||
@@ -2295,32 +2386,64 @@ exprt c_typecheck_baset::do_special_functions(
     if(expr.arguments().size()!=1)
     {
       err_location(f_op);
-      error() << "isinf expects one operand" << eom;
+      error() << identifier << " expects one operand" << eom;
       throw 0;
     }
 
-    exprt isinf_expr(ID_isinf, bool_typet());
-    isinf_expr.operands()=expr.arguments();
+    isinf_exprt isinf_expr(expr.arguments().front());
     isinf_expr.add_source_location()=source_location;
 
-    return isinf_expr;
+    return typecast_exprt::conditional_cast(isinf_expr, expr.type());
   }
-  else if(identifier==CPROVER_PREFIX "isnormalf" ||
-          identifier==CPROVER_PREFIX "isnormald" ||
-          identifier==CPROVER_PREFIX "isnormalld")
+  else if(identifier == "__builtin_isinf_sign")
+  {
+    if(expr.arguments().size() != 1)
+    {
+      err_location(f_op);
+      error() << identifier << " expects one operand" << eom;
+      throw 0;
+    }
+
+    // returns 1 for +inf and -1 for -inf, and 0 otherwise
+
+    const exprt &fp_value = expr.arguments().front();
+
+    isinf_exprt isinf_expr(fp_value);
+    isinf_expr.add_source_location() = source_location;
+
+    return if_exprt(
+      isinf_exprt(fp_value),
+      if_exprt(
+        sign_exprt(fp_value),
+        from_integer(-1, expr.type()),
+        from_integer(1, expr.type())),
+      from_integer(0, expr.type()));
+  }
+  else if(identifier == CPROVER_PREFIX "isnormalf" ||
+          identifier == CPROVER_PREFIX "isnormald" ||
+          identifier == CPROVER_PREFIX "isnormalld" ||
+          identifier == "__builtin_isnormal")
   {
     if(expr.arguments().size()!=1)
     {
       err_location(f_op);
-      error() << "isnormal expects one operand" << eom;
+      error() << identifier << " expects one operand" << eom;
       throw 0;
     }
 
-    exprt isnormal_expr(ID_isnormal, bool_typet());
-    isnormal_expr.operands()=expr.arguments();
+    const exprt &fp_value = expr.arguments()[0];
+
+    if(fp_value.type().id() != ID_floatbv)
+    {
+      err_location(fp_value);
+      error() << "non-floating-point argument for " << identifier << eom;
+      throw 0;
+    }
+
+    isnormal_exprt isnormal_expr(expr.arguments().front());
     isnormal_expr.add_source_location()=source_location;
 
-    return isnormal_expr;
+    return typecast_exprt::conditional_cast(isnormal_expr, expr.type());
   }
   else if(identifier==CPROVER_PREFIX "signf" ||
           identifier==CPROVER_PREFIX "signd" ||
@@ -2332,15 +2455,14 @@ exprt c_typecheck_baset::do_special_functions(
     if(expr.arguments().size()!=1)
     {
       err_location(f_op);
-      error() << "sign expects one operand" << eom;
+      error() << identifier << " expects one operand" << eom;
       throw 0;
     }
 
-    exprt sign_expr(ID_sign, bool_typet());
-    sign_expr.operands()=expr.arguments();
+    sign_exprt sign_expr(expr.arguments().front());
     sign_expr.add_source_location()=source_location;
 
-    return sign_expr;
+    return typecast_exprt::conditional_cast(sign_expr, expr.type());
   }
   else if(identifier=="__builtin_popcount" ||
           identifier=="__builtin_popcountl" ||
@@ -2356,8 +2478,7 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt popcount_expr(ID_popcount, expr.type());
-    popcount_expr.operands()=expr.arguments();
+    popcount_exprt popcount_expr(expr.arguments().front(), expr.type());
     popcount_expr.add_source_location()=source_location;
 
     return popcount_expr;
@@ -2504,7 +2625,7 @@ exprt c_typecheck_baset::do_special_functions(
   }
   else if(identifier=="__builtin_classify_type")
   {
-    // This is a gcc extension that produces an integer
+    // This is a gcc/clang extension that produces an integer
     // constant for the type of the argument expression.
     if(expr.arguments().size()!=1)
     {
@@ -2517,22 +2638,41 @@ exprt c_typecheck_baset::do_special_functions(
 
     // The value doesn't matter at all, we only care about the type.
     // Need to sync with typeclass.h.
-    const typet &type=follow(object.type());
+    typet type = follow(object.type());
 
-    unsigned type_number=
-      type.id()==ID_empty?0:
-      type.id()==ID_c_enum_tag?3:
-      (type.id()==ID_bool || type.id()==ID_c_bool)?4:
-      type.id()==ID_pointer?5:
-      type.id()==ID_floatbv?8:
-      (type.id()==ID_complex && type.subtype().id()==ID_floatbv)?9:
-      type.id()==ID_struct?12:
-      type.id()==ID_union?13:
-      type.id()==ID_array?14:
-      1; // int, short
+    // use underlying type for bit fields
+    if(type.id() == ID_c_bit_field)
+      type = to_c_bit_field_type(type).subtype();
 
-    // clang returns 15 for the three 'char' types,
-    // gcc treats these as 'int'
+    unsigned type_number;
+
+    if(type.id() == ID_bool || type.id() == ID_c_bool)
+    {
+      // clang returns 4 for _Bool, gcc treats these as 'int'.
+      type_number =
+        config.ansi_c.preprocessor == configt::ansi_ct::preprocessort::CLANG
+          ? 4u
+          : 1u;
+    }
+    else
+    {
+      type_number =
+          type.id() == ID_empty
+          ? 0u
+          : (type.id() == ID_bool || type.id() == ID_c_bool)
+            ? 4u
+            : (type.id() == ID_pointer || type.id() == ID_array)
+              ? 5u
+              : type.id() == ID_floatbv
+                ? 8u
+                : (type.id() == ID_complex && type.subtype().id() == ID_floatbv)
+                  ? 9u
+                  : type.id() == ID_struct
+                    ? 12u
+                    : type.id() == ID_union
+                      ? 13u
+                      : 1u; // int, short, char, enum_tag
+    }
 
     exprt tmp=from_integer(type_number, expr.type());
     tmp.add_source_location()=source_location;
@@ -2687,7 +2827,7 @@ void c_typecheck_baset::typecheck_function_call_arguments(
   }
 }
 
-void c_typecheck_baset::typecheck_expr_constant(exprt &expr)
+void c_typecheck_baset::typecheck_expr_constant(exprt &)
 {
   // nothing to do
 }
@@ -2957,8 +3097,8 @@ void c_typecheck_baset::typecheck_arithmetic_pointer(const exprt &expr)
 
   typet subtype=type.subtype();
 
-  if(subtype.id()==ID_symbol)
-    subtype=follow(subtype);
+  if(subtype.id() == ID_symbol_type)
+    subtype = follow(to_symbol_type(subtype));
 
   if(subtype.id()==ID_incomplete_struct)
   {
@@ -3275,7 +3415,13 @@ void c_typecheck_baset::typecheck_side_effect_assignment(
 
 void c_typecheck_baset::make_constant(exprt &expr)
 {
-  make_constant_rec(expr);
+  // Floating-point expressions may require a rounding mode.
+  // ISO 9899:1999 F.7.2 says that the default is "round to nearest".
+  // Some compilers have command-line options to override.
+  const auto rounding_mode =
+    from_integer(ieee_floatt::ROUND_TO_EVEN, signed_int_type());
+  adjust_float_expressions(expr, rounding_mode);
+
   simplify(expr, *this);
 
   if(!expr.is_constant() &&
@@ -3301,8 +3447,4 @@ void c_typecheck_baset::make_constant_index(exprt &expr)
     error() << "conversion to integer constant failed" << eom;
     throw 0;
   }
-}
-
-void c_typecheck_baset::make_constant_rec(exprt &expr)
-{
 }

@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "symex_bmc.h"
 
+#include <goto-symex/symex_target_equation.h>
+
 #include <limits>
 
 #include <util/source_location.h>
@@ -18,29 +20,27 @@ Author: Daniel Kroening, kroening@kroening.com
 
 symex_bmct::symex_bmct(
   message_handlert &mh,
-  const namespacet &_ns,
-  symbol_tablet &_new_symbol_table,
-  symex_targett &_target)
-  : goto_symext(mh, _ns, _new_symbol_table, _target),
+  const symbol_tablet &outer_symbol_table,
+  symex_target_equationt &_target,
+  const optionst &options,
+  path_storaget &path_storage)
+  : goto_symext(mh, outer_symbol_table, _target, options, path_storage),
     record_coverage(false),
-    max_unwind(0),
-    max_unwind_is_set(false),
-    symex_coverage(_ns)
+    symex_coverage(ns)
 {
 }
 
 /// show progress
 void symex_bmct::symex_step(
-  const goto_functionst &goto_functions,
+  const get_goto_functiont &get_goto_function,
   statet &state)
 {
   const source_locationt &source_location=state.source.pc->source_location;
 
   if(!source_location.is_nil() && last_source_location!=source_location)
   {
-  //  log.debug() << "BMC at file " << source_location.get_file() << " line "
-//<< source_location.get_line() << " function "
-    //            << source_location.get_function() << log.eom;
+    //log.debug() << "BMC at " << source_location.as_string()
+    //            << " (depth " << state.depth << ')' << log.eom;
 
     last_source_location=source_location;
   }
@@ -63,12 +63,12 @@ void symex_bmct::symex_step(
     log.statistics() << log.eom;
   }
 
-  goto_symext::symex_step(goto_functions, state);
+  goto_symext::symex_step(get_goto_function, state);
 
   if(record_coverage &&
      // avoid an invalid iterator in state.source.pc
      (!cur_pc->is_end_function() ||
-      cur_pc->function!=goto_functions.entry_point()))
+      cur_pc->function!=goto_functionst::entry_point()))
   {
     // forward goto will effectively be covered via phi function,
     // which does not invoke symex_step; as symex_step is called
@@ -106,31 +106,37 @@ void symex_bmct::merge_goto(
 
 bool symex_bmct::get_unwind(
   const symex_targett::sourcet &source,
+  const goto_symex_statet::call_stackt &context,
   unsigned unwind)
 {
   const irep_idt id=goto_programt::loop_id(*source.pc);
 
-  // We use the most specific limit we have,
-  // and 'infinity' when we have none.
-
+  tvt abort_unwind_decision;
   unsigned this_loop_limit=std::numeric_limits<unsigned>::max();
 
-  loop_limitst &this_thread_limits=
-    thread_loop_limits[source.thread_nr];
-
-  loop_limitst::const_iterator l_it=this_thread_limits.find(id);
-  if(l_it!=this_thread_limits.end())
-    this_loop_limit=l_it->second;
-  else
+  for(auto handler : loop_unwind_handlers)
   {
-    l_it=loop_limits.find(id);
-    if(l_it!=loop_limits.end())
-      this_loop_limit=l_it->second;
-    else if(max_unwind_is_set)
-      this_loop_limit=max_unwind;
+    abort_unwind_decision =
+      handler(context, source.pc->loop_number, unwind, this_loop_limit);
+    if(abort_unwind_decision.is_known())
+      break;
   }
 
-  bool abort=unwind>=this_loop_limit;
+  // If no handler gave an opinion, use standard command-line --unwindset
+  // / --unwind options to decide:
+  if(abort_unwind_decision.is_unknown())
+  {
+    auto limit=unwindset.get_limit(id, source.thread_nr);
+
+    if(!limit.has_value())
+      abort_unwind_decision = tvt(false);
+    else
+      abort_unwind_decision = tvt(unwind >= *limit);
+  }
+
+  INVARIANT(
+    abort_unwind_decision.is_known(), "unwind decision should be taken by now");
+  bool abort = abort_unwind_decision.is_true();
 
   log.statistics() << (abort ? "Not unwinding" : "Unwinding") << " loop " << id
                    << " iteration " << unwind;
@@ -149,27 +155,31 @@ bool symex_bmct::get_unwind_recursion(
   const unsigned thread_nr,
   unsigned unwind)
 {
-  // We use the most specific limit we have,
-  // and 'infinity' when we have none.
-
+  tvt abort_unwind_decision;
   unsigned this_loop_limit=std::numeric_limits<unsigned>::max();
 
-  loop_limitst &this_thread_limits=
-    thread_loop_limits[thread_nr];
-
-  loop_limitst::const_iterator l_it=this_thread_limits.find(id);
-  if(l_it!=this_thread_limits.end())
-    this_loop_limit=l_it->second;
-  else
+  for(auto handler : recursion_unwind_handlers)
   {
-    l_it=loop_limits.find(id);
-    if(l_it!=loop_limits.end())
-      this_loop_limit=l_it->second;
-    else if(max_unwind_is_set)
-      this_loop_limit=max_unwind;
+    abort_unwind_decision = handler(id, unwind, this_loop_limit);
+    if(abort_unwind_decision.is_known())
+      break;
   }
 
-  bool abort=unwind>this_loop_limit;
+  // If no handler gave an opinion, use standard command-line --unwindset
+  // / --unwind options to decide:
+  if(abort_unwind_decision.is_unknown())
+  {
+    auto limit=unwindset.get_limit(id, thread_nr);
+
+    if(!limit.has_value())
+      abort_unwind_decision = tvt(false);
+    else
+      abort_unwind_decision = tvt(unwind > *limit);
+  }
+
+  INVARIANT(
+    abort_unwind_decision.is_known(), "unwind decision should be taken by now");
+  bool abort = abort_unwind_decision.is_true();
 
   if(unwind>0 || abort)
   {

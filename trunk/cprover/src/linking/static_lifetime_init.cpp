@@ -11,18 +11,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <cstdlib>
 
-#include <util/namespace.h>
-#include <util/std_expr.h>
 #include <util/arith_tools.h>
-#include <util/std_code.h>
-#include <util/config.h>
-#include <util/prefix.h>
-
 #include <util/c_types.h>
+#include <util/config.h>
+#include <util/expr_initializer.h>
+#include <util/namespace.h>
+#include <util/prefix.h>
+#include <util/std_code.h>
+#include <util/std_expr.h>
 
 #include <goto-programs/goto_functions.h>
-
-#include "zero_initializer.h"
 
 bool static_lifetime_init(
   symbol_tablet &symbol_table,
@@ -49,8 +47,10 @@ bool static_lifetime_init(
   // sort alphabetically for reproducible results
   std::set<std::string> symbols;
 
-  forall_symbols(it, symbol_table.symbols)
-    symbols.insert(id2string(it->first));
+  for(const auto &symbol_pair : symbol_table.symbols)
+  {
+    symbols.insert(id2string(symbol_pair.first));
+  }
 
   for(const std::string &id : symbols)
   {
@@ -143,8 +143,13 @@ bool static_lifetime_init(
   {
     const symbolt &symbol=ns.lookup(id);
 
-    if(symbol.type.id()==ID_code &&
-       to_code_type(symbol.type).return_type().id()==ID_constructor)
+    if(symbol.type.id() != ID_code)
+      continue;
+
+    const code_typet &code_type = to_code_type(symbol.type);
+    if(
+      code_type.return_type().id() == ID_constructor &&
+      code_type.parameters().empty())
     {
       code_function_callt function_call;
       function_call.function()=symbol.symbol_expr();

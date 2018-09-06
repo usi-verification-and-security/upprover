@@ -13,19 +13,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/ieee_float.h>
 #include <util/std_expr.h>
 
-#include "../flattening/bv_utils.h"
+#include <solvers/flattening/bv_utils.h>
 
 class float_bvt
 {
 public:
-  float_bvt()
-  {
-  }
-
-  ~float_bvt()
-  {
-  }
-
   exprt operator()(const exprt &src)
   {
     return convert(src);
@@ -36,7 +28,7 @@ public:
   exprt negation(const exprt &, const ieee_float_spect &);
   exprt abs(const exprt &, const ieee_float_spect &);
   exprt is_equal(const exprt &, const exprt &, const ieee_float_spect &);
-  exprt is_zero(const exprt &, const ieee_float_spect &);
+  exprt is_zero(const exprt &);
   exprt isnan(const exprt &, const ieee_float_spect &);
   exprt isinf(const exprt &, const ieee_float_spect &);
   exprt isnormal(const exprt &, const ieee_float_spect &);
@@ -101,7 +93,7 @@ public:
     const exprt &,
     const ieee_float_spect &);
 
-protected:
+private:
   // helpers
   ieee_float_spect get_spec(const exprt &);
   // still biased
@@ -116,7 +108,6 @@ protected:
 
   struct rounding_mode_bitst
   {
-  public:
     // these are mutually exclusive, obviously
     exprt round_to_even;
     exprt round_to_zero;
@@ -168,7 +159,7 @@ protected:
   biased_floatt bias(const unbiased_floatt &, const ieee_float_spect &);
 
   // this takes unpacked format, and returns packed
-  virtual exprt rounder(
+  exprt rounder(
     const unbiased_floatt &,
     const exprt &rm,
     const ieee_float_spect &);

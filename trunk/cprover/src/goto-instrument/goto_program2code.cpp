@@ -13,21 +13,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <sstream>
 
-#include <util/c_types.h>
+#include <util/arith_tools.h>
 #include <util/config.h>
+#include <util/c_types.h>
+#include <util/expr_util.h>
+#include <util/find_symbols.h>
 #include <util/prefix.h>
 #include <util/simplify_expr.h>
-#include <util/find_symbols.h>
-#include <util/arith_tools.h>
 #include <util/type_eq.h>
-
-static const exprt &skip_typecast(const exprt &expr)
-{
-  if(expr.id()!=ID_typecast)
-    return expr;
-
-  return skip_typecast(to_typecast_expr(expr).op());
-}
 
 void goto_program2codet::operator()()
 {
@@ -228,8 +221,7 @@ goto_programt::const_targett goto_program2codet::convert_instruction(
     case ATOMIC_END:
       {
         code_function_callt f;
-        code_typet void_t;
-        void_t.return_type()=empty_typet();
+        const code_typet void_t({}, empty_typet());
         f.function()=symbol_exprt(
             target->is_atomic_begin() ?
             "__CPROVER_atomic_begin" :
@@ -246,6 +238,7 @@ goto_programt::const_targett goto_program2codet::convert_instruction(
       return convert_catch(target, upper_bound, dest);
 
     case NO_INSTRUCTION_TYPE:
+    case INCOMPLETE_GOTO:
       UNREACHABLE;
   }
 
@@ -328,7 +321,7 @@ goto_programt::const_targett goto_program2codet::convert_assign_varargs(
   if(r.id()==ID_constant &&
      (r.is_zero() || to_constant_expr(r).get_value()==ID_NULL))
   {
-    f.function()=symbol_exprt("va_end", code_typet());
+    f.function() = symbol_exprt("va_end", code_typet({}, empty_typet()));
     f.arguments().push_back(this_va_list_expr);
     f.arguments().back().type().id(ID_gcc_builtin_va_list);
 
@@ -336,7 +329,7 @@ goto_programt::const_targett goto_program2codet::convert_assign_varargs(
   }
   else if(r.id()==ID_address_of)
   {
-    f.function()=symbol_exprt("va_start", code_typet());
+    f.function() = symbol_exprt("va_start", code_typet({}, empty_typet()));
     f.arguments().push_back(this_va_list_expr);
     f.arguments().back().type().id(ID_gcc_builtin_va_list);
     f.arguments().push_back(to_address_of_expr(r).object());
@@ -346,12 +339,13 @@ goto_programt::const_targett goto_program2codet::convert_assign_varargs(
   else if(r.id()==ID_side_effect &&
           to_side_effect_expr(r).get_statement()==ID_gcc_builtin_va_arg_next)
   {
-    f.function()=symbol_exprt("va_arg", code_typet());
+    f.function() = symbol_exprt("va_arg", code_typet({}, empty_typet()));
     f.arguments().push_back(this_va_list_expr);
     f.arguments().back().type().id(ID_gcc_builtin_va_list);
 
     side_effect_expr_function_callt type_of;
-    type_of.function()=symbol_exprt("__typeof__", code_typet());
+    type_of.function() =
+      symbol_exprt("__typeof__", code_typet({}, empty_typet()));
 
     // if the return value is used, the next instruction will be assign
     goto_programt::const_targett next=target;
@@ -393,7 +387,7 @@ goto_programt::const_targett goto_program2codet::convert_assign_varargs(
   }
   else
   {
-    f.function()=symbol_exprt("va_copy", code_typet());
+    f.function() = symbol_exprt("va_copy", code_typet({}, empty_typet()));
     f.arguments().push_back(this_va_list_expr);
     f.arguments().back().type().id(ID_gcc_builtin_va_list);
     f.arguments().push_back(r);
@@ -774,7 +768,7 @@ bool goto_program2codet::set_block_end_points(
   cases_listt &cases,
   std::set<unsigned> &processed_locations)
 {
-  std::map<goto_programt::const_targett, std::size_t> targets_done;
+  std::set<goto_programt::const_targett> targets_done;
 
   for(cases_listt::iterator it=cases.begin();
       it!=cases.end();
@@ -782,7 +776,7 @@ bool goto_program2codet::set_block_end_points(
   {
     // some branch targets may be shared by multiple branch instructions,
     // as in case 1: case 2: code; we build a nested code_switch_caset
-    if(targets_done.find(it->case_start)!=targets_done.end())
+    if(!targets_done.insert(it->case_start).second)
       continue;
 
     // compute the block that belongs to this case
@@ -818,8 +812,6 @@ bool goto_program2codet::set_block_end_points(
 
       it->case_last=case_end;
     }
-
-    targets_done[it->case_start]=1;
   }
 
   return false;
@@ -1125,17 +1117,17 @@ goto_programt::const_targett goto_program2codet::convert_goto_if(
   if(has_else)
   {
     for(++target; target!=before_else; ++target)
-      target=convert_instruction(target, before_else, to_code(i.then_case()));
+      target = convert_instruction(target, before_else, i.then_case());
 
-    convert_labels(before_else, to_code(i.then_case()));
+    convert_labels(before_else, i.then_case());
 
     for(++target; target!=end_if; ++target)
-      target=convert_instruction(target, end_if, to_code(i.else_case()));
+      target = convert_instruction(target, end_if, i.else_case());
   }
   else
   {
     for(++target; target!=end_if; ++target)
-      target=convert_instruction(target, end_if, to_code(i.then_case()));
+      target = convert_instruction(target, end_if, i.then_case());
   }
 
   dest.move_to_operands(i);
@@ -1362,20 +1354,21 @@ goto_programt::const_targett goto_program2codet::convert_start_thread(
 
   // use pthreads if "code in new thread" is a function call to a function with
   // suitable signature
-  if(thread_start->is_function_call() &&
-     to_code_function_call(to_code(thread_start->code)).arguments().size()==1 &&
-     after_thread_start==thread_end)
+  if(
+    thread_start->is_function_call() &&
+    to_code_function_call(thread_start->code).arguments().size() == 1 &&
+    after_thread_start == thread_end)
   {
-    const code_function_callt &cf=
-      to_code_function_call(to_code(thread_start->code));
+    const code_function_callt &cf = to_code_function_call(thread_start->code);
 
     system_headers.insert("pthread.h");
 
     code_function_callt f;
     // we don't bother setting the type
     f.lhs()=cf.lhs();
-    f.function()=symbol_exprt("pthread_create", code_typet());
-    exprt n=null_pointer_exprt(pointer_type(empty_typet()));
+    f.function() =
+      symbol_exprt("pthread_create", code_typet({}, empty_typet()));
+    const null_pointer_exprt n(pointer_type(empty_typet()));
     f.arguments().push_back(n);
     f.arguments().push_back(n);
     f.arguments().push_back(cf.function());
@@ -1410,7 +1403,7 @@ goto_programt::const_targett goto_program2codet::convert_start_thread(
 
 goto_programt::const_targett goto_program2codet::convert_throw(
     goto_programt::const_targett target,
-    codet &dest)
+    codet &)
 {
   // this isn't really clear as throw is not supported in expr2cpp either
   UNREACHABLE;
@@ -1419,8 +1412,8 @@ goto_programt::const_targett goto_program2codet::convert_throw(
 
 goto_programt::const_targett goto_program2codet::convert_catch(
     goto_programt::const_targett target,
-    goto_programt::const_targett upper_bound,
-    codet &dest)
+    goto_programt::const_targett,
+    codet &)
 {
   // this isn't really clear as catch is not supported in expr2cpp either
   UNREACHABLE;
@@ -1429,7 +1422,7 @@ goto_programt::const_targett goto_program2codet::convert_catch(
 
 void goto_program2codet::add_local_types(const typet &type)
 {
-  if(type.id()==ID_symbol)
+  if(type.id() == ID_symbol_type)
   {
     const typet &full_type=ns.follow(type);
 
@@ -1662,7 +1655,7 @@ void goto_program2codet::remove_const(typet &type)
   if(type.get_bool(ID_C_constant))
     type.remove(ID_C_constant);
 
-  if(type.id()==ID_symbol)
+  if(type.id() == ID_symbol_type)
   {
     const irep_idt &identifier=to_symbol_type(type).get_identifier();
     if(!const_removed.insert(identifier).second)
@@ -1737,14 +1730,15 @@ void goto_program2codet::cleanup_code_ifthenelse(
 
   // assert(false) expands to if(true) assert(false), simplify again (and also
   // simplify other cases)
-  if(cond.is_true() &&
-      (i_t_e.else_case().is_nil() || !has_labels(to_code(i_t_e.else_case()))))
+  if(
+    cond.is_true() &&
+    (i_t_e.else_case().is_nil() || !has_labels(i_t_e.else_case())))
   {
     codet tmp;
     tmp.swap(i_t_e.then_case());
     code.swap(tmp);
   }
-  else if(cond.is_false() && !has_labels(to_code(i_t_e.then_case())))
+  else if(cond.is_false() && !has_labels(i_t_e.then_case()))
   {
     if(i_t_e.else_case().is_nil())
       code=code_skipt();
@@ -1757,8 +1751,9 @@ void goto_program2codet::cleanup_code_ifthenelse(
   }
   else
   {
-    if(i_t_e.then_case().is_not_nil() &&
-       to_code(i_t_e.then_case()).get_statement()==ID_ifthenelse)
+    if(
+      i_t_e.then_case().is_not_nil() &&
+      i_t_e.then_case().get_statement() == ID_ifthenelse)
     {
       // we re-introduce 1-code blocks with if-then-else to avoid dangling-else
       // ambiguity
@@ -1767,9 +1762,10 @@ void goto_program2codet::cleanup_code_ifthenelse(
       i_t_e.then_case().swap(b);
     }
 
-    if(i_t_e.else_case().is_not_nil() &&
-       to_code(i_t_e.then_case()).get_statement()==ID_skip &&
-       to_code(i_t_e.else_case()).get_statement()==ID_ifthenelse)
+    if(
+      i_t_e.else_case().is_not_nil() &&
+      i_t_e.then_case().get_statement() == ID_skip &&
+      i_t_e.else_case().get_statement() == ID_ifthenelse)
     {
       // we re-introduce 1-code blocks with if-then-else to avoid dangling-else
       // ambiguity
@@ -1802,8 +1798,9 @@ void goto_program2codet::cleanup_code_ifthenelse(
   }
 
   // remove empty then/else
-  if(code.get_statement()==ID_ifthenelse &&
-      to_code(i_t_e.then_case()).get_statement()==ID_skip)
+  if(
+    code.get_statement() == ID_ifthenelse &&
+    i_t_e.then_case().get_statement() == ID_skip)
   {
     not_exprt tmp(i_t_e.cond());
     simplify(tmp, ns);
@@ -1812,15 +1809,15 @@ void goto_program2codet::cleanup_code_ifthenelse(
     i_t_e.cond().swap(tmp);
     i_t_e.then_case().swap(i_t_e.else_case());
   }
-  if(code.get_statement()==ID_ifthenelse &&
-      i_t_e.else_case().is_not_nil() &&
-      to_code(i_t_e.else_case()).get_statement()==ID_skip)
+  if(
+    code.get_statement() == ID_ifthenelse && i_t_e.else_case().is_not_nil() &&
+    i_t_e.else_case().get_statement() == ID_skip)
     i_t_e.else_case().make_nil();
   // or even remove the if altogether if the then case is now empty
-  if(code.get_statement()==ID_ifthenelse &&
-      i_t_e.else_case().is_nil() &&
-      (i_t_e.then_case().is_nil() ||
-       to_code(i_t_e.then_case()).get_statement()==ID_skip))
+  if(
+    code.get_statement() == ID_ifthenelse && i_t_e.else_case().is_nil() &&
+    (i_t_e.then_case().is_nil() ||
+     i_t_e.then_case().get_statement() == ID_skip))
     code=code_skipt();
 }
 
@@ -1864,7 +1861,8 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
     if(no_typecast)
       return;
 
-    assert(expr.type().id()==ID_symbol);
+    DATA_INVARIANT(expr.type().id() == ID_symbol_type,
+                   "type of union/struct expressions");
 
     const typet &t=expr.type();
 
@@ -1947,13 +1945,10 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
           base_name="nondet_"+std::to_string(count);
         }
 
-        code_typet code_type;
-        code_type.return_type()=expr.type();
-
         symbolt symbol;
         symbol.base_name=base_name;
         symbol.name=base_name;
-        symbol.type=code_type;
+        symbol.type = code_typet({}, expr.type());
         id=symbol.name;
 
         symbol_table.insert(std::move(symbol));

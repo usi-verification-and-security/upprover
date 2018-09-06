@@ -25,12 +25,12 @@ void cpp_typecheckt::typecheck_code(codet &code)
 
   if(statement==ID_try_catch)
   {
-    code.type()=code_typet();
+    code.type() = code_typet({}, empty_typet());
     typecheck_try_catch(code);
   }
   else if(statement==ID_member_initializer)
   {
-    code.type()=code_typet();
+    code.type() = code_typet({}, empty_typet());
     typecheck_member_initializer(code);
   }
   else if(statement==ID_msc_if_exists ||
@@ -177,7 +177,12 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
 
   // Let's first typecheck the operands.
   Forall_operands(it, code)
+  {
+    const bool has_array_ini = it->get_bool(ID_C_array_ini);
     typecheck_expr(*it);
+    if(has_array_ini)
+      it->set(ID_C_array_ini, true);
+  }
 
   // The initializer may be a data member (non-type)
   // or a parent class (type).
@@ -223,7 +228,7 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
     // done building the expression, check the argument types
     typecheck_function_call_arguments(function_call);
 
-    if(symbol_expr.get_bool("#not_accessible"))
+    if(symbol_expr.get_bool(ID_C_not_accessible))
     {
       irep_idt access = symbol_expr.get(ID_C_access);
 
@@ -307,25 +312,20 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
         reference_initializer(code.op0(), symbol_expr.type());
 
         // assign the pointers
-        symbol_expr.type().remove("#reference");
-        symbol_expr.set("#lvalue", true);
-        code.op0().type().remove("#reference");
+        symbol_expr.type().remove(ID_C_reference);
+        symbol_expr.set(ID_C_lvalue, true);
+        code.op0().type().remove(ID_C_reference);
 
-        side_effect_exprt assign(ID_assign);
-        assign.add_source_location() = code.source_location();
+        side_effect_exprt assign(ID_assign, typet(), code.source_location());
         assign.copy_to_operands(symbol_expr, code.op0());
         typecheck_side_effect_assignment(assign);
-        code_expressiont new_code;
-        new_code.expression()=assign;
+        code_expressiont new_code(assign);
         code.swap(new_code);
       }
       else
       {
         // it's a data member
         already_typechecked(symbol_expr);
-
-        Forall_operands(it, code)
-          already_typechecked(*it);
 
         exprt call=
           cpp_constructor(code.source_location(), symbol_expr, code.operands());
@@ -367,7 +367,9 @@ void cpp_typecheckt::typecheck_decl(codet &code)
 
   bool is_typedef=declaration.is_typedef();
 
-  typecheck_type(type);
+  if(declaration.declarators().empty() || !has_auto(type))
+    typecheck_type(type);
+
   assert(type.is_not_nil());
 
   if(declaration.declarators().empty() &&
@@ -385,6 +387,9 @@ void cpp_typecheckt::typecheck_decl(codet &code)
     return;
   }
 
+  // mark as 'already typechecked'
+  make_already_typechecked(type);
+
   codet new_code(ID_decl_block);
   new_code.reserve_operands(declaration.declarators().size());
 
@@ -400,17 +405,18 @@ void cpp_typecheckt::typecheck_decl(codet &code)
     if(is_typedef)
       continue;
 
-    codet decl_statement(ID_decl);
-    decl_statement.reserve_operands(2);
+    code_declt decl_statement(cpp_symbol_expr(symbol));
     decl_statement.add_source_location()=symbol.location;
-    decl_statement.copy_to_operands(cpp_symbol_expr(symbol));
 
     // Do we have an initializer that's not code?
     if(symbol.value.is_not_nil() &&
        symbol.value.id()!=ID_code)
     {
       decl_statement.copy_to_operands(symbol.value);
-      assert(follow(decl_statement.op1().type())==follow(symbol.type));
+      DATA_INVARIANT(
+        has_auto(symbol.type) ||
+          follow(decl_statement.op1().type()) == follow(symbol.type),
+        "declarator type should match symbol type");
     }
 
     new_code.move_to_operands(decl_statement);
@@ -448,26 +454,4 @@ void cpp_typecheckt::typecheck_block(codet &code)
   cpp_scopes.new_block_scope();
 
   c_typecheck_baset::typecheck_block(code);
-}
-
-void cpp_typecheckt::typecheck_assign(codet &code)
-{
-  if(code.operands().size()!=2)
-  {
-    error().source_location=code.find_source_location();
-    error() << "assignment statement expected to have two operands"
-            << eom;
-    throw 0;
-  }
-
-  // turn into a side effect
-  side_effect_exprt expr(code.get(ID_statement));
-  expr.operands() = code.operands();
-  typecheck_expr(expr);
-
-  code_expressiont code_expr;
-  code_expr.expression()=expr;
-  code_expr.add_source_location() = code.source_location();
-
-  code.swap(code_expr);
 }

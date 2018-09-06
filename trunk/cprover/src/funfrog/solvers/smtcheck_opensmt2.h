@@ -11,12 +11,10 @@ Module: Wrapper for OpenSMT2
 
 #include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
 #include <funfrog/utils/expressions_utils.h>
-#include <util/expr.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
 
 #include <map>
-#include <vector>
 
 class smt_itpt;
 class symbol_exprt;
@@ -27,7 +25,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
-    smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false}
+    smtcheck_opensmt2t(): check_opensmt2t(), unsupported_info{false, this}
     {}
 
   virtual ~smtcheck_opensmt2t(); // d'tor
@@ -47,7 +45,7 @@ public:
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
       // FIXME: PTRef to literal should maybe consider negation, caching...
-      return push_variable(ptref);
+      return ptref_to_literal(ptref);
   }
 
   literalt land(literalt l1, literalt l2) override; // Common to all
@@ -56,10 +54,8 @@ public:
 
   literalt lor(const bvt & b) override; // Common to all
 
-  virtual void lcnf(const bvt& bv) override;
-
   void assert_literal(literalt lit) override{
-      set_to_true(literalToPTRef(lit));
+      set_to_true(literal_to_ptref(lit));
   }
   
 #ifdef PRODUCE_PROOF
@@ -83,15 +79,7 @@ public:
   // Common to all
   
   std::string getSimpleHeader(); // Get all the declarations without the variables
-  std::set<PTRef> get_constants() const;
-
-  SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
-
-  std::string getStringSMTlibDatatype(const exprt& expr);
-  virtual std::string getStringSMTlibDatatype(const typet& type)=0;
-  SRef getSMTlibDatatype(const exprt& expr);
-  virtual SRef getSMTlibDatatype(const typet& type)=0;
-
+ 
   virtual exprt get_value(const exprt &expr) override;
 
   void dump_function(std::ostream& out, const Tterm& templ) {
@@ -99,8 +87,16 @@ public:
   }
 
     virtual bool is_overapprox_encoding() const override
-    { return (has_unsupported_vars() && !has_overappox_mapping());}
+    { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping());}
+    
+    virtual SRef get_numeric_sort() const=0; // used in core
 
+    SRef get_smtlib_datatype(const typet & type); // Shall be public
+    
+    std::string to_string_smtlib_datatype(const typet & type);
+    
+    bool get_function_args(const exprt &expr, vec<PTRef>& args); // common to all
+    
 protected:
     /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
     virtual PTRef expression_to_ptref(const exprt& expr) = 0;
@@ -117,6 +113,8 @@ protected:
         return logic->mkBoolVar(var_name.c_str());
     }
 
+    std::set<PTRef> get_constants() const;
+    
     virtual PTRef constant_to_ptref(const exprt& expr);
 
     PTRef constant_bool(bool val) const {
@@ -130,7 +128,7 @@ protected:
     virtual PTRef numeric_constant(const exprt &expr) = 0;
 
     virtual void add_symbol_constraints(const exprt &expr, const PTRef var) {}
-
+    
   /* ***************************************************************************************************************/
 
 
@@ -141,31 +139,21 @@ protected:
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
-  // Hold uninterpreted functions that the solver was told about
-  std::map<std::string,SymRef> decl_uninterperted_func;
-
-  unsupported_operationst unsupported_info;
+  unsupported_operations_opensmt2t unsupported_info;
   
-  bool has_unsupported_vars() const { return unsupported_info.has_unsupported_vars(); }
   bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
 
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
-  virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
+  virtual unsupported_operationst& get_unsupported_info() { return unsupported_info;}
 
-  std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
-  
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
   // virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   virtual PTRef unsupported_to_var(const exprt & expr) = 0;
 
-  PTRef create_equation_for_unsupported(const exprt &expr); // common to all
+  PTRef create_unsupported_uf_call(const exprt &expr); // common to all
 
-  SymRef get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args); // common to all
-
-  void get_unsupported_op_args(const exprt &expr, vec<PTRef> &args); // common to all
-
-  literalt push_variable(PTRef ptl); // Common to all
+  literalt ptref_to_literal(PTRef ptl); // Common to all
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 
@@ -238,9 +226,6 @@ protected:
   // Basic prints for debug - KE: Hope I did it right :-)
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 
-  // build the string of the upper and lower bounds
-  std::string create_bound_string(std::string base, int exp);
-  
 };
 
 #endif

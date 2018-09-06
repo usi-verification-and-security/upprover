@@ -11,26 +11,70 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "base_type.h"
 
-#include <cassert>
 #include <set>
 
-#include "std_types.h"
 #include "namespace.h"
+#include "std_types.h"
 #include "symbol.h"
+#include "union_find.h"
+
+class base_type_eqt
+{
+public:
+  explicit base_type_eqt(const namespacet &_ns):ns(_ns)
+  {
+  }
+
+  bool base_type_eq(const typet &type1, const typet &type2)
+  {
+    identifiers.clear();
+    return base_type_eq_rec(type1, type2);
+  }
+
+  bool base_type_eq(const exprt &expr1, const exprt &expr2)
+  {
+    identifiers.clear();
+    return base_type_eq_rec(expr1, expr2);
+  }
+
+  virtual ~base_type_eqt() { }
+
+protected:
+  const namespacet &ns;
+
+  virtual bool base_type_eq_rec(const typet &type1, const typet &type2);
+  virtual bool base_type_eq_rec(const exprt &expr1, const exprt &expr2);
+
+  // for loop avoidance
+  typedef union_find<irep_idt> identifierst;
+  identifierst identifiers;
+};
 
 void base_type_rec(
   typet &type, const namespacet &ns, std::set<irep_idt> &symb)
 {
-  if(type.id()==ID_symbol ||
-     type.id()==ID_c_enum_tag ||
-     type.id()==ID_struct_tag ||
-     type.id()==ID_union_tag)
+  if(type.id() == ID_symbol_type)
   {
     const symbolt *symbol;
 
-    if(!ns.lookup(type.get(ID_identifier), symbol) &&
-       symbol->is_type &&
-       !symbol->type.is_nil())
+    if(
+      !ns.lookup(to_symbol_type(type).get_identifier(), symbol) &&
+      symbol->is_type && !symbol->type.is_nil())
+    {
+      type = symbol->type;
+      base_type_rec(type, ns, symb); // recursive call
+      return;
+    }
+  }
+  else if(
+    type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
+    type.id() == ID_union_tag)
+  {
+    const symbolt *symbol;
+
+    if(
+      !ns.lookup(to_tag_type(type).get_identifier(), symbol) &&
+      symbol->is_type && !symbol->type.is_nil())
     {
       type=symbol->type;
       base_type_rec(type, ns, symb); // recursive call
@@ -55,12 +99,24 @@ void base_type_rec(
     typet &subtype=to_pointer_type(type).subtype();
 
     // we need to avoid running into an infinite loop
-    if(subtype.id()==ID_symbol ||
-       subtype.id()==ID_c_enum_tag ||
-       subtype.id()==ID_struct_tag ||
-       subtype.id()==ID_union_tag)
+    if(subtype.id() == ID_symbol_type)
     {
-      const irep_idt &id=subtype.get(ID_identifier);
+      const irep_idt &id = to_symbol_type(subtype).get_identifier();
+
+      if(symb.find(id) != symb.end())
+        return;
+
+      symb.insert(id);
+
+      base_type_rec(subtype, ns, symb);
+
+      symb.erase(id);
+    }
+    else if(
+      subtype.id() == ID_c_enum_tag || subtype.id() == ID_struct_tag ||
+      subtype.id() == ID_union_tag)
+    {
+      const irep_idt &id = to_tag_type(subtype).get_identifier();
 
       if(symb.find(id)!=symb.end())
         return;
@@ -103,11 +159,10 @@ bool base_type_eqt::base_type_eq_rec(
   #endif
 
   // loop avoidance
-  if((type1.id()==ID_symbol ||
-      type1.id()==ID_c_enum_tag ||
-      type1.id()==ID_struct_tag ||
-      type1.id()==ID_union_tag) &&
-     type2.id()==type1.id())
+  if(
+    (type1.id() == ID_symbol_type || type1.id() == ID_c_enum_tag ||
+     type1.id() == ID_struct_tag || type1.id() == ID_union_tag) &&
+    type2.id() == type1.id())
   {
     // already in same set?
     if(identifiers.make_union(
@@ -116,10 +171,9 @@ bool base_type_eqt::base_type_eq_rec(
       return true;
   }
 
-  if(type1.id()==ID_symbol ||
-     type1.id()==ID_c_enum_tag ||
-     type1.id()==ID_struct_tag ||
-     type1.id()==ID_union_tag)
+  if(
+    type1.id() == ID_symbol_type || type1.id() == ID_c_enum_tag ||
+    type1.id() == ID_struct_tag || type1.id() == ID_union_tag)
   {
     const symbolt &symbol=
       ns.lookup(type1.get(ID_identifier));
@@ -130,10 +184,9 @@ bool base_type_eqt::base_type_eq_rec(
     return base_type_eq_rec(symbol.type, type2);
   }
 
-  if(type2.id()==ID_symbol ||
-     type2.id()==ID_c_enum_tag ||
-     type2.id()==ID_struct_tag ||
-     type2.id()==ID_union_tag)
+  if(
+    type2.id() == ID_symbol_type || type2.id() == ID_c_enum_tag ||
+    type2.id() == ID_struct_tag || type2.id() == ID_union_tag)
   {
     const symbolt &symbol=
       ns.lookup(type2.get(ID_identifier));
@@ -267,6 +320,15 @@ bool base_type_eqt::base_type_eq_rec(
   return true;
 }
 
+/// Check types for equality across all levels of hierarchy. For equality
+/// in the top level of the hierarchy only use \ref type_eq.
+/// Example:
+/// - `symbol_typet("a")` and `ns.lookup("a").type` will compare equal,
+/// - `struct_typet {symbol_typet("a")}` and `struct_typet {ns.lookup("a")
+///   .type}` will also compare equal.
+/// \param type1 The first type to compare.
+/// \param type2 The second type to compare.
+/// \param ns The namespace, needed for resolution of symbols.
 bool base_type_eq(
   const typet &type1,
   const typet &type2,
@@ -276,6 +338,10 @@ bool base_type_eq(
   return base_type_eq.base_type_eq(type1, type2);
 }
 
+/// Check expressions for equality across all levels of hierarchy.
+/// \param expr1 The first expression to compare.
+/// \param expr2 The second expression to compare.
+/// \param ns The namespace, needed for resolution of symbols.
 bool base_type_eq(
   const exprt &expr1,
   const exprt &expr2,

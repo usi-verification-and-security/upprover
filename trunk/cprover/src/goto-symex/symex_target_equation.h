@@ -15,6 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <list>
 #include <iosfwd>
 
+#include <util/invariant.h>
 #include <util/merge_irep.h>
 
 #include <goto-programs/goto_program.h>
@@ -31,8 +32,7 @@ class prop_convt;
 class symex_target_equationt:public symex_targett
 {
 public:
-  explicit symex_target_equationt(const namespacet &_ns);
-  virtual ~symex_target_equationt();
+  virtual ~symex_target_equationt() = default;
 
   // read event
   virtual void shared_read(
@@ -74,13 +74,14 @@ public:
   // record a function call
   virtual void function_call(
     const exprt &guard,
-    const irep_idt &identifier,
+    const irep_idt &function_identifier,
+    const std::vector<exprt> &ssa_function_arguments,
     const sourcet &source);
 
   // record return from a function
   virtual void function_return(
     const exprt &guard,
-    const irep_idt &identifier,
+    const irep_idt &function_identifier,
     const sourcet &source);
 
   // just record a location
@@ -163,6 +164,7 @@ public:
   void convert_constraints(decision_proceduret &decision_procedure) const;
   void convert_goto_instructions(prop_convt &prop_conv);
   void convert_guards(prop_convt &prop_conv);
+  void convert_function_calls(decision_proceduret &decision_procedure);
   void convert_io(decision_proceduret &decision_procedure);
 
   exprt make_expression() const;
@@ -230,7 +232,11 @@ public:
     std::list<exprt> converted_io_args;
 
     // for function call/return
-    irep_idt identifier;
+    irep_idt function_identifier;
+
+    // for function calls
+    std::vector<exprt> ssa_function_arguments,
+                       converted_function_arguments;
 
     // for SHARED_READ/SHARED_WRITE and ATOMIC_BEGIN/ATOMIC_END
     unsigned atomic_section_id=0;
@@ -256,9 +262,12 @@ public:
     {
     }
 
+    DEPRECATED("Use output without ns param")
     void output(
       const namespacet &ns,
       std::ostream &out) const;
+
+    void output(std::ostream &out) const;
   };
 
   std::size_t count_assertions() const
@@ -291,13 +300,13 @@ public:
     SSA_stepst::iterator it=SSA_steps.begin();
     for(; s!=0; s--)
     {
-      assert(it!=SSA_steps.end());
+      PRECONDITION(it != SSA_steps.end());
       it++;
     }
     return it;
   }
 
-  void output(std::ostream &out) const;
+  void output(std::ostream &out, const namespacet &ns) const;
 
   void clear()
   {
@@ -316,8 +325,6 @@ public:
   }
 
 protected:
-  const namespacet &ns;
-
   // for enforcing sharing in the expressions stored
   merge_irept merge_irep;
   void merge_ireps(SSA_stept &SSA_step);
@@ -329,12 +336,5 @@ inline bool operator<(
 {
   return &(*a)<&(*b);
 }
-
-std::ostream &operator<<(
-  std::ostream &out,
-  const symex_target_equationt::SSA_stept &step);
-std::ostream &operator<<(
-  std::ostream &out,
-  const symex_target_equationt &equation);
 
 #endif // CPROVER_GOTO_SYMEX_SYMEX_TARGET_EQUATION_H

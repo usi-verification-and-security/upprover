@@ -47,7 +47,7 @@ void value_set_analysis_fivrt::add_vars(
   goto_program.get_decl_identifiers(locals);
 
   // cache the list for the locals to speed things up
-  typedef std::unordered_map<irep_idt, entry_listt, irep_id_hash> entry_cachet;
+  typedef std::unordered_map<irep_idt, entry_listt> entry_cachet;
   entry_cachet entry_cache;
 
   value_set_fivrt &v=state.value_set;
@@ -146,10 +146,13 @@ void value_set_analysis_fivrt::get_globals(
   std::list<value_set_fivrt::entryt> &dest)
 {
   // static ones
-  forall_symbols(it, ns.get_symbol_table().symbols)
-    if(it->second.is_lvalue &&
-       it->second.is_static_lifetime)
-      get_entries(it->second, dest);
+  for(const auto &it : ns.get_symbol_table().symbols)
+  {
+    if(it.second.is_lvalue && it.second.is_static_lifetime)
+    {
+      get_entries(it.second, dest);
+    }
+  }
 }
 
 bool value_set_analysis_fivrt::check_type(const typet &type)

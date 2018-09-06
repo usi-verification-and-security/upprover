@@ -121,6 +121,11 @@ inline std::string normalize_name(const exprt & expr) {
     return name_expr;
 }
 
+// For CUF trace
 void getVarsInExpr(exprt& e, std::set<exprt>& vars);
+
+//for type constraints of CUF and LRA
+//build the string of the upper and lower bounds
+std::string create_bound_string(std::string base, int exp);
 
 #endif //PROJECT_EXPRESSIONS_UTILS_H

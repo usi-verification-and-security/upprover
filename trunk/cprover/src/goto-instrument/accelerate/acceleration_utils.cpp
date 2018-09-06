@@ -21,7 +21,6 @@ Author: Matt Lewis
 
 #include <goto-programs/goto_program.h>
 #include <goto-programs/wp.h>
-#include <goto-programs/remove_skip.h>
 #include <goto-programs/goto_functions.h>
 
 #include <goto-symex/goto_symex.h>
@@ -36,7 +35,6 @@ Author: Matt Lewis
 #include <util/std_expr.h>
 #include <util/std_code.h>
 #include <util/find_symbols.h>
-#include <util/rename.h>
 #include <util/simplify_expr.h>
 #include <util/replace_expr.h>
 #include <util/arith_tools.h>
@@ -138,7 +136,7 @@ bool acceleration_utilst::check_inductive(
       it!=polynomials.end();
       ++it)
   {
-    exprt holds=equal_exprt(it->first, it->second.to_expr());
+    const equal_exprt holds(it->first, it->second.to_expr());
     program.add_instruction(ASSUME)->guard=holds;
 
     polynomials_hold.push_back(holds);
@@ -340,7 +338,7 @@ void acceleration_utilst::push_nondet(exprt &expr)
   if(expr.id()==ID_not &&
      expr.op0().id()==ID_nondet)
   {
-    expr=side_effect_expr_nondett(expr.type());
+    expr = side_effect_expr_nondett(expr.type(), expr.source_location());
   }
   else if(expr.id()==ID_equal ||
           expr.id()==ID_lt ||
@@ -351,7 +349,7 @@ void acceleration_utilst::push_nondet(exprt &expr)
     if(expr.op0().id()==ID_nondet ||
        expr.op1().id()==ID_nondet)
     {
-      expr=side_effect_expr_nondett(expr.type());
+      expr = side_effect_expr_nondett(expr.type(), expr.source_location());
     }
   }
 }
@@ -414,7 +412,9 @@ bool acceleration_utilst::do_assumptions(
 
   program.assume(not_exprt(condition));
 
-  program.assign(loop_counter, side_effect_expr_nondett(loop_counter.type()));
+  program.assign(
+    loop_counter,
+    side_effect_expr_nondett(loop_counter.type(), source_locationt()));
 
   for(std::map<exprt, polynomialt>::iterator p_it=polynomials.begin();
       p_it!=polynomials.end();
@@ -599,7 +599,8 @@ bool acceleration_utilst::do_arrays(
       it!=arrays_written.end();
       ++it)
   {
-    program.assign(*it, side_effect_expr_nondett(it->type()));
+    program.assign(
+      *it, side_effect_expr_nondett(it->type(), source_locationt()));
   }
 
   // Now add in all the effects of this loop on the arrays.
@@ -623,21 +624,16 @@ bool acceleration_utilst::do_arrays(
   exprt arrays_expr=conjunction(array_operands);
 
   symbolt k_sym=fresh_symbol("polynomial::k", unsigned_poly_type());
-  exprt k=k_sym.symbol_expr();
+  const symbol_exprt k = k_sym.symbol_expr();
 
-  exprt k_bound=
-    and_exprt(
-      binary_relation_exprt(from_integer(0, k.type()), ID_le, k),
-      binary_relation_exprt(k, ID_lt, loop_counter));
+  const and_exprt k_bound(
+    binary_relation_exprt(from_integer(0, k.type()), ID_le, k),
+    binary_relation_exprt(k, ID_lt, loop_counter));
   replace_expr(loop_counter, k, arrays_expr);
 
   implies_exprt implies(k_bound, arrays_expr);
 
-  exprt forall(ID_forall);
-  forall.type()=bool_typet();
-  forall.copy_to_operands(k);
-  forall.copy_to_operands(implies);
-
+  const forall_exprt forall(k, implies);
   program.assume(forall);
 
   // Now have to encode that the array doesn't change at indices we didn't
@@ -674,8 +670,7 @@ bool acceleration_utilst::do_arrays(
 
     exprt idx_never_touched=nil_exprt();
     symbolt idx_sym=fresh_symbol("polynomial::idx", signed_poly_type());
-    exprt idx=idx_sym.symbol_expr();
-
+    const symbol_exprt idx = idx_sym.symbol_expr();
 
     // Optimization: if all the assignments to a particular array A are of the
     // form:
@@ -726,8 +721,8 @@ bool acceleration_utilst::do_arrays(
         }
 
         or_exprt unchanged_by_this_one(
-          binary_relation_exprt(idx, "<", min_idx),
-          binary_relation_exprt(idx, ">", max_idx));
+          binary_relation_exprt(idx, ID_lt, min_idx),
+          binary_relation_exprt(idx, ID_gt, max_idx));
         unchanged_operands.push_back(unchanged_by_this_one);
       }
 
@@ -785,10 +780,7 @@ bool acceleration_utilst::do_arrays(
     // Cool.  Finally, we want to quantify over idx to say that every idx that
     // is never touched has its value unchanged.  So our expression is:
     // forall idx . idx_never_touched => A[idx]==A_old[idx]
-    exprt array_unchanged(ID_forall);
-    array_unchanged.type()=bool_typet();
-    array_unchanged.copy_to_operands(idx);
-    array_unchanged.copy_to_operands(idx_unchanged);
+    const forall_exprt array_unchanged(idx, idx_unchanged);
 
     // And we're done!
     program.assume(array_unchanged);
@@ -1062,29 +1054,25 @@ bool acceleration_utilst::assign_array(
     fresh_symbol("polynomial::array", arr.type()).symbol_expr();
 
   // First make the fresh nondet array.
-  program.assign(fresh_array, side_effect_expr_nondett(arr.type()));
+  program.assign(
+    fresh_array, side_effect_expr_nondett(arr.type(), lhs.source_location()));
 
   // Then assume that the fresh array has the appropriate values at the indices
   // the loop updated.
-  exprt changed=equal_exprt(lhs, rhs);
+  equal_exprt changed(lhs, rhs);
   replace_expr(arr, fresh_array, changed);
 
   symbolt k_sym=fresh_symbol("polynomial::k", unsigned_poly_type());
-  exprt k=k_sym.symbol_expr();
+  const symbol_exprt k = k_sym.symbol_expr();
 
-  exprt k_bound=
-    and_exprt(
-      binary_relation_exprt(from_integer(0, k.type()), ID_le, k),
-      binary_relation_exprt(k, ID_lt, loop_counter));
+  const and_exprt k_bound(
+    binary_relation_exprt(from_integer(0, k.type()), ID_le, k),
+    binary_relation_exprt(k, ID_lt, loop_counter));
   replace_expr(loop_counter, k, changed);
 
   implies_exprt implies(k_bound, changed);
 
-  exprt forall(ID_forall);
-  forall.type()=bool_typet();
-  forall.copy_to_operands(k);
-  forall.copy_to_operands(implies);
-
+  forall_exprt forall(k, implies);
   program.assume(forall);
 
   // Now let's ensure that the array did not change at the indices we
@@ -1159,9 +1147,8 @@ bool acceleration_utilst::assign_array(
 #endif
     return false;
   }
-  else if
-    (stride==1 || stride == -1)
-    {
+  else if(stride == 1 || stride == -1)
+  {
     // This is the simplest case -- we have an assignment like:
     //
     //  A[c + loop_counter]=e;
@@ -1171,9 +1158,9 @@ bool acceleration_utilst::assign_array(
     //
     //  forall k . (k < c || k >= loop_counter + c) ==> A'[k]==A[k]
 
-    not_touched=or_exprt(
-        binary_relation_exprt(k, "<", lower_bound),
-        binary_relation_exprt(k, ">=", upper_bound));
+    not_touched = or_exprt(
+      binary_relation_exprt(k, ID_lt, lower_bound),
+      binary_relation_exprt(k, ID_ge, upper_bound));
   }
   else
   {
@@ -1186,16 +1173,15 @@ bool acceleration_utilst::assign_array(
     //
     //  i < c || i >= (c + s*loop_counter) || (i - c) % s!=0
 
-    exprt step=minus_exprt(k, lower_bound);
+    const minus_exprt step(k, lower_bound);
 
-    not_touched=
+    not_touched = or_exprt(
       or_exprt(
-        or_exprt(
-          binary_relation_exprt(k, "<", lower_bound),
-          binary_relation_exprt(k, ">=", lower_bound)),
-        notequal_exprt(
-          mod_exprt(step, from_integer(stride, step.type())),
-          from_integer(0, step.type())));
+        binary_relation_exprt(k, ID_lt, lower_bound),
+        binary_relation_exprt(k, ID_ge, lower_bound)),
+      notequal_exprt(
+        mod_exprt(step, from_integer(stride, step.type())),
+        from_integer(0, step.type())));
   }
 
   // OK now do the assumption.
@@ -1210,11 +1196,7 @@ bool acceleration_utilst::assign_array(
   equal_exprt idx_unchanged(fresh_lhs, old_lhs);
 
   implies=implies_exprt(not_touched, idx_unchanged);
-
-  forall=exprt(ID_forall);
-  forall.type()=bool_typet();
-  forall.copy_to_operands(k);
-  forall.copy_to_operands(implies);
+  forall.where() = implies;
 
   program.assume(forall);
 

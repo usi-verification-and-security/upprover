@@ -13,17 +13,15 @@ Date: April 2016
 
 #include "unreachable_instructions.h"
 
-#include <sstream>
-
-#include <util/json.h>
-#include <util/json_expr.h>
 #include <util/file_util.h>
+#include <util/json_expr.h>
+#include <util/options.h>
 #include <util/xml.h>
 
-#include <analyses/cfg_dominators.h>
-
-#include <goto-programs/goto_model.h>
 #include <goto-programs/compute_called_functions.h>
+
+#include <analyses/ai.h>
+#include <analyses/cfg_dominators.h>
 
 typedef std::map<unsigned, goto_programt::const_targett> dead_mapt;
 
@@ -61,7 +59,7 @@ static void build_dead_map_from_ai(
   dead_mapt &dest)
 {
   forall_goto_program_instructions(it, goto_program)
-    if(ai.abstract_state_before(it).is_bottom())
+    if(ai.abstract_state_before(it)->is_bottom())
       dest.insert(std::make_pair(it->location_number, it));
 }
 
@@ -86,7 +84,6 @@ static void output_dead_plain(
 }
 
 static void add_to_xml(
-  const namespacet &ns,
   const goto_programt &goto_program,
   const dead_mapt &dead_map,
   xmlt &dest)
@@ -129,7 +126,7 @@ static void add_to_json(
   DATA_INVARIANT(end_function->is_end_function(),
                  "The last instruction in a goto-program must be END_FUNCTION");
 
-  entry["function"]=json_stringt(id2string(end_function->function));
+  entry["function"] = json_stringt(end_function->function);
   entry["fileName"]=
     json_stringt(concat_dir_file(
         id2string(end_function->source_location.get_working_directory()),
@@ -169,8 +166,7 @@ void unreachable_instructions(
 {
   json_arrayt json_result;
 
-  std::set<irep_idt> called=
-    compute_called_functions(goto_model);
+  std::unordered_set<irep_idt> called = compute_called_functions(goto_model);
 
   const namespacet ns(goto_model.symbol_table);
 
@@ -209,7 +205,6 @@ bool static_unreachable_instructions(
   const goto_modelt &goto_model,
   const ai_baset &ai,
   const optionst &options,
-  message_handlert &message_handler,
   std::ostream &out)
 {
   json_arrayt json_result;
@@ -234,7 +229,7 @@ bool static_unreachable_instructions(
       }
       else if(options.get_bool_option("xml"))
       {
-        add_to_xml(ns, f_it->second.body, dead_map, xml_result);
+        add_to_xml(f_it->second.body, dead_map, xml_result);
       }
       else
       {
@@ -263,7 +258,7 @@ static void json_output_function(
 {
   json_objectt &entry=dest.push_back().make_object();
 
-  entry["function"]=json_stringt(id2string(function));
+  entry["function"] = json_stringt(function);
   entry["file name"]=
     json_stringt(concat_dir_file(
         id2string(first_location.get_working_directory()),
@@ -293,7 +288,7 @@ static void xml_output_function(
 
 static void list_functions(
   const goto_modelt &goto_model,
-  const std::set<irep_idt> called,
+  const std::unordered_set<irep_idt> &called,
   const optionst &options,
   std::ostream &os,
   bool unreachable)
@@ -325,9 +320,21 @@ static void list_functions(
 
       goto_programt::const_targett end_function=
         goto_program.instructions.end();
-      --end_function;
-      assert(end_function->is_end_function());
-      last_location=end_function->source_location;
+
+      // find the last instruction with a line number
+      // TODO(tautschnig): #918 will eventually ensure that every instruction
+      // has such
+      do
+      {
+        --end_function;
+        last_location = end_function->source_location;
+      }
+      while(
+        end_function != goto_program.instructions.begin() &&
+        last_location.get_line().empty());
+
+      if(last_location.get_line().empty())
+        last_location = decl.location;
     }
     else
       // completely ignore functions without a body, both for
@@ -377,7 +384,7 @@ void unreachable_functions(
   else
     options.set_option("text", true);
 
-  std::set<irep_idt> called = compute_called_functions(goto_model);
+  std::unordered_set<irep_idt> called = compute_called_functions(goto_model);
 
   list_functions(goto_model, called, options, os, true);
 }
@@ -393,17 +400,16 @@ void reachable_functions(
   else
     options.set_option("text", true);
 
-  std::set<irep_idt> called = compute_called_functions(goto_model);
+  std::unordered_set<irep_idt> called = compute_called_functions(goto_model);
 
   list_functions(goto_model, called, options, os, false);
 }
 
-
-std::set<irep_idt> compute_called_functions_from_ai(
+std::unordered_set<irep_idt> compute_called_functions_from_ai(
   const goto_modelt &goto_model,
   const ai_baset &ai)
 {
-  std::set<irep_idt> called;
+  std::unordered_set<irep_idt> called;
 
   forall_goto_functions(f_it, goto_model.goto_functions)
   {
@@ -412,7 +418,7 @@ std::set<irep_idt> compute_called_functions_from_ai(
 
     const goto_programt &p = f_it->second.body;
 
-    if(!ai.abstract_state_before(p.instructions.begin()).is_bottom())
+    if(!ai.abstract_state_before(p.instructions.begin())->is_bottom())
       called.insert(f_it->first);
   }
 
@@ -423,10 +429,10 @@ bool static_unreachable_functions(
   const goto_modelt &goto_model,
   const ai_baset &ai,
   const optionst &options,
-  message_handlert &message_handler,
   std::ostream &out)
 {
-  std::set<irep_idt> called = compute_called_functions_from_ai(goto_model, ai);
+  std::unordered_set<irep_idt> called =
+    compute_called_functions_from_ai(goto_model, ai);
 
   list_functions(goto_model, called, options, out, true);
 
@@ -437,10 +443,10 @@ bool static_reachable_functions(
   const goto_modelt &goto_model,
   const ai_baset &ai,
   const optionst &options,
-  message_handlert &message_handler,
   std::ostream &out)
 {
-  std::set<irep_idt> called = compute_called_functions_from_ai(goto_model, ai);
+  std::unordered_set<irep_idt> called =
+    compute_called_functions_from_ai(goto_model, ai);
 
   list_functions(goto_model, called, options, out, false);
 

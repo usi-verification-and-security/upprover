@@ -6,17 +6,18 @@ Author: Martin Brain, martin.brain@cs.ox.ac.uk
 
 \*******************************************************************/
 
+#include "static_simplifier.h"
+
+#include <util/message.h>
+#include <util/options.h>
+
+#include <goto-programs/goto_model.h>
+#include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_skip.h>
 #include <goto-programs/remove_unreachable.h>
 #include <goto-programs/write_goto_binary.h>
 
-#include <util/xml.h>
-#include <util/xml_expr.h>
-#include <util/json.h>
-#include <util/json_expr.h>
-
-#include "static_simplifier.h"
-
+#include <analyses/ai.h>
 
 /// Simplifies the program using the information in the abstract domain.
 /// \param goto_model: the program analyzed
@@ -64,8 +65,8 @@ bool static_simplifier(
 
       if(i_it->is_assert())
       {
-        bool unchanged=
-          ai.abstract_state_before(i_it).ai_simplify(i_it->guard, ns);
+        bool unchanged =
+          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
 
         if(unchanged)
           unmodified.asserts++;
@@ -74,8 +75,8 @@ bool static_simplifier(
       }
       else if(i_it->is_assume())
       {
-        bool unchanged=
-          ai.abstract_state_before(i_it).ai_simplify(i_it->guard, ns);
+        bool unchanged =
+          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
 
         if(unchanged)
           unmodified.assumes++;
@@ -84,8 +85,8 @@ bool static_simplifier(
       }
       else if(i_it->is_goto())
       {
-        bool unchanged=
-          ai.abstract_state_before(i_it).ai_simplify(i_it->guard, ns);
+        bool unchanged =
+          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
 
         if(unchanged)
           unmodified.gotos++;
@@ -101,11 +102,11 @@ bool static_simplifier(
         // <i=0, j=1>  i=j
         // should simplify to i=1, not to 0=1.
 
-        bool unchanged_lhs=
-          ai.abstract_state_before(i_it).ai_simplify_lhs(assign.lhs(), ns);
+        bool unchanged_lhs =
+          ai.abstract_state_before(i_it)->ai_simplify_lhs(assign.lhs(), ns);
 
-        bool unchanged_rhs=
-          ai.abstract_state_before(i_it).ai_simplify(assign.rhs(), ns);
+        bool unchanged_rhs =
+          ai.abstract_state_before(i_it)->ai_simplify(assign.rhs(), ns);
 
         if(unchanged_lhs && unchanged_rhs)
           unmodified.assigns++;
@@ -116,13 +117,13 @@ bool static_simplifier(
       {
         code_function_callt &fcall=to_code_function_call(i_it->code);
 
-        bool unchanged=
-          ai.abstract_state_before(i_it).ai_simplify(fcall.function(), ns);
+        bool unchanged =
+          ai.abstract_state_before(i_it)->ai_simplify(fcall.function(), ns);
 
         exprt::operandst &args=fcall.arguments();
 
         for(auto &o : args)
-          unchanged&=ai.abstract_state_before(i_it).ai_simplify(o, ns);
+          unchanged &= ai.abstract_state_before(i_it)->ai_simplify(o, ns);
 
         if(unchanged)
           unmodified.function_calls++;
@@ -157,17 +158,18 @@ bool static_simplifier(
     m.status() << "Removing unreachable instructions" << messaget::eom;
 
     // Removes goto false
-    remove_skip(goto_model.goto_functions);
-    goto_model.goto_functions.update();
+    remove_skip(goto_model);
 
     // Convert unreachable to skips
     remove_unreachable(goto_model.goto_functions);
-    goto_model.goto_functions.update();
 
     // Remove all of the new skips
-    remove_skip(goto_model.goto_functions);
-    goto_model.goto_functions.update();
+    remove_skip(goto_model);
   }
+
+  // restore return types before writing the binary
+  restore_returns(goto_model);
+  goto_model.goto_functions.update();
 
   m.status() << "Writing goto binary" << messaget::eom;
   return write_goto_binary(out,

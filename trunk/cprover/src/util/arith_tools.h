@@ -10,21 +10,22 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_ARITH_TOOLS_H
 #define CPROVER_UTIL_ARITH_TOOLS_H
 
+#include "invariant.h"
 #include "mp_arith.h"
 #include "optional.h"
-#include "invariant.h"
+#include "std_expr.h"
 
-class exprt;
-class constant_exprt;
+#include "deprecate.h"
+
 class typet;
 
 // this one will go away
 // returns 'true' on error
 /// \deprecated: use the constant_exprt version instead
+DEPRECATED("Use the constant_exprt version instead")
 bool to_integer(const exprt &expr, mp_integer &int_value);
 
 // returns 'true' on error
-/// \deprecated: use numeric_cast<mp_integer> instead
 bool to_integer(const constant_exprt &expr, mp_integer &int_value);
 
 // returns 'true' on error
@@ -45,7 +46,7 @@ struct numeric_castt<mp_integer> final
   optionalt<mp_integer> operator()(const exprt &expr) const
   {
     mp_integer out;
-    if(to_integer(expr, out))
+    if(expr.id() != ID_constant || to_integer(to_constant_expr(expr), out))
       return {};
     return out;
   }
@@ -155,7 +156,7 @@ Target numeric_cast_v(const exprt &arg)
 constant_exprt from_integer(const mp_integer &int_value, const typet &type);
 
 // ceil(log2(size))
-mp_integer address_bits(const mp_integer &size);
+std::size_t address_bits(const mp_integer &size);
 
 mp_integer power(const mp_integer &base, const mp_integer &exponent);
 

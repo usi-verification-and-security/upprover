@@ -110,7 +110,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
           type_id==ID_verilog_unsignedbv)
   {
     // we encode with two bits
-    entry.total_width=type.get_unsigned_int(ID_width)*2;
+    entry.total_width = type.get_size_t(ID_width) * 2;
     assert(entry.total_width!=0);
   }
   else if(type_id==ID_range)
@@ -122,7 +122,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
 
     if(size>=1)
     {
-      entry.total_width=integer2unsigned(address_bits(size));
+      entry.total_width = address_bits(size);
       assert(entry.total_width!=0);
     }
   }
@@ -180,13 +180,13 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   {
     // get number of necessary bits
     std::size_t size=to_enumeration_type(type).elements().size();
-    entry.total_width=integer2unsigned(address_bits(size));
+    entry.total_width = address_bits(size);
     assert(entry.total_width!=0);
   }
   else if(type_id==ID_c_enum)
   {
     // these have a subtype
-    entry.total_width=type.subtype().get_unsigned_int(ID_width);
+    entry.total_width = type.subtype().get_size_t(ID_width);
     assert(entry.total_width!=0);
   }
   else if(type_id==ID_incomplete_c_enum)
@@ -195,7 +195,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   }
   else if(type_id==ID_pointer)
     entry.total_width = type_checked_cast<pointer_typet>(type).get_width();
-  else if(type_id==ID_symbol)
+  else if(type_id == ID_symbol_type)
     entry=get_entry(ns.follow(type));
   else if(type_id==ID_struct_tag)
     entry=get_entry(ns.follow_tag(to_struct_tag_type(type)));
@@ -209,6 +209,8 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   }
   else if(type_id==ID_string)
     entry.total_width=32;
+  else if(type_id != ID_empty)
+    UNIMPLEMENTED;
 
   return entry;
 }

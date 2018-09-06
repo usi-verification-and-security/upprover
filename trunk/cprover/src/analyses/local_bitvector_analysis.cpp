@@ -62,7 +62,7 @@ bool local_bitvector_analysist::is_tracked(const irep_idt &identifier)
 {
   localst::locals_mapt::const_iterator it=locals.locals_map.find(identifier);
   if(it==locals.locals_map.end() ||
-     it->second.id()!=ID_pointer ||
+     it->second.type().id()!=ID_pointer ||
      dirty(identifier))
     return false;
 
@@ -241,7 +241,7 @@ local_bitvector_analysist::flagst local_bitvector_analysist::get_rec(
     return flagst::mk_unknown();
 }
 
-void local_bitvector_analysist::build(const goto_functiont &goto_function)
+void local_bitvector_analysist::build()
 {
   if(cfg.nodes.empty())
     return;

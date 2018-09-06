@@ -104,13 +104,14 @@ public:
   // record a function call
   virtual void function_call(
     const exprt &guard,
-    const irep_idt &identifier,
-    const sourcet &source)=0;
+    const irep_idt &function_identifier,
+    const std::vector<exprt> &ssa_function_arguments,
+    const sourcet &source) = 0;
 
   // record return from a function
   virtual void function_return(
     const exprt &guard,
-    const irep_idt &identifier,
+    const irep_idt &function_identifier,
     const sourcet &source)=0;
 
   // just record a location

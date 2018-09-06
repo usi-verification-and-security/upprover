@@ -172,13 +172,6 @@ protected:
     const symbol_exprt &function,
     const exprt::operandst &arguments);
 
-  void insert_function_nobody(
-    goto_programt &dest,
-    const exprt &lhs,
-    goto_programt::targett target,
-    const symbol_exprt &function,
-    const exprt::operandst &arguments);
-
   void replace_return(
     goto_programt &body,
     const exprt &lhs);
@@ -200,13 +193,13 @@ protected:
   typedef goto_functionst::function_mapt cachet;
   cachet cache;
 
-  typedef std::unordered_set<irep_idt, irep_id_hash> finished_sett;
+  typedef std::unordered_set<irep_idt> finished_sett;
   finished_sett finished_set;
 
-  typedef std::unordered_set<irep_idt, irep_id_hash> recursion_sett;
+  typedef std::unordered_set<irep_idt> recursion_sett;
   recursion_sett recursion_set;
 
-  typedef std::unordered_set<irep_idt, irep_id_hash> no_body_sett;
+  typedef std::unordered_set<irep_idt> no_body_sett;
   no_body_sett no_body_set;
 };
 

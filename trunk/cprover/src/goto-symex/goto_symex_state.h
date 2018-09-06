@@ -12,21 +12,21 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H
 #define CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H
 
-#include <cassert>
 #include <memory>
 #include <unordered_set>
 
+#include <analyses/dirty.h>
+
+#include <util/invariant.h>
 #include <util/guard.h>
 #include <util/std_expr.h>
 #include <util/ssa_expr.h>
 #include <util/make_unique.h>
 
 #include <pointer-analysis/value_set.h>
-#include <goto-programs/goto_functions.h>
+#include <goto-programs/goto_function.h>
 
-#include "symex_target.h"
-
-//class dirtyt;
+#include "symex_target_equation.h"
 
 // central data structure: state
 class goto_symex_statet final
@@ -35,12 +35,26 @@ public:
   goto_symex_statet();
   ~goto_symex_statet();
 
-  // distance from entry
+  /// \brief Fake "copy constructor" that initializes the `symex_target` member
+  explicit goto_symex_statet(
+    const goto_symex_statet &other,
+    symex_target_equationt *const target)
+    : goto_symex_statet(other) // NOLINT
+  {
+    symex_target = target;
+  }
+
+  /// contains symbols that are minted during symbolic execution, such as
+  /// dynamically created objects etc. The names in this table are needed
+  /// for error traces even after symbolic execution has finished.
+  symbol_tablet symbol_table;
+
+  /// distance from entry
   unsigned depth;
 
   guardt guard;
   symex_targett::sourcet source;
-  symex_targett *symex_target;
+  symex_target_equationt *symex_target;
 
   // we have a two-level renaming
 
@@ -66,7 +80,7 @@ public:
 
     void increase_counter(const irep_idt &identifier)
     {
-      assert(current_names.find(identifier)!=current_names.end());
+      PRECONDITION(current_names.find(identifier) != current_names.end());
       ++current_names[identifier].second;
     }
 
@@ -113,7 +127,7 @@ public:
           current_names.insert(it, *ito);
         else if(it!=current_names.end())
         {
-          assert(it->first==ito->first);
+          PRECONDITION(it->first == ito->first);
           it->second=ito->second;
           ++it;
         }
@@ -161,7 +175,8 @@ public:
     const exprt &rhs,  // L2
     const namespacet &ns,
     bool rhs_is_simplified,
-    bool record_value);
+    bool record_value,
+    bool allow_pointer_unsoundness=false);
 
   // what to propagate
   bool constant_propagation(const exprt &expr) const;
@@ -178,11 +193,12 @@ protected:
   //void get_l1_name(exprt &expr) const;
 
   // this maps L1 names to (L2) types
-  typedef std::unordered_map<irep_idt, typet, irep_id_hash> l1_typest;
+  typedef std::unordered_map<irep_idt, typet> l1_typest;
   l1_typest l1_types;
 
 public:
   void get_l1_name(exprt &expr) const; // KE: moved to public
+  
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;
@@ -227,6 +243,17 @@ public:
       return it==level2_current_names.end()?0:it->second.second;
     }
   };
+
+  explicit goto_symex_statet(const goto_statet &s)
+    : depth(s.depth),
+      guard(s.guard),
+      source(s.source),
+      propagation(s.propagation),
+      value_set(s.value_set),
+      atomic_section_id(s.atomic_section_id)
+  {
+    level2.current_names = s.level2_current_names;
+  }
 
   // gotos
   typedef std::list<goto_statet> goto_state_listt;
@@ -274,8 +301,7 @@ public:
       unsigned count;
       bool is_recursion;
     };
-    typedef std::unordered_map<irep_idt, loop_infot, irep_id_hash>
-      loop_iterationst;
+    typedef std::unordered_map<irep_idt, loop_infot> loop_iterationst;
     loop_iterationst loop_iterations;
   };
 
@@ -283,25 +309,25 @@ public:
 
   call_stackt &call_stack()
   {
-    assert(source.thread_nr<threads.size());
+    PRECONDITION(source.thread_nr < threads.size());
     return threads[source.thread_nr].call_stack;
   }
 
   const call_stackt &call_stack() const
   {
-    assert(source.thread_nr<threads.size());
+    PRECONDITION(source.thread_nr < threads.size());
     return threads[source.thread_nr].call_stack;
   }
 
   framet &top()
   {
-    assert(!call_stack().empty());
+    PRECONDITION(!call_stack().empty());
     return call_stack().back();
   }
 
   const framet &top() const
   {
-    assert(!call_stack().empty());
+    PRECONDITION(!call_stack().empty());
     return call_stack().back();
   }
 
@@ -341,9 +367,35 @@ public:
   bool l2_thread_read_encoding(ssa_exprt &expr, const namespacet &ns);
   bool l2_thread_write_encoding(const ssa_exprt &expr, const namespacet &ns);
 
+  void populate_dirty_for_function(
+    const irep_idt &id, const goto_functiont &);
+
   void switch_to_thread(unsigned t);
   bool record_events;
-  //std::unique_ptr<const dirtyt> dirty;
+  incremental_dirtyt dirty;
+
+  goto_programt::const_targett saved_target;
+
+  /// \brief This state is saved, with the PC pointing to the target of a GOTO
+  bool has_saved_jump_target;
+
+  /// \brief This state is saved, with the PC pointing to the next instruction
+  /// of a GOTO
+  bool has_saved_next_instruction;
+  bool saved_target_is_backwards;
+
+private:
+  /// \brief Dangerous, do not use
+  ///
+  /// Copying a state S1 to S2 risks S2 pointing to a deallocated
+  /// symex_target_equationt if S1 (and the symex_target_equationt that its
+  /// `symex_target` member points to) go out of scope. If your class has a
+  /// goto_symex_statet member and needs a copy constructor, copy instances
+  /// of this class using the public two-argument copy constructor
+  /// constructor to ensure that the copy points to an allocated
+  /// symex_target_equationt. The two-argument copy constructor uses this
+  /// private copy constructor as a delegate.
+  goto_symex_statet(const goto_symex_statet &other) = default;
 };
 
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H

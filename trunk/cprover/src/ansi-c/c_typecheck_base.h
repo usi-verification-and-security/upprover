@@ -69,7 +69,7 @@ protected:
   const irep_idt mode;
   symbolt current_symbol;
 
-  typedef std::unordered_map<irep_idt, typet, irep_id_hash> id_type_mapt;
+  typedef std::unordered_map<irep_idt, typet> id_type_mapt;
   id_type_mapt parameter_map;
 
   // overload to use language specific syntax
@@ -199,7 +199,6 @@ protected:
   virtual void make_index_type(exprt &expr);
   virtual void make_constant(exprt &expr);
   virtual void make_constant_index(exprt &expr);
-  virtual void make_constant_rec(exprt &expr);
 
   virtual bool gcc_types_compatible_p(const typet &, const typet &);
 
@@ -210,7 +209,8 @@ protected:
   virtual void typecheck_c_enum_type(typet &type);
   virtual void typecheck_c_enum_tag_type(c_enum_tag_typet &type);
   virtual void typecheck_code_type(code_typet &type);
-  virtual void typecheck_symbol_type(typet &type);
+  virtual void typecheck_symbol_type(symbol_typet &type);
+  virtual void typecheck_typedef_type(typet &type);
   virtual void typecheck_c_bit_field_type(c_bit_field_typet &type);
   virtual void typecheck_typeof_type(typet &type);
   virtual void typecheck_array_type(array_typet &type);
@@ -265,10 +265,12 @@ protected:
            src.id()==ID_c_bool ||
            src.id()==ID_bool ||
            src.id()==ID_c_enum_tag ||
-           src.id()==ID_c_bit_field;
+           src.id()==ID_c_bit_field ||
+           src.id()==ID_integer ||
+           src.id()==ID_real;
   }
 
-  typedef std::unordered_map<irep_idt, irep_idt, irep_id_hash> asm_label_mapt;
+  typedef std::unordered_map<irep_idt, irep_idt> asm_label_mapt;
   asm_label_mapt asm_label_map;
 
   void apply_asm_label(const irep_idt &asm_label, symbolt &symbol);

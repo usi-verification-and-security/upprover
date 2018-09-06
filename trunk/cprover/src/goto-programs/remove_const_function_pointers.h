@@ -12,18 +12,27 @@ Author: Thomas Kiley, thomas.kiley@diffblue.com
 #ifndef CPROVER_GOTO_PROGRAMS_REMOVE_CONST_FUNCTION_POINTERS_H
 #define CPROVER_GOTO_PROGRAMS_REMOVE_CONST_FUNCTION_POINTERS_H
 
+#include <list>
 #include <unordered_set>
 
-#include "goto_model.h"
-#include <util/message.h>
 #include <util/expr.h>
-#include <util/namespace.h>
+#include <util/message.h>
+#include <util/mp_arith.h>
 
+class address_of_exprt;
+class dereference_exprt;
+class index_exprt;
+class member_exprt;
+class namespacet;
+class struct_exprt;
+class symbol_exprt;
+class symbol_tablet;
+class typecast_exprt;
 
 class remove_const_function_pointerst:public messaget
 {
 public:
-  typedef std::unordered_set<exprt, irep_hash> functionst;
+  typedef std::unordered_set<symbol_exprt, irep_hash> functionst;
   typedef std::list<exprt> expressionst;
   remove_const_function_pointerst(
     message_handlert &message_handler,

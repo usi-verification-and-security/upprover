@@ -23,100 +23,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <goto-programs/goto_model.h>
 
-// forward reference
-class ai_baset;
+#include "ai_domain.h"
 
-// don't use me -- I am just a base class
-// please derive from me
-class ai_domain_baset
-{
-public:
-  enum class edge_typet
-  {
-    FUNCTION_LOCAL,
-    CALL,
-    RETURN,
-  };
-
-  // The constructor is expected to produce 'false'
-  // or 'bottom'
-  ai_domain_baset()
-  {
-  }
-
-  virtual ~ai_domain_baset()
-  {
-  }
-
-  typedef goto_programt::const_targett locationt;
-
-  // how function calls are treated:
-  // a) there is an edge from each call site to the function head
-  // b) there is an edge from the last instruction (END_FUNCTION)
-  //    of the function to the instruction _following_ the call site
-  //    (this also needs to set the LHS, if applicable)
-
-  virtual void transform(
-    locationt from,
-    locationt to,
-    ai_baset &ai,
-    const namespacet &ns,
-    edge_typet edge_type) = 0;
-
-  virtual void output(
-    std::ostream &out,
-    const ai_baset &ai,
-    const namespacet &ns) const
-  {
-  }
-
-  virtual jsont output_json(
-    const ai_baset &ai,
-    const namespacet &ns) const;
-
-  virtual xmlt output_xml(
-    const ai_baset &ai,
-    const namespacet &ns) const;
-
-  // no states
-  virtual void make_bottom()=0;
-
-  // all states -- the analysis doesn't use this,
-  // and domains may refuse to implement it.
-  virtual void make_top()=0;
-
-  // a reasonable entry-point state
-  virtual void make_entry()=0;
-
-  virtual bool is_bottom() const=0;
-
-  virtual bool is_top() const=0;
-
-  // also add
-  //
-  //   bool merge(const T &b, locationt from, locationt to);
-  //
-  // This computes the join between "this" and "b".
-  // Return true if "this" has changed.
-
-  // This method allows an expression to be simplified / evaluated using the
-  // current state.  It is used to evaluate assertions and in program
-  // simplification
-
-  // return true if unchanged
-  virtual bool ai_simplify(
-    exprt &condition,
-    const namespacet &ns) const
-  {
-    return true;
-  }
-
-  // Simplifies the expression but keeps it as an l-value
-  virtual bool ai_simplify_lhs(
-    exprt &condition,
-    const namespacet &ns) const;
-};
-
+/// The basic interface of an abstract interpreter.  This should be enough
+/// to create, run and query an abstract interpreter.
 // don't use me -- I am just a base class
 // use ait instead
 class ai_baset
@@ -133,6 +43,7 @@ public:
   {
   }
 
+  /// Running the interpreter
   void operator()(
     const goto_programt &goto_program,
     const namespacet &ns)
@@ -174,17 +85,26 @@ public:
     finalize();
   }
 
+  /// Accessing individual domains at particular locations
+  /// (without needing to know what kind of domain or history is used)
+  /// A pointer to a copy as the method should be const and
+  /// there are some non-trivial cases including merging domains, etc.
+  /// Intended for users of the abstract interpreter; don't use internally.
+
   /// Returns the abstract state before the given instruction
-  virtual const ai_domain_baset & abstract_state_before(
-    goto_programt::const_targett t) const = 0;
+  /// PRECONDITION(l is dereferenceable)
+  virtual std::unique_ptr<statet> abstract_state_before(locationt l) const = 0;
 
   /// Returns the abstract state after the given instruction
-  virtual const ai_domain_baset & abstract_state_after(
-    goto_programt::const_targett t) const
+  virtual std::unique_ptr<statet> abstract_state_after(locationt l) const
   {
-    return abstract_state_before(std::next(t));
+    /// PRECONDITION(l is dereferenceable && std::next(l) is dereferenceable)
+    /// Check relies on a DATA_INVARIANT of goto_programs
+    INVARIANT(!l->is_end_function(), "No state after the last instruction");
+    return abstract_state_before(std::next(l));
   }
 
+  /// Resets the domain
   virtual void clear()
   {
   }
@@ -329,6 +249,9 @@ protected:
     const goto_functionst &goto_functions,
     const namespacet &ns);
 
+  // Visit performs one step of abstract interpretation from location l
+  // Depending on the instruction type it may compute a number of "edges"
+  // or applications of the abstract transformer
   // true = found something new
   bool visit(
     locationt l,
@@ -396,10 +319,17 @@ public:
     return it->second;
   }
 
-  const ai_domain_baset & abstract_state_before(
-    goto_programt::const_targett t) const override
+  std::unique_ptr<statet> abstract_state_before(locationt t) const override
   {
-    return (*this)[t];
+    typename state_mapt::const_iterator it = state_map.find(t);
+    if(it == state_map.end())
+    {
+      std::unique_ptr<statet> d = util_make_unique<domainT>();
+      CHECK_RETURN(d->is_bottom());
+      return d;
+    }
+
+    return util_make_unique<domainT>(it->second);
   }
 
   void clear() override
@@ -455,10 +385,10 @@ private:
 
   // not implemented in sequential analyses
   bool merge_shared(
-    const statet &src,
-    goto_programt::const_targett from,
-    goto_programt::const_targett to,
-    const namespacet &ns) override
+    const statet &,
+    goto_programt::const_targett,
+    goto_programt::const_targett,
+    const namespacet &) override
   {
     throw "not implemented";
   }

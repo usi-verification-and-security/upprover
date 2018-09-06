@@ -11,15 +11,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "interpreter_class.h"
 
-#include <iostream>
-#include <sstream>
-
-#include <util/ieee_float.h>
-#include <util/invariant.h>
 #include <util/fixedbv.h>
-#include <util/std_expr.h>
+#include <util/ieee_float.h>
 #include <util/pointer_offset_size.h>
-#include <string.h>
+#include <util/simplify_expr.h>
+#include <util/string_container.h>
+
+#include <langapi/language_util.h>
 
 /// Reads a memory address and loads it into the `dest` variable.
 /// Marks cell as `READ_BEFORE_WRITTEN` if cell has never been written.
@@ -159,32 +157,29 @@ bool interpretert::byte_offset_to_memory_offset(
   if(source_type.id()==ID_struct)
   {
     const auto &st=to_struct_type(source_type);
-    const struct_typet::componentst &components=st.components();
-    member_offset_iterator component_offsets(st, ns);
     mp_integer previous_member_offsets=0;
-    for(; component_offsets->first<components.size() &&
-          component_offsets->second!=-1 &&
-          component_offsets->second<=offset;
-          ++component_offsets)
+
+    for(const auto &comp : st.components())
     {
-      const auto &component_type=components[component_offsets->first].type();
-      mp_integer component_byte_size=pointer_offset_size(component_type, ns);
+      const mp_integer comp_offset = member_offset(st, comp.get_name(), ns);
+
+      const mp_integer component_byte_size =
+        pointer_offset_size(comp.type(), ns);
       if(component_byte_size<0)
         return true;
-      if((component_offsets->second+component_byte_size)>offset)
+
+      if(comp_offset + component_byte_size > offset)
       {
         mp_integer subtype_result;
         bool ret=byte_offset_to_memory_offset(
-          component_type,
-          offset-(component_offsets->second),
-          subtype_result);
+          comp.type(), offset - comp_offset, subtype_result);
         result=previous_member_offsets+subtype_result;
         return ret;
       }
       else
       {
         mp_integer component_count;
-        if(count_type_leaves(component_type, component_count))
+        if(count_type_leaves(comp.type(), component_count))
           return true;
         previous_member_offsets+=component_count;
       }
@@ -239,33 +234,24 @@ bool interpretert::memory_offset_to_byte_offset(
   if(source_type.id()==ID_struct)
   {
     const auto &st=to_struct_type(source_type);
-    const struct_typet::componentst &components=st.components();
-    member_offset_iterator offsets(st, ns);
-    mp_integer previous_member_sizes;
     mp_integer cell_offset=full_cell_offset;
-    for(; offsets->first<components.size() && offsets->second!=-1; ++offsets)
+
+    for(const auto &comp : st.components())
     {
-      const auto &component_type=components[offsets->first].type();
       mp_integer component_count;
-      if(count_type_leaves(component_type, component_count))
+      if(count_type_leaves(comp.type(), component_count))
         return true;
       if(component_count>cell_offset)
       {
         mp_integer subtype_result;
         bool ret=memory_offset_to_byte_offset(
-          component_type,
-          cell_offset,
-          subtype_result);
-        result=previous_member_sizes+subtype_result;
+          comp.type(), cell_offset, subtype_result);
+        result = member_offset(st, comp.get_name(), ns) + subtype_result;
         return ret;
       }
       else
       {
         cell_offset-=component_count;
-        mp_integer component_size=pointer_offset_size(component_type, ns);
-        if(component_size<0)
-          return true;
-        previous_member_sizes+=component_size;
       }
     }
     // Ran out of members, or member of indefinite size
@@ -386,14 +372,11 @@ void interpretert::evaluate(
     }
     else if(expr.type().id()==ID_string)
     {
-      irep_idt value=to_constant_expr(expr).get_value();
-      const char *str=value.c_str();
-      std::size_t length=strlen(str)+1;
+      const std::string &value = id2string(to_constant_expr(expr).get_value());
       if(show)
         warning() << "string decoding not fully implemented "
-                  << length << eom;
-      mp_integer tmp=value.get_no();
-      dest.push_back(tmp);
+                  << value.size() + 1 << eom;
+      dest.push_back(get_string_container()[value]);
       return;
     }
     else
@@ -912,52 +895,38 @@ void interpretert::evaluate(
     mp_integer address=evaluate_address(
       expr,
       true); // fail quietly
-    if(address.is_zero() && expr.id()==ID_index)
+    if(address.is_zero())
     {
-      // Try reading from a constant array:
-      mp_vectort idx;
-      evaluate(expr.op1(), idx);
-      if(idx.size()==1)
+      exprt simplified;
+      // In case of being an indexed access, try to evaluate the index, then
+      // simplify.
+      if(expr.id() == ID_index)
       {
-        mp_integer read_from_index=idx[0];
-        if(expr.op0().id()==ID_array)
+        exprt evaluated_index = expr;
+        mp_vectort idx;
+        evaluate(expr.op1(), idx);
+        if(idx.size() == 1)
         {
-          const auto &ops=expr.op0().operands();
-          DATA_INVARIANT(read_from_index.is_long(), "index is too large");
-          if(read_from_index>=0 && read_from_index<ops.size())
-          {
-            evaluate(ops[read_from_index.to_long()], dest);
-            if(dest.size()!=0)
-              return;
-          }
+          evaluated_index.op1() =
+            constant_exprt(integer2string(idx[0]), expr.op1().type());
         }
-        else if(expr.op0().id()=="array-list")
-        {
-          // This sort of construct comes from boolbv_get, but doesn't seem
-          // to have an exprt yet. Its operands are a list of key-value pairs.
-          const auto &ops=expr.op0().operands();
-          DATA_INVARIANT(
-            ops.size()%2==0,
-            "array-list has odd number of operands");
-          for(size_t listidx=0; listidx!=ops.size(); listidx+=2)
-          {
-            mp_vectort elem_idx;
-            evaluate(ops[listidx], elem_idx);
-            CHECK_RETURN(elem_idx.size()==1);
-            if(elem_idx[0]==read_from_index)
-            {
-              evaluate(ops[listidx+1], dest);
-              if(dest.size()!=0)
-                return;
-              else
-                break;
-            }
-          }
-          // If we fall out the end of this loop then the constant array-list
-          // didn't define an element matching the index we're looking for.
-        }
+        simplified = simplify_expr(evaluated_index, ns);
       }
-      evaluate_address(expr); // Evaluate again to print error message.
+      else
+      {
+        // Try reading from a constant -- simplify_expr has all the relevant
+        // cases (index-of-constant-array, member-of-constant-struct and so on)
+        // Note we complain of a problem even if simplify did *something* but
+        // still left us with an unresolved index, member, etc.
+        simplified = simplify_expr(expr, ns);
+      }
+      if(simplified.id() == expr.id())
+        evaluate_address(expr); // Evaluate again to print error message.
+      else
+      {
+        evaluate(simplified, dest);
+        return;
+      }
     }
     else if(!address.is_zero())
     {
@@ -1089,10 +1058,9 @@ mp_integer interpretert::evaluate_address(
 {
   if(expr.id()==ID_symbol)
   {
-    const irep_idt &identifier=
-      is_ssa_expr(expr) ?
-      to_ssa_expr(expr).get_original_name() :
-      expr.get(ID_identifier);
+    const irep_idt &identifier = is_ssa_expr(expr)
+                                   ? to_ssa_expr(expr).get_original_name()
+                                   : to_symbol_expr(expr).get_identifier();
 
     interpretert::memory_mapt::const_iterator m_it1=
       memory_map.find(identifier);

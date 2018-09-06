@@ -2,9 +2,6 @@
 file(GLOB_RECURSE sources "*.cpp" "*.h")
 list(REMOVE_ITEM sources
     ${CMAKE_CURRENT_SOURCE_DIR}/goto_instrument_main.cpp
-
-    # This doesn't build
-    ${CMAKE_CURRENT_SOURCE_DIR}/accelerate/linearize.cpp
 )
 add_library(goto-instrument-lib ${sources})
 
@@ -27,7 +24,6 @@ target_link_libraries(goto-instrument-lib
     solvers
 )
 
-add_if_library(goto-instrument-lib java_bytecode)
 add_if_library(goto-instrument-lib glpk)
 
 # Executable

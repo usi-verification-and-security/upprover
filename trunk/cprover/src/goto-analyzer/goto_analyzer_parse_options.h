@@ -103,20 +103,22 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
-#include <util/language.h>
+#include <util/timestamper.h>
+
+#include <langapi/language.h>
 
 #include <goto-programs/goto_model.h>
 #include <goto-programs/show_goto_functions.h>
+#include <goto-programs/show_properties.h>
 
 #include <analyses/ai.h>
 #include <analyses/goto_check.h>
-
-#include <java_bytecode/java_bytecode_language.h>
 
 class bmct;
 class goto_functionst;
 class optionst;
 
+// clang-format off
 #define GOTO_ANALYSER_OPTIONS \
   OPT_FUNCTIONS \
   "D:I:(std89)(std99)(std11)" \
@@ -124,16 +126,19 @@ class optionst;
   "(16)(32)(64)(LP64)(ILP64)(LLP64)(ILP32)(LP32)" \
   "(little-endian)(big-endian)" \
   OPT_SHOW_GOTO_FUNCTIONS \
+  OPT_SHOW_PROPERTIES \
   OPT_GOTO_CHECK \
   "(show-loops)" \
   "(show-symbol-table)(show-parse-tree)" \
-  "(show-properties)(show-reachable-properties)(property):" \
+  "(show-reachable-properties)(property):" \
   "(verbosity):(version)" \
   "(gcc)(arch):" \
   "(taint):(show-taint)" \
   "(show-local-may-alias)" \
   "(json):(xml):" \
   "(text):(dot):" \
+  OPT_FLUSH \
+  OPT_TIMESTAMP \
   "(unreachable-instructions)(unreachable-functions)" \
   "(reachable-functions)" \
   "(intervals)(show-intervals)" \
@@ -143,7 +148,7 @@ class optionst;
   "(show)(verify)(simplify):" \
   "(location-sensitive)(concurrent)" \
   "(no-simplify-slicing)" \
-  JAVA_BYTECODE_LANGUAGE_OPTIONS
+// clang-format on
 
 class goto_analyzer_parse_optionst:
   public parse_options_baset,
@@ -169,8 +174,6 @@ protected:
   virtual int perform_analysis(const optionst &options);
 
   ai_baset *build_analyzer(const optionst &, const namespacet &ns);
-
-  void eval_verbosity();
 
   ui_message_handlert::uit get_ui()
   {

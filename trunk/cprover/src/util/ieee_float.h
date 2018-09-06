@@ -14,9 +14,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "mp_arith.h"
 #include "format_spec.h"
+#include "irep.h"
+#include "cprover_prefix.h"
 
 class constant_exprt;
 class floatbv_typet;
+
+const char ID_cprover_rounding_mode_str[] = CPROVER_PREFIX "rounding_mode";
 
 class ieee_float_spect
 {
@@ -58,6 +62,13 @@ public:
   mp_integer max_fraction() const;
 
   class floatbv_typet to_type() const;
+
+  // this is binary16 in IEEE 754-2008
+  static ieee_float_spect half_precision()
+  {
+    // 16 bits in total
+    return ieee_float_spect(10, 5);
+  }
 
   // the well-know standard formats
   static ieee_float_spect single_precision()

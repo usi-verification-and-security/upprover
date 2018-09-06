@@ -21,8 +21,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/guard.h>
-
-#include <langapi/language_util.h>
+#include <util/format_expr.h>
 
 void symex_slice_by_tracet::slice_by_trace(
   std::string trace_files,
@@ -245,7 +244,7 @@ void symex_slice_by_tracet::compute_ts_back(
        !i->io_args.empty() &&
        i->io_args.front().id()=="trace_event")
     {
-      irep_idt event=i->io_args.front().get("event");
+      irep_idt event = i->io_args.front().get(ID_event);
 
       if(!alphabet.empty())
       {
@@ -258,10 +257,10 @@ void symex_slice_by_tracet::compute_ts_back(
 
 #if 0
       std::cout << "EVENT:  " << event << '\n';
-      std::cout << "GUARD:  " << from_expr(ns, "", guard) << '\n';
+      std::cout << "GUARD:  " << format(guard) << '\n';
       for(size_t j=0; j < t.size(); j++)
       {
-        std::cout << "t[" << j << "]=" << from_expr(ns, "", t[j]) <<
+        std::cout << "t[" << j << "]=" << format(t[j]) <<
           '\n';
       }
 #endif
@@ -371,11 +370,6 @@ void symex_slice_by_tracet::compute_ts_back(
       }
     }
   }
-}
-
-void symex_slice_by_tracet::compute_ts_fd(
-  symex_target_equationt &equation)
-{
 }
 
 void symex_slice_by_tracet::slice_SSA_steps(
@@ -539,8 +533,11 @@ std::set<exprt> symex_slice_by_tracet::implied_guards(exprt e)
 
   if(e.id()==ID_symbol)
   { // Guard or merge
-    const std::string &id_string=id2string(e.get(ID_identifier));
+    const std::string &id_string =
+      id2string(to_symbol_expr(e).get_identifier());
+
     std::string::size_type merge_loc=id_string.find("merge#");
+
     if(merge_loc==std::string::npos)
     {
       exprt e_copy(e);
@@ -550,7 +547,7 @@ std::set<exprt> symex_slice_by_tracet::implied_guards(exprt e)
     }
     else
     {
-      int i=unsafe_string2int(id_string.substr(merge_loc+6));
+      const std::size_t i = unsafe_string2size_t(id_string.substr(merge_loc+6));
       if(merge_impl_cache_back[i].first)
       {
         return merge_impl_cache_back[i].second;

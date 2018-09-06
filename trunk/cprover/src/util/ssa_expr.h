@@ -10,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_SSA_EXPR_H
 #define CPROVER_UTIL_SSA_EXPR_H
 
-#include <util/std_expr.h>
+#include "std_expr.h"
 
 /*! \brief Expression providing an SSA-renamed symbol of expressions
 */
@@ -65,7 +65,7 @@ public:
 
   const irep_idt get_l1_object_identifier() const
   {
-    #if 1
+    #if 0
     return get_l1_object().get_identifier();
     #else
     // the above is the clean version, this is the fast one, using

@@ -13,11 +13,11 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <iostream>
 
 #include <util/namespace.h>
-#include <util/language.h>
 #include <util/cmdline.h>
 #include <util/config.h>
 #include <util/unicode.h>
 
+#include "language.h"
 #include "mode.h"
 
 /// Constructor
@@ -140,7 +140,7 @@ void language_uit::show_symbol_table(bool brief)
   }
 }
 
-void language_uit::show_symbol_table_xml_ui(bool brief)
+void language_uit::show_symbol_table_xml_ui(bool)
 {
   error() << "cannot show symbol table in this format" << eom;
 }
@@ -155,8 +155,10 @@ void language_uit::show_symbol_table_plain(
   // we want to sort alphabetically
   std::set<std::string> symbols;
 
-  forall_symbols(it, symbol_table.symbols)
-    symbols.insert(id2string(it->first));
+  for(const auto &symbol_pair : symbol_table.symbols)
+  {
+    symbols.insert(id2string(symbol_pair.first));
+  }
 
   const namespacet ns(symbol_table);
 

@@ -13,7 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #ifdef DEBUG
 #include <iostream>
-#include <langapi/language_util.h>
+#include <util/format_expr.h>
 #endif
 
 #include <util/std_expr.h>
@@ -37,7 +37,7 @@ exprt dereferencet::operator()(const exprt &pointer)
   const typet &type=pointer.type().subtype();
 
   #ifdef DEBUG
-  std::cout << "DEREF: " << from_expr(ns, "", pointer) << '\n';
+  std::cout << "DEREF: " << format(pointer) << '\n';
   #endif
 
   return dereference_rec(
@@ -88,7 +88,7 @@ exprt dereferencet::read_object(
     index.make_typecast(simplified_offset.type());
     size.make_typecast(index.type());
 
-    exprt new_offset=plus_exprt(simplified_offset, mult_exprt(index, size));
+    const plus_exprt new_offset(simplified_offset, mult_exprt(index, size));
 
     return read_object(index_expr.array(), new_offset, type);
   }
@@ -112,7 +112,7 @@ exprt dereferencet::read_object(
 
       member_offset.make_typecast(simplified_offset.type());
 
-      exprt new_offset=plus_exprt(simplified_offset, member_offset);
+      const plus_exprt new_offset(simplified_offset, member_offset);
 
       return read_object(member_expr.struct_op(), new_offset, type);
     }
@@ -147,7 +147,8 @@ exprt dereferencet::read_object(
   }
 
   // give up and use byte_extract
-  return binary_exprt(object, byte_extract_id(), simplified_offset, dest_type);
+  return byte_extract_exprt(
+    byte_extract_id(), object, simplified_offset, dest_type);
 }
 
 exprt dereferencet::dereference_rec(
@@ -246,7 +247,7 @@ exprt dereferencet::dereference_plus(
   if(size.type()!=integer.type())
     integer.make_typecast(size.type());
 
-  exprt new_offset=plus_exprt(offset, mult_exprt(size, integer));
+  const plus_exprt new_offset(offset, mult_exprt(size, integer));
 
   return dereference_rec(pointer, new_offset, type);
 }

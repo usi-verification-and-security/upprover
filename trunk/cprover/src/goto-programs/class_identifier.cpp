@@ -68,7 +68,7 @@ exprt get_class_identifier_field(
   const auto &points_to=this_expr.type().subtype();
   if(points_to==empty_typet())
     this_expr=typecast_exprt(this_expr, pointer_type(suggested_type));
-  exprt deref=dereference_exprt(this_expr, this_expr.type().subtype());
+  const dereference_exprt deref(this_expr, this_expr.type().subtype());
   return build_class_identifier(deref, ns);
 }
 
@@ -77,7 +77,7 @@ exprt get_class_identifier_field(
 /// \remarks Follows through base class members until it gets to the object
 /// type that contains the `@class_identifier` member
 /// \param expr: An expression that represents a struct
-/// \param ns: The namespace used to resolve symbol referencess in the type of
+/// \param ns: The namespace used to resolve symbol references in the type of
 /// the struct
 /// \param class_type: A symbol whose identifier is the name of the class
 void set_class_identifier(

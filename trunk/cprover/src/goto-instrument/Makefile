@@ -12,6 +12,7 @@ SRC = accelerate/accelerate.cpp \
       accelerate/scratch_program.cpp \
       accelerate/trace_automaton.cpp \
       accelerate/util.cpp \
+      aggressive_slicer.cpp \
       alignment_checks.cpp \
       branch.cpp \
       call_sequences.cpp \
@@ -61,6 +62,7 @@ SRC = accelerate/accelerate.cpp \
       undefined_functions.cpp \
       uninitialized.cpp \
       unwind.cpp \
+      unwindset.cpp \
       wmm/abstract_event.cpp \
       wmm/cycle_collection.cpp \
       wmm/data_dp.cpp \
@@ -75,7 +77,6 @@ SRC = accelerate/accelerate.cpp \
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../cpp/cpp$(LIBEXT) \
-      ../java_bytecode/java_bytecode$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
@@ -87,19 +88,19 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
       ../util/util$(LIBEXT) \
       ../solvers/solvers$(LIBEXT) \
-      ../miniz/miniz$(OBJEXT) \
-      ../json/json$(LIBEXT)
+      ../json/json$(LIBEXT) \
+      # Empty last line
 
 INCLUDES= -I ..
 
 LIBS =
 
-CLEANFILES = goto-instrument$(EXEEXT)
+CLEANFILES = goto-instrument$(EXEEXT) goto-instrument$(LIBEXT)
 
 include ../config.inc
 include ../common
 
-all: goto-instrument$(EXEEXT)
+all: goto-instrument$(EXEEXT) goto-instrument$(LIBEXT)
 
 ifneq ($(LIB_GLPK),)
   LIBS += $(LIB_GLPK)
@@ -110,6 +111,9 @@ endif
 
 goto-instrument$(EXEEXT): $(OBJ)
 	$(LINKBIN)
+
+goto-instrument$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 
 .PHONY: goto-instrument-mac-signed
 

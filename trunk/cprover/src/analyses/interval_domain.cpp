@@ -13,6 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #ifdef DEBUG
 #include <iostream>
+#include <langapi/language_util.h>
 #endif
 
 #include <util/simplify_expr.h>
@@ -21,8 +22,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 void interval_domaint::output(
   std::ostream &out,
-  const ai_baset &ai,
-  const namespacet &ns) const
+  const ai_baset &,
+  const namespacet &) const
 {
   if(bottom)
   {
@@ -58,9 +59,8 @@ void interval_domaint::output(
 void interval_domaint::transform(
   locationt from,
   locationt to,
-  ai_baset &ai,
-  const namespacet &ns,
-  ai_domain_baset::edge_typet /*edge_type*/)
+  ai_baset &,
+  const namespacet &ns)
 {
   const goto_programt::instructiont &instruction=*from;
   switch(instruction.type)
@@ -79,12 +79,17 @@ void interval_domaint::transform(
 
   case GOTO:
     {
+      // Comparing iterators is safe as the target must be within the same list
+      // of instructions because this is a GOTO.
       locationt next=from;
       next++;
-      if(next==to)
-        assume(not_exprt(instruction.guard), ns);
-      else
-        assume(instruction.guard, ns);
+      if(from->get_target() != next) // If equal then a skip
+      {
+        if(next == to)
+          assume(not_exprt(instruction.guard), ns);
+        else
+          assume(instruction.guard, ns);
+      }
     }
     break;
 

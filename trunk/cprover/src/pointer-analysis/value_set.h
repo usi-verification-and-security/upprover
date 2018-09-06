@@ -45,6 +45,8 @@ public:
   {
   }
 
+  virtual ~value_sett() = default;
+
   static bool field_sensitive(
     const irep_idt &id,
     const typet &type,
@@ -211,7 +213,7 @@ public:
   /// \param dest: object map to update
   /// \param n: object number to add; must be mapped to the corresponding
   ///   expression by `object_numbering`.
-  /// \param object: offset into object `n` (may be unknown).
+  /// \param offset: offset into object `n` (may be unknown).
   bool insert(
     object_mapt &dest,
     object_numberingt::number_type n,
@@ -222,7 +224,7 @@ public:
   /// with a differing offset its offset is marked unknown.
   /// \param dest: object map to update
   /// \param expr: expression to add
-  /// \param object: offset into `expr` (may be unknown).
+  /// \param offset: offset into `expr` (may be unknown).
   bool insert(object_mapt &dest, const exprt &expr, const offsett &offset) const
   {
     return insert(dest, object_numbering.number(expr), offset);
@@ -531,7 +533,7 @@ protected:
   /// originated in a particular place, vs. those that have been copied.
   virtual void adjust_assign_rhs_values(
     const exprt &rhs,
-    const namespacet &ns,
+    const namespacet &,
     object_mapt &rhs_values) const
   {
   }
@@ -543,7 +545,7 @@ protected:
   virtual void apply_assign_side_effects(
     const exprt &lhs,
     const exprt &rhs,
-    const namespacet &ns)
+    const namespacet &)
   {
   }
 };

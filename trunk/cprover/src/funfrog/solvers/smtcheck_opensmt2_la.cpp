@@ -63,25 +63,6 @@ PTRef smtcheck_opensmt2t_la::numeric_constant(const exprt & expr)
 
     rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     assert(rconst != PTRef_Undef);
-
-    // Check the conversion from string to real was done properly - do not erase!
-    assert(!lalogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
-            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag || expr.type().id()==ID_c_bit_field)); // Cannot check enums
-    if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
-        exprt temp_check = exprt(expr); temp_check.negate();
-        assert(!lalogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
-        // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
-    } else if (expr.type().id() == ID_pointer) {
-        // when support pointers - change here too
-        // KE: not sure which code shall be here
-    } else {
-        // Don't check here, it can be a pointer or some address.
-        // Yes, we can have also a bug here
-        //TODO: when support array fully add assert here
-        //std::cout << expr.pretty() << std::endl;
-        assert(0); // KE: check when get it. Please show me
-    }
-
     return rconst;
 }
 
@@ -100,7 +81,7 @@ Function: smtcheck_opensmt2t_la::const_from_str
 literalt smtcheck_opensmt2t_la::const_from_str(const char* num)
 {
     PTRef rconst = lalogic->mkConst(num); // Can have a wrong conversion sometimes!
-    return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
+    return ptref_to_literal(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 /*******************************************************************\
@@ -281,57 +262,12 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                  &&
                  ((expr.operands()).size() > 2));
 
+        // Convert first the arguments
         vec<PTRef> args;
-        int i = 0;
-        bool is_no_support = false;
-        for(auto const & operand : expr.operands())
-        {
-            assert(!is_cprover_rounding_mode_var(operand)); // KE: we remove this before!
-            if (is_div_wtrounding && i >= 2)
-            {
-#ifdef SMT_DEBUG
-                cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
-                                << _id << ")" << endl;
-                assert(false); // No support yet for rounding operator
-#else
-                is_no_support = true; // Will cause to over approx all
-#endif
-            }
-            else
-            {
-                // All the rest of the operators
-                PTRef cp = expression_to_ptref(operand);
-                assert(cp != PTRef_Undef);
-                args.push(cp);
-                i++; // Only if really add an item to mult/div inc the counter
-#ifdef SMT_DEBUG
-                char *s = logic->printTerm(cp);
-                std::cout << "; On inner iteration " << i
-                    << " Op to command is var no " << cl.var_no()
-                    << " inner index " << cp.x
-                    << " with hash code " << (*it).full_hash()
-                    << " and the other one " << (*it).hash()
-                    << " in address " << (void *)&(*it)
-                    << " of term " << s
-                    << " from |" << (*it).get(ID_identifier)
-                    << "| these should be the same !" << endl; // Monitor errors in the table!
-
-                // Auto catch this kind if problem and throws and assert!
-                if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol)
-                {
-                    std::stringstream convert, convert2; // stringstream used for the conversion
-                    convert << s; std::string str_expr1 = convert.str();
-                    convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
-                    str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-                    if((*it).id() == ID_nondet_symbol && (str_expr2.find(NONDET) != std::string::npos))
-                            str_expr2 = str_expr2.insert(7, SYMEX_NONDET);
-                    assert(str_expr1.compare(str_expr2) == 0);
-                }
-                free(s);
-#endif
-            }
-        }
-
+        get_function_args(expr, args);
+        bool is_no_support = (is_div_wtrounding && args.size() > 2);
+        
+        // Convert the whole expression with args<>
         if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
             ptref = unsupported_to_var(expr);
 
@@ -531,7 +467,7 @@ PTRef smtcheck_opensmt2t_la::unsupported_to_var(const exprt &expr)
     const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
     const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str()) : new_num_var(str);
-    store_new_unsupported_var(expr, var);
+    store_new_unsupported_var(expr, var); // for convert purpose only
     return var;
 }
 
@@ -569,7 +505,7 @@ Function: smtcheck_opensmt2t_la::push_assumes2type
 
  Outputs:
 
- Purpose:
+ Purpose: option 1,2
 
 \*******************************************************************/
 void smtcheck_opensmt2t_la::push_assumes2type(
@@ -597,7 +533,7 @@ Function: smtcheck_opensmt2t_la::push_asserts2type
 
  Outputs:
 
- Purpose:
+ Purpose: option 2
 
 \*******************************************************************/
 void smtcheck_opensmt2t_la::push_asserts2type(
@@ -951,4 +887,23 @@ PTRef smtcheck_opensmt2t_la::type_cast(const exprt & expr)
     } else { // All types of number to number, will take the inner value as the converted one
         return expression_to_ptref((expr.operands())[0]);
     }
+}
+
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Free all inner objects
+
+\*******************************************************************/
+literalt smtcheck_opensmt2t_la::get_and_clear_var_constraints()
+{
+    literalt res = ptref_to_literal(ptr_assert_var_constraints);
+    ptr_assert_var_constraints = logic->getTerm_true();
+    return res;
 }

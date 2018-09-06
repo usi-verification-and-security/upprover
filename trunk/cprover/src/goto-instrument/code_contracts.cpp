@@ -13,13 +13,14 @@ Date: February 2016
 
 #include "code_contracts.h"
 
-#include <util/cprover_prefix.h>
 #include <util/fresh_symbol.h>
 #include <util/replace_symbol.h>
 
 #include <goto-programs/remove_skip.h>
 
 #include <analyses/local_may_alias.h>
+
+#include <linking/static_lifetime_init.h>
 
 #include "loop_utils.h"
 
@@ -45,8 +46,7 @@ protected:
 
   unsigned temporary_counter;
 
-  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
-  id_sett summarized;
+  std::unordered_set<irep_idt> summarized;
 
   void code_contracts(goto_functionst::goto_functiont &goto_function);
 
@@ -131,10 +131,10 @@ static void check_apply_invariants(
   if(!loop_head->is_goto())
   {
     goto_programt::targett jump=havoc_code.add_instruction(GOTO);
-    jump->guard=side_effect_expr_nondett(bool_typet());
+    jump->guard =
+      side_effect_expr_nondett(bool_typet(), loop_head->source_location);
     jump->targets.push_back(loop_end);
     jump->function=loop_head->function;
-    jump->source_location=loop_head->source_location;
   }
 
   // Now havoc at the loop head. Use insert_swap to
@@ -250,7 +250,7 @@ const symbolt &code_contractst::new_tmp_symbol(
 {
   return get_fresh_aux_symbol(
     type,
-    "",
+    id2string(source_location.get_function()),
     "tmp_cc",
     source_location,
     irep_idt(),
@@ -295,7 +295,8 @@ void code_contractst::add_contract_check(
 
   // if(nondet)
   goto_programt::targett g=check.add_instruction();
-  g->make_goto(skip, side_effect_expr_nondett(bool_typet()));
+  g->make_goto(
+    skip, side_effect_expr_nondett(bool_typet(), skip->source_location));
   g->function=skip->function;
   g->source_location=skip->source_location;
 
@@ -386,13 +387,11 @@ void code_contractst::operator()()
     code_contracts(it->second);
 
   goto_functionst::function_mapt::iterator i_it=
-    goto_functions.function_map.find(CPROVER_PREFIX "initialize");
+    goto_functions.function_map.find(INITIALIZE_FUNCTION);
   assert(i_it!=goto_functions.function_map.end());
 
-  for(id_sett::const_iterator it=summarized.begin();
-      it!=summarized.end();
-      ++it)
-    add_contract_check(*it, i_it->second.body);
+  for(const auto &contract : summarized)
+    add_contract_check(contract, i_it->second.body);
 
   // remove skips
   remove_skip(i_it->second.body);

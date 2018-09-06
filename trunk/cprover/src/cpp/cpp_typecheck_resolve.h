@@ -49,7 +49,6 @@ protected:
 
   void convert_identifiers(
     const cpp_scopest::id_sett &id_set,
-    const wantt want,
     const cpp_typecheck_fargst &fargs,
     resolve_identifierst &identifiers);
 
@@ -58,7 +57,6 @@ protected:
 
   exprt convert_identifier(
     const cpp_idt &id,
-    const wantt want,
     const cpp_typecheck_fargst &fargs);
 
   void disambiguate_functions(
@@ -118,8 +116,13 @@ protected:
     unsigned &args_distance,
     const cpp_typecheck_fargst &fargs);
 
+  void resolve_argument(
+    exprt &argument,
+    const cpp_typecheck_fargst &fargs);
+
   exprt do_builtin(
     const irep_idt &base_name,
+    const cpp_typecheck_fargst &fargs,
     const cpp_template_args_non_tct &template_args);
 
   void show_identifiers(

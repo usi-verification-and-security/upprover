@@ -1,4 +1,4 @@
-/**** ***************************************************************\
+/********************************************************************\
 
 Module: Goto Programs with Functions
 
@@ -38,16 +38,16 @@ void goto_convert_functionst::goto_convert(goto_functionst &functions)
   typedef std::list<irep_idt> symbol_listt;
   symbol_listt symbol_list;
 
-  forall_symbols(it, symbol_table.symbols)
+  for(const auto &symbol_pair : symbol_table.symbols)
   {
-    if(!it->second.is_type &&
-       !it->second.is_macro &&
-       it->second.type.id()==ID_code &&
-       (it->second.mode==ID_C ||
-        it->second.mode==ID_cpp ||
-        it->second.mode==ID_java ||
-        it->second.mode=="jsil"))
-      symbol_list.push_back(it->first);
+    if(
+      !symbol_pair.second.is_type && !symbol_pair.second.is_macro &&
+      symbol_pair.second.type.id() == ID_code &&
+      (symbol_pair.second.mode == ID_C || symbol_pair.second.mode == ID_cpp ||
+       symbol_pair.second.mode == ID_java || symbol_pair.second.mode == "jsil"))
+    {
+      symbol_list.push_back(symbol_pair.first);
+    }
   }
 
   for(const auto &id : symbol_list)
@@ -59,12 +59,14 @@ void goto_convert_functionst::goto_convert(goto_functionst &functions)
 
   // this removes the parse tree of the bodies from memory
   #if 0
-  Forall_symbols(it, symbol_table.symbols)
+  for(const auto &symbol_pair, symbol_table.symbols)
   {
-    if(!it->second.is_type &&
-       it->second.type.id()==ID_code &&
-       it->second.value.is_not_nil())
-      it->second.value=codet();
+    if(!symbol_pair.second.is_type &&
+       symbol_pair.second.type.id()==ID_code &&
+       symbol_pair.second.value.is_not_nil())
+    {
+      symbol_pair.second.value=codet();
+    }
   }
   #endif
 }
@@ -126,7 +128,7 @@ void goto_convert_functionst::add_return(
 
   #endif
 
-  side_effect_expr_nondett rhs(f.type.return_type());
+  const side_effect_expr_nondett rhs(f.type.return_type(), source_location);
 
   goto_programt::targett t=f.body.add_instruction();
   t->make_return();
@@ -139,14 +141,13 @@ void goto_convert_functionst::convert_function(
   goto_functionst::goto_functiont &f)
 {
   const symbolt &symbol=ns.lookup(identifier);
+  const irep_idt mode = symbol.mode;
 
   if(f.body_available())
     return; // already converted
 
   // make tmp variables local to function
-  tmp_symbol_prefix=id2string(symbol.name)+"::$tmp::";
-  temporary_counter=0;
-  reset_temporary_counter();
+  tmp_symbol_prefix=id2string(symbol.name)+"::$tmp";
 
   f.type=to_code_type(symbol.type);
 
@@ -184,7 +185,7 @@ void goto_convert_functionst::convert_function(
     f.type.return_type().id()!=ID_constructor &&
     f.type.return_type().id()!=ID_destructor;
 
-  goto_convert_rec(code, f.body);
+  goto_convert_rec(code, f.body, mode);
 
   // add non-det return value, if needed
   if(targets.has_return_value)
@@ -213,9 +214,8 @@ void goto_convert_functionst::convert_function(
   // add "end of function"
   f.body.destructive_append(tmp_end_function);
 
-  // do function tags
-  Forall_goto_program_instructions(i_it, f.body)
-    i_it->function=identifier;
+  // do function tags (they are empty at this point)
+  f.update_instructions_function(identifier);
 
   f.body.update();
 

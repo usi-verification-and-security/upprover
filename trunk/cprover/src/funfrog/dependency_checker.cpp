@@ -2,14 +2,11 @@
 
 #include <memory>
 #include <fstream>
-#include <util/time_stopping.h>
 #include <util/expr_util.h>
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
 #endif
-
-#include <util/language.h>
 
 #include "nopartition/smt_symex_target_equation.h"
 #include "subst_scenario.h"
@@ -22,19 +19,17 @@
 
 #include <sstream>
 #include <map>
+#include <funfrog/utils/time_utils.h>
+#include <langapi/language_util.h>
 
 #define VERBOSE false
-
 using namespace hifrog;
 
 void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
-  absolute_timet initial, temp_end;
-  time_periodt duration, durationto;
-
   reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
 
-  initial=current_time();
+  auto initial=timestamp();
 
   std::ofstream hl_list;
   hl_list.open ("__hl_list");
@@ -55,38 +50,28 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 //    cout << "SSA Assertions: " << asserts.size();
 //    cout << '\n';
 
-    temp_end = current_time();
-    duration = temp_end - initial;
+    auto temp_end = timestamp();
+    auto duration = time_gap(temp_end,initial);
     //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << '\n';
 
-    initial=current_time();
+    initial=timestamp();
 
     // TODO: this takes a lot of time. Oct.2014: optimized a little bit
     find_assert_deps();
 
-    temp_end = current_time();
-    duration = temp_end - initial;
+    temp_end = timestamp();
+    duration = time_gap(temp_end,initial);
     status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
-    initial = current_time();
+    initial = timestamp();
 
     //TODO: FIX THIS!
-    absolute_timet to_time(find_implications());
+    find_implications();
 
-    temp_end = current_time();
-    duration = temp_end - initial;
-
-    //durationto = current_time();
-    //durationto = durationto - initial;
-    //durationto = durationto - to_time;
-    absolute_timet duration_cast(duration.get_t());
-    durationto = duration_cast - to_time;
-
-    time_periodt to_time_cast(to_time.get_t());
+    temp_end = timestamp();
+    duration = time_gap(temp_end,initial);
 
     status() << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
-//  std::cout << "TIME exceeding timeouts: " << (to_time) << '\n';
-//  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << '\n';
 
   //TODO: make a proper cmd-parameter
   std::ifstream just_dep;
@@ -100,15 +85,12 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
 //  get_minimals();
 
-//  initial = current_time();
+//  initial = timestamp();
 //  std::cout << "TIME FOR get_minimals: " << (initial - final) << '\n';
 }
 
 // For no partition version
 void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
-
-    absolute_timet initial, temp_end;
-    time_periodt duration, durationto;
 
     //reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
     for(symex_target_equationt::SSA_stepst::iterator
@@ -121,7 +103,7 @@ void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
       SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
     }
 
-    initial=current_time();
+    auto initial=timestamp();
 
     std::ofstream hl_list;
     hl_list.open ("__hl_list");
@@ -142,30 +124,26 @@ void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
 //    cout << "SSA Assertions: " << asserts.size();
 //    cout << '\n';
 
-    temp_end = current_time();
-    duration = temp_end - initial;
+    //auto temp_end = timestamp();
+    //auto duration = time_gap(temp_end , initial);
     //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << '\n';
 
-    initial=current_time();
+    initial=timestamp();
 
     // TODO: this takes a lot of time. Oct.2014: optimized a little bit
     find_assert_deps();
 
-    temp_end = current_time();
-    duration = temp_end - initial;
+    auto temp_end = timestamp();
+    auto duration = time_gap(temp_end , initial);
     status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
-    initial = current_time();
+    initial = timestamp();
 
     //TODO: FIX THIS!
-    absolute_timet to_time(find_implications());
+    find_implications();
 
-    temp_end = current_time();
-    duration = temp_end - initial;
-    absolute_timet duration_cast(duration.get_t());
-    durationto = duration_cast - to_time;
-
-    time_periodt to_time_cast(to_time.get_t());
+    temp_end = timestamp();
+    duration = time_gap(temp_end , initial);
 
     status () << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
 
@@ -549,7 +527,7 @@ long dependency_checkert::find_implications() {
         for (unsigned j = i+1; j < asserts.size(); j++)
         {
             checks++;
-            std::pair<bool, fine_timet> checkres;
+            std::pair<bool, timet> checkres;
             auto assert2_idx = asserts[j];
             auto assert_2 = SSA_steps[assert2_idx];
             if (compare_assertions(assert1_idx, assert2_idx)
@@ -567,9 +545,9 @@ long dependency_checkert::find_implications() {
 
                 if (checkres.first == true)
                 {
-                    true_time = true_time + checkres.second.get_t();
+                    true_time = true_time +  checkres.second.count() ;
                     if (VERBOSE) {status() << "check_implication returned TRUE" << eom;}
-                    if (checkres.second.get_t() <= impl_timeout)
+                    if ( checkres.second.count() <= impl_timeout)
                     {
                         assert_imps[assert1_idx][assert2_idx] = IMP;
                         if (VERBOSE)
@@ -595,12 +573,12 @@ long dependency_checkert::find_implications() {
                 }
                 else
                 {
-                    false_time = false_time + checkres.second.get_t();
+                    false_time = false_time +  checkres.second.count() ;
                     if (VERBOSE) { status () << "check_implication returned FALSE" << eom;}
                 }
-                if (checkres.second.get_t() > impl_timeout)
+                if ( checkres.second.count()  > impl_timeout)
                 {
-                    long exceeding = checkres.second.get_t() - impl_timeout;
+                    long exceeding = time_gap( checkres.second.count(),impl_timeout);
                     warning () << "Timeout " << (impl_timeout/1000) << "." <<
                                (impl_timeout%1000)/10 << " exceeded of " <<
                                (exceeding/1000) << "." <<
@@ -739,7 +717,7 @@ void dependency_checkert::convert_delta_SSA(check_opensmt2t &decider,
     convert_io(decider, it1, it2);
 }
 
-std::pair<bool, fine_timet>
+std::pair<bool, timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{
         // TODO: create solver according to current settings?
@@ -750,30 +728,29 @@ dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dep
         convert_delta_SSA(*decider, c1, c2);
 
         if (VERBOSE) status() << ("RESULT");
-        time_periodt duration;
-        absolute_timet initial, end;
-        initial=current_time();
+        auto initial=timestamp();
         bool r = decider->solve();
-        end=current_time();
-        duration = end - initial;
-
-        status() << "SOLVER TIME FOR check_implication: " << duration << eom;
+        auto end=timestamp();
+        auto duration_out = time_gap(end,initial);   
+        timet duration(duration_out);
+          
+        status() << "SOLVER TIME FOR check_implication: " << duration_out << eom;
         // solve it
         return std::make_pair(!r, duration);
 
     } catch (const std::bad_alloc &e)
     {
         error ()  << "smth is wrong: " << e.what()  << eom;
-        return std::make_pair(true, (fine_timet)0);
+        return std::make_pair(true, (timet)0);
     }
     catch (const char* e)
     {
         error () << "\nCaught exception: " << e << eom;
-        return std::make_pair(true, (fine_timet)0);
+        return std::make_pair(true, (timet)0);
     }
     catch (const std::string &s)
     {
         error () << "\nCaught exception: " << s << eom;
-        return std::make_pair(true, (fine_timet)0);
+        return std::make_pair(true, (timet)0);
     }
 }

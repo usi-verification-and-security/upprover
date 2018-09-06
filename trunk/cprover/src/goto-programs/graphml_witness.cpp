@@ -18,7 +18,9 @@ Author: Daniel Kroening
 #include <util/prefix.h>
 #include <util/ssa_expr.h>
 
-#include <goto-programs/goto_program_template.h>
+#include <langapi/language_util.h>
+
+#include "goto_program.h"
 
 void graphml_witnesst::remove_l0_l1(exprt &expr)
 {
@@ -300,9 +302,10 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
         {
           xmlt &val=edge.new_element("data");
           val.set_attribute("key", "sourcecode");
-          const std::string cond=from_expr(ns, "", it->cond_expr);
+          const std::string cond =
+            from_expr(ns, it->pc->function, it->cond_expr);
           const std::string neg_cond=
-            from_expr(ns, "", not_exprt(it->cond_expr));
+            from_expr(ns, it->pc->function, not_exprt(it->cond_expr));
           val.data="["+(it->cond_value ? cond : neg_cond)+"]";
 
           #if 0
@@ -483,8 +486,8 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
         {
           xmlt &val=edge.new_element("data");
           val.set_attribute("key", "sourcecode");
-          const std::string cond=from_expr(ns, "", it->cond_expr);
-            from_expr(ns, "", not_exprt(it->cond_expr));
+          const std::string cond =
+            from_expr(ns, it->source.pc->function, it->cond_expr);
           val.data="["+cond+"]";
         }
 

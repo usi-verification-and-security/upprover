@@ -13,19 +13,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <unordered_set>
 
+#include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/config.h>
-#include <util/invariant.h>
-#include <util/simplify_expr.h>
-#include <util/arith_tools.h>
-#include <util/std_types.h>
 #include <util/pointer_offset_size.h>
+#include <util/simplify_expr.h>
 
+#include "ansi_c_convert_type.h"
 #include "c_qualifiers.h"
-#include "ansi_c_declaration.h"
+#include "gcc_types.h"
 #include "padding.h"
 #include "type2name.h"
-#include "ansi_c_convert_type.h"
+#include "typedef_type.h"
 
 void c_typecheck_baset::typecheck_type(typet &type)
 {
@@ -90,8 +89,10 @@ void c_typecheck_baset::typecheck_type(typet &type)
     typecheck_c_bit_field_type(to_c_bit_field_type(type));
   else if(type.id()==ID_typeof)
     typecheck_typeof_type(type);
-  else if(type.id()==ID_symbol)
-    typecheck_symbol_type(type);
+  else if(type.id() == ID_symbol_type)
+    typecheck_symbol_type(to_symbol_type(type));
+  else if(type.id() == ID_typedef_type)
+    typecheck_typedef_type(type);
   else if(type.id()==ID_vector)
     typecheck_vector_type(to_vector_type(type));
   else if(type.id()==ID_custom_unsignedbv ||
@@ -581,10 +582,9 @@ void c_typecheck_baset::typecheck_array_type(array_typet &type)
       new_symbol.base_name=id2string(current_symbol.base_name)+suffix;
       new_symbol.type=size.type();
       new_symbol.type.set(ID_C_constant, true);
-      new_symbol.is_type=false;
-      new_symbol.is_static_lifetime=false;
       new_symbol.value=size;
       new_symbol.location=source_location;
+      new_symbol.mode = mode;
 
       symbol_table.add(new_symbol);
 
@@ -795,9 +795,8 @@ void c_typecheck_baset::typecheck_compound_type(struct_union_typet &type)
     }
   }
 
-  symbol_typet symbol_type;
+  symbol_typet symbol_type(identifier);
   symbol_type.add_source_location()=type.source_location();
-  symbol_type.set_identifier(identifier);
 
   c_qualifierst original_qualifiers(type);
   type.swap(symbol_type);
@@ -877,7 +876,7 @@ void c_typecheck_baset::typecheck_compound_body(
   // scan for duplicate members
 
   {
-    std::unordered_set<irep_idt, irep_id_hash> members;
+    std::unordered_set<irep_idt> members;
 
     for(struct_union_typet::componentst::iterator
         it=components.begin();
@@ -1372,7 +1371,7 @@ void c_typecheck_baset::typecheck_c_bit_field_type(c_bit_field_typet &type)
       throw 0;
     }
 
-    sub_width=c_enum_type.subtype().get_int(ID_width);
+    sub_width = c_enum_type.subtype().get_size_t(ID_width);
   }
   else
   {
@@ -1429,10 +1428,10 @@ void c_typecheck_baset::typecheck_typeof_type(typet &type)
   c_qualifiers.write(type);
 }
 
-void c_typecheck_baset::typecheck_symbol_type(typet &type)
+void c_typecheck_baset::typecheck_symbol_type(symbol_typet &type)
 {
-  const irep_idt &identifier=
-    to_symbol_type(type).get_identifier();
+  // we do some consistency checking only
+  const irep_idt &identifier = type.get_identifier();
 
   symbol_tablet::symbolst::const_iterator s_it=
     symbol_table.symbols.find(identifier);
@@ -1453,24 +1452,45 @@ void c_typecheck_baset::typecheck_symbol_type(typet &type)
     error() << "expected type symbol" << eom;
     throw 0;
   }
+}
 
-  if(symbol.is_macro)
+void c_typecheck_baset::typecheck_typedef_type(typet &type)
+{
+  const irep_idt &identifier = to_typedef_type(type).get_identifier();
+
+  symbol_tablet::symbolst::const_iterator s_it =
+    symbol_table.symbols.find(identifier);
+
+  if(s_it == symbol_table.symbols.end())
   {
-    // overwrite, but preserve (add) any qualifiers and other flags
-
-    c_qualifierst c_qualifiers(type);
-    bool is_packed=type.get_bool(ID_C_packed);
-    irept alignment=type.find(ID_C_alignment);
-
-    c_qualifiers+=c_qualifierst(symbol.type);
-    type=symbol.type;
-    c_qualifiers.write(type);
-
-    if(is_packed)
-      type.set(ID_C_packed, true);
-    if(alignment.is_not_nil())
-      type.set(ID_C_alignment, alignment);
+    error().source_location = type.source_location();
+    error() << "typedef symbol `" << identifier << "' not found" << eom;
+    throw 0;
   }
+
+  const symbolt &symbol = s_it->second;
+
+  if(!symbol.is_type)
+  {
+    error().source_location = type.source_location();
+    error() << "expected type symbol for typedef" << eom;
+    throw 0;
+  }
+
+  // overwrite, but preserve (add) any qualifiers and other flags
+
+  c_qualifierst c_qualifiers(type);
+  bool is_packed = type.get_bool(ID_C_packed);
+  irept alignment = type.find(ID_C_alignment);
+
+  c_qualifiers += c_qualifierst(symbol.type);
+  type = symbol.type;
+  c_qualifiers.write(type);
+
+  if(is_packed)
+    type.set(ID_C_packed, true);
+  if(alignment.is_not_nil())
+    type.set(ID_C_alignment, alignment);
 
   // CPROVER extensions
   if(symbol.base_name=="__CPROVER_rational")

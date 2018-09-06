@@ -13,10 +13,9 @@ Date:   December 2016
 
 #include "slice_global_inits.h"
 
-#include <unordered_set>
-
 #include <analyses/call_graph.h>
 
+#include <util/find_symbols.h>
 #include <util/namespace.h>
 #include <util/std_expr.h>
 #include <util/cprover_prefix.h>
@@ -46,41 +45,29 @@ void slice_global_inits(goto_modelt &goto_model)
 
   // gather all symbols used by reachable functions
 
-  class symbol_collectort:public const_expr_visitort
-  {
-  public:
-    virtual void operator()(const exprt &expr)
-    {
-      if(expr.id()==ID_symbol)
-      {
-        const symbol_exprt &symbol_expr=to_symbol_expr(expr);
-        const irep_idt id=symbol_expr.get_identifier();
-        symbols.insert(id);
-      }
-    }
-
-    std::unordered_set<irep_idt, irep_id_hash> symbols;
-  };
-
-  symbol_collectort visitor;
+  find_symbols_sett symbols;
 
   for(std::size_t node_idx = 0; node_idx < directed_graph.size(); ++node_idx)
   {
     const irep_idt &id = directed_graph[node_idx].function;
     if(id == INITIALIZE_FUNCTION)
       continue;
-    const goto_functionst::goto_functiont &goto_function
-      =goto_functions.function_map.at(id);
-    const goto_programt &goto_program=goto_function.body;
+
+    // assume function has no body if it is not in the function map
+    const auto &it = goto_functions.function_map.find(id);
+    if(it == goto_functions.function_map.end())
+      continue;
+
+    const goto_programt &goto_program = it->second.body;
 
     forall_goto_program_instructions(i_it, goto_program)
     {
-      const codet &code=i_it->code;
-      code.visit(visitor);
+      const codet &code = i_it->code;
+      find_symbols(code, symbols, true, false);
+      const exprt &expr = i_it->guard;
+      find_symbols(expr, symbols, true, false);
     }
   }
-
-  const std::unordered_set<irep_idt, irep_id_hash> &symbols=visitor.symbols;
 
   // now remove unnecessary initializations
 
@@ -105,5 +92,4 @@ void slice_global_inits(goto_modelt &goto_model)
   }
 
   remove_skip(goto_functions);
-  goto_functions.update();
 }

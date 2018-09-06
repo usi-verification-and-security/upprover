@@ -14,13 +14,30 @@ Date: June 2003
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_H
 
-#include "goto_program.h"
-#include "goto_functions_template.h"
+#include "goto_function.h"
 
-class goto_functionst:public goto_functions_templatet<goto_programt>
+#include <util/cprover_prefix.h>
+
+class goto_functionst
 {
 public:
-  goto_functionst()=default;
+  using goto_functiont=::goto_functiont;
+  typedef std::map<irep_idt, goto_functiont> function_mapt;
+  function_mapt function_map;
+
+private:
+  /// A location number such that numbers in the interval
+  /// [unused_location_number, MAX_UINT] are all unused. There might still be
+  /// unused numbers below this.
+  /// If numbering a new function or renumbering a function, starting from this
+  /// number is safe.
+  unsigned unused_location_number;
+
+public:
+  goto_functionst():
+    unused_location_number(0)
+  {
+  }
 
   // Copying is unavailable as base class copy is deleted
   // MSVC is unable to automatically determine this
@@ -34,14 +51,69 @@ public:
   //  under "Defaulted and Deleted Functions")
 
   goto_functionst(goto_functionst &&other):
-    goto_functions_templatet(std::move(other))
+    function_map(std::move(other.function_map)),
+    unused_location_number(other.unused_location_number)
   {
   }
 
   goto_functionst &operator=(goto_functionst &&other)
   {
-    goto_functions_templatet::operator=(std::move(other));
+    function_map=std::move(other.function_map);
+    unused_location_number=other.unused_location_number;
     return *this;
+  }
+
+  void unload(const irep_idt &name) { function_map.erase(name); }
+
+  void clear()
+  {
+    function_map.clear();
+  }
+
+  void output(
+    const namespacet &ns,
+    std::ostream &out) const;
+
+  void compute_location_numbers();
+  void compute_location_numbers(goto_programt &);
+  void compute_loop_numbers();
+  void compute_target_numbers();
+  void compute_incoming_edges();
+
+  /// update the function member in each instruction by setting it to
+  /// the goto function's identifier
+  void update_instructions_function()
+  {
+    for(auto &func : function_map)
+    {
+      func.second.update_instructions_function(func.first);
+    }
+  }
+
+  void update()
+  {
+    compute_incoming_edges();
+    compute_target_numbers();
+    compute_location_numbers();
+    compute_loop_numbers();
+    update_instructions_function();
+  }
+
+  static inline irep_idt entry_point()
+  {
+    // do not confuse with C's "int main()"
+    return CPROVER_PREFIX "_start";
+  }
+
+  void swap(goto_functionst &other)
+  {
+    function_map.swap(other.function_map);
+  }
+
+  void copy_from(const goto_functionst &other)
+  {
+    for(const auto &fun : other.function_map)
+      function_map[fun.first].copy_from(fun.second);
   }
 };
 
@@ -54,9 +126,5 @@ public:
   for(goto_functionst::function_mapt::const_iterator \
       it=(functions).function_map.begin(); \
       it!=(functions).function_map.end(); it++)
-
-void get_local_identifiers(
-  const goto_function_templatet<goto_programt> &goto_function,
-  std::set<irep_idt> &dest);
 
 #endif // CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_H

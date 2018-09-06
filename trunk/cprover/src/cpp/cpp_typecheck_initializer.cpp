@@ -13,12 +13,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <util/arith_tools.h>
 #include <util/c_types.h>
+#include <util/expr_initializer.h>
 #include <util/pointer_offset_size.h>
-#include <util/std_expr.h>
 
-#include <linking/zero_initializer.h>
-
-#include "cpp_util.h"
+#include "cpp_convert_type.h"
 
 /// Initialize an object with a value
 void cpp_typecheckt::convert_initializer(symbolt &symbol)
@@ -65,6 +63,14 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
   if(is_reference(symbol.type))
   {
     typecheck_expr(symbol.value);
+
+    if(has_auto(symbol.type))
+    {
+      cpp_convert_auto(symbol.type, symbol.value.type());
+      typecheck_type(symbol.type);
+      implicit_typecast(symbol.value, symbol.type);
+    }
+
     reference_initializer(symbol.value, symbol.type);
   }
   else if(cpp_is_pod(symbol.type))
@@ -137,6 +143,9 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
 
     typecheck_expr(symbol.value);
 
+    if(symbol.value.type().find("to-member").is_not_nil())
+      symbol.type.add("to-member") = symbol.value.type().find("to-member");
+
     if(symbol.value.id()==ID_initializer_list ||
        symbol.value.id()==ID_string_constant)
     {
@@ -144,6 +153,12 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
 
       if(symbol.type.find(ID_size).is_nil())
         symbol.type=symbol.value.type();
+    }
+    else if(has_auto(symbol.type))
+    {
+      cpp_convert_auto(symbol.type, symbol.value.type());
+      typecheck_type(symbol.type);
+      implicit_typecast(symbol.value, symbol.type);
     }
     else
       implicit_typecast(symbol.value, symbol.type);
@@ -195,9 +210,7 @@ void cpp_typecheckt::zero_initializer(
       if(component.get_bool(ID_is_static))
         continue;
 
-      exprt member(ID_member);
-      member.copy_to_operands(object);
-      member.set(ID_component_name, component.get(ID_name));
+      member_exprt member(object, component.get(ID_name), component.type());
 
       // recursive call
       zero_initializer(member, component.type(), source_location, ops);
@@ -221,8 +234,8 @@ void cpp_typecheckt::zero_initializer(
     exprt::operandst empty_operands;
     for(mp_integer i=0; i<size; ++i)
     {
-      exprt index(ID_index);
-      index.copy_to_operands(object, from_integer(i, index_type()));
+      index_exprt index(
+        object, from_integer(i, index_type()), array_type.subtype());
       zero_initializer(index, array_type.subtype(), source_location, ops);
     }
   }
@@ -272,8 +285,8 @@ void cpp_typecheckt::zero_initializer(
   }
   else if(final_type.id()==ID_c_enum)
   {
-    typet enum_type(ID_unsignedbv);
-    enum_type.add(ID_width)=final_type.find(ID_width);
+    const unsignedbv_typet enum_type(
+      to_bitvector_type(final_type.subtype()).get_width());
 
     exprt zero(from_integer(0, enum_type));
     zero.make_typecast(type);

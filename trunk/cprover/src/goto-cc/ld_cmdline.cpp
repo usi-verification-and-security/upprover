@@ -16,9 +16,7 @@ Author: Daniel Kroening, 2013
 
 #include <util/prefix.h>
 
-/// parses the command line options into a cmdlinet
-/// \par parameters: argument count, argument strings
-/// \return none
+// clang-format off
 const char *goto_ld_options_with_argument[]=
 {
   "--verbosity",
@@ -73,16 +71,28 @@ const char *ld_options_with_argument[]=
   "-Y",
   "--assert",
   "--defsym",
+  "--file-alignment",
   "--fini",
   "--hash-size",
+  "--heap",
+  "--image-base",
   "--init",
   "--Map",
+  "--major-image-version",
+  "--major-os-version",
+  "--major-subsystem-version",
+  "--minor-image-version",
+  "--minor-os-version",
+  "--minor-subsystem-version",
   "--oformat",
   "--retain-symbols-file",
   "--rpath",
   "--rpath-link",
+  "--section-alignment",
   "--sort-section",
   "--spare-dynamic-tags",
+  "--stack",
+  "--subsystem",
   "--task-link",
   "--section-start",
   "--Tbss",
@@ -99,6 +109,7 @@ const char *ld_options_with_argument[]=
   "--ios_version_min", // Apple only
   "--macosx_version_min", // Apple only
   "--install_name", // Apple only
+  "--build-id",
   nullptr
 };
 
@@ -235,7 +246,11 @@ const char *ld_options_without_argument[]=
   "--bundle", // Apple only
   nullptr
 };
+// clang-format on
 
+/// parses the command line options into a cmdlinet
+/// \par parameters: argument count, argument strings
+/// \return none
 bool ld_cmdlinet::parse(int argc, const char **argv)
 {
   assert(argc>0);

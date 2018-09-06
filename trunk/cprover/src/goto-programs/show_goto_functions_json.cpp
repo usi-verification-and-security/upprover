@@ -25,8 +25,8 @@ Author: Thomas Kiley
 #include "goto_model.h"
 
 /// For outputting the GOTO program in a readable JSON format.
-/// \param ns: the namespace to use to resolve names with
-/// \param list_only: output only list of functions, but not their bodies
+/// \param _ns: the namespace to use to resolve names with
+/// \param _list_only: output only list of functions, but not their bodies
 show_goto_functions_jsont::show_goto_functions_jsont(
   const namespacet &_ns,
   bool _list_only)
@@ -48,7 +48,7 @@ json_objectt show_goto_functions_jsont::convert(
 
     json_objectt &json_function=
       json_functions.push_back(jsont()).make_object();
-    json_function["name"]=json_stringt(id2string(function_name));
+    json_function["name"] = json_stringt(function_name);
     json_function["isBodyAvailable"]=
       jsont::json_boolean(function.body_available());
     bool is_internal=

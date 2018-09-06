@@ -28,7 +28,7 @@ Resources:
                 apt-get -y update
                 apt-get install git
                 cd /mnt
-                git clone --depth 1 --branch svcomp17 \
+                git clone --depth 1 --branch svcomp18 \
                         https://github.com/sosy-lab/sv-benchmarks.git
                 git clone --depth 1 \
                         https://github.com/sosy-lab/benchexec.git
@@ -36,6 +36,8 @@ Resources:
                         https://github.com/sosy-lab/cpachecker.git
                 git clone --depth 1 \
                         https://github.com/diffblue/cprover-sv-comp.git
+                git clone --depth 1 \
+                        https://github.com/tautschnig/fshell-w2t.git
                 halt
 
     BaseVolume:

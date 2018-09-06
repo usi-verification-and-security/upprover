@@ -16,6 +16,7 @@ Date: August 2013
 
 #include <cassert>
 
+#include <util/container_utils.h>
 #include <util/json.h>
 #include <util/json_expr.h>
 
@@ -23,39 +24,30 @@ Date: August 2013
 
 bool dep_graph_domaint::merge(
   const dep_graph_domaint &src,
-  goto_programt::const_targett from,
-  goto_programt::const_targett to)
+  goto_programt::const_targett,
+  goto_programt::const_targett)
 {
-  bool changed=has_values.is_false();
-  has_values=tvt::unknown();
+  // An abstract state at location `to` may be non-bottom even if
+  // `merge(..., `to`) has not been called so far. This is due to the special
+  // handling of function entry edges (see transform()).
+  bool changed = is_bottom() || has_changed;
 
-  depst::iterator it=control_deps.begin();
-  for(const auto &c_dep : src.control_deps)
+  // For computing the data dependencies, we would not need a fixpoint
+  // computation. The data dependencies at a location are computed from the
+  // result of the reaching definitions analysis at that location
+  // (in data_dependencies()). Thus, we only need to set the data dependencies
+  // part of an abstract state at a certain location once.
+  if(changed && data_deps.empty())
   {
-    while(it!=control_deps.end() && *it<c_dep)
-      ++it;
-    if(it==control_deps.end() || c_dep<*it)
-    {
-      control_deps.insert(it, c_dep);
-      changed=true;
-    }
-    else if(it!=control_deps.end())
-      ++it;
+    data_deps = src.data_deps;
+    has_values = tvt::unknown();
   }
 
-  it=data_deps.begin();
-  for(const auto &d_dep : src.data_deps)
-  {
-    while(it!=data_deps.end() && *it<d_dep)
-      ++it;
-    if(it==data_deps.end() || d_dep<*it)
-    {
-      data_deps.insert(it, d_dep);
-      changed=true;
-    }
-    else if(it!=data_deps.end())
-      ++it;
-  }
+  changed |= util_inplace_set_union(control_deps, src.control_deps);
+  changed |=
+    util_inplace_set_union(control_dep_candidates, src.control_dep_candidates);
+
+  has_changed = false;
 
   return changed;
 }
@@ -67,42 +59,54 @@ void dep_graph_domaint::control_dependencies(
 {
   // Better Slicing of Programs with Jumps and Switches
   // Kumar and Horwitz, FASE'02:
-  // Node N is control dependent on node M iff N postdominates one
-  // but not all of M's CFG successors.
+  // "Node N is control dependent on node M iff N postdominates, in
+  // the CFG, one but not all of M's CFG successors."
   //
-  // candidates for M are from and all existing control-depended on
-  // nodes; from is added if it is a goto or assume instruction
-  if(from->is_goto() ||
-     from->is_assume())
-    control_deps.insert(from);
+  // The "successor" above refers to an immediate successor of M.
+  //
+  // When computing the control dependencies of a node N (i.e., "to"
+  // being N), candidates for M are all control statements (gotos or
+  // assumes) from which there is a path in the CFG to N.
 
-  const irep_idt id=goto_programt::get_function_id(from);
+  // Add new candidates
+
+  if(from->is_goto() || from->is_assume())
+    control_dep_candidates.insert(from);
+  else if(from->is_end_function())
+  {
+    control_dep_candidates.clear();
+    return;
+  }
+
+  if(control_dep_candidates.empty())
+    return;
+
+  // Get postdominators
+
+  const irep_idt id=from->function;
   const cfg_post_dominatorst &pd=dep_graph.cfg_post_dominators().at(id);
 
-  // check all candidates for M
-  for(depst::iterator
-      it=control_deps.begin();
-      it!=control_deps.end();
-      ) // no ++it
-  {
-    depst::iterator next=it;
-    ++next;
+  // Check all candidates
 
-    // check all CFG successors
+  for(const auto &control_dep_candidate : control_dep_candidates)
+  {
+    // check all CFG successors of M
     // special case: assumptions also introduce a control dependency
-    bool post_dom_all=!(*it)->is_assume();
+    bool post_dom_all = !control_dep_candidate->is_assume();
     bool post_dom_one=false;
 
     // we could hard-code assume and goto handling here to improve
     // performance
-    cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e=
-      pd.cfg.entry_map.find(*it);
+    cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e =
+      pd.cfg.entry_map.find(control_dep_candidate);
 
-    assert(e!=pd.cfg.entry_map.end());
+    INVARIANT(
+      e != pd.cfg.entry_map.end(), "cfg must have an entry for every location");
 
     const cfg_post_dominatorst::cfgt::nodet &m=
       pd.cfg[e->second];
 
+    // successors of M
     for(const auto &edge : m.out)
     {
       const cfg_post_dominatorst::cfgt::nodet &m_s=
@@ -114,11 +118,14 @@ void dep_graph_domaint::control_dependencies(
         post_dom_all=false;
     }
 
-    if(post_dom_all ||
-       !post_dom_one)
-      control_deps.erase(it);
-
-    it=next;
+    if(post_dom_all || !post_dom_one)
+    {
+      control_deps.erase(control_dep_candidate);
+    }
+    else
+    {
+      control_deps.insert(control_dep_candidate);
+    }
   }
 }
 
@@ -144,7 +151,7 @@ static bool may_be_def_use_pair(
 }
 
 void dep_graph_domaint::data_dependencies(
-  goto_programt::const_targett from,
+  goto_programt::const_targett,
   goto_programt::const_targett to,
   dependence_grapht &dep_graph,
   const namespacet &ns)
@@ -187,8 +194,7 @@ void dep_graph_domaint::transform(
   goto_programt::const_targett from,
   goto_programt::const_targett to,
   ai_baset &ai,
-  const namespacet &ns,
-  ai_domain_baset::edge_typet edge_type)
+  const namespacet &ns)
 {
   dependence_grapht *dep_graph=dynamic_cast<dependence_grapht*>(&ai);
   assert(dep_graph!=nullptr);
@@ -196,32 +202,31 @@ void dep_graph_domaint::transform(
   // propagate control dependencies across function calls
   if(from->is_function_call())
   {
-    const goto_programt::const_targett next = std::next(from);
-
-    if(edge_type == ai_domain_baset::edge_typet::FUNCTION_LOCAL)
+    if(from->function == to->function)
     {
       control_dependencies(from, to, *dep_graph);
     }
     else
     {
       // edge to function entry point
+      const goto_programt::const_targett next = std::next(from);
 
       dep_graph_domaint *s=
         dynamic_cast<dep_graph_domaint*>(&(dep_graph->get_state(next)));
       assert(s!=nullptr);
 
-      depst::iterator it=s->control_deps.begin();
-      for(const auto &c_dep : control_deps)
+      if(s->is_bottom())
       {
-        while(it!=s->control_deps.end() && *it<c_dep)
-          ++it;
-        if(it==s->control_deps.end() || c_dep<*it)
-          s->control_deps.insert(it, c_dep);
-        else if(it!=s->control_deps.end())
-          ++it;
+        s->has_values = tvt::unknown();
+        s->has_changed = true;
       }
 
+      s->has_changed |= util_inplace_set_union(s->control_deps, control_deps);
+      s->has_changed |= util_inplace_set_union(
+        s->control_dep_candidates, control_dep_candidates);
+
       control_deps.clear();
+      control_dep_candidates.clear();
     }
   }
   else
@@ -232,8 +237,8 @@ void dep_graph_domaint::transform(
 
 void dep_graph_domaint::output(
   std::ostream &out,
-  const ai_baset &ai,
-  const namespacet &ns) const
+  const ai_baset &,
+  const namespacet &) const
 {
   if(!control_deps.empty())
   {
@@ -270,8 +275,8 @@ void dep_graph_domaint::output(
 /// \par parameters: The abstract interpreter and the namespace.
 /// \return The domain, formatted as a JSON object.
 jsont dep_graph_domaint::output_json(
-  const ai_baset &ai,
-  const namespacet &ns) const
+  const ai_baset &,
+  const namespacet &) const
 {
   json_arrayt graph;
 
@@ -302,9 +307,9 @@ void dependence_grapht::add_dep(
   goto_programt::const_targett from,
   goto_programt::const_targett to)
 {
-  const node_indext n_from=state_map[from].get_node_id();
+  const node_indext n_from = (*this)[from].get_node_id();
   assert(n_from<size());
-  const node_indext n_to=state_map[to].get_node_id();
+  const node_indext n_to = (*this)[to].get_node_id();
   assert(n_to<size());
 
   // add_edge is redundant as the subsequent operations also insert

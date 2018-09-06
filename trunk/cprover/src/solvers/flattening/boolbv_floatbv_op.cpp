@@ -13,7 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/std_types.h>
 
-#include "../floatbv/float_utils.h"
+#include <solvers/floatbv/float_utils.h>
 
 bvt boolbvt::convert_floatbv_typecast(const floatbv_typecast_exprt &expr)
 {
@@ -88,12 +88,9 @@ bvt boolbvt::convert_floatbv_op(const exprt &expr)
   bvt bv2=convert_bv(op2);
 
   const typet &type=ns.follow(expr.type());
-
-  if(op0.type()!=type || op1.type()!=type)
-  {
-    std::cerr << expr.pretty() << '\n';
-    throw "float op with mixed types";
-  }
+  DATA_INVARIANT(
+    op0.type() == type && op1.type() == type,
+    "float op with mixed types:\n" + expr.pretty());
 
   float_utilst float_utils(prop);
 

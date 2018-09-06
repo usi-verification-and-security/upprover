@@ -16,18 +16,22 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <string.h>
+#include <cstring>
 
-#include <util/invariant.h>
-#include <util/std_types.h>
-#include <util/symbol_table.h>
-#include <util/ieee_float.h>
 #include <util/fixedbv.h>
-#include <util/std_expr.h>
+#include <util/ieee_float.h>
+#include <util/invariant.h>
 #include <util/message.h>
+#include <util/std_expr.h>
+#include <util/std_types.h>
+#include <util/string2int.h>
+#include <util/string_container.h>
+#include <util/symbol_table.h>
+
 #include <json/json_parser.h>
 
 #include "interpreter_class.h"
+#include "json_goto_trace.h"
 #include "remove_returns.h"
 
 const std::size_t interpretert::npos=std::numeric_limits<size_t>::max();
@@ -150,8 +154,8 @@ void interpretert::command()
   }
   else if(ch=='j')
   {
-    jsont json_steps;
-    convert(ns, steps, json_steps);
+    json_arrayt json_steps;
+    convert<json_arrayt>(ns, steps, json_steps);
     ch=tolower(command[1]);
     if(ch==' ')
     {
@@ -205,7 +209,7 @@ void interpretert::command()
       stack_depth=call_stack.size()+1;
     else
     {
-      num_steps=atoi(command+1);
+      num_steps=safe_string2size_t(command+1);
       if(num_steps==0)
         num_steps=1;
     }
@@ -461,7 +465,7 @@ exprt interpretert::get_value(
   const typet real_type=ns.follow(type);
   if(real_type.id()==ID_struct)
   {
-    exprt result=struct_exprt(real_type);
+    struct_exprt result(real_type);
     const struct_typet &struct_type=to_struct_type(real_type);
     const struct_typet::componentst &components=struct_type.components();
 
@@ -483,7 +487,7 @@ exprt interpretert::get_value(
   else if(real_type.id()==ID_array)
   {
     // Get size of array
-    exprt result=array_exprt(to_array_type(real_type));
+    array_exprt result(to_array_type(real_type));
     const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
     mp_integer subtype_size=get_size(type.subtype());
     mp_integer count;
@@ -510,7 +514,7 @@ exprt interpretert::get_value(
   if(use_non_det &&
      memory[integer2ulong(offset)].initialized!=
      memory_cellt::initializedt::WRITTEN_BEFORE_READ)
-    return side_effect_expr_nondett(type);
+    return side_effect_expr_nondett(type, source_locationt());
   mp_vectort rhs;
   rhs.push_back(memory[integer2ulong(offset)].value);
   return get_value(type, rhs);
@@ -528,7 +532,7 @@ exprt interpretert::get_value(
 
   if(real_type.id()==ID_struct)
   {
-    exprt result=struct_exprt(real_type);
+    struct_exprt result(real_type);
     const struct_typet &struct_type=to_struct_type(real_type);
     const struct_typet::componentst &components=struct_type.components();
 
@@ -547,7 +551,7 @@ exprt interpretert::get_value(
   }
   else if(real_type.id()==ID_array)
   {
-    exprt result(ID_constant, type);
+    constant_exprt result(type);
     const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
 
     // Get size of array
@@ -613,8 +617,7 @@ exprt interpretert::get_value(
       irep_idt identifier=address_to_identifier(address);
       mp_integer offset=address_to_offset(address);
       const typet type=get_type(identifier);
-      exprt symbol_expr(ID_symbol, type);
-      symbol_expr.set(ID_identifier, identifier);
+      const symbol_exprt symbol_expr(identifier, type);
 
       if(offset==0)
         return address_of_exprt(symbol_expr);
@@ -642,7 +645,7 @@ exprt interpretert::get_value(
   {
     // Strings are currently encoded by their irep_idt ID.
     return constant_exprt(
-      irep_idt::make_from_table_index(rhs[integer2size_t(offset)].to_long()),
+      get_string_container().get_string(rhs[integer2size_t(offset)].to_long()),
       type);
   }
 
@@ -768,8 +771,8 @@ void interpretert::execute_function_call()
 #if 0
   const memory_cellt &cell=memory[address];
 #endif
-  const irep_idt &identifier=address_to_identifier(address);
-  trace_step.identifier=identifier;
+  const irep_idt &identifier = address_to_identifier(address);
+  trace_step.function_identifier = identifier;
 
   const goto_functionst::function_mapt::const_iterator f_it=
     goto_functions.function_map.find(identifier);
@@ -826,8 +829,7 @@ void interpretert::execute_function_call()
     for(std::size_t i=0; i<parameters.size(); i++)
     {
       const code_typet::parametert &a=parameters[i];
-      exprt symbol_expr(ID_symbol, a.type());
-      symbol_expr.set(ID_identifier, a.get_identifier());
+      const symbol_exprt symbol_expr(a.get_identifier(), a.type());
       assign(evaluate_address(symbol_expr), argument_values[i]);
     }
 
@@ -837,8 +839,9 @@ void interpretert::execute_function_call()
   }
   else
   {
-    list_input_varst::iterator it=
-        function_input_vars.find(function_call.function().get(ID_identifier));
+    list_input_varst::iterator it = function_input_vars.find(
+      to_symbol_expr(function_call.function()).get_identifier());
+
     if(it!=function_input_vars.end())
     {
       mp_vectort value;
@@ -852,6 +855,7 @@ void interpretert::execute_function_call()
       it->second.pop_front();
       return;
     }
+
     if(show)
       error() << "no body for "+id2string(identifier) << eom;
   }
@@ -862,7 +866,7 @@ void interpretert::build_memory_map()
 {
   // put in a dummy for NULL
   memory.resize(1);
-  inverse_memory_map[0]="NULL-OBJECT";
+  inverse_memory_map[0] = ID_null_object;
 
   num_dynamic_objects=0;
   dynamic_types.clear();
@@ -1039,10 +1043,11 @@ mp_integer interpretert::get_size(const typet &type)
     }
     return subtype_size;
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
   {
     return get_size(ns.follow(type));
   }
+
   return 1;
 }
 

@@ -28,7 +28,7 @@ partial_order_concurrencyt::~partial_order_concurrencyt()
 void partial_order_concurrencyt::add_init_writes(
   symex_target_equationt &equation)
 {
-  std::unordered_set<irep_idt, irep_id_hash> init_done;
+  std::unordered_set<irep_idt> init_done;
   bool spawn_seen=false;
 
   symex_target_equationt::SSA_stepst init_steps;
@@ -161,14 +161,12 @@ symbol_exprt partial_order_concurrencyt::clock(
   return symbol_exprt(identifier, clock_type);
 }
 
-void partial_order_concurrencyt::build_clock_type(
-  const symex_target_equationt &equation)
+void partial_order_concurrencyt::build_clock_type()
 {
   assert(!numbering.empty());
 
-  mp_integer width=address_bits(numbering.size());
-  assert(width<std::numeric_limits<unsigned>::max());
-  clock_type=unsignedbv_typet(integer2unsigned(width));
+  std::size_t width = address_bits(numbering.size());
+  clock_type = unsignedbv_typet(width);
 }
 
 exprt partial_order_concurrencyt::before(

@@ -212,16 +212,14 @@ void acceleratet::insert_looping_path(
   ++loop_body;
 
   goto_programt::targett jump=program.insert_before(loop_body);
-  jump->make_goto();
-  jump->guard=side_effect_expr_nondett(bool_typet());
-  jump->targets.push_back(loop_body);
+  jump->make_goto(
+    loop_body,
+    side_effect_expr_nondett(bool_typet(), loop_body->source_location));
 
   program.destructive_insert(loop_body, looping_path);
 
   jump=program.insert_before(loop_body);
-  jump->make_goto();
-  jump->guard=true_exprt();
-  jump->targets.push_back(back_jump);
+  jump->make_goto(back_jump, true_exprt());
 
   for(goto_programt::targett t=loop_header;
       t!=loop_body;
@@ -459,7 +457,7 @@ symbolt acceleratet::make_symbol(std::string name, typet type)
   return ret;
 }
 
-void acceleratet::decl(symbol_exprt &sym, goto_programt::targett t)
+void acceleratet::decl(symbol_exprt &, goto_programt::targett)
 {
 #if 0
   goto_programt::targett decl=program.insert_before(t);

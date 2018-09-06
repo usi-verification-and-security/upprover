@@ -5,7 +5,7 @@ BUILD_ENV = AUTO
 ifeq ($(BUILD_ENV),MSVC)
   #CXXFLAGS += /Wall /WX
 else
-  CXXFLAGS += -Wall -pedantic -Werror
+  CXXFLAGS += -Wall -pedantic -Werror -Wno-deprecated-declarations
 endif
 
 # Select optimisation or debug info
@@ -16,7 +16,6 @@ endif
 #LIB_GLPK = -lglpk
 
 # SAT-solvers we have
-#PRECOSAT = ../../precosat-576-7e5e66f-120112
 #PICOSAT = ../../picosat-959
 #LINGELING = ../../lingeling-587f-4882048-110513
 #CHAFF = ../../zChaff
@@ -25,14 +24,15 @@ endif
 #MINISAT2 = ../../minisat-2.2.1
 #IPASIR = ../../ipasir
 #GLUCOSE = ../../glucose-syrup
-#SMVSAT =
+#CADICAL = ../../cadical
 
 # Extra library for SAT solver. This should link to the archive file to be used
 # when linking against an IPASIR solver.
 LIBSOLVER =
 
-ifneq ($(PRECOSAT),)
-  CP_CXXFLAGS += -DSATCHECK_PRECOSAT
+# select default solver to be minisat2 if no other is specified
+ifeq ($(BOOLEFORCE)$(CHAFF)$(GLUCOSE)$(IPASIR)$(LINGELING)$(MINISAT)$(MINISAT2)$(PICOSAT)$(CADICAL),)
+  MINISAT2 = ../../minisat-2.2.1
 endif
 
 ifneq ($(PICOSAT),)
@@ -63,10 +63,13 @@ ifneq ($(GLUCOSE),)
   CP_CXXFLAGS += -DSATCHECK_GLUCOSE
 endif
 
-ifneq ($(SMVSAT),)
-  CP_CXXFLAGS += -DSATCHECK_SMVSAT
+ifneq ($(CADICAL),)
+  CP_CXXFLAGS += -DSATCHECK_CADICAL
 endif
 
 # Signing identity for MacOS Gatekeeper
 
 OSX_IDENTITY="Developer ID Application: Daniel Kroening"
+
+# Detailed version information
+CBMC_VERSION = 5.10

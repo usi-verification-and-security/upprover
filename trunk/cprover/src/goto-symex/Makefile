@@ -1,5 +1,4 @@
-SRC = adjust_float_expressions.cpp \
-      auto_objects.cpp \
+SRC = auto_objects.cpp \
       build_goto_trace.cpp \
       goto_symex.cpp \
       goto_symex_state.cpp \
@@ -8,6 +7,7 @@ SRC = adjust_float_expressions.cpp \
       memory_model_sc.cpp \
       memory_model_tso.cpp \
       partial_order_concurrency.cpp \
+      path_storage.cpp \
       postcondition.cpp \
       precondition.cpp \
       rewrite_union.cpp \

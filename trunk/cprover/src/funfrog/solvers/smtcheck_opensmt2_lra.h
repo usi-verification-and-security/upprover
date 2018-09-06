@@ -21,11 +21,6 @@ public:
 
     void check_ce(std::vector<exprt> & exprs); // checking spuriousness of the error trace (not refinement here)
 
-    virtual std::string getStringSMTlibDatatype(const typet & type) override;
-
-
-    virtual SRef getSMTlibDatatype(const typet & type) override;
-
 protected:
     virtual void initializeSolver(const solver_optionst solver_options, const char *) override;
     

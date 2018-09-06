@@ -47,7 +47,7 @@ static bool link_functions(
   const symbol_tablet &src_symbol_table,
   goto_functionst &src_functions,
   const rename_symbolt &rename_symbol,
-  const std::unordered_set<irep_idt, irep_id_hash> &weak_symbols,
+  const std::unordered_set<irep_idt> &weak_symbols,
   const replace_symbolt &object_type_updates)
 {
   namespacet ns(dest_symbol_table);
@@ -110,13 +110,14 @@ static bool link_functions(
   // apply macros
   rename_symbolt macro_application;
 
-  forall_symbols(it, dest_symbol_table.symbols)
-    if(it->second.is_macro && !it->second.is_type)
+  for(const auto &symbol_pair : dest_symbol_table.symbols)
+  {
+    if(symbol_pair.second.is_macro && !symbol_pair.second.is_type)
     {
-      const symbolt &symbol=it->second;
+      const symbolt &symbol = symbol_pair.second;
 
-      INVARIANT(symbol.value.id()==ID_symbol, "must have symbol");
-      const irep_idt &id=to_symbol_expr(symbol.value).get_identifier();
+      INVARIANT(symbol.value.id() == ID_symbol, "must have symbol");
+      const irep_idt &id = to_symbol_expr(symbol.value).get_identifier();
 
       #if 0
       if(!base_type_eq(symbol.type, ns.lookup(id).type, ns))
@@ -130,6 +131,7 @@ static bool link_functions(
 
       macro_application.insert_expr(symbol.name, id);
     }
+  }
 
   if(!macro_application.expr_map.empty())
     Forall_goto_functions(dest_it, dest_functions)
@@ -138,7 +140,7 @@ static bool link_functions(
       rename_symbols_in_function(dest_it->second, final_id, macro_application);
     }
 
-  if(!object_type_updates.expr_map.empty())
+  if(!object_type_updates.empty())
   {
     Forall_goto_functions(dest_it, dest_functions)
       Forall_goto_program_instructions(iit, dest_it->second.body)
@@ -156,12 +158,13 @@ void link_goto_model(
   goto_modelt &src,
   message_handlert &message_handler)
 {
-  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
-  id_sett weak_symbols;
+  std::unordered_set<irep_idt> weak_symbols;
 
-  forall_symbols(it, dest.symbol_table.symbols)
-    if(it->second.is_weak)
-      weak_symbols.insert(it->first);
+  for(const auto &symbol_pair : dest.symbol_table.symbols)
+  {
+    if(symbol_pair.second.is_weak)
+      weak_symbols.insert(symbol_pair.first);
+  }
 
   linkingt linking(dest.symbol_table,
                    src.symbol_table,

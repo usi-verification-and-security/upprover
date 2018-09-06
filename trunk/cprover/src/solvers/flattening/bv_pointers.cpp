@@ -8,14 +8,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "bv_pointers.h"
 
+#include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/config.h>
-#include <util/arith_tools.h>
-#include <util/invariant.h>
-#include <util/prefix.h>
-#include <util/std_expr.h>
 #include <util/pointer_offset_size.h>
-#include <util/threeval.h>
 
 literalt bv_pointerst::convert_rest(const exprt &expr)
 {
@@ -33,26 +29,19 @@ literalt bv_pointerst::convert_rest(const exprt &expr)
 
       if(!bv.empty())
       {
-        bvt invalid_bv, null_bv;
+        bvt invalid_bv;
         encode(pointer_logic.get_invalid_object(), invalid_bv);
-        encode(pointer_logic.get_null_object(),    null_bv);
 
-        bvt equal_invalid_bv, equal_null_bv;
+        bvt equal_invalid_bv;
         equal_invalid_bv.resize(object_bits);
-        equal_null_bv.resize(object_bits);
 
         for(std::size_t i=0; i<object_bits; i++)
         {
           equal_invalid_bv[i]=prop.lequal(bv[offset_bits+i],
                                           invalid_bv[offset_bits+i]);
-          equal_null_bv[i]   =prop.lequal(bv[offset_bits+i],
-                                          null_bv[offset_bits+i]);
         }
 
-        literalt equal_invalid=prop.land(equal_invalid_bv);
-        literalt equal_null=prop.land(equal_null_bv);
-
-        return prop.lor(equal_invalid, equal_null);
+        return prop.land(equal_invalid_bv);
       }
     }
   }
@@ -116,7 +105,7 @@ bool bv_pointerst::convert_address_of_rec(
     add_addr(expr, bv);
     return false;
   }
-  else if(expr.id()=="NULL-object")
+  else if(expr.id() == ID_null_object)
   {
     encode(pointer_logic.get_null_object(), bv);
     return false;
@@ -136,7 +125,7 @@ bool bv_pointerst::convert_address_of_rec(
     {
       // this should be gone
       bv=convert_pointer_type(array);
-      POSTCONDITION(bv.size()==bits);
+      CHECK_RETURN(bv.size()==bits);
     }
     else if(array_type.id()==ID_array ||
             array_type.id()==ID_incomplete_array ||
@@ -144,7 +133,7 @@ bool bv_pointerst::convert_address_of_rec(
     {
       if(convert_address_of_rec(array, bv))
         return true;
-      POSTCONDITION(bv.size()==bits);
+      CHECK_RETURN(bv.size()==bits);
     }
     else
       UNREACHABLE;
@@ -155,7 +144,22 @@ bool bv_pointerst::convert_address_of_rec(
     DATA_INVARIANT(size>0, "array subtype expected to have non-zero size");
 
     offset_arithmetic(bv, size, index);
-    POSTCONDITION(bv.size()==bits);
+    CHECK_RETURN(bv.size()==bits);
+    return false;
+  }
+  else if(expr.id()==ID_byte_extract_little_endian ||
+          expr.id()==ID_byte_extract_big_endian)
+  {
+    const auto &byte_extract_expr=to_byte_extract_expr(expr);
+
+    // recursive call
+    if(convert_address_of_rec(byte_extract_expr.op(), bv))
+      return true;
+
+    CHECK_RETURN(bv.size()==bits);
+
+    offset_arithmetic(bv, 1, byte_extract_expr.offset());
+    CHECK_RETURN(bv.size()==bits);
     return false;
   }
   else if(expr.id()==ID_member)
@@ -296,7 +300,7 @@ bvt bv_pointerst::convert_pointer_type(const exprt &expr)
       return bv;
     }
 
-    POSTCONDITION(bv.size()==bits);
+    CHECK_RETURN(bv.size()==bits);
     return bv;
   }
   else if(expr.id()==ID_constant)
@@ -334,13 +338,21 @@ bvt bv_pointerst::convert_pointer_type(const exprt &expr)
       {
         count++;
         bv=convert_bv(*it);
-        POSTCONDITION(bv.size()==bits);
+        CHECK_RETURN(bv.size()==bits);
 
         typet pointer_sub_type=it->type().subtype();
+
         if(pointer_sub_type.id()==ID_empty)
-          pointer_sub_type=char_type();
-        size=pointer_offset_size(pointer_sub_type, ns);
-        POSTCONDITION(size>0);
+        {
+          // This is a gcc extension.
+          // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
+          size = 1;
+        }
+        else
+        {
+          size = pointer_offset_size(pointer_sub_type, ns);
+          CHECK_RETURN(size > 0);
+        }
       }
     }
 
@@ -407,16 +419,24 @@ bvt bv_pointerst::convert_pointer_type(const exprt &expr)
       return bv;
     }
 
-    exprt neg_op1=unary_exprt(
-      ID_unary_minus, expr.op1(), expr.op1().type());
+    const unary_minus_exprt neg_op1(expr.op1());
 
     bv=convert_bv(expr.op0());
 
     typet pointer_sub_type=expr.op0().type().subtype();
+    mp_integer element_size;
+
     if(pointer_sub_type.id()==ID_empty)
-      pointer_sub_type=char_type();
-    mp_integer element_size=pointer_offset_size(pointer_sub_type, ns);
-    DATA_INVARIANT(element_size>0, "object size expected to be positive");
+    {
+      // This is a gcc extension.
+      // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
+      element_size = 1;
+    }
+    else
+    {
+      element_size = pointer_offset_size(pointer_sub_type, ns);
+      DATA_INVARIANT(element_size > 0, "object size expected to be positive");
+    }
 
     offset_arithmetic(bv, element_size, neg_op1);
 
@@ -441,6 +461,12 @@ bvt bv_pointerst::convert_pointer_type(const exprt &expr)
           expr.id()==ID_byte_extract_big_endian)
   {
     return SUB::convert_byte_extract(to_byte_extract_expr(expr));
+  }
+  else if(
+    expr.id() == ID_byte_update_little_endian ||
+    expr.id() == ID_byte_update_big_endian)
+  {
+    throw "byte-wise updates of pointers are unsupported";
   }
 
   return conversion_failed(expr);
@@ -472,10 +498,19 @@ bvt bv_pointerst::convert_bitvector(const exprt &expr)
     bvt bv=bv_utils.sub(op0, op1);
 
     typet pointer_sub_type=expr.op0().type().subtype();
+    mp_integer element_size;
+
     if(pointer_sub_type.id()==ID_empty)
-      pointer_sub_type=char_type();
-    mp_integer element_size=pointer_offset_size(pointer_sub_type, ns);
-    DATA_INVARIANT(element_size>0, "object size expected to be positive");
+    {
+      // This is a gcc extension.
+      // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
+      element_size = 1;
+    }
+    else
+    {
+      element_size = pointer_offset_size(pointer_sub_type, ns);
+      DATA_INVARIANT(element_size > 0, "object size expected to be positive");
+    }
 
     if(element_size!=1)
     {

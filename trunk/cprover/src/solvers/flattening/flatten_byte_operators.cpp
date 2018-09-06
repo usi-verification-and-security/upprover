@@ -6,18 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/c_types.h>
-#include <util/expr.h>
-#include <util/std_types.h>
-#include <util/std_expr.h>
+#include "flatten_byte_operators.h"
+
 #include <util/arith_tools.h>
-#include <util/pointer_offset_size.h>
 #include <util/byte_operators.h>
+#include <util/c_types.h>
 #include <util/namespace.h>
+#include <util/pointer_offset_size.h>
 #include <util/replace_symbol.h>
 #include <util/simplify_expr.h>
 
-#include "flatten_byte_operators.h"
+#include "flatten_byte_extract_exceptions.h"
 
 /// rewrite an object into its individual bytes
 /// \par parameters: src  object to unpack
@@ -25,6 +24,9 @@ Author: Daniel Kroening, kroening@kroening.com
 /// max_bytes  if not nil, use as upper bound of the number of bytes to unpack
 /// ns  namespace for type lookups
 /// \return array of bytes in the sequence found in memory
+/// \throws flatten_byte_extract_exceptiont Raised is unable to unpack the
+/// object because of either non constant size, byte misalignment or
+/// non-constant component width.
 static exprt unpack_rec(
   const exprt &src,
   bool little_endian,
@@ -63,7 +65,9 @@ static exprt unpack_rec(
     mp_integer num_elements;
     if(to_integer(max_bytes, num_elements) &&
        to_integer(array_type.size(), num_elements))
-      throw "cannot unpack array of non-const size:\n"+type.pretty();
+    {
+      throw non_const_array_sizet(array_type, max_bytes);
+    }
 
     // all array members will have the same structure; do this just
     // once and then replace the dummy symbol by a suitable index
@@ -97,8 +101,9 @@ static exprt unpack_rec(
 
       // the next member would be misaligned, abort
       if(element_width<=0 || element_width%8!=0)
-        throw "cannot unpack struct with non-byte aligned components:\n"+
-          struct_type.pretty();
+      {
+        throw non_byte_alignedt(struct_type, comp, element_width);
+      }
 
       member_exprt member(src, comp.get_name(), comp.type());
       exprt sub=unpack_rec(member, little_endian, max_bytes, ns, true);
@@ -115,8 +120,9 @@ static exprt unpack_rec(
     if(bits<0)
     {
       if(to_integer(max_bytes, bits))
-        throw "cannot unpack object of non-constant width:\n"+
-          src.pretty();
+      {
+        throw non_constant_widtht(src, max_bytes);
+      }
       else
         bits*=8;
     }
@@ -195,14 +201,10 @@ exprt flatten_byte_extract(
 
   assert(src.operands().size()==2);
 
-  bool little_endian;
-
-  if(src.id()==ID_byte_extract_little_endian)
-    little_endian=true;
-  else if(src.id()==ID_byte_extract_big_endian)
-    little_endian=false;
-  else
-    UNREACHABLE;
+  PRECONDITION(
+    src.id() == ID_byte_extract_little_endian ||
+    src.id() == ID_byte_extract_big_endian);
+  const bool little_endian = src.id() == ID_byte_extract_little_endian;
 
   // determine an upper bound of the number of bytes we might need
   exprt upper_bound=size_of_expr(src.type(), ns);
@@ -300,8 +302,9 @@ exprt flatten_byte_extract(
   {
     mp_integer op0_bits=pointer_offset_bits(unpacked.op().type(), ns);
     if(op0_bits<0)
-      throw "byte_extract flatting with non-constant size:\n"+
-        unpacked.pretty();
+    {
+      throw non_const_byte_extraction_sizet(unpacked);
+    }
     else
       size_bits=op0_bits;
   }
@@ -402,13 +405,10 @@ exprt flatten_byte_update(
             new_value=flatten_byte_extract(byte_extract_expr, ns);
           }
 
-          exprt where=plus_exprt(src.op1(), i_expr);
+          const plus_exprt where(src.op1(), i_expr);
 
-          with_exprt with_expr;
+          with_exprt with_expr(result, where, new_value);
           with_expr.type()=src.type();
-          with_expr.old()=result;
-          with_expr.where()=where;
-          with_expr.new_value()=new_value;
 
           result.swap(with_expr);
         }

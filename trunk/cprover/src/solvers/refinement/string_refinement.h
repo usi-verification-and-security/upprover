@@ -27,21 +27,9 @@ Author: Alberto Griggio, alberto.griggio@gmail.com
 #include <solvers/refinement/string_constraint.h>
 #include <solvers/refinement/string_constraint_generator.h>
 #include <solvers/refinement/string_refinement_invariant.h>
+#include <solvers/refinement/string_refinement_util.h>
 
-#define MAX_NB_REFINEMENT 100
-#define CHARACTER_FOR_UNKNOWN '?'
-
-struct index_set_pairt
-{
-  std::map<exprt, std::set<exprt>> cumulative;
-  std::map<exprt, std::set<exprt>> current;
-};
-
-struct string_axiomst
-{
-  std::vector<string_constraintt> universal;
-  std::vector<string_not_contains_constraintt> not_contains;
-};
+#define DEFAULT_MAX_NB_REFINEMENT std::numeric_limits<size_t>::max()
 
 class string_refinementt final: public bv_refinementt
 {
@@ -52,13 +40,14 @@ private:
     /// Concretize strings after solver is finished
     bool trace=false;
     bool use_counter_example=true;
+    std::size_t max_string_length;
   };
 public:
   /// string_refinementt constructor arguments
-  struct infot:
-    public bv_refinementt::infot,
-    public string_constraint_generatort::infot,
-    public configt { };
+  struct infot : public bv_refinementt::infot,
+                 public configt
+  {
+  };
 
   explicit string_refinementt(const infot &);
 
@@ -94,30 +83,25 @@ private:
   union_find_replacet symbol_resolve;
 
   std::vector<equal_exprt> equations;
-  std::list<std::pair<exprt, bool>> non_string_axioms;
 
-  // Map pointers to array symbols
-  std::map<exprt, symbol_exprt> pointer_map;
+  string_dependenciest dependencies;
 
-  void add_lemma(const exprt &lemma, const bool _simplify = true);
+  void add_lemma(const exprt &lemma, bool simplify_lemma = true);
 };
 
 exprt substitute_array_lists(exprt expr, std::size_t string_max_length);
-exprt concretize_arrays_in_expression(
-  exprt expr,
-  std::size_t string_max_length,
-  const namespacet &ns);
-
-bool is_char_array_type(const typet &type, const namespacet &ns);
-
-bool has_subtype(
-  const typet &type,
-  const std::function<bool(const typet &)> &pred);
 
 // Declaration required for unit-test:
 union_find_replacet string_identifiers_resolution_from_equations(
   std::vector<equal_exprt> &equations,
   const namespacet &ns,
   messaget::mstreamt &stream);
+
+// Declaration required for unit-test:
+exprt substitute_array_access(
+  exprt expr,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator,
+  const bool left_propagate);
 
 #endif

@@ -11,12 +11,15 @@ Author: Daniel Kroening
 
 #include "cover_instrument.h"
 
+#include <langapi/language_util.h>
+
 #include "cover_util.h"
+#include "cover_basic_blocks.h"
 
 void cover_condition_instrumentert::instrument(
   goto_programt &goto_program,
   goto_programt::targett &i_it,
-  const cover_basic_blockst &basic_blocks) const
+  const cover_blocks_baset &) const
 {
   if(is_non_cover_assertion(i_it))
     i_it->make_skip();
@@ -30,7 +33,7 @@ void cover_condition_instrumentert::instrument(
 
     for(const auto &c : conditions)
     {
-      const std::string c_string = from_expr(ns, "", c);
+      const std::string c_string = from_expr(ns, i_it->function, c);
 
       const std::string comment_t = "condition `" + c_string + "' true";
       const irep_idt function = i_it->function;

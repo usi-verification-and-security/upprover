@@ -17,27 +17,28 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <memory>
 
 #include <ansi-c/ansi_c_language.h>
+#include <ansi-c/cprover_library.h>
+
 #include <cpp/cpp_language.h>
-#include <java_bytecode/java_bytecode_language.h>
+#include <cpp/cprover_library.h>
+
 #include <jsil/jsil_language.h>
 
+#include <goto-programs/adjust_float_expressions.h>
+#include <goto-programs/goto_convert_functions.h>
+#include <goto-programs/goto_inline.h>
 #include <goto-programs/initialize_goto_model.h>
-#include <goto-programs/set_properties.h>
+#include <goto-programs/link_to_library.h>
+#include <goto-programs/read_goto_binary.h>
+#include <goto-programs/remove_asm.h>
+#include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_function_pointers.h>
-#include <goto-programs/remove_virtual_functions.h>
-#include <goto-programs/remove_exceptions.h>
-#include <goto-programs/remove_instanceof.h>
 #include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_vector.h>
-#include <goto-programs/remove_complex.h>
-#include <goto-programs/remove_asm.h>
-#include <goto-programs/goto_convert_functions.h>
+#include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/set_properties.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/show_symbol_table.h>
-#include <goto-programs/read_goto_binary.h>
-#include <goto-programs/goto_inline.h>
-#include <goto-programs/link_to_library.h>
-#include <goto-programs/remove_java_new.h>
 
 #include <analyses/is_threaded.h>
 #include <analyses/goto_check.h>
@@ -47,15 +48,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <analyses/interval_domain.h>
 
 #include <langapi/mode.h>
+#include <langapi/language.h>
 
-#include <util/language.h>
-#include <util/options.h>
 #include <util/config.h>
-#include <util/string2int.h>
-#include <util/unicode.h>
 #include <util/exit_codes.h>
-
-#include <cbmc/version.h>
+#include <util/options.h>
+#include <util/unicode.h>
+#include <util/version.h>
 
 #include "taint_analysis.h"
 #include "unreachable_instructions.h"
@@ -65,10 +64,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 goto_analyzer_parse_optionst::goto_analyzer_parse_optionst(
   int argc,
-  const char **argv):
-  parse_options_baset(GOTO_ANALYSER_OPTIONS, argc, argv),
-  messaget(ui_message_handler),
-  ui_message_handler(cmdline, "GOTO-ANALYZER " CBMC_VERSION)
+  const char **argv)
+  : parse_options_baset(GOTO_ANALYSER_OPTIONS, argc, argv),
+    messaget(ui_message_handler),
+    ui_message_handler(cmdline, std::string("GOTO-ANALYZER ") + CBMC_VERSION)
 {
 }
 
@@ -76,23 +75,7 @@ void goto_analyzer_parse_optionst::register_languages()
 {
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);
-  register_language(new_java_bytecode_language);
   register_language(new_jsil_language);
-}
-
-void goto_analyzer_parse_optionst::eval_verbosity()
-{
-  // this is our default verbosity
-  unsigned int v=messaget::M_STATISTICS;
-
-  if(cmdline.isset("verbosity"))
-  {
-    v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-    if(v>10)
-      v=10;
-  }
-
-  ui_message_handler.set_verbosity(v);
 }
 
 void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
@@ -385,14 +368,14 @@ int goto_analyzer_parse_optionst::doit()
 
   optionst options;
   get_command_line_options(options);
-  eval_verbosity();
+  eval_verbosity(
+    cmdline.get_value("verbosity"), messaget::M_STATISTICS, ui_message_handler);
 
   //
   // Print a banner
   //
-  status() << "GOTO-ANALYSER version " CBMC_VERSION " "
-           << sizeof(void *)*8 << "-bit "
-           << config.this_architecture() << " "
+  status() << "GOTO-ANALYSER version " << CBMC_VERSION << " "
+           << sizeof(void *) * 8 << "-bit " << config.this_architecture() << " "
            << config.this_operating_system() << eom;
 
   register_languages();
@@ -477,6 +460,7 @@ int goto_analyzer_parse_optionst::doit()
 /// Depending on the command line mode, run one of the analysis tasks
 int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 {
+  adjust_float_expressions(goto_model);
   if(options.get_bool_option("taint"))
   {
     std::string taint_file=cmdline.get_value("taint");
@@ -593,7 +577,7 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
   if(cmdline.isset("show-properties"))
   {
-    show_properties(goto_model, get_ui());
+    show_properties(goto_model, get_message_handler(), get_ui());
     return CPROVER_EXIT_SUCCESS;
   }
 
@@ -643,7 +627,6 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       result = static_show_domain(goto_model,
                                   *analyzer,
                                   options,
-                                  get_message_handler(),
                                   out);
     }
     else if(options.get_bool_option("verify"))
@@ -667,7 +650,6 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       result = static_unreachable_instructions(goto_model,
                                                *analyzer,
                                                options,
-                                               get_message_handler(),
                                                out);
     }
     else if(options.get_bool_option("unreachable-functions"))
@@ -675,7 +657,6 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       result = static_unreachable_functions(goto_model,
                                             *analyzer,
                                             options,
-                                            get_message_handler(),
                                             out);
     }
     else if(options.get_bool_option("reachable-functions"))
@@ -683,7 +664,6 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       result = static_reachable_functions(goto_model,
                                           *analyzer,
                                           options,
-                                          get_message_handler(),
                                           out);
     }
     else
@@ -742,22 +722,16 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     remove_asm(goto_model);
 
     // add the library
-    link_to_library(goto_model, ui_message_handler);
+    status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << eom;
+    link_to_library(
+      goto_model, ui_message_handler, cprover_cpp_library_factory);
+    link_to_library(goto_model, ui_message_handler, cprover_c_library_factory);
     #endif
-
-    remove_java_new(goto_model, get_message_handler());
 
     // remove function pointers
     status() << "Removing function pointers and virtual functions" << eom;
     remove_function_pointers(
       get_message_handler(), goto_model, cmdline.isset("pointer-check"));
-    // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(goto_model);
-    // remove Java throw and catch
-    // This introduces instanceof, so order is important:
-    remove_exceptions(goto_model);
-    // remove rtti
-    remove_instanceof(goto_model);
 
     // do partial inlining
     status() << "Partial Inlining" << eom;
@@ -810,17 +784,12 @@ bool goto_analyzer_parse_optionst::process_goto_program(
 /// display command line help
 void goto_analyzer_parse_optionst::help()
 {
-  std::cout <<
-    "\n"
-    "* * GOTO-ANALYZER " CBMC_VERSION " - Copyright (C) 2017 ";
-
-  std::cout << "(" << (sizeof(void *)*8) << "-bit version)";
-
-  std::cout << " * *\n";
-
-  std::cout <<
-    "* *                Daniel Kroening, DiffBlue                * *\n"
-    "* *                 kroening@kroening.com                   * *\n"
+  // clang-format off
+  std::cout << '\n' << banner_string("GOTO-ANALYZER", CBMC_VERSION) << '\n'
+            <<
+    "* *                   Copyright (C) 2017-2018                    * *\n"
+    "* *                  Daniel Kroening, DiffBlue                   * *\n"
+    "* *                   kroening@kroening.com                      * *\n"
     "\n"
     "Usage:                       Purpose:\n"
     "\n"
@@ -891,23 +860,21 @@ void goto_analyzer_parse_optionst::help()
     #endif
     " --no-library                 disable built-in abstract C library\n"
     "\n"
-    "Java Bytecode frontend options:\n"
-    " --classpath dir/jar          set the classpath\n"
-    " --main-class class-name      set the name of the main class\n"
-    JAVA_BYTECODE_LANGUAGE_OPTIONS_HELP
     HELP_FUNCTIONS
     "\n"
     "Program representations:\n"
     " --show-parse-tree            show parse tree\n"
-    " --show-symbol-table          show symbol table\n"
+    " --show-symbol-table          show loaded symbol table\n"
     HELP_SHOW_GOTO_FUNCTIONS
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --show-properties            show the properties, but don't run analysis\n"
+    HELP_SHOW_PROPERTIES
     "\n"
     "Program instrumentation options:\n"
     HELP_GOTO_CHECK
     "\n"
     "Other options:\n"
     " --version                    show version and exit\n"
+    HELP_FLUSH
+    HELP_TIMESTAMP
     "\n";
+  // clang-format on
 }

@@ -19,15 +19,21 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "type.h"
 #include "mp_arith.h"
+// #define USE_LOCAL_REPLACE_MAP
+#ifdef USE_LOCAL_REPLACE_MAP
 #include "replace_expr.h"
+#endif
 
+class bswap_exprt;
 class byte_extract_exprt;
 class byte_update_exprt;
 class exprt;
+class extractbits_exprt;
 class if_exprt;
 class index_exprt;
 class member_exprt;
 class namespacet;
+class popcount_exprt;
 class tvt;
 
 #define forall_value_list(it, value_list) \
@@ -61,7 +67,7 @@ public:
 
   bool simplify_typecast(exprt &expr);
   bool simplify_extractbit(exprt &expr);
-  bool simplify_extractbits(exprt &expr);
+  bool simplify_extractbits(extractbits_exprt &expr);
   bool simplify_concatenation(exprt &expr);
   bool simplify_mult(exprt &expr);
   bool simplify_div(exprt &expr);
@@ -100,13 +106,13 @@ public:
   bool simplify_dereference(exprt &expr);
   bool simplify_address_of(exprt &expr);
   bool simplify_pointer_offset(exprt &expr);
-  bool simplify_bswap(exprt &expr);
+  bool simplify_bswap(bswap_exprt &expr);
   bool simplify_isinf(exprt &expr);
   bool simplify_isnan(exprt &expr);
   bool simplify_isnormal(exprt &expr);
   bool simplify_abs(exprt &expr);
   bool simplify_sign(exprt &expr);
-  bool simplify_popcount(exprt &expr);
+  bool simplify_popcount(popcount_exprt &expr);
 
   // auxiliary
   bool simplify_if_implies(
@@ -145,14 +151,17 @@ public:
   // bit-level conversions
   exprt bits2expr(
     const std::string &bits, const typet &type, bool little_endian);
-  std::string expr2bits(const exprt &expr, bool little_endian);
+
+  optionalt<std::string> expr2bits(const exprt &, bool little_endian);
 
 protected:
   const namespacet &ns;
 #ifdef DEBUG_ON_DEMAND
   bool debug_on;
 #endif
+#ifdef USE_LOCAL_REPLACE_MAP
   replace_mapt local_replace_map;
+#endif
 };
 
 #endif // CPROVER_UTIL_SIMPLIFY_EXPR_CLASS_H

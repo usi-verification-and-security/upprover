@@ -13,15 +13,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 #include <util/c_types.h>
-#include <util/type_eq.h>
-#include <util/std_types.h>
-#include <util/simplify_expr.h>
 #include <util/cprover_prefix.h>
+#include <util/expr_initializer.h>
 #include <util/prefix.h>
+#include <util/simplify_expr.h>
+#include <util/std_types.h>
+#include <util/string_constant.h>
+#include <util/type_eq.h>
 
-#include <linking/zero_initializer.h>
-
-#include "string_constant.h"
 #include "anonymous_member.h"
 
 void c_typecheck_baset::do_initializer(
@@ -493,7 +492,7 @@ exprt::operandst::const_iterator c_typecheck_baset::do_designated_initializer(
 
     const typet &type=designator.back().subtype;
     const typet &full_type=follow(type);
-    assert(full_type.id()!=ID_symbol);
+    CHECK_RETURN(full_type.id() != ID_symbol_type);
 
     // do we initialize a scalar?
     if(full_type.id()!=ID_struct &&

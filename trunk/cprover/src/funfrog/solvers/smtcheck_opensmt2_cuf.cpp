@@ -117,7 +117,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     
     // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
     // If need to register the abstracted functions - add it here
-    store_new_unsupported_var(expr, var);
+    store_new_unsupported_var(expr, var); // for convert purpose only
     
     return var;
 }
@@ -1454,21 +1454,11 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
 #ifdef SMT_DEBUG
         std::cout << "; IT IS AN OPERATOR" << std::endl;
 #endif
+        // Convert first the arguments
         vec<PTRef> args;
-        int i = 0;
-        for(auto const & operand : expr.operands())
-        {
-            // KE: recursion in case the expr is not simple - shall be in a visitor
-            if (is_cprover_rounding_mode_var(operand)) {
-                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-            } else { // All the rest of the operators
-                PTRef cp = expression_to_ptref(operand);
-                assert(cp != PTRef_Undef);
-                args.push(cp);
-                i++; // Only if really add an item to mult/div inc the counter
-            }
-        }
+        get_function_args(expr, args);
 
+        // Convert the whole expression with args<>
         if ((args.size() > 2) &&
             ((_id==ID_plus) ||
              (_id==ID_minus) ||
@@ -1543,7 +1533,7 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_not) {
             // TODO: to cuf, look many locations!
@@ -1599,35 +1589,35 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO                 
         } else if (_id==ID_byte_update_little_endian) {
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO              
         } else if (_id == ID_address_of) {
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO
         } else if (_id==ID_with) {
             ptref = unsupported_to_var(expr);
                                    
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO            
         } else if (_id==ID_index) {
             ptref = unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: TODO
         } else if (_id==ID_array) {
@@ -1656,14 +1646,14 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             ptref =unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: when active, also change the code in lvar
         } else if (_id==ID_pointer_offset) {
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
             // KE: when active, also change the code in lvar 
         } else if (_id==ID_pointer_object) {
@@ -1674,43 +1664,43 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             ptref =unsupported_to_var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isnan) {
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isinf) {
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isfinite) {
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_isnormal) {
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_sign) { // for macro signbit
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else if (_id == ID_abs) { // Can't in UF
             ptref =unsupported_to_var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
+            PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else {
             std::cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
@@ -1820,7 +1810,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported_to_var(const exprt & expr)
     const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
     const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str()) : uflogic->mkCUFNumVar(str.c_str());
-    store_new_unsupported_var(expr, var);
+    store_new_unsupported_var(expr, var); // for convert purpose only
     return var;
 }
 
@@ -2125,49 +2115,6 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     bitblaster->notifyEqualities();
 
     return solve();
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::getStringSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t_cuf::getStringSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMTConstants::SMT_BOOL;
-    if (is_number(type))
-        return SMTConstants::SMT_UREAL;
-    
-    return SMTConstants::SMT_UNKNOWN; // Shall not get here
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::getSMTlibDatatype
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const typet& type)
-{ 
-    if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return uflogic->getSort_bool();//SMT_BOOL;
-    if (is_number(type))
-        return uflogic->getSort_CUFNUM(); //SMT_UREAL;
-    
-    //assert(0); // Shall not get here
-    throw std::logic_error("Unknown datatype encountered!");
 }
 
 // Check if a literal is non-linear in the solver side
