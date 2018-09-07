@@ -8,7 +8,7 @@
 
 #include <goto-symex/symex_target_equation.h>
 
-class check_opensmt2t;
+class convertort;
 
 class hifrog_symex_target_equationt:public symex_target_equationt
 {
@@ -49,7 +49,7 @@ public:
 
     // Convert all the SSA steps into the corresponding formulas in
     // the corresponding partitions
-    void convert(check_opensmt2t &decider);
+    void convert(convertort &convertor);
 
     std::vector<exprt>& get_exprs_to_refine () { return exprs; }; 
     
@@ -63,21 +63,21 @@ public:
   
 protected:
     // Convert a specific partition guards of SSA steps
-    void convert_guards(check_opensmt2t &decider);
+    void convert_guards(convertort &convertor);
     // Convert a specific partition assignments of SSA steps
-    void convert_assignments(check_opensmt2t &decider);
+    void convert_assignments(convertort &convertor);
     // Convert a specific partition assumptions of SSA steps
-    void convert_assumptions(check_opensmt2t &decider);
+    void convert_assumptions(convertort &convertor);
     // Convert a specific partition assertions of SSA steps
-    void convert_assertions(check_opensmt2t &decider);
+    void convert_assertions(convertort &convertor);
     // Convert a specific partition io of SSA steps
-    void convert_io(check_opensmt2t &decider);
+    void convert_io(convertort &convertor);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_summary(check_opensmt2t &decider);
+    void convert_summary(convertort &convertor);
     // Convert Gotos of SSA steps
-    void convert_goto_instructions(check_opensmt2t &decider);
+    void convert_goto_instructions(convertort &convertor);
     // Convert constraints
-    void convert_constraints(check_opensmt2t &decider) const;
+    void convert_constraints(convertort &convertor) const;
 
     std::vector<exprt> exprs; // Expr to refine method
 public:

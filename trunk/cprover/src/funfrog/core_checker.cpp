@@ -14,7 +14,7 @@
 #include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
-#include "nopartition/smt_assertion_no_partition.h"
+#include "funfrog/nopartition/prepare_formula_no_partition.h"
 #include "partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
@@ -583,7 +583,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
-  smt_assertion_no_partitiont prop = smt_assertion_no_partitiont(
+  prepare_formula_no_partitiont prop = prepare_formula_no_partitiont(
           equation, message_handler, max_memory_used);
   
   unsigned count = 0;
@@ -612,8 +612,8 @@ bool core_checkert::assertion_holds_smt_no_partition(
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
 
-      end = prop.assertion_holds( 
-              *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+      end = prop.convert_to_formula_and_solve(
+              *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *decider);
       unsigned summaries_count = omega.get_summaries_count();
       // MB: unused variable commented out
       //unsigned nondet_count = omega.get_nondets_count();
@@ -721,7 +721,7 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
+void core_checkert::assertion_violated (prepare_formula_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);

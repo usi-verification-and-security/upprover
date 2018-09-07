@@ -10,6 +10,7 @@
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
 #include "conversion_utils.h"
+#include "interface/solver/interpolating_solver.h"
 
 #include <numeric>
 #include <algorithm>

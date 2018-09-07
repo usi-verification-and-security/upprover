@@ -12,8 +12,7 @@
 #include <util/ui_message.h>
 #include "../error_trace.h"
 
-#include "smt_assertion_no_partition.h"
-#include "../solvers/smtcheck_opensmt2.h"
+#include "prepare_formula_no_partition.h"
 
 
 extern time_periodt global_satsolver_time;
@@ -29,20 +28,20 @@ extern time_periodt global_satsolver_time;
  Purpose: Checks if the given assertion of the GP holds
 
 \*******************************************************************/
-bool smt_assertion_no_partitiont::assertion_holds(smtcheck_opensmt2t& decider)
+bool prepare_formula_no_partitiont::convert_to_formula_and_solve(convertort &convertor, solvert &solver)
 {
   bool sat=false;
 
   absolute_timet before, after;
   before=current_time();
-  equation.convert(decider);
+  equation.convert(convertor);
 
   after=current_time();
 
   status() << "CONVERSION TIME: " << (after-before) << eom;
 
   // Decides the equation
-  sat = is_satisfiable(decider);
+  sat = is_satisfiable(solver);
 
   if (!sat)
   {
@@ -66,12 +65,12 @@ bool smt_assertion_no_partitiont::assertion_holds(smtcheck_opensmt2t& decider)
 
 \*******************************************************************/
 
-bool smt_assertion_no_partitiont::is_satisfiable(
-		smtcheck_opensmt2t& decider)
+bool prepare_formula_no_partitiont::is_satisfiable(
+        solvert &solver)
 {
   absolute_timet before, after;
   before=current_time();
-  bool r = decider.solve();
+  bool r = solver.solve();
   after=current_time();
   solving_time = (after-before);
   global_satsolver_time += (after-before);
@@ -89,15 +88,15 @@ bool smt_assertion_no_partitiont::is_satisfiable(
     }
 }
 
-void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
-		std::map<irep_idt, std::string>& guard_expln)
+void prepare_formula_no_partitiont::error_trace(solvert &solver, const namespacet &ns,
+                                              std::map<irep_idt, std::string> &guard_expln)
 {      
     // Only if can build an error trace - give notice to the user
     status() << ("Building error trace") << eom;
     
     error_tracet error_trace;
     
-    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, get_steps_exec_order());
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(solver, get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
@@ -106,7 +105,7 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
         return; // Cannot really print a trace
     }
 
-    error_trace.build_goto_trace(get_steps_exec_order(), decider);
+    error_trace.build_goto_trace(get_steps_exec_order(), solver);
 
     result() << "\nCounterexample:" << eom;
     error_trace.show_goto_trace(result(), ns, guard_expln);

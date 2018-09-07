@@ -1,6 +1,6 @@
 set(HIFROG_SOURCE_FILES
-        nopartition/smt_assertion_no_partition.cpp
-        nopartition/smt_assertion_no_partition.h
+        nopartition/prepare_formula_no_partition.cpp
+        nopartition/prepare_formula_no_partition.h
         nopartition/hifrog_symex_target_equation_no_partition.cpp
         nopartition/hifrog_symex_target_equation_no_partition.h
         nopartition/symex_no_partition.cpp

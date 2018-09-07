@@ -15,7 +15,7 @@
 
 #include <memory>
 
-class smt_assertion_no_partitiont;
+class prepare_formula_no_partitiont;
 class partitioning_target_equationt;
 class prop_assertion_sumt;
 class prepare_formulat;
@@ -84,7 +84,7 @@ protected:
   void report_failure();
   void assertion_violated(prepare_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
-  void assertion_violated (smt_assertion_no_partitiont& prop,
+  void assertion_violated (prepare_formula_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);
 
     const goto_functionst & get_goto_functions() const {

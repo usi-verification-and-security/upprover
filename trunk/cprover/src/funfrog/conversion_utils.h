@@ -6,8 +6,8 @@
 #define PROJECT_CONVERSION_UTILS_H
 
 #include <solvers/prop/literal.h>
-#include <funfrog/solvers/check_opensmt2.h>
 #include <util/expr.h>
+#include <funfrog/interface/convertor.h>
 
 namespace hifrog {
 
