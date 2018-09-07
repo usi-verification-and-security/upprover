@@ -14,7 +14,7 @@
 #include "summary_store.h"
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
-#include "solvers/check_opensmt2.h"
+#include "funfrog/interface/solver/solver.h"
 
 //#define DEBUG_REFINER
 
@@ -79,7 +79,7 @@ void refiner_assertion_sumt::reset_random(call_tree_nodet& node)
 
 \*******************************************************************/
 void refiner_assertion_sumt::mark_sum_for_refine(
-        const check_opensmt2t &decider,
+        const solvert &solvert,
         call_tree_nodet &summary,
         partitioning_target_equationt &equation) {
     refined_functions.clear();
@@ -91,7 +91,7 @@ void refiner_assertion_sumt::mark_sum_for_refine(
             reset_random(summary);
             break;
         case refinement_modet::SLICING_RESULT:
-            reset_depend(decider, summary, equation);
+            reset_depend(solvert, summary, equation);
             break;
         default:
             assert(false);
@@ -100,7 +100,7 @@ void refiner_assertion_sumt::mark_sum_for_refine(
 }
 
 void refiner_assertion_sumt::reset_depend(
-        const check_opensmt2t &decider,
+        const solvert &solver,
         call_tree_nodet &summary,
         partitioning_target_equationt &equation) {
     std::vector<call_tree_nodet *> tmp;
@@ -119,7 +119,7 @@ void refiner_assertion_sumt::reset_depend(
       #       endif
               tmp.push_back(&ipart.call_tree_node);
             }*/
-            if (decider.is_assignment_true(ipart.callstart_literal)) {
+            if (solver.is_assignment_true(ipart.callstart_literal)) {
 #       ifdef DEBUG_REFINER
                 std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
