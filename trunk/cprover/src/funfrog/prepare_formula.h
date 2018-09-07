@@ -4,13 +4,13 @@
 
 #include <util/message.h>
 #include <util/ui_message.h>
-#include <funfrog/interface/convertor.h>
 
 class assertion_infot;
 class namespacet;
 class partitioning_target_equationt;
 class interpolating_solvert;
 class solvert;
+class convertort;
 
 class prepare_formulat
 {

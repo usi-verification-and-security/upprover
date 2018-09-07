@@ -6,11 +6,9 @@
 #include <funfrog/interface/solver/solver.h>
 #include "partitioning_target_equation.h"
 
-class check_opensmt2t;
-class smtcheck_opensmt2t;
 class hifrog_symex_target_equationt;
 class partitioning_target_equationt;
-class smtcheck_opensmt2t_lra;
+class solvert;
 
 class error_tracet {
 public:

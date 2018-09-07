@@ -7,10 +7,13 @@
 \*******************************************************************/
 
 #include "error_trace.h"
-#include "solvers/smtcheck_opensmt2_cuf.h"
+//#include "solvers/smtcheck_opensmt2_cuf.h"
 #include <ansi-c/printf_formatter.h>
 #include <funfrog/utils/naming_helpers.h>
-#include "solvers/smtcheck_opensmt2_lra.h"
+//#include "solvers/smtcheck_opensmt2_lra.h"
+#include "funfrog/interface/solver/solver.h"
+#include "funfrog/utils/expressions_utils.h"
+#include "funfrog/utils/unsupported_operations.h"
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
