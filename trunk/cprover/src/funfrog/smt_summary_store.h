@@ -9,6 +9,8 @@ Module: Storage class for function summaries (union-find).
 
 #include "summary_store.h"
 
+class smtcheck_opensmt2t;
+
 /* Created two classes to separate the creation of SMT summaries and Propositional encoding summaries */
 class smt_summary_storet :public summary_storet 
 {
