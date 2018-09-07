@@ -148,17 +148,6 @@ void check_opensmt2t::insert_top_level_formulas() {
 }
 
 
-void check_opensmt2t::convert(const std::vector<literalt> &bv, vec<PTRef> &args)
-{
-    for(const auto & lit : bv) {
-        // we never use 'unused_var_no' (cnf.cpp)
-        assert(lit.var_no()!=literalt::unused_var_no());
-
-        PTRef var = literal_to_ptref(lit);
-        args.push(var);
-    }
-}
-
 #ifdef PRODUCE_PROOF
 
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,

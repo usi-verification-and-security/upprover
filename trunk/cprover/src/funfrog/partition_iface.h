@@ -14,8 +14,8 @@
 #include <util/type.h>
 #include <util/symbol.h>
 #include <util/std_expr.h>
-#include <solvers/prop/literal.h>
 #include <list>
+#include <funfrog/interface/FlaRef.h>
 
 class call_tree_nodet;
 
@@ -43,9 +43,9 @@ public:
   bool returns_value;
   
   // Filled during conversion
-  literalt callstart_literal;
-  literalt callend_literal;
-  literalt error_literal;
+  FlaRef callstart_literal;
+  FlaRef callend_literal;
+  FlaRef error_literal;
   
   // Connection with the corresponding partition
   partition_idt partition_id;

@@ -14,6 +14,7 @@
 
 #include <numeric>
 #include <algorithm>
+#include <iostream>
 
 using namespace hifrog;
 
@@ -105,7 +106,7 @@ void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 
 
 
-void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const string & function_id)
+void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const std::string & function_id)
 {
     assert(summary_store.has_summaries(function_id));
     if(!summary_store.has_summaries(function_id)){
@@ -428,18 +429,18 @@ void partitioning_target_equationt::convert_partition_assertions(
     unsigned number_of_assumptions = 0;
     const partition_ifacet& partition_iface = partition.get_iface();
 
-    bvt error_lits;
+    std::vector<FlaRef> error_lits;
 
-    literalt assumption_literal = convertor.get_const_literal(true);
-    literalt var_constraints_lit = convertor.get_and_clear_var_constraints();
+    auto assumption_literal = convertor.get_const_literal(true);
+    auto var_constraints_lit = convertor.get_and_clear_var_constraints();
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if(it->ignore) {continue;} // ignored instructions can be skippied
         if (it->is_assert()) {
 
             // Collect ass \in assertions(f) in bv
-            literalt tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
-            it->cond_literal = convertor.limplies(assumption_literal, tmp_literal);
-            error_lits.push_back(!it->cond_literal); // negated literal
+            auto tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
+            it->cond_literal = flaref_to_literal(convertor.limplies(assumption_literal, tmp_literal));
+            error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
         } else if (it->is_assume()) {
             // If the assumption represents a call of the function g,
             // encode callstart_g propagation formula:
@@ -454,7 +455,7 @@ void partitioning_target_equationt::convert_partition_assertions(
                 const partition_ifacet& target_partition_iface =
                         target_partition->get_iface();
 
-                literalt tmp = convertor.land(assumption_literal,it->guard_literal);
+                auto tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
                 convertor.set_equal(tmp, target_partition_iface.callstart_literal);
 
 #		ifdef DISABLE_OPTIMIZATIONS
@@ -490,7 +491,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             //
             //     assumption_literal = \land_{ass \in assumptions(f)} ass
             //
-            assumption_literal = convertor.land(assumption_literal, it->cond_literal);
+            assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
             number_of_assumptions++;
         }
     }
@@ -632,7 +633,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         // NOTE: callstart_f \in assumptions(f)
         //
 
-        literalt tmp = convertor.limplies(partition_iface.callend_literal, assumption_literal);
+        auto tmp = convertor.limplies(partition_iface.callend_literal, assumption_literal);
         convertor.assert_literal(tmp);
 
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -663,27 +664,6 @@ void partitioning_target_equationt::convert_partition_assertions(
 }
 
 /*******************************************************************
- Function: partitioning_target_equationt::convert_partition_goto_instructions
-
- Inputs:
-
- Outputs:
-
- Purpose: Convert a specific partition go-tos of SSA steps
-
- *  KE: added after the cprover upgrade
- \*******************************************************************/
-void partitioning_target_equationt::convert_partition_goto_instructions(
-        convertort &convertor, partitiont &partition)
-{
-    for (auto it = partition.start_it; it != partition.end_it; ++it) {
-        if (it->is_goto()) {
-            it->cond_literal = it->ignore ? const_literal(true) : convertor.convert_bool_expr(it->cond_expr);
-        }
-    }
-}
-
-/*******************************************************************
  Function: partitioning_target_equationt::convert_partition_assumptions
 
  Inputs:
@@ -698,7 +678,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
         convertort &convertor, partitiont &partition) {
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assume()) {
-            it->cond_literal = it->ignore ? const_literal(true) : convertor.convert_bool_expr(it->cond_expr);
+            it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
         }
     }
 }

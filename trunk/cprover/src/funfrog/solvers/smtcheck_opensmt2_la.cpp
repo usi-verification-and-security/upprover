@@ -85,24 +85,6 @@ PTRef smtcheck_opensmt2t_la::numeric_constant(const exprt & expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_la::const_from_str
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-// FIXME: this should be gone!
-literalt smtcheck_opensmt2t_la::const_from_str(const char* num)
-{
-    PTRef rconst = lalogic->mkConst(num); // Can have a wrong conversion sometimes!
-    return ptref_to_literal(rconst); // Keeps the new PTRef + create for it a new index/literal
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t_la::mult_numbers
 
   Inputs:
@@ -918,9 +900,9 @@ Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
  Purpose: Free all inner objects
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_la::get_and_clear_var_constraints()
+FlaRef smtcheck_opensmt2t_la::get_and_clear_var_constraints()
 {
-    literalt res = ptref_to_literal(ptr_assert_var_constraints);
+    auto res = ptref_to_flaref(ptr_assert_var_constraints);
     ptr_assert_var_constraints = logic->getTerm_true();
     return res;
 }

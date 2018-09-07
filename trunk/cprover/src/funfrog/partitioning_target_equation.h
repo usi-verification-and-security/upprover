@@ -127,9 +127,6 @@ protected:
     // Convert a summary partition (i.e., assert its summary)
     void convert_partition_summary(interpolating_solvert &interpolator,
                                    partitiont &partition);
-    // Convert a specific partition gotos of SSA steps
-    void convert_partition_goto_instructions(convertort &convertor,
-                                             partitiont &partition);
 
   // Id of the currently selected partition
   partition_idt current_partition_id;

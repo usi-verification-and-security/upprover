@@ -11,7 +11,7 @@
 
 namespace hifrog {
 
-inline literalt convert_expr(convertort &decider, const exprt &expr) {
+inline FlaRef convert_expr(convertort &decider, const exprt &expr) {
     return decider.convert_bool_expr(expr);
 }
 
@@ -19,8 +19,8 @@ template<typename Iter>
 void convert_guards(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         auto & ssa_step = *it;
-        ssa_step.guard_literal = ssa_step.ignore ? const_literal(false)
-                                                 : convert_expr(decider, ssa_step.guard);
+        ssa_step.guard_literal = flaref_to_literal(ssa_step.ignore ? const_formula(false)
+                                                 : convert_expr(decider, ssa_step.guard));
     }
 }
 
@@ -37,7 +37,7 @@ template<typename Iter>
 void convert_assumptions(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         if (it->is_assume() && !it->ignore) {
-            it->cond_literal = it->ignore ? const_literal(true) : convert_expr(decider, it->cond_expr);
+            it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convert_expr(decider, it->cond_expr));
         }
     }
 }

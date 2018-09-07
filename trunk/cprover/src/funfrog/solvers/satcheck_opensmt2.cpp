@@ -658,3 +658,10 @@ bool satcheck_opensmt2t::is_overapprox_encoding() const {
     return false;
 }
 
+void satcheck_opensmt2t::convert(const bvt & bv, vec<PTRef> & args)
+{
+    for(const auto & lit : bv) {
+        PTRef var = flaref_to_ptref(literal_to_flaref(lit));
+        args.push(var);
+    }
+}

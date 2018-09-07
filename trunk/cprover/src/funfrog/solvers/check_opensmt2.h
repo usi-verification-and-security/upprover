@@ -40,18 +40,16 @@ public:
     }
 
     void set_to_true(const exprt &expr) override {
-        literalt l = convert_bool_expr(expr);
+        auto l = convert_bool_expr(expr);
         assert_literal(l);
     }
 
     void set_to_false(const exprt &expr) override{
-        literalt l = convert_bool_expr(expr);
+        auto l = convert_bool_expr(expr);
         assert_literal(!l); // assert the negation
     }
 
     Logic* getLogic() const {return logic;}
-
-    void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
     
     unsigned get_random_seed() override { return random_seed; }
     
@@ -157,14 +155,13 @@ protected:
     virtual void set_random_seed(unsigned int i) override;
      
     // Used only in check_opensmt2 sub-classes
-    PTRef literal_to_ptref(literalt l) const {
-        if(l.is_constant()){
-            return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
+    PTRef flaref_to_ptref(const FlaRef fr) const {
+        if(fr.is_constant()){
+            return fr.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
         }
-        assert(l.var_no() < ptrefs.size());
-        assert(l.var_no() != literalt::unused_var_no());
-        PTRef ptref = ptrefs[l.var_no()];
-        return l.sign() ? getLogic()->mkNot(ptref) : ptref;
+        assert(fr.no() < ptrefs.size());
+        PTRef ptref = ptrefs[fr.no()];
+        return fr.sign() ? getLogic()->mkNot(ptref) : ptref;
     }
 };
 
