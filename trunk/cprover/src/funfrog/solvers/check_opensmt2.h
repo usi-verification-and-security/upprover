@@ -15,6 +15,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/solver.h"
 #include "solver_options.h"
 #include "funfrog/interface/convertor.h"
+#include "funfrog/interface/ssa_solvert.h"
 
 #include <vector>
 
@@ -25,12 +26,21 @@ class exprt;
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 // General interface for OPENSMT2 calls
-class check_opensmt2t :  public interpolating_solvert, public solvert, public convertort
+class check_opensmt2t :  public interpolating_solvert, public solvert, public convertort, public ssa_solvert
 {
 public:
     check_opensmt2t();
           
     virtual ~check_opensmt2t();
+
+    // ********************* methods implementing ssa_solvert interface ***************************************
+#ifdef PRODUCE_PROOF
+    interpolating_solvert* get_interpolating_solver() override { return this; }
+#endif // PRODUCE_PROOF
+    solvert* get_solver() override { return this; }
+
+    convertort* get_convertor() override { return this; }
+    // *********************************************************************************************************
 
     template<typename Container>
     void assert_literals(const Container& c){
