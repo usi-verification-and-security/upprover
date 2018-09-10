@@ -19,16 +19,16 @@ Date: February 2006
 #include <set>
 
 #include <util/guard.h>
-#include <util/std_code.h>
-#include <util/namespace.h>
 #include <util/std_expr.h>
 
 #include <goto-programs/goto_model.h>
-#include <pointer-analysis/value_sets.h>
 
 #ifdef LOCAL_MAY
 #include <analyses/local_may_alias.h>
 #endif
+
+class namespacet;
+class value_setst;
 
 // a container for read/write sets
 
@@ -40,7 +40,7 @@ public:
   {
   }
 
-  ~rw_set_baset() {}
+  virtual ~rw_set_baset() = default;
 
   struct entryt
   {
@@ -53,7 +53,7 @@ public:
     }
   };
 
-  typedef std::unordered_map<irep_idt, entryt, irep_id_hash> entriest;
+  typedef std::unordered_map<irep_idt, entryt> entriest;
   entriest r_entries, w_entries;
 
   void swap(rw_set_baset &other)
@@ -87,7 +87,7 @@ public:
   void output(std::ostream &out) const;
 
 protected:
-  virtual void track_deref(const entryt &entry, bool read) {}
+  virtual void track_deref(const entryt &, bool read) {}
   virtual void set_track_deref() {}
   virtual void reset_track_deref() {}
 
@@ -135,8 +135,6 @@ public:
 #endif
   {
   }
-
-  ~_rw_set_loct() {}
 
 protected:
   value_setst &value_sets;
@@ -192,8 +190,6 @@ public:
   {
     compute();
   }
-
-  ~rw_set_loct() {}
 };
 
 // another producer, this time for entire functions
@@ -212,8 +208,6 @@ public:
   {
     compute_rec(function);
   }
-
-  ~rw_set_functiont() {}
 
 protected:
   const namespacet ns;
@@ -257,8 +251,6 @@ public:
   {
     compute();
   }
-
-  ~rw_set_with_trackt() {}
 
 protected:
   /* flag and variable in the expression, from which we dereference */

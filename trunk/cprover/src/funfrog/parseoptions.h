@@ -9,7 +9,7 @@ Module: Command Line Parsing
 
 #include <fstream>
 #include <cstdlib>
-#include <util/language.h>
+#include <langapi/language_util.h>
 
 #include <util/options.h>
 #include "xml_interface.h"
@@ -81,6 +81,7 @@ protected:
 
   void register_languages();
   void get_command_line_options(optionst &);
+  void set_default_options(optionst &);
 
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;

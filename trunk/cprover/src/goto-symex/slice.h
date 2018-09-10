@@ -14,6 +14,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "symex_target_equation.h"
 
+#include <list>
+
 // slice an equation with respect to the assertions contained therein
 void slice(symex_target_equationt &equation);
 
@@ -21,12 +23,13 @@ void slice(symex_target_equationt &equation);
 void simple_slice(symex_target_equationt &equation);
 
 // Slice the symex trace with respect to a list of given expressions
-void slice(symex_target_equationt &equation,
-           const expr_listt &expressions);
+void slice(
+  symex_target_equationt &equation,
+  const std::list<exprt> &expressions);
 
 // Collects "open" variables that are used but not assigned
 
-typedef std::unordered_set<irep_idt, irep_id_hash> symbol_sett;
+typedef std::unordered_set<irep_idt> symbol_sett;
 
 void collect_open_variables(
   const symex_target_equationt &equation,

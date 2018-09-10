@@ -10,6 +10,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_ANSI_C_EXPR2C_CLASS_H
 #define CPROVER_ANSI_C_EXPR2C_CLASS_H
 
+#include "expr2c.h"
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -17,13 +19,19 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_code.h>
 #include <util/std_expr.h>
 
-class c_qualifierst;
+class qualifierst;
 class namespacet;
 
 class expr2ct
 {
 public:
-  explicit expr2ct(const namespacet &_ns):ns(_ns), sizeof_nesting(0) { }
+  explicit expr2ct(
+    const namespacet &_ns,
+    const expr2c_configurationt &configuration =
+      expr2c_configurationt::default_configuration)
+    : ns(_ns), configuration(configuration), sizeof_nesting(0)
+  {
+  }
   virtual ~expr2ct() { }
 
   virtual std::string convert(const typet &src);
@@ -31,12 +39,16 @@ public:
 
   void get_shorthands(const exprt &expr);
 
+  std::string
+  convert_with_identifier(const typet &src, const std::string &identifier);
+
 protected:
   const namespacet &ns;
+  const expr2c_configurationt &configuration;
 
   virtual std::string convert_rec(
     const typet &src,
-    const c_qualifierst &qualifiers,
+    const qualifierst &qualifiers,
     const std::string &declarator);
 
   virtual std::string convert_struct_type(
@@ -53,21 +65,19 @@ protected:
 
   virtual std::string convert_array_type(
     const typet &src,
-    const c_qualifierst &qualifiers,
+    const qualifierst &qualifiers,
     const std::string &declarator_str);
 
   std::string convert_array_type(
     const typet &src,
-    const c_qualifierst &qualifiers,
+    const qualifierst &qualifiers,
     const std::string &declarator_str,
     bool inc_size_if_possible);
 
   static std::string indent_str(unsigned indent);
 
-  std::unordered_map<irep_idt,
-                std::unordered_set<irep_idt, irep_id_hash>,
-                irep_id_hash> ns_collision;
-  std::unordered_map<irep_idt, irep_idt, irep_id_hash> shorthands;
+  std::unordered_map<irep_idt, std::unordered_set<irep_idt>> ns_collision;
+  std::unordered_map<irep_idt, irep_idt> shorthands;
 
   unsigned sizeof_nesting;
 
@@ -103,9 +113,6 @@ protected:
 
   std::string convert_member(
     const member_exprt &src, unsigned precedence);
-
-  std::string convert_pointer_object_has_type(
-    const exprt &src, unsigned precedence);
 
   std::string convert_array_of(const exprt &src, unsigned precedence);
 
@@ -253,6 +260,7 @@ protected:
   std::string convert_designated_initializer(const exprt &src, unsigned &precedence);
   std::string convert_concatenation(const exprt &src, unsigned &precedence);
   std::string convert_sizeof(const exprt &src, unsigned &precedence);
+  std::string convert_let(const let_exprt &, unsigned precedence);
 
   std::string convert_struct(
     const exprt &src,

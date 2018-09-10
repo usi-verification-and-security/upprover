@@ -11,16 +11,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
-#include <util/pointer_offset_size.h>
 #include <util/arith_tools.h>
 #include <util/base_type.h>
 #include <util/byte_operators.h>
-
-#include <pointer-analysis/value_set_dereference.h>
-#include <pointer-analysis/rewrite_index.h>
-#include <langapi/language_util.h>
-
 #include <util/c_types.h>
+#include <util/invariant.h>
+#include <util/pointer_offset_size.h>
+
+//#include <pointer-analysis/value_set_dereference.h>
+#include "../pointer-analysis/value_set_dereference.h"
 
 #include "symex_dereference_state.h"
 
@@ -147,10 +146,8 @@ exprt goto_symext::address_arithmetic(
     object_descriptor_exprt ode;
     ode.build(expr, ns);
 
-    byte_extract_exprt be(byte_extract_id());
-    be.type()=expr.type();
-    be.op()=ode.root_object();
-    be.offset()=ode.offset();
+    const byte_extract_exprt be(
+      byte_extract_id(), ode.root_object(), ode.offset(), expr.type());
 
     // recursive call
     result=address_arithmetic(be, state, guard, keep_array);
@@ -200,15 +197,16 @@ exprt goto_symext::address_arithmetic(
        expr.get_bool(ID_C_SSA_symbol))
     {
       offset=compute_pointer_offset(expr, ns);
-      assert(offset>=0);
+      PRECONDITION(offset >= 0);
     }
 
     if(offset>0)
     {
-      byte_extract_exprt be(byte_extract_id());
-      be.type()=expr.type();
-      be.op()=to_ssa_expr(expr).get_l1_object();
-      be.offset()=from_integer(offset, index_type());
+      const byte_extract_exprt be(
+        byte_extract_id(),
+        to_ssa_expr(expr).get_l1_object(),
+        from_integer(offset, index_type()),
+        expr.type());
 
       result=address_arithmetic(be, state, guard, keep_array);
 
@@ -239,6 +237,24 @@ void goto_symext::dereference_rec(
     if(expr.operands().size()!=1)
       throw "dereference takes one operand";
 
+    bool expr_is_not_null = false;
+
+    /*
+    if(state.threads.size() == 1)
+    {
+      const irep_idt &expr_function = state.source.pc->function;
+      if(!expr_function.empty())
+      {
+        dereference_exprt to_check = to_dereference_expr(expr);
+        state.get_original_name(to_check);
+
+        expr_is_not_null =
+          safe_pointers.at(expr_function).is_safe_dereference(
+            to_check, state.source.pc);
+      }
+    }
+    */ // KE: always false, as long as we don't use pointer analysis for 0
+
     exprt tmp1;
     tmp1.swap(expr.op0());
 
@@ -250,12 +266,13 @@ void goto_symext::dereference_rec(
 
     value_set_dereferencet dereference(
       ns,
-      new_symbol_table,
+      state.symbol_table,
       options,
       symex_dereference_state,
-      language_mode);
+      language_mode,
+      expr_is_not_null);
 
-    // std::cout << "**** " << from_expr(ns, "", tmp1) << '\n';
+    // std::cout << "**** " << format(tmp1) << '\n';
     exprt tmp2=
       dereference.dereference(
         tmp1,
@@ -263,7 +280,7 @@ void goto_symext::dereference_rec(
         write?
           value_set_dereferencet::modet::WRITE:
           value_set_dereferencet::modet::READ);
-    // std::cout << "**** " << from_expr(ns, "", tmp2) << '\n';
+    // std::cout << "**** " << format(tmp2) << '\n';
 
     expr.swap(tmp2);
 
@@ -351,7 +368,7 @@ void goto_symext::dereference(
   // in order to distinguish addresses of local variables
   // from different frames. Would be enough to rename
   // symbols whose address is taken.
-  assert(!state.call_stack().empty());
+  PRECONDITION(!state.call_stack().empty());
   state.rename(expr, ns, goto_symex_statet::L1);
 
   // start the recursion!

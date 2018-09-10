@@ -1,0 +1,11 @@
+accelerate
+analyses
+ansi-c
+cpp
+goto-instrument
+goto-programs
+langapi # should go away
+linking
+pointer-analysis
+util
+wmm

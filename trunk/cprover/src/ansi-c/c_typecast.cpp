@@ -252,21 +252,26 @@ bool check_c_implicit_typecast(
 
 typet c_typecastt::follow_with_qualifiers(const typet &src_type)
 {
-  if(src_type.id()!=ID_symbol)
+  if(
+    src_type.id() != ID_symbol_type &&
+    src_type.id() != ID_struct_tag &&
+    src_type.id() != ID_union_tag)
+  {
     return src_type;
+  }
 
   typet result_type=src_type;
 
   // collect qualifiers
   c_qualifierst qualifiers(src_type);
 
-  while(result_type.id()==ID_symbol)
+  while(result_type.id() == ID_symbol_type ||
+        result_type.id() == ID_struct_tag ||
+        result_type.id() == ID_union_tag)
   {
-    const symbolt &followed_type_symbol=
-      ns.lookup(result_type.get(ID_identifier));
-
-    result_type=followed_type_symbol.type;
-    qualifiers+=c_qualifierst(followed_type_symbol.type);
+    const typet &followed_type = ns.follow(result_type);
+    result_type = followed_type;
+    qualifiers += c_qualifierst(followed_type);
   }
 
   qualifiers.write(result_type);
@@ -277,7 +282,7 @@ typet c_typecastt::follow_with_qualifiers(const typet &src_type)
 c_typecastt::c_typet c_typecastt::get_c_type(
   const typet &type) const
 {
-  unsigned width=type.get_int(ID_width);
+  const std::size_t width = type.get_size_t(ID_width);
 
   if(type.id()==ID_signedbv)
   {
@@ -345,7 +350,7 @@ c_typecastt::c_typet c_typecastt::get_c_type(
   {
     return INT;
   }
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
     return get_c_type(ns.follow(type));
   else if(type.id()==ID_rational)
     return RATIONAL;
@@ -418,16 +423,15 @@ c_typecastt::c_typet c_typecastt::minimum_promotion(
   c_typet max_type=std::max(c_type, INT); // minimum promotion
 
   // The second case can arise if we promote any unsigned type
-  // that is as large as unsigned int.
-
-  if(config.ansi_c.short_int_width==config.ansi_c.int_width &&
-     max_type==USHORT)
+  // that is as large as unsigned int. In this case the promotion configuration
+  // via the enum is actually wrong, and we need to fix this up.
+  if(
+    config.ansi_c.short_int_width == config.ansi_c.int_width &&
+    c_type == USHORT)
     max_type=UINT;
-  else if(config.ansi_c.char_width==config.ansi_c.int_width &&
-          max_type==UCHAR)
+  else if(
+    config.ansi_c.char_width == config.ansi_c.int_width && c_type == UCHAR)
     max_type=UINT;
-  else
-    max_type=std::max(max_type, INT);
 
   if(max_type==UINT &&
      type.id()==ID_c_bit_field &&
@@ -487,11 +491,9 @@ void c_typecastt::implicit_typecast_followed(
       if(!check_c_implicit_typecast(src_type_no_const, comp.type()))
       {
         // build union constructor
-        exprt union_expr(ID_union, orig_dest_type);
-        union_expr.move_to_operands(expr);
+        union_exprt union_expr(comp.get_name(), expr, orig_dest_type);
         if(!src_type.full_eq(src_type_no_const))
-          do_typecast(union_expr.op0(), src_type_no_const);
-        union_expr.set(ID_component_name, comp.get_name());
+          do_typecast(union_expr.op(), src_type_no_const);
         expr=union_expr;
         return; // ok
       }
@@ -545,6 +547,13 @@ void c_typecastt::implicit_typecast_followed(
       {
         // Also generous: between any to scalar types it's ok.
         // We should probably check the size.
+      }
+      else if(src_sub.id()==ID_array &&
+              dest_sub.id()==ID_array &&
+              base_type_eq(src_sub.subtype(), dest_sub.subtype(), ns))
+      {
+        // we ignore the size of the top-level array
+        // in the case of pointers to arrays
       }
       else
         warnings.push_back("incompatible pointer types");

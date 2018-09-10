@@ -11,12 +11,14 @@ Author: Daniel Kroening
 
 #include "cover_instrument.h"
 
+#include <langapi/language_util.h>
+
 #include "cover_util.h"
 
 void cover_decision_instrumentert::instrument(
   goto_programt &goto_program,
   goto_programt::targett &i_it,
-  const cover_basic_blockst &basic_blocks) const
+  const cover_blocks_baset &) const
 {
   if(is_non_cover_assertion(i_it))
     i_it->make_skip();
@@ -30,7 +32,7 @@ void cover_decision_instrumentert::instrument(
 
     for(const auto &d : decisions)
     {
-      const std::string d_string = from_expr(ns, "", d);
+      const std::string d_string = from_expr(ns, i_it->function, d);
 
       const std::string comment_t = "decision `" + d_string + "' true";
       const irep_idt function = i_it->function;

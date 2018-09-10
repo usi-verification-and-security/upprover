@@ -14,13 +14,24 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
+#include <util/timestamper.h>
 
+#include <goto-programs/class_hierarchy.h>
 #include <goto-programs/goto_functions.h>
-#include <goto-programs/show_goto_functions.h>
+#include <goto-programs/remove_calls_no_body.h>
 #include <goto-programs/remove_const_function_pointers.h>
+#include <goto-programs/replace_calls.h>
+#include <goto-programs/show_goto_functions.h>
+#include <goto-programs/show_properties.h>
 
 #include <analyses/goto_check.h>
 
+#include <goto-programs/generate_function_bodies.h>
+#include "aggressive_slicer.h"
+
+#include "count_eloc.h"
+
+// clang-format off
 #define GOTO_INSTRUMENT_OPTIONS \
   "(all)" \
   "(document-claims-latex)(document-claims-html)" \
@@ -44,12 +55,13 @@ Author: Daniel Kroening, kroening@kroening.com
   "(max-var):(max-po-trans):(ignore-arrays)" \
   "(cfg-kill)(no-dependencies)(force-loop-duplication)" \
   "(call-graph)(reachable-call-graph)" \
-  "(class-hierarchy)" \
+  OPT_SHOW_CLASS_HIERARCHY \
   "(no-po-rendering)(render-cluster-file)(render-cluster-function)" \
   "(nondet-volatile)(isr):" \
   "(stack-depth):(nondet-static)" \
   "(function-enter):(function-exit):(branch):" \
   OPT_SHOW_GOTO_FUNCTIONS \
+  OPT_SHOW_PROPERTIES \
   "(drop-unused-functions)" \
   "(show-value-sets)" \
   "(show-global-may-alias)" \
@@ -63,24 +75,34 @@ Author: Daniel Kroening, kroening@kroening.com
   OPT_REMOVE_CONST_FUNCTION_POINTERS \
   "(print-internal-representation)" \
   "(remove-function-pointers)" \
-  "(show-claims)(show-properties)(property):" \
+  "(show-claims)(property):" \
   "(show-symbol-table)(show-points-to)(show-rw-set)" \
   "(cav11)" \
+  OPT_TIMESTAMP \
   "(show-natural-loops)(accelerate)(havoc-loops)" \
   "(error-label):(string-abstraction)" \
   "(verbosity):(version)(xml-ui)(json-ui)(show-loops)" \
   "(accelerate)(constant-propagator)" \
   "(k-induction):(step-case)(base-case)" \
   "(show-call-sequences)(check-call-sequence)" \
-  "(interpreter)(show-reaching-definitions)(count-eloc)(list-eloc)" \
+  "(interpreter)(show-reaching-definitions)" \
   "(list-symbols)(list-undefined-functions)" \
   "(z3)(add-library)(show-dependence-graph)" \
   "(horn)(skip-loops):(apply-code-contracts)(model-argc-argv):" \
-  "(show-threaded)(list-calls-args)(print-path-lengths)" \
+  "(show-threaded)(list-calls-args)" \
   "(undefined-function-is-assume-false)" \
   "(remove-function-body):"\
+  OPT_AGGRESSIVE_SLICER \
+  OPT_FLUSH \
   "(splice-call):" \
+  OPT_REMOVE_CALLS_NO_BODY \
+  OPT_REPLACE_FUNCTION_BODY \
+  OPT_GOTO_PROGRAM_STATS \
+  "(show-local-safe-pointers)(show-safe-dereferences)" \
+  OPT_REPLACE_CALLS \
+  // empty last line
 
+// clang-format on
 
 class goto_instrument_parse_optionst:
   public parse_options_baset,
@@ -106,8 +128,6 @@ protected:
 
   void get_goto_program();
   void instrument_goto_program();
-
-  void eval_verbosity();
 
   void do_indirect_call_and_rtti_removal(bool force=false);
   void do_remove_const_function_pointers_only();

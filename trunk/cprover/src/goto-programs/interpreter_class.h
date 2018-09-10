@@ -85,6 +85,7 @@ public:
     irep_idt calling_function;
     function_assignmentst return_assignments;
     function_assignmentst param_assignments;
+    function_assignmentst exception_assignments;
   };
 
   // list_input_varst maps function identifiers onto a vector of [name = value]
@@ -104,7 +105,7 @@ protected:
 
   const goto_functionst &goto_functions;
 
-  typedef std::unordered_map<irep_idt, mp_integer, irep_id_hash> memory_mapt;
+  typedef std::unordered_map<irep_idt, mp_integer> memory_mapt;
   typedef std::map<mp_integer, irep_idt> inverse_memory_mapt;
   memory_mapt memory_map;
   inverse_memory_mapt inverse_memory_map;
@@ -272,7 +273,7 @@ protected:
   dynamic_typest dynamic_types;
   int num_dynamic_objects;
   mp_integer stack_depth;
-  int thread_id;
+  unsigned thread_id;
 
   bool evaluate_boolean(const exprt &expr)
   {

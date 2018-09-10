@@ -12,12 +12,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "function.h"
 
 #include <util/arith_tools.h>
+#include <util/c_types.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 #include <util/std_expr.h>
-
-#include <util/c_types.h>
-#include <ansi-c/string_constant.h>
+#include <util/string_constant.h>
 
 code_function_callt function_to_call(
   symbol_tablet &symbol_table,
@@ -35,10 +34,7 @@ code_function_callt function_to_call(
     typet p=pointer_type(char_type());
     p.subtype().set(ID_C_constant, true);
 
-    code_typet function_type;
-    function_type.return_type()=empty_typet();
-    function_type.parameters().push_back(
-      code_typet::parametert(p));
+    const code_typet function_type({code_typet::parametert(p)}, empty_typet());
 
     symbolt new_symbol;
     new_symbol.name=id;

@@ -28,12 +28,9 @@ public:
   {
   }
 
-  void transform(
-    locationt from,
-    locationt to,
-    ai_baset &ai,
-    const namespacet &ns,
-    ai_domain_baset::edge_typet edge_type) final override;
+  void
+  transform(locationt from, locationt to, ai_baset &ai, const namespacet &ns)
+    final override;
 
   void output(
     std::ostream &out,
@@ -115,7 +112,7 @@ public:
   void instrument(goto_modelt &);
 
 protected:
-  virtual void initialize(const goto_functionst &_goto_functions)
+  virtual void initialize(const goto_functionst &)
   {
   }
 

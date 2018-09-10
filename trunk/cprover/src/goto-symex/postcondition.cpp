@@ -165,7 +165,7 @@ bool postconditiont::is_used(
   }
   else if(expr.id()==ID_symbol)
   {
-    return expr.get(ID_identifier)==identifier;
+    return to_symbol_expr(expr).get_identifier() == identifier;
   }
   else if(expr.id()==ID_dereference)
   {
@@ -175,7 +175,7 @@ bool postconditiont::is_used(
 
     value_setst::valuest expr_set;
     value_set.get_value_set(expr.op0(), expr_set, ns);
-    std::unordered_set<irep_idt, irep_id_hash> symbols;
+    std::unordered_set<irep_idt> symbols;
 
     for(value_setst::valuest::const_iterator
         it=expr_set.begin();

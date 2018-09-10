@@ -42,12 +42,14 @@ void float_approximationt::normalization_shift(bvt &fraction, bvt &exponent)
     if(over_approximate)
       shifted_fraction=overapproximating_left_shift(fraction, i);
     else
-      shifted_fraction=bv_utils.shift(fraction, bv_utilst::shiftt::LEFT, i);
+      shifted_fraction=bv_utils.shift(
+        fraction, bv_utilst::shiftt::SHIFT_LEFT, i);
 
     bv_utils.cond_implies_equal(shift, shifted_fraction, new_fraction);
 
     // build new exponent
-    bvt adjustment=bv_utils.build_constant(-i, exponent.size());
+    bvt adjustment =
+      bv_utils.build_constant(-static_cast<int>(i), exponent.size());
     bvt added_exponent=bv_utils.add(exponent, adjustment);
     bv_utils.cond_implies_equal(shift, added_exponent, new_exponent);
   }

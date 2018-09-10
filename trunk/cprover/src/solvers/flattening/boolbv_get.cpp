@@ -191,7 +191,7 @@ exprt boolbvt::bv_get_rec(
       if(sub_width!=0 && width%sub_width==0)
       {
         std::size_t size=width/sub_width;
-        exprt value(ID_vector, type);
+        vector_exprt value(to_vector_type(type));
         value.reserve_operands(size);
 
         for(std::size_t i=0; i<size; i++)
@@ -208,11 +208,10 @@ exprt boolbvt::bv_get_rec(
 
       if(sub_width!=0 && width==sub_width*2)
       {
-        exprt value(ID_complex, type);
-        value.operands().resize(2);
-
-        value.op0()=bv_get_rec(bv, unknown, 0*sub_width, subtype);
-        value.op1()=bv_get_rec(bv, unknown, 1*sub_width, subtype);
+        const complex_exprt value(
+          bv_get_rec(bv, unknown, 0 * sub_width, subtype),
+          bv_get_rec(bv, unknown, 1 * sub_width, subtype),
+          to_complex_type(type));
 
         return value;
       }
@@ -223,17 +222,15 @@ exprt boolbvt::bv_get_rec(
 
   for(std::size_t bit_nr=offset; bit_nr<offset+width; bit_nr++)
   {
-    char ch;
-    if(unknown[bit_nr])
-      ch='0';
-    else
+    char ch = '0';
+    if(!unknown[bit_nr])
     {
       switch(prop.l_get(bv[bit_nr]).get_value())
       {
        case tvt::tv_enumt::TV_FALSE: ch='0'; break;
        case tvt::tv_enumt::TV_TRUE:  ch='1'; break;
        case tvt::tv_enumt::TV_UNKNOWN: ch='0'; break;
-       default: assert(false);
+       default: UNREACHABLE;
       }
     }
 
@@ -250,7 +247,7 @@ exprt boolbvt::bv_get_rec(
       if(int_value>=string_numbering.size())
         s=irep_idt();
       else
-        s=string_numbering[int_value.to_long()];
+        s = string_numbering[numeric_cast_v<std::size_t>(int_value)];
 
       return constant_exprt(s, type);
     }
@@ -376,7 +373,7 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
 
   if(size_mpint>100 || size.id()==ID_infinity)
   {
-    result=exprt("array-list", type);
+    result = array_list_exprt(to_array_type(type));
     result.type().set(ID_size, integer2string(size_mpint));
 
     result.operands().reserve(values.size()*2);

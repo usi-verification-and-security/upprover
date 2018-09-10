@@ -1,4 +1,5 @@
 SRC = ai.cpp \
+      ai_domain.cpp \
       call_graph.cpp \
       call_graph_helpers.cpp \
       constant_propagator.cpp \
@@ -20,6 +21,7 @@ SRC = ai.cpp \
       local_bitvector_analysis.cpp \
       local_cfg.cpp \
       local_may_alias.cpp \
+      local_safe_pointers.cpp \
       locals.cpp \
       natural_loops.cpp \
       reaching_definitions.cpp \

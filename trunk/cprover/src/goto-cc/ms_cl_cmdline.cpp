@@ -397,15 +397,18 @@ const char *ms_cl_prefixes[]=
   "Y", // - disable all PCH options
   "Zm", // <n> max memory alloc (% of default)
   "Wp64", // enable 64 bit porting warnings
-  "LD", //  Create .DLL
-  "LDd", //  Create .DLL debug library
-  "LN", //  Create a .netmodule
+  "LD", // Create .DLL
+  "LDd", // Create .DLL debug library
+  "LN", // Create a .netmodule
   "F", // <num> set stack size
-  "link", //  [linker options and libraries]
-  "MD", //  link with MSVCRT.LIB
-  "MT", //  link with LIBCMT.LIB
-  "MDd", //  link with MSVCRTD.LIB debug lib
-  "MTd", //  link with LIBCMTD.LIB debug lib
+  "link", // [linker options and libraries]
+  "MD", // link with MSVCRT.LIB
+  "MT", // link with LIBCMT.LIB
+  "MDd", // link with MSVCRTD.LIB debug lib
+  "MTd", // link with LIBCMTD.LIB debug lib
+  "std", // specify C++ language standard
+  "sdl", // Enable Additional Security Checks
+  "diagnostics", // unknown
   nullptr
 };
 
@@ -425,7 +428,7 @@ void ms_cl_cmdlinet::process_cl_option(const std::string &s)
     if(std::string(s, 1, std::string::npos)==ms_cl_flags[j])
     {
       cmdlinet::optiont option;
-      int optnr;
+      optionalt<std::size_t> optnr;
 
       if(s.size()==2)
       {
@@ -442,13 +445,13 @@ void ms_cl_cmdlinet::process_cl_option(const std::string &s)
         optnr=getoptnr(option.optstring);
       }
 
-      if(optnr==-1)
+      if(!optnr.has_value())
       {
         options.push_back(option);
         optnr=options.size()-1;
       }
 
-      options[optnr].isset=true;
+      options[*optnr].isset=true;
       return;
     }
   }
@@ -461,7 +464,7 @@ void ms_cl_cmdlinet::process_cl_option(const std::string &s)
     {
       cmdlinet::optiont option;
 
-      int optnr;
+      optionalt<std::size_t> optnr;
 
       if(ms_cl_prefix.size()==1)
       {
@@ -478,14 +481,14 @@ void ms_cl_cmdlinet::process_cl_option(const std::string &s)
         optnr=getoptnr(option.optstring);
       }
 
-      if(optnr==-1)
+      if(!optnr.has_value())
       {
         options.push_back(option);
         optnr=options.size()-1;
       }
 
-      options[optnr].isset=true;
-      options[optnr].values.push_back(
+      options[*optnr].isset=true;
+      options[*optnr].values.push_back(
         std::string(s, ms_cl_prefix.size()+1, std::string::npos));
 
       return;

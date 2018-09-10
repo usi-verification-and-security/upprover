@@ -40,8 +40,7 @@ void invariant_propagationt::add_objects(
   goto_program.get_decl_identifiers(locals);
 
   // cache the list for the locals to speed things up
-  typedef std::unordered_map<irep_idt, object_listt, irep_id_hash>
-    object_cachet;
+  typedef std::unordered_map<irep_idt, object_listt> object_cachet;
   object_cachet object_cache;
 
   forall_goto_program_instructions(i_it, goto_program)
@@ -98,15 +97,10 @@ void invariant_propagationt::get_objects_rec(
   {
     const struct_typet &struct_type=to_struct_type(t);
 
-    const struct_typet::componentst &c=struct_type.components();
-
-    exprt member_expr(ID_member);
-    member_expr.copy_to_operands(src);
-
-    for(const auto &component : c)
+    for(const auto &component : struct_type.components())
     {
-      member_expr.set(ID_component_name, component.get_name());
-      member_expr.type()=component.type();
+      const member_exprt member_expr(
+        src, component.get_name(), component.type());
       // recursive call
       get_objects_rec(member_expr, dest);
     }
@@ -138,8 +132,7 @@ void invariant_propagationt::add_objects(
     const goto_programt &goto_program=f_it->second.body;
 
     // cache the list for the locals to speed things up
-    typedef std::unordered_map<irep_idt, object_listt, irep_id_hash>
-      object_cachet;
+    typedef std::unordered_map<irep_idt, object_listt> object_cachet;
     object_cachet object_cache;
 
     forall_goto_program_instructions(i_it, goto_program)
@@ -178,10 +171,13 @@ void invariant_propagationt::get_globals(
   object_listt &dest)
 {
   // static ones
-  forall_symbols(it, ns.get_symbol_table().symbols)
-    if(it->second.is_lvalue &&
-       it->second.is_static_lifetime)
-      get_objects(it->second, dest);
+  for(const auto &symbol_pair : ns.get_symbol_table().symbols)
+  {
+    if(symbol_pair.second.is_lvalue && symbol_pair.second.is_static_lifetime)
+    {
+      get_objects(symbol_pair.second, dest);
+    }
+  }
 }
 
 bool invariant_propagationt::check_type(const typet &type) const
@@ -193,7 +189,7 @@ bool invariant_propagationt::check_type(const typet &type) const
     return false;
   else if(type.id()==ID_array)
     return false;
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_symbol_type)
     return check_type(ns.follow(type));
   else if(type.id()==ID_unsignedbv ||
           type.id()==ID_signedbv)
@@ -210,7 +206,7 @@ void invariant_propagationt::initialize(const goto_programt &goto_program)
 
   forall_goto_program_instructions(it, goto_program)
   {
-    invariant_sett &s=state_map[it].invariant_set;
+    invariant_sett &s = (*this)[it].invariant_set;
 
     if(it==goto_program.instructions.begin())
       s.make_true();
@@ -247,11 +243,11 @@ void invariant_propagationt::simplify(goto_programt &goto_program)
       continue;
 
     // find invariant set
-    state_mapt::const_iterator s_it=state_map.find(i_it);
-    if(s_it==state_map.end())
+    const auto &d = (*this)[i_it];
+    if(d.is_bottom())
       continue;
 
-    const invariant_sett &invariant_set=s_it->second.invariant_set;
+    const invariant_sett &invariant_set = d.invariant_set;
 
     exprt simplified_guard(i_it->guard);
 

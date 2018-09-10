@@ -10,7 +10,6 @@ Author: Ondrej Sery
 
 //#define DEBUG_ITP
 
-
 /*******************************************************************\
 
 Function: prop_itpt::gate_and

@@ -46,13 +46,14 @@ optionalt<source_locationt> find_property(
   return { };
 }
 
-
 void show_properties(
   const namespacet &ns,
   const irep_idt &identifier,
+  message_handlert &message_handler,
   ui_message_handlert::uit ui,
   const goto_programt &goto_program)
 {
+  messaget msg(message_handler);
   for(const auto &ins : goto_program.instructions)
   {
     if(!ins.is_assert())
@@ -83,7 +84,7 @@ void show_properties(
         xml_property.new_element("expression").data=
           from_expr(ns, identifier, ins.guard);
 
-        std::cout << xml_property << '\n';
+        msg.result() << xml_property;
       }
       break;
 
@@ -92,14 +93,13 @@ void show_properties(
       break;
 
     case ui_message_handlert::uit::PLAIN:
-      std::cout << "Property " << property_id << ":\n";
+      msg.result() << "Property " << property_id << ":\n";
 
-      std::cout << "  " << ins.source_location << '\n'
-                << "  " << description << '\n'
-                << "  " << from_expr(ns, identifier, ins.guard)
-                        << '\n';
+      msg.result() << "  " << ins.source_location << '\n'
+                   << "  " << description << '\n'
+                   << "  " << from_expr(ns, identifier, ins.guard) << '\n';
 
-      std::cout << '\n';
+      msg.result() << messaget::eom;
       break;
 
     default:
@@ -108,8 +108,7 @@ void show_properties(
   }
 }
 
-
-void show_properties_json(
+void convert_properties_json(
   json_arrayt &json_properties,
   const namespacet &ns,
   const irep_idt &identifier,
@@ -132,14 +131,13 @@ void show_properties_json(
 
     json_objectt &json_property=
       json_properties.push_back(jsont()).make_object();
-    json_property["name"]=json_stringt(id2string(property_id));
-    json_property["class"]=json_stringt(id2string(property_class));
+    json_property["name"] = json_stringt(property_id);
+    json_property["class"] = json_stringt(property_class);
     if(!source_location.get_basic_block_covered_lines().empty())
-      json_property["coveredLines"]=
-        json_stringt(
-          id2string(source_location.get_basic_block_covered_lines()));
+      json_property["coveredLines"] =
+        json_stringt(source_location.get_basic_block_covered_lines());
     json_property["sourceLocation"]=json(source_location);
-    json_property["description"]=json_stringt(id2string(description));
+    json_property["description"] = json_stringt(description);
     json_property["expression"]=
       json_stringt(from_expr(ns, identifier, ins.guard));
   }
@@ -147,43 +145,43 @@ void show_properties_json(
 
 void show_properties_json(
   const namespacet &ns,
+  message_handlert &message_handler,
   const goto_functionst &goto_functions)
 {
+  messaget msg(message_handler);
   json_arrayt json_properties;
 
   for(const auto &fct : goto_functions.function_map)
     if(!fct.second.is_inlined())
-      show_properties_json(
-        json_properties,
-        ns,
-        fct.first,
-        fct.second.body);
+      convert_properties_json(json_properties, ns, fct.first, fct.second.body);
 
   json_objectt json_result;
   json_result["properties"] = json_properties;
-  std::cout << ",\n" << json_result;
+  msg.result() << json_result;
 }
 
 void show_properties(
   const namespacet &ns,
+  message_handlert &message_handler,
   ui_message_handlert::uit ui,
   const goto_functionst &goto_functions)
 {
   if(ui == ui_message_handlert::uit::JSON_UI)
-    show_properties_json(ns, goto_functions);
+    show_properties_json(ns, message_handler, goto_functions);
   else
     for(const auto &fct : goto_functions.function_map)
       if(!fct.second.is_inlined())
-        show_properties(ns, fct.first, ui, fct.second.body);
+        show_properties(ns, fct.first, message_handler, ui, fct.second.body);
 }
 
 void show_properties(
   const goto_modelt &goto_model,
+  message_handlert &message_handler,
   ui_message_handlert::uit ui)
 {
   const namespacet ns(goto_model.symbol_table);
   if(ui == ui_message_handlert::uit::JSON_UI)
-    show_properties_json(ns, goto_model.goto_functions);
+    show_properties_json(ns, message_handler, goto_model.goto_functions);
   else
-    show_properties(ns, ui, goto_model.goto_functions);
+    show_properties(ns, message_handler, ui, goto_model.goto_functions);
 }

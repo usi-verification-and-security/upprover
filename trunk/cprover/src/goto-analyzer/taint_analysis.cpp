@@ -14,11 +14,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #include <fstream>
 
+#include <util/json.h>
 #include <util/prefix.h>
 #include <util/simplify_expr.h>
-#include <util/json.h>
-
-#include <ansi-c/string_constant.h>
+#include <util/string_constant.h>
 
 #include <goto-programs/class_hierarchy.h>
 
@@ -352,10 +351,9 @@ bool taint_analysist::operator()(
         if(use_json)
         {
           json_objectt json;
-          json["bugClass"]=
-            json_stringt(id2string(i_it->source_location.get_property_class()));
-          json["file"]=
-            json_stringt(id2string(i_it->source_location.get_file()));
+          json["bugClass"] =
+            json_stringt(i_it->source_location.get_property_class());
+          json["file"] = json_stringt(i_it->source_location.get_file());
           json["line"]=
             json_numbert(id2string(i_it->source_location.get_line()));
           json_result.array.push_back(json);

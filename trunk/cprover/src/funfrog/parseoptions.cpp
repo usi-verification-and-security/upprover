@@ -18,18 +18,15 @@
 #include <util/std_expr.h>
 #include <util/arith_tools.h>
 #include <util/prefix.h>
-#include <util/time_stopping.h>
 
+#include <goto-programs/adjust_float_expressions.h>
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
-#include <goto-programs/remove_instanceof.h>
 //#include <goto-programs/remove_returns.h> // KE: never include this header, HiFrog will stop working otherwise
-#include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
-#include <goto-programs/remove_static_init_loops.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
@@ -37,7 +34,6 @@
 #include <goto-programs/string_instrumentation.h>
 
 #include <goto-symex/rewrite_union.h>
-#include <goto-symex/adjust_float_expressions.h>
 
 #include <goto-instrument/full_slicer.h>
 #include <goto-instrument/nondet_static.h>
@@ -46,6 +42,10 @@
 
 #include <analyses/goto_check.h>
 #include <langapi/mode.h>
+
+#include <ansi-c/cprover_library.h>
+
+#include <cpp/cprover_library.h>
 
 #include "check_claims.h"
 #include "version.h"
@@ -66,6 +66,8 @@
 #include "UserDefinedSummary.h" // TODO: doesn't work yet, only contains original code
 #include <limits>
 #include <funfrog/utils/naming_helpers.h>
+
+#include <funfrog/utils/time_utils.h>
 
 /*******************************************************************
 
@@ -163,6 +165,31 @@ namespace {
     }
 }
 */
+
+/*******************************************************************
+
+ Function: funfrog_parseoptionst::set_default_options
+
+ MB: taken from cbmc_parse_optionst::set_default_options;
+ especially simplify must be set to true
+
+\*******************************************************************/
+void funfrog_parseoptionst::set_default_options(optionst &options)
+{
+    // Default true
+    options.set_option("assertions", true);
+    options.set_option("assumptions", true);
+    options.set_option("built-in-assertions", true);
+    options.set_option("pretty-names", true);
+    options.set_option("propagation", true);
+    options.set_option("sat-preprocessor", true);
+    options.set_option("simplify", true);
+    options.set_option("simplify-if", true);
+
+    // Other default
+    options.set_option("arrays-uf", "auto");
+}
+
 /*******************************************************************
 
  Function: funfrog_parseoptionst::process_goto_program
@@ -192,10 +219,11 @@ bool funfrog_parseoptionst::process_goto_program(
     {
         if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
         {
-            // There is a message in the method, no need to print it twice
-            
             // add the library
-            link_to_library(goto_model, get_message_handler());
+            link_to_library(
+                 goto_model, get_message_handler(), cprover_cpp_library_factory);
+            link_to_library(
+                goto_model, get_message_handler(), cprover_c_library_factory);
         } 
         else
         {
@@ -218,10 +246,6 @@ bool funfrog_parseoptionst::process_goto_program(
       false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
     remove_virtual_functions(goto_model);
-    // remove catch and throw
-    remove_exceptions(goto_model);
-    // Similar removal of RTTI inspection:
-    remove_instanceof(goto_model);
     
     mm_io(goto_model);
 
@@ -408,16 +432,14 @@ int funfrog_parseoptionst::doit()
   }
 
   //namespacet ns (symbol_table);
-  absolute_timet before, after;
-
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
-  before=current_time();
+  auto before=timestamp();
   
   if(get_goto_program(options))
     return 6;
 
-  after=current_time();
-  cbmc_status_interface(std::string("    LOAD Time: ") + (after-before).as_string() + std::string(" sec."));
+  auto after=timestamp();
+  cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
 
 
   if (cmdline.isset("show-symbol-table"))
@@ -646,7 +668,7 @@ bool funfrog_parseoptionst::check_function_summarization()
     cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
-      show_properties(goto_model, ui_message_handler.get_ui());
+      show_properties(goto_model, get_message_handler(), ui_message_handler.get_ui());
       cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
       return 0;
     }
@@ -755,6 +777,8 @@ bool funfrog_parseoptionst::check_function_summarization()
 \*******************************************************************/
 void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
+  set_default_options(options);
+
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("div-by-zero-check", cmdline.isset("div-by-zero-check"));
@@ -841,6 +865,12 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // If not partitions - no itp too, going back to pure cbcm
   if(cmdline.isset("no-partitions")) {
     options.set_option("no-itp", true);
+  }
+  
+  // KE: keep it for theoref, else won't work properly
+  if(cmdline.isset("theoref")) {
+      options.set_option("no-itp", true);
+      options.set_option("partial-loops", false);
   }
   
   if (cmdline.isset("check-itp")) {

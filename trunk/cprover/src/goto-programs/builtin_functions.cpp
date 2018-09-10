@@ -13,35 +13,27 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/rational.h>
-#include <util/replace_expr.h>
-#include <util/rational_tools.h>
-#include <util/source_location.h>
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
 #include <util/arith_tools.h>
-#include <util/simplify_expr.h>
-#include <util/std_code.h>
-#include <util/std_expr.h>
-#include <util/symbol.h>
-#include <util/pointer_predicates.h>
-#include <util/pointer_offset_size.h>
-
-#include <linking/zero_initializer.h>
-
 #include <util/c_types.h>
-#include <ansi-c/string_constant.h>
+#include <util/cprover_prefix.h>
+#include <util/expr_initializer.h>
+#include <util/expr_util.h>
+#include <util/pointer_offset_size.h>
+#include <util/rational.h>
+#include <util/rational_tools.h>
+
+#include <langapi/language_util.h>
 
 #include "format_strings.h"
 #include "class_identifier.h"
 
 void goto_convertt::do_prob_uniform(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  const irep_idt &identifier=function.get(ID_identifier);
+  const irep_idt &identifier = function.get_identifier();
 
   // make it a side effect if there is an LHS
   if(arguments.size()!=2)
@@ -59,8 +51,8 @@ void goto_convertt::do_prob_uniform(
     throw 0;
   }
 
-  exprt rhs=side_effect_exprt("prob_uniform", lhs.type());
-  rhs.add_source_location()=function.source_location();
+  auto rhs =
+    side_effect_exprt("prob_uniform", lhs.type(), function.source_location());
 
   if(lhs.type().id()!=ID_unsignedbv &&
      lhs.type().id()!=ID_signedbv)
@@ -115,11 +107,11 @@ void goto_convertt::do_prob_uniform(
 
 void goto_convertt::do_prob_coin(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  const irep_idt &identifier=function.get(ID_identifier);
+  const irep_idt &identifier = function.get_identifier();
 
   // make it a side effect if there is an LHS
   if(arguments.size()!=2)
@@ -137,8 +129,7 @@ void goto_convertt::do_prob_coin(
     throw 0;
   }
 
-  exprt rhs=side_effect_exprt("prob_coin", lhs.type());
-  rhs.add_source_location()=function.source_location();
+  side_effect_exprt rhs("prob_coin", lhs.type(), function.source_location());
 
   if(lhs.type()!=bool_typet())
   {
@@ -192,18 +183,19 @@ void goto_convertt::do_prob_coin(
 
 void goto_convertt::do_printf(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  const irep_idt &f_id=function.get(ID_identifier);
+  const irep_idt &f_id = function.get_identifier();
 
   if(f_id==CPROVER_PREFIX "printf" ||
      f_id=="printf")
   {
     typet return_type=
       static_cast<const typet &>(function.type().find(ID_return_type));
-    side_effect_exprt printf_code(ID_printf, return_type);
+    side_effect_exprt printf_code(
+      ID_printf, return_type, function.source_location());
 
     printf_code.operands()=arguments;
     printf_code.add_source_location()=function.source_location();
@@ -227,11 +219,11 @@ void goto_convertt::do_printf(
 
 void goto_convertt::do_scanf(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  const irep_idt &f_id=function.get(ID_identifier);
+  const irep_idt &f_id = function.get_identifier();
 
   if(f_id==CPROVER_PREFIX "scanf")
   {
@@ -260,8 +252,8 @@ void goto_convertt::do_scanf(
         {
           if(argument_number<arguments.size())
           {
-            exprt ptr=
-              typecast_exprt(arguments[argument_number], pointer_type(type));
+            const typecast_exprt ptr(
+              arguments[argument_number], pointer_type(type));
             argument_number++;
 
             if(type.id()==ID_array)
@@ -275,11 +267,10 @@ void goto_convertt::do_scanf(
                 new_tmp_symbol(
                   type, "scanf_string", dest, function.source_location());
 
-              exprt rhs=
-                address_of_exprt(
-                  index_exprt(
-                    tmp_symbol.symbol_expr(),
-                    from_integer(0, index_type())));
+              const address_of_exprt rhs(
+                index_exprt(
+                  tmp_symbol.symbol_expr(),
+                  from_integer(0, index_type())));
 
               // now use array copy
               codet array_copy_statement;
@@ -292,10 +283,10 @@ void goto_convertt::do_scanf(
 
               copy(array_copy_statement, OTHER, dest);
               #else
-              exprt lhs=
-                index_exprt(
-                  dereference_exprt(ptr, type), from_integer(0, index_type()));
-              exprt rhs=side_effect_expr_nondett(type.subtype());
+              const index_exprt lhs(
+                dereference_exprt(ptr, type), from_integer(0, index_type()));
+              const side_effect_expr_nondett rhs(
+                type.subtype(), function.source_location());
               code_assignt assign(lhs, rhs);
               assign.add_source_location()=function.source_location();
               copy(assign, ASSIGN, dest);
@@ -304,8 +295,9 @@ void goto_convertt::do_scanf(
             else
             {
               // make it nondet for now
-              exprt lhs=dereference_exprt(ptr, type);
-              exprt rhs=side_effect_expr_nondett(type);
+              const dereference_exprt lhs(ptr, type);
+              const side_effect_expr_nondett rhs(
+                type, function.source_location());
               code_assignt assign(lhs, rhs);
               assign.add_source_location()=function.source_location();
               copy(assign, ASSIGN, dest);
@@ -331,13 +323,11 @@ void goto_convertt::do_scanf(
 }
 
 void goto_convertt::do_input(
-  const exprt &lhs,
   const exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  codet input_code;
-  input_code.set_statement(ID_input);
+  codet input_code(ID_input);
   input_code.operands()=arguments;
   input_code.add_source_location()=function.source_location();
 
@@ -352,13 +342,11 @@ void goto_convertt::do_input(
 }
 
 void goto_convertt::do_output(
-  const exprt &lhs,
   const exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  codet output_code;
-  output_code.set_statement(ID_output);
+  codet output_code(ID_output);
   output_code.operands()=arguments;
   output_code.add_source_location()=function.source_location();
 
@@ -374,7 +362,7 @@ void goto_convertt::do_output(
 
 void goto_convertt::do_atomic_begin(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
@@ -398,7 +386,7 @@ void goto_convertt::do_atomic_begin(
 
 void goto_convertt::do_atomic_end(
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
@@ -448,7 +436,7 @@ void goto_convertt::do_cpp_new(
       count.make_typecast(object_size.type());
 
     // might have side-effect
-    clean_expr(count, dest);
+    clean_expr(count, dest, ID_cpp);
   }
 
   exprt tmp_symbol_expr;
@@ -469,8 +457,8 @@ void goto_convertt::do_cpp_new(
     assert(code_type.parameters().size()==1 ||
            code_type.parameters().size()==2);
 
-    const symbolt &tmp_symbol=
-      new_tmp_symbol(return_type, "new", dest, rhs.source_location());
+    const symbolt &tmp_symbol =
+      new_tmp_symbol(return_type, "new", dest, rhs.source_location(), ID_cpp);
 
     tmp_symbol_expr=tmp_symbol.symbol_expr();
 
@@ -483,7 +471,7 @@ void goto_convertt::do_cpp_new(
     new_call.lhs()=tmp_symbol_expr;
     new_call.add_source_location()=rhs.source_location();
 
-    convert(new_call, dest);
+    convert(new_call, dest, ID_cpp);
   }
   else if(rhs.operands().size()==1)
   {
@@ -500,8 +488,8 @@ void goto_convertt::do_cpp_new(
     assert(code_type.parameters().size()==2 ||
            code_type.parameters().size()==3);
 
-    const symbolt &tmp_symbol=
-      new_tmp_symbol(return_type, "new", dest, rhs.source_location());
+    const symbolt &tmp_symbol =
+      new_tmp_symbol(return_type, "new", dest, rhs.source_location(), ID_cpp);
 
     tmp_symbol_expr=tmp_symbol.symbol_expr();
 
@@ -519,7 +507,7 @@ void goto_convertt::do_cpp_new(
       if(new_call.arguments()[i].type()!=code_type.parameters()[i].type())
         new_call.arguments()[i].make_typecast(code_type.parameters()[i].type());
 
-    convert(new_call, dest);
+    convert(new_call, dest, ID_cpp);
   }
   else
   {
@@ -540,182 +528,6 @@ void goto_convertt::do_cpp_new(
   dest.destructive_append(tmp_initializer);
 }
 
-void goto_convertt::do_java_new_array(
-  const exprt &lhs,
-  const side_effect_exprt &rhs,
-  goto_programt &dest)
-{
-  PRECONDITION(!lhs.is_nil()); // do_java_new_array without lhs not implemented
-  PRECONDITION(rhs.operands().size() >= 1); // one per dimension
-  PRECONDITION(rhs.type().id() == ID_pointer);
-
-  source_locationt location=rhs.source_location();
-  typet object_type=rhs.type().subtype();
-  PRECONDITION(ns.follow(object_type).id() == ID_struct);
-
-  // build size expression
-  exprt object_size=size_of_expr(object_type, ns);
-
-  CHECK_RETURN(!object_size.is_nil());
-
-  // we produce a malloc side-effect, which stays
-  side_effect_exprt malloc_expr(ID_allocate);
-  malloc_expr.copy_to_operands(object_size);
-  // code use true and get rid of the code below
-  malloc_expr.copy_to_operands(false_exprt());
-  malloc_expr.type()=rhs.type();
-
-  goto_programt::targett t_n=dest.add_instruction(ASSIGN);
-  t_n->code=code_assignt(lhs, malloc_expr);
-  t_n->source_location=location;
-
-  const struct_typet &struct_type=to_struct_type(ns.follow(object_type));
-
-  // Ideally we would have a check for `is_valid_java_array(struct_type)` but
-  // `is_valid_java_array is part of the java_bytecode module and we cannot
-  // introduce such dependencies. We do this simple check instead:
-  PRECONDITION(struct_type.components().size()==3);
-
-  // Init base class:
-  dereference_exprt deref(lhs, object_type);
-  exprt zero_object=
-    zero_initializer(object_type, location, ns, get_message_handler());
-  set_class_identifier(
-    to_struct_expr(zero_object), ns, to_symbol_type(object_type));
-  goto_programt::targett t_i=dest.add_instruction(ASSIGN);
-  t_i->code=code_assignt(deref, zero_object);
-  t_i->source_location=location;
-
-  // if it's an array, we need to set the length field
-  member_exprt length(
-    deref,
-    struct_type.components()[1].get_name(),
-    struct_type.components()[1].type());
-  goto_programt::targett t_s=dest.add_instruction(ASSIGN);
-  t_s->code=code_assignt(length, rhs.op0());
-  t_s->source_location=location;
-
-  // we also need to allocate space for the data
-  member_exprt data(
-    deref,
-    struct_type.components()[2].get_name(),
-    struct_type.components()[2].type());
-
-  // Allocate a (struct realtype**) instead of a (void**) if possible.
-  const irept &given_element_type=object_type.find(ID_C_element_type);
-  typet allocate_data_type;
-  if(given_element_type.is_not_nil())
-  {
-    allocate_data_type=
-      pointer_type(static_cast<const typet &>(given_element_type));
-  }
-  else
-    allocate_data_type=data.type();
-
-  side_effect_exprt data_java_new_expr(
-    ID_java_new_array_data, allocate_data_type);
-
-  // The instruction may specify a (hopefully small) upper bound on the
-  // array size, in which case we allocate a fixed-length array that may
-  // be larger than the `length` member rather than use a true variable-
-  // length array, which produces a more complex formula in the current
-  // backend.
-  const irept size_bound=rhs.find(ID_length_upper_bound);
-  if(size_bound.is_nil())
-    data_java_new_expr.set(ID_size, rhs.op0());
-  else
-    data_java_new_expr.set(ID_size, size_bound);
-
-  // Must directly assign the new array to a temporary
-  // because goto-symex will notice `x=side_effect_exprt` but not
-  // `x=typecast_exprt(side_effect_exprt(...))`
-  symbol_exprt new_array_data_symbol=
-    new_tmp_symbol(
-      data_java_new_expr.type(),
-      "new_array_data",
-      dest,
-      location)
-    .symbol_expr();
-  goto_programt::targett t_p2=dest.add_instruction(ASSIGN);
-  t_p2->code=code_assignt(new_array_data_symbol, data_java_new_expr);
-  t_p2->source_location=location;
-
-  goto_programt::targett t_p=dest.add_instruction(ASSIGN);
-  exprt cast_java_new=new_array_data_symbol;
-  if(cast_java_new.type()!=data.type())
-    cast_java_new=typecast_exprt(cast_java_new, data.type());
-  t_p->code=code_assignt(data, cast_java_new);
-  t_p->source_location=location;
-
-  // zero-initialize the data
-  if(!rhs.get_bool(ID_skip_initialize))
-  {
-    exprt zero_element=
-      zero_initializer(
-        data.type().subtype(),
-        location,
-        ns,
-        get_message_handler());
-    codet array_set(ID_array_set);
-    array_set.copy_to_operands(new_array_data_symbol, zero_element);
-    goto_programt::targett t_d=dest.add_instruction(OTHER);
-    t_d->code=array_set;
-    t_d->source_location=location;
-  }
-
-  // multi-dimensional?
-
-  if(rhs.operands().size()>=2)
-  {
-    // produce
-    // for(int i=0; i<size; i++) tmp[i]=java_new(dim-1);
-    // This will be converted recursively.
-
-    goto_programt tmp;
-
-    symbol_exprt tmp_i=
-      new_tmp_symbol(length.type(), "index", tmp, location).symbol_expr();
-
-    code_fort for_loop;
-
-    side_effect_exprt sub_java_new=rhs;
-    sub_java_new.operands().erase(sub_java_new.operands().begin());
-
-    assert(rhs.type().id()==ID_pointer);
-    typet sub_type=
-      static_cast<const typet &>(rhs.type().subtype().find("#element_type"));
-    assert(sub_type.id()==ID_pointer);
-    sub_java_new.type()=sub_type;
-
-    side_effect_exprt inc(ID_assign);
-    inc.operands().resize(2);
-    inc.op0()=tmp_i;
-    inc.op1()=plus_exprt(tmp_i, from_integer(1, tmp_i.type()));
-
-    dereference_exprt deref_expr(
-      plus_exprt(data, tmp_i), data.type().subtype());
-
-    code_blockt for_body;
-    symbol_exprt init_sym=
-      new_tmp_symbol(sub_type, "subarray_init", tmp, location).symbol_expr();
-
-    code_assignt init_subarray(init_sym, sub_java_new);
-    code_assignt assign_subarray(
-      deref_expr,
-      typecast_exprt(init_sym, deref_expr.type()));
-    for_body.move_to_operands(init_subarray);
-    for_body.move_to_operands(assign_subarray);
-
-    for_loop.init()=code_assignt(tmp_i, from_integer(0, tmp_i.type()));
-    for_loop.cond()=binary_relation_exprt(tmp_i, ID_lt, rhs.op0());
-    for_loop.iter()=inc;
-    for_loop.body()=for_body;
-
-    convert(for_loop, tmp);
-    dest.destructive_append(tmp);
-  }
-}
-
 /// builds a goto program for object initialization after new
 void goto_convertt::cpp_new_initializer(
   const exprt &lhs,
@@ -734,11 +546,10 @@ void goto_convertt::cpp_new_initializer(
     else if(rhs.get_statement()==ID_cpp_new)
     {
       // just one object
-      exprt deref_lhs(ID_dereference, rhs.type().subtype());
-      deref_lhs.copy_to_operands(lhs);
+      const dereference_exprt deref_lhs(lhs, rhs.type().subtype());
 
       replace_new_object(deref_lhs, initializer);
-      convert(to_code(initializer), dest);
+      convert(to_code(initializer), dest, ID_cpp);
     }
     else
       UNREACHABLE;
@@ -784,7 +595,7 @@ exprt goto_convertt::get_array_argument(const exprt &src)
 void goto_convertt::do_array_op(
   const irep_idt &id,
   const exprt &lhs,
-  const exprt &function,
+  const symbol_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
@@ -795,70 +606,16 @@ void goto_convertt::do_array_op(
     throw 0;
   }
 
-  codet array_op_statement;
-  array_op_statement.set_statement(id);
+  codet array_op_statement(id);
   array_op_statement.operands()=arguments;
   array_op_statement.add_source_location()=function.source_location();
 
+  // lhs is only used with array_equal, in all other cases it should be nil (as
+  // they are of type void)
+  if(id == ID_array_equal)
+    array_op_statement.copy_to_operands(lhs);
+
   copy(array_op_statement, OTHER, dest);
-}
-
-void goto_convertt::do_array_equal(
-  const exprt &lhs,
-  const exprt &function,
-  const exprt::operandst &arguments,
-  goto_programt &dest)
-{
-  if(arguments.size()!=2)
-  {
-    error().source_location=function.find_source_location();
-    error() << "array_equal expects two arguments" << eom;
-    throw 0;
-  }
-
-  const typet &arg0_type=ns.follow(arguments[0].type());
-  const typet &arg1_type=ns.follow(arguments[1].type());
-
-  if(arg0_type.id()!=ID_pointer ||
-     arg1_type.id()!=ID_pointer)
-  {
-    error().source_location=function.find_source_location();
-    error() << "array_equal expects pointer arguments" << eom;
-    throw 0;
-  }
-
-  if(lhs.is_not_nil())
-  {
-    code_assignt assignment;
-
-    // add dereferencing here
-    dereference_exprt lhs_array, rhs_array;
-    lhs_array.op0()=arguments[0];
-    rhs_array.op0()=arguments[1];
-    lhs_array.type()=arg0_type.subtype();
-    rhs_array.type()=arg1_type.subtype();
-
-    assignment.lhs()=lhs;
-    assignment.rhs()=binary_exprt(
-      lhs_array, ID_array_equal, rhs_array, lhs.type());
-    assignment.add_source_location()=function.source_location();
-
-    convert(assignment, dest);
-  }
-}
-
-bool is_lvalue(const exprt &expr)
-{
-  if(expr.id()==ID_index)
-    return is_lvalue(to_index_expr(expr).op0());
-  else if(expr.id()==ID_member)
-    return is_lvalue(to_member_expr(expr).op0());
-  else if(expr.id()==ID_dereference)
-    return true;
-  else if(expr.id()==ID_symbol)
-    return true;
-  else
-    return false;
 }
 
 exprt make_va_list(const exprt &expr)
@@ -883,7 +640,7 @@ void goto_convertt::do_function_call_symbol(
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  if(function.get_bool("#invalid_object"))
+  if(function.get_bool(ID_C_invalid_object))
     return; // ignore
 
   // lookup symbol
@@ -963,34 +720,6 @@ void goto_convertt::do_function_call_symbol(
     a->source_location=function.source_location();
     a->source_location.set("user-provided", true);
   }
-  else if(has_prefix(
-      id2string(identifier), "java::java.lang.AssertionError.<init>:"))
-  {
-    // insert function call anyway
-    code_function_callt function_call;
-    function_call.lhs()=lhs;
-    function_call.function()=function;
-    function_call.arguments()=arguments;
-    function_call.add_source_location()=function.source_location();
-
-    copy(function_call, FUNCTION_CALL, dest);
-
-    if(arguments.size()!=1 && arguments.size()!=2)
-    {
-      error().source_location=function.find_source_location();
-      error() << "`" << identifier
-              << "' expected to have one or two arguments" << eom;
-      throw 0;
-    }
-
-    goto_programt::targett t=dest.add_instruction(ASSERT);
-    t->guard=false_exprt();
-    t->source_location=function.source_location();
-    t->source_location.set("user-provided", true);
-    t->source_location.set_property_class(ID_assertion);
-    t->source_location.set_comment(
-      "assertion at "+function.source_location().as_string());
-  }
   else if(identifier=="assert" &&
           !ns.lookup(identifier).location.get_function().empty())
   {
@@ -1008,7 +737,7 @@ void goto_convertt::do_function_call_symbol(
     t->source_location.set("user-provided", true);
     t->source_location.set_property_class(ID_assertion);
     t->source_location.set_comment(
-      "assertion "+id2string(from_expr(ns, "", t->guard)));
+      "assertion " + id2string(from_expr(ns, identifier, t->guard)));
 
     // let's double-check the type of the argument
     if(t->guard.type().id()!=ID_bool)
@@ -1101,21 +830,37 @@ void goto_convertt::do_function_call_symbol(
   else if(identifier==CPROVER_PREFIX "input" ||
           identifier=="__CPROVER::input")
   {
-    do_input(lhs, function, arguments, dest);
+    if(lhs.is_not_nil())
+    {
+      error().source_location=function.find_source_location();
+      error() << identifier << " expected not to have LHS" << eom;
+      throw 0;
+    }
+
+    do_input(function, arguments, dest);
   }
   else if(identifier==CPROVER_PREFIX "output" ||
           identifier=="__CPROVER::output")
   {
-    do_output(lhs, function, arguments, dest);
+    if(lhs.is_not_nil())
+    {
+      error().source_location=function.find_source_location();
+      error() << identifier << " expected not to have LHS" << eom;
+      throw 0;
+    }
+
+    do_output(function, arguments, dest);
   }
   else if(identifier==CPROVER_PREFIX "atomic_begin" ||
           identifier=="__CPROVER::atomic_begin" ||
+          identifier=="java::org.cprover.CProver.atomicBegin:()V" ||
           identifier=="__VERIFIER_atomic_begin")
   {
     do_atomic_begin(lhs, function, arguments, dest);
   }
   else if(identifier==CPROVER_PREFIX "atomic_end" ||
           identifier=="__CPROVER::atomic_end" ||
+          identifier=="java::org.cprover.CProver.atomicEnd:()V" ||
           identifier=="__VERIFIER_atomic_end")
   {
     do_atomic_end(lhs, function, arguments, dest);
@@ -1141,15 +886,13 @@ void goto_convertt::do_function_call_symbol(
     // can only be 0 or 1.
     if(lhs.type().id()==ID_c_bool)
     {
-      rhs=side_effect_expr_nondett(bool_typet());
-      rhs.add_source_location()=function.source_location();
+      rhs = side_effect_expr_nondett(bool_typet(), function.source_location());
       rhs.set(ID_C_identifier, identifier);
       rhs=typecast_exprt(rhs, lhs.type());
     }
     else
     {
-      rhs=side_effect_expr_nondett(lhs.type());
-      rhs.add_source_location()=function.source_location();
+      rhs = side_effect_expr_nondett(lhs.type(), function.source_location());
       rhs.set(ID_C_identifier, identifier);
     }
 
@@ -1175,7 +918,7 @@ void goto_convertt::do_function_call_symbol(
   }
   else if(identifier==CPROVER_PREFIX "array_equal")
   {
-    do_array_equal(lhs, function, arguments, dest);
+    do_array_op(ID_array_equal, lhs, function, arguments, dest);
   }
   else if(identifier==CPROVER_PREFIX "array_set")
   {
@@ -1361,7 +1104,10 @@ void goto_convertt::do_function_call_symbol(
     exprt list_arg=make_va_list(arguments[0]);
 
     {
-      side_effect_exprt rhs(ID_gcc_builtin_va_arg_next, list_arg.type());
+      side_effect_exprt rhs(
+        ID_gcc_builtin_va_arg_next,
+        list_arg.type(),
+        function.source_location());
       rhs.copy_to_operands(list_arg);
       rhs.set(ID_C_va_arg_type, to_code_type(function.type()).return_type());
       goto_programt::targett t1=dest.add_instruction(ASSIGN);
@@ -1391,7 +1137,7 @@ void goto_convertt::do_function_call_symbol(
     }
 
     exprt dest_expr=make_va_list(arguments[0]);
-    exprt src_expr=typecast_exprt(arguments[1], dest_expr.type());
+    const typecast_exprt src_expr(arguments[1], dest_expr.type());
 
     if(!is_lvalue(dest_expr))
     {
@@ -1417,7 +1163,7 @@ void goto_convertt::do_function_call_symbol(
     }
 
     exprt dest_expr=make_va_list(arguments[0]);
-    exprt src_expr=typecast_exprt(
+    const typecast_exprt src_expr(
       address_of_exprt(arguments[1]), dest_expr.type());
 
     if(!is_lvalue(dest_expr))
@@ -1814,7 +1560,6 @@ void goto_convertt::do_function_call_symbol(
 
     if(!symbol_table.has_symbol(name))
     {
-      code_typet();
       symbolt new_symbol;
       new_symbol.base_name=name;
       new_symbol.name=name;

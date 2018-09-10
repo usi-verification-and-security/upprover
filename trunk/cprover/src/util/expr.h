@@ -6,13 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-
 #ifndef CPROVER_UTIL_EXPR_H
 #define CPROVER_UTIL_EXPR_H
 
-#define OPERANDS_IN_GETSUB
-
 #include "type.h"
+
+#include <functional>
+#include <list>
 
 #define forall_operands(it, expr) \
   if((expr).has_operands()) /* NOLINT(readability/braces) */ \
@@ -31,14 +31,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #define Forall_expr(it, expr) \
   for(exprt::operandst::iterator it=(expr).begin(); \
-      it!=(expr).end(); ++it)
-
-#define forall_expr_list(it, expr) \
-  for(expr_listt::const_iterator it=(expr).begin(); \
-      it!=(expr).end(); ++it)
-
-#define Forall_expr_list(it, expr) \
-  for(expr_listt::iterator it=(expr).begin(); \
       it!=(expr).end(); ++it)
 
 class depth_iteratort;
@@ -72,18 +64,10 @@ public:
   { return !operands().empty(); }
 
   operandst &operands()
-  #ifdef OPERANDS_IN_GETSUB
   { return (operandst &)get_sub(); }
-  #else
-  { return (operandst &)(add(ID_operands).get_sub()); }
-  #endif
 
   const operandst &operands() const
-  #ifdef OPERANDS_IN_GETSUB
   { return (const operandst &)get_sub(); }
-  #else
-  { return (const operandst &)(find(ID_operands).get_sub()); }
-  #endif
 
   exprt &op0()
   { return operands().front(); }
@@ -128,11 +112,6 @@ public:
   void make_true();
   void make_false();
   void make_bool(bool value);
-  void negate();
-
-  bool sum(const exprt &expr);
-  bool mul(const exprt &expr);
-  bool subtract(const exprt &expr);
 
   bool is_constant() const;
   bool is_true() const;
@@ -142,6 +121,7 @@ public:
   bool is_boolean() const;
 
   const std::string print_number_2smt() const; // hckd!!
+  
   const source_locationt &find_source_location() const;
 
   const source_locationt &source_location() const
@@ -173,26 +153,25 @@ public:
   const_depth_iteratort depth_end() const;
   const_depth_iteratort depth_cbegin() const;
   const_depth_iteratort depth_cend() const;
+  depth_iteratort depth_begin(std::function<exprt &()> mutate_root) const;
   const_unique_depth_iteratort unique_depth_begin() const;
   const_unique_depth_iteratort unique_depth_end() const;
   const_unique_depth_iteratort unique_depth_cbegin() const;
   const_unique_depth_iteratort unique_depth_cend() const;
 };
 
-typedef std::list<exprt> expr_listt;
-
 class expr_visitort
 {
 public:
   virtual ~expr_visitort() { }
-  virtual void operator()(exprt &expr) { }
+  virtual void operator()(exprt &) { }
 };
 
 class const_expr_visitort
 {
 public:
   virtual ~const_expr_visitort() { }
-  virtual void operator()(const exprt &expr) { }
+  virtual void operator()(const exprt &) { }
 };
 
 #endif // CPROVER_UTIL_EXPR_H

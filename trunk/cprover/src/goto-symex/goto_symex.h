@@ -12,14 +12,18 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 #define CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 
+#include <analyses/local_safe_pointers.h>
+
 #include <util/options.h>
 #include <util/message.h>
-#include <util/byte_operators.h>
 
 #include <goto-programs/goto_functions.h>
 
 #include "goto_symex_state.h"
+#include "path_storage.h"
+#include "symex_target_equation.h"
 
+class byte_extract_exprt;
 class typet;
 class code_typet;
 class symbol_tablet;
@@ -34,54 +38,106 @@ class symbol_exprt;
 class member_exprt;
 class namespacet;
 class side_effect_exprt;
-class symex_targett;
 class typecast_exprt;
 
-/*! \brief The main class for the forward symbolic simulator
-*/
+/// \brief The main class for the forward symbolic simulator
+///
+/// Higher-level architectural information on symbolic execution is
+/// documented in the \ref symex-overview
+/// "Symbolic execution module page".
 class goto_symext
 {
 public:
+  typedef goto_symex_statet statet;
+
   goto_symext(
     message_handlert &mh,
-    const namespacet &_ns,
-    symbol_tablet &_new_symbol_table,
-    symex_targett &_target)
-    : total_vccs(0),
+    const symbol_tablet &outer_symbol_table,
+    symex_target_equationt &_target,
+    const optionst &options,
+    path_storaget &path_storage)
+    : should_pause_symex(false),
+      options(options),
+      max_depth(options.get_unsigned_int_option("depth")),
+      doing_path_exploration(options.is_set("paths")),
+      allow_pointer_unsoundness(
+        options.get_bool_option("allow-pointer-unsoundness")),
+      total_vccs(0),
       remaining_vccs(0),
       constant_propagation(true),
-      new_symbol_table(_new_symbol_table),
+      self_loops_to_assumptions(true),
       language_mode(),
-      ns(_ns),
+      outer_symbol_table(outer_symbol_table),
+      ns(outer_symbol_table),
       target(_target),
       atomic_section_counter(0),
       log(mh),
-      guard_identifier("goto_symex::\\guard")
+      guard_identifier("goto_symex::\\guard"),
+      path_storage(path_storage)
   {
-    options.set_option("simplify", true);
-    options.set_option("assertions", true);
   }
 
   virtual ~goto_symext()
   {
   }
 
-  typedef goto_symex_statet statet;
+  typedef
+    std::function<const goto_functionst::goto_functiont &(const irep_idt &)>
+    get_goto_functiont;
 
-  /** symex all at once, starting from entry point */
-  virtual void operator()(
-    const goto_functionst &goto_functions);
-
-  /** symex starting from given goto program */
-  virtual void operator()(
+  /// \brief symex entire program starting from entry point
+  ///
+  /// The state that goto_symext maintains has a large memory footprint.
+  /// This method deallocates the state as soon as symbolic execution
+  /// has completed, so use it if you don't care about having the state
+  /// around afterwards.
+  virtual void symex_from_entry_point_of(
     const goto_functionst &goto_functions,
-    const goto_programt &goto_program);
+    symbol_tablet &new_symbol_table);
 
-  /** start symex in a given state */
-  virtual void operator()(
-    statet &state,
-    const goto_functionst &goto_functions,
-    const goto_programt &goto_program);
+  /// \brief symex entire program starting from entry point
+  ///
+  /// The state that goto_symext maintains has a large memory footprint.
+  /// This method deallocates the state as soon as symbolic execution
+  /// has completed, so use it if you don't care about having the state
+  /// around afterwards.
+  virtual void symex_from_entry_point_of(
+    const get_goto_functiont &get_goto_function,
+    symbol_tablet &new_symbol_table);
+
+  /// Performs symbolic execution using a state and equation that have
+  /// already been used to symex part of the program. The state is not
+  /// re-initialized; instead, symbolic execution resumes from the program
+  /// counter of the saved state.
+  virtual void resume_symex_from_saved_state(
+    const get_goto_functiont &get_goto_function,
+    const statet &saved_state,
+    symex_target_equationt *const saved_equation,
+    symbol_tablet &new_symbol_table);
+
+  //// \brief symex entire program starting from entry point
+  ///
+  /// This method uses the `state` argument as the symbolic execution
+  /// state, which is useful for examining the state after this method
+  /// returns. The state that goto_symext maintains has a large memory
+  /// footprint, so if keeping the state around is not necessary,
+  /// clients should instead call goto_symext::symex_from_entry_point_of().
+  virtual void symex_with_state(
+    statet &,
+    const goto_functionst &,
+    symbol_tablet &);
+
+  //// \brief symex entire program starting from entry point
+  ///
+  /// This method uses the `state` argument as the symbolic execution
+  /// state, which is useful for examining the state after this method
+  /// returns. The state that goto_symext maintains has a large memory
+  /// footprint, so if keeping the state around is not necessary,
+  /// clients should instead call goto_symext::symex_from_entry_point_of().
+  virtual void symex_with_state(
+    statet &,
+    const get_goto_functiont &,
+    symbol_tablet &);
 
   /// Symexes from the first instruction and the given state, terminating as
   /// soon as the last instruction is reached.  This is useful to explicitly
@@ -91,12 +147,39 @@ public:
   /// \param goto_functions GOTO model to symex.
   /// \param first Entry point in form of a first instruction.
   /// \param limit Final instruction, which itself will not be symexed.
-  virtual void operator()(
-    statet &state,
-    const goto_functionst &goto_functions,
+  virtual void symex_instruction_range(
+    statet &,
+    const goto_functionst &,
     goto_programt::const_targett first,
     goto_programt::const_targett limit);
 
+  /// Symexes from the first instruction and the given state, terminating as
+  /// soon as the last instruction is reached.  This is useful to explicitly
+  /// symex certain ranges of a program, e.g. in an incremental decision
+  /// procedure.
+  /// \param state Symex state to start with.
+  /// \param get_goto_function retrieves a function body
+  /// \param first Entry point in form of a first instruction.
+  /// \param limit Final instruction, which itself will not be symexed.
+  virtual void symex_instruction_range(
+    statet &state,
+    const get_goto_functiont &get_goto_function,
+    goto_programt::const_targett first,
+    goto_programt::const_targett limit);
+
+  goto_symext::get_goto_functiont constuct_get_goto_function( 
+        const goto_functionst &goto_functions);
+  
+  /// \brief Have states been pushed onto the workqueue?
+  ///
+  /// If this flag is set at the end of a symbolic execution run, it means that
+  /// symex has been paused because we encountered a GOTO instruction while
+  /// doing path exploration, and thus pushed the successor states of the GOTO
+  /// onto path_storage. The symbolic execution caller should now choose which
+  /// successor state to continue executing, and resume symex from that state.
+  bool should_pause_symex;
+
+protected:
   /// Initialise the symbolic execution and the given state with <code>pc</code>
   /// as entry point.
   /// \param state Symex state to initialise.
@@ -104,86 +187,96 @@ public:
   /// \param pc first instruction to symex
   /// \param limit final instruction, which itself will not
   /// be symexed.
-  void symex_entry_point(
+  void initialize_entry_point(
     statet &state,
-    const goto_functionst &goto_functions,
+    const get_goto_functiont &get_goto_function,
     goto_programt::const_targett pc,
     goto_programt::const_targett limit);
 
   /// Invokes symex_step and verifies whether additional threads can be
   /// executed.
   /// \param state Current GOTO symex step.
-  /// \param goto_functions GOTO model to symex.
+  /// \param get_goto_function function that retrieves function bodies
   void symex_threaded_step(
-    statet &state, const goto_functionst &goto_functions);
+    statet &, const get_goto_functiont &);
 
-  /** execute just one step */
   virtual void symex_step(
-    const goto_functionst &goto_functions,
-    statet &state);
+    const get_goto_functiont &,
+    statet &);
 
+  const optionst &options;
+
+  const unsigned max_depth;
+  const bool doing_path_exploration;
+  const bool allow_pointer_unsoundness;
+
+public:
   // these bypass the target maps
-  virtual void symex_step_goto(statet &state, bool taken);
+  virtual void symex_step_goto(statet &, bool taken);
 
   // statistics
   unsigned total_vccs, remaining_vccs;
 
   bool constant_propagation;
-
-  optionst options;
-  symbol_tablet &new_symbol_table;
+  bool self_loops_to_assumptions;
 
   /// language_mode: ID_java, ID_C or another language identifier
   /// if we know the source language in use, irep_idt() otherwise.
   irep_idt language_mode;
 
 protected:
-  const namespacet &ns;
-  symex_targett &target;
+  /// The symbol table associated with the goto-program that we're
+  /// executing. This symbol table will not additionally contain objects
+  /// that are dynamically created as part of symbolic execution; the
+  /// names of those object are stored in the symbol table passed as the
+  /// `new_symbol_table` argument to the `symex_*` methods.
+  const symbol_tablet &outer_symbol_table;
+
+  /// Initialized just before symbolic execution begins, to point to
+  /// both `outer_symbol_table` and the symbol table owned by the
+  /// `goto_symex_statet` object used during symbolic execution. That
+  /// symbol table must be owned by goto_symex_statet rather than passed
+  /// in, in case the state is saved and resumed. This namespacet is
+  /// used during symbolic execution to look up names from the original
+  /// goto-program, and the names of dynamically-created objects.
+  namespacet ns;
+  symex_target_equationt &target;
   unsigned atomic_section_counter;
 
   mutable messaget log;
 
   friend class symex_dereference_statet;
 
-  void new_name(symbolt &symbol);
-
   // this does the following:
   // a) rename non-det choices
   // b) remove pointer dereferencing
-  // c) rewrite array_equal expression into equality
+  // c) clean up byte_extract on the lhs of an assignment
   void clean_expr(
-    exprt &expr, statet &state, bool write);
+    exprt &, statet &, bool write);
 
-  void replace_array_equal(exprt &expr);
-  void trigger_auto_object(const exprt &expr, statet &state);
-  void initialize_auto_object(const exprt &expr, statet &state);
-  void process_array_expr(exprt &expr);
-  void process_array_expr_rec(exprt &expr, const typet &type) const;
-  exprt make_auto_object(const typet &type);
-
-  virtual void dereference(
-    exprt &expr,
-    statet &state,
-    const bool write);
+  void trigger_auto_object(const exprt &, statet &);
+  void initialize_auto_object(const exprt &, statet &);
+  void process_array_expr(exprt &);
+  exprt make_auto_object(const typet &, statet &);
+  virtual void dereference(exprt &, statet &, const bool write);
 
   void dereference_rec(
-    exprt &expr,
-    statet &state,
-    guardt &guard,
+    exprt &,
+    statet &,
+    guardt &,
     const bool write);
 
   void dereference_rec_address_of(
-    exprt &expr,
-    statet &state,
-    guardt &guard);
+    exprt &,
+    statet &,
+    guardt &);
 
   static bool is_index_member_symbol_if(const exprt &expr);
 
   exprt address_arithmetic(
-    const exprt &expr,
-    statet &state,
-    guardt &guard,
+    const exprt &,
+    statet &,
+    guardt &,
     bool keep_array);
 
   // guards
@@ -192,9 +285,10 @@ protected:
 
   // symex
   virtual void symex_transition(
-    statet &state,
+    statet &,
     goto_programt::const_targett to,
     bool is_backwards_goto=false);
+
   virtual void symex_transition(statet &state)
   {
     goto_programt::const_targett next=state.source.pc;
@@ -202,31 +296,28 @@ protected:
     symex_transition(state, next);
   }
 
-  virtual void symex_goto(statet &state);
-  virtual void symex_start_thread(statet &state);
-  virtual void symex_atomic_begin(statet &state);
-  virtual void symex_atomic_end(statet &state);
-  virtual void symex_decl(statet &state);
-  virtual void symex_decl(statet &state, const symbol_exprt &expr);
-  virtual void symex_dead(statet &state);
-
-  virtual void symex_other(
-    const goto_functionst &goto_functions,
-    statet &state);
+  virtual void symex_goto(statet &);
+  virtual void symex_start_thread(statet &);
+  virtual void symex_atomic_begin(statet &);
+  virtual void symex_atomic_end(statet &);
+  virtual void symex_decl(statet &);
+  virtual void symex_decl(statet &, const symbol_exprt &expr);
+  virtual void symex_dead(statet &);
+  virtual void symex_other(statet &);
 
   virtual void vcc(
-    const exprt &expr,
+    const exprt &,
     const std::string &msg,
-    statet &state);
+    statet &);
 
-  virtual void symex_assume(statet &state, const exprt &cond);
+  virtual void symex_assume(statet &, const exprt &cond);
 
   // gotos
-  void merge_gotos(statet &state);
+  void merge_gotos(statet &);
 
   virtual void merge_goto(
     const statet::goto_statet &goto_state,
-    statet &state);
+    statet &);
 
   void merge_value_sets(
     const statet::goto_statet &goto_state,
@@ -234,41 +325,42 @@ protected:
 
   virtual void phi_function(
     const statet::goto_statet &goto_state,
-    statet &state);
+    statet &);
 
   // determine whether to unwind a loop -- true indicates abort,
   // with false we continue.
   virtual bool get_unwind(
     const symex_targett::sourcet &source,
+    const goto_symex_statet::call_stackt &context,
     unsigned unwind);
 
-  virtual void loop_bound_exceeded(statet &state, const exprt &guard);
+  virtual void loop_bound_exceeded(statet &, const exprt &guard);
 
   // function calls
 
-  void pop_frame(statet &state);
-  void return_assignment(statet &state);
+  void pop_frame(statet &);
+  void return_assignment(statet &);
 
-  virtual void no_body(const irep_idt &identifier)
+  virtual void no_body(const irep_idt &)
   {
   }
 
   virtual void symex_function_call(
-    const goto_functionst &goto_functions,
-    statet &state,
-    const code_function_callt &call);
+    const get_goto_functiont &,
+    statet &,
+    const code_function_callt &);
 
-  virtual void symex_end_of_function(statet &state);
+  virtual void symex_end_of_function(statet &);
 
   virtual void symex_function_call_symbol(
-    const goto_functionst &goto_functions,
-    statet &state,
-    const code_function_callt &call);
+    const get_goto_functiont &,
+    statet &,
+    const code_function_callt &);
 
   virtual void symex_function_call_code(
-    const goto_functionst &goto_functions,
-    statet &state,
-    const code_function_callt &call);
+    const get_goto_functiont &,
+    statet &,
+    const code_function_callt &);
 
   virtual bool get_unwind_recursion(
     const irep_idt &identifier,
@@ -277,29 +369,28 @@ protected:
 
   void parameter_assignments(
     const irep_idt function_identifier,
-    const goto_functionst::goto_functiont &goto_function,
-    statet &state,
+    const goto_functionst::goto_functiont &,
+    statet &,
     const exprt::operandst &arguments);
 
   void locality(
     const irep_idt function_identifier,
-    statet &state,
-    const goto_functionst::goto_functiont &goto_function);
+    statet &,
+    const goto_functionst::goto_functiont &);
 
   void add_end_of_function(
     exprt &code,
     const irep_idt &identifier);
 
+  nondet_symbol_exprt build_symex_nondet(typet &type);
+
   // exceptions
+  void symex_throw(statet &);
+  void symex_catch(statet &);
 
-  void symex_throw(statet &state);
-  void symex_catch(statet &state);
+  virtual void do_simplify(exprt &);
 
-  virtual void do_simplify(exprt &expr);
-
-  // virtual void symex_block(statet &state, const codet &code);
-  void symex_assign_rec(statet &state, const code_assignt &code);
-  virtual void symex_assign(statet &state, const code_assignt &code);
+  void symex_assign(statet &, const code_assignt &);
 
   // havocs the given object
   void havoc_rec(statet &, const guardt &, const exprt &);
@@ -307,77 +398,81 @@ protected:
   typedef symex_targett::assignment_typet assignment_typet;
 
   void symex_assign_rec(
-    statet &state,
+    statet &,
     const exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_symbol(
-    statet &state,
+    statet &,
     const ssa_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_typecast(
-    statet &state,
+    statet &,
     const typecast_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_array(
-    statet &state,
+    statet &,
     const index_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_struct_member(
-    statet &state,
+    statet &,
     const member_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_if(
-    statet &state,
+    statet &,
     const if_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
   void symex_assign_byte_extract(
-    statet &state,
+    statet &,
     const byte_extract_exprt &lhs,
     const exprt &full_lhs,
     const exprt &rhs,
-    guardt &guard,
-    assignment_typet assignment_type);
+    guardt &,
+    assignment_typet);
 
   static exprt add_to_lhs(const exprt &lhs, const exprt &what);
 
   virtual void symex_gcc_builtin_va_arg_next(
-    statet &state, const exprt &lhs, const side_effect_exprt &code);
+    statet &, const exprt &lhs, const side_effect_exprt &);
   virtual void symex_allocate(
-    statet &state, const exprt &lhs, const side_effect_exprt &code);
-  virtual void symex_cpp_delete(statet &state, const codet &code);
+    statet &, const exprt &lhs, const side_effect_exprt &);
+  virtual void symex_cpp_delete(statet &, const codet &);
   virtual void symex_cpp_new(
-    statet &state, const exprt &lhs, const side_effect_exprt &code);
-  virtual void symex_fkt(statet &state, const code_function_callt &code);
-  virtual void symex_macro(statet &state, const code_function_callt &code);
-  virtual void symex_trace(statet &state, const code_function_callt &code);
-  virtual void symex_printf(statet &state, const exprt &lhs, const exprt &rhs);
-  virtual void symex_input(statet &state, const codet &code);
-  virtual void symex_output(statet &state, const codet &code);
+    statet &, const exprt &lhs, const side_effect_exprt &);
+  virtual void symex_fkt(statet &, const code_function_callt &);
+  virtual void symex_macro(statet &, const code_function_callt &);
+  virtual void symex_trace(statet &, const code_function_callt &);
+  virtual void symex_printf(statet &, const exprt &rhs);
+  virtual void symex_input(statet &, const codet &);
+  virtual void symex_output(statet &, const codet &);
 
   static unsigned nondet_count;
   static unsigned dynamic_counter;
 
-  void read(exprt &expr);
-  void replace_nondet(exprt &expr);
-  void rewrite_quantifiers(exprt &expr, statet &state);
+  void read(exprt &);
+  void replace_nondet(exprt &);
+  void rewrite_quantifiers(exprt &, statet &);
+
+  path_storaget &path_storage;
+
+  std::unordered_map<irep_idt, local_safe_pointerst> safe_pointers;
 };
 
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_H

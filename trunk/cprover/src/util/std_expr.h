@@ -22,10 +22,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "expr_cast.h"
 
 
-/*! \defgroup gr_std_expr Conversion to specific expressions
- *  Conversion to subclasses of @ref exprt
-*/
-
 /*! \brief A transition system, consisting of
            state invariant, initial state predicate,
            and transition predicate
@@ -56,7 +52,7 @@ public:
  * \param expr Source expression
  * \return Object of type \ref transt
  *
- * \ingroup gr_std_expr
+
 */
 inline const transt &to_trans_expr(const exprt &expr)
 {
@@ -505,6 +501,76 @@ inline void validate_expr(const unary_minus_exprt &value)
   validate_operands(value, 1, "Unary minus must have one operand");
 }
 
+/*! \brief The byte swap expression
+*/
+class bswap_exprt: public unary_exprt
+{
+public:
+  bswap_exprt(const exprt &_op, std::size_t bits_per_byte, const typet &_type)
+    : unary_exprt(ID_bswap, _op, _type)
+  {
+    set_bits_per_byte(bits_per_byte);
+  }
+
+  bswap_exprt(const exprt &_op, std::size_t bits_per_byte)
+    : unary_exprt(ID_bswap, _op, _op.type())
+  {
+    set_bits_per_byte(bits_per_byte);
+  }
+
+  std::size_t get_bits_per_byte() const
+  {
+    return get_size_t(ID_bits_per_byte);
+  }
+
+  void set_bits_per_byte(std::size_t bits_per_byte)
+  {
+    set(ID_bits_per_byte, bits_per_byte);
+  }
+};
+
+/*! \brief Cast a generic exprt to a \ref bswap_exprt
+ *
+ * This is an unchecked conversion. \a expr must be known to be \ref
+ * bswap_exprt.
+ *
+ * \param expr Source expression
+ * \return Object of type \ref bswap_exprt
+ *
+ * \ingroup gr_std_expr
+*/
+inline const bswap_exprt &to_bswap_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_bswap);
+  DATA_INVARIANT(expr.operands().size() == 1, "bswap must have one operand");
+  DATA_INVARIANT(
+    expr.op0().type() == expr.type(), "bswap type must match operand type");
+  return static_cast<const bswap_exprt &>(expr);
+}
+
+/*! \copydoc to_bswap_expr(const exprt &)
+ * \ingroup gr_std_expr
+*/
+inline bswap_exprt &to_bswap_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_bswap);
+  DATA_INVARIANT(expr.operands().size() == 1, "bswap must have one operand");
+  DATA_INVARIANT(
+    expr.op0().type() == expr.type(), "bswap type must match operand type");
+  return static_cast<bswap_exprt &>(expr);
+}
+
+template <>
+inline bool can_cast_expr<bswap_exprt>(const exprt &base)
+{
+  return base.id() == ID_bswap;
+}
+inline void validate_expr(const bswap_exprt &value)
+{
+  validate_operands(value, 1, "bswap must have one operand");
+  DATA_INVARIANT(
+    value.op().type() == value.type(), "bswap type must match operand type");
+}
 
 /*! \brief A generic base class for expressions that are predicates,
            i.e., boolean-typed.
@@ -1591,6 +1657,27 @@ template<> inline bool can_cast_expr<array_exprt>(const exprt &base)
   return base.id()==ID_array;
 }
 
+/// Array constructor from a list of index-element pairs
+/// Operands are index/value pairs, alternating.
+class array_list_exprt : public exprt
+{
+public:
+  explicit array_list_exprt(const array_typet &_type)
+    : exprt(ID_array_list, _type)
+  {
+  }
+};
+
+template <>
+inline bool can_cast_expr<array_list_exprt>(const exprt &base)
+{
+  return base.id() == ID_array_list;
+}
+
+inline void validate_expr(const array_list_exprt &value)
+{
+  PRECONDITION(value.operands().size() % 2 == 0);
+}
 
 /*! \brief vector constructor from list of elements
 */
@@ -1736,6 +1823,9 @@ public:
     exprt(ID_struct, _type)
   {
   }
+
+  exprt &component(const irep_idt &name, const namespacet &ns);
+  const exprt &component(const irep_idt &name, const namespacet &ns) const;
 };
 
 /*! \brief Cast a generic exprt to a \ref struct_exprt
@@ -2031,6 +2121,15 @@ public:
   typecast_exprt(const exprt &op, const typet &_type):
     unary_exprt(ID_typecast, op, _type)
   {
+  }
+
+  // returns a typecast if the type doesn't already match
+  static exprt conditional_cast(const exprt &expr, const typet &type)
+  {
+    if(expr.type() == type)
+      return expr;
+    else
+      return typecast_exprt(expr, type);
   }
 };
 
@@ -2825,8 +2924,6 @@ public:
     binary_exprt(_times, ID_replication, _src)
   {
   }
-
-  replication_exprt(const unsigned _times, const exprt &_src);
 
   exprt &times()
   {
@@ -3775,11 +3872,6 @@ inline void validate_expr(const array_update_exprt &value)
 class member_exprt:public unary_exprt
 {
 public:
-  // deprecated, and will go away -- use either of the two below
-  explicit member_exprt(const typet &_type):unary_exprt(ID_member, _type)
-  {
-  }
-
   member_exprt(
     const exprt &op,
     const irep_idt &component_name,
@@ -4687,15 +4779,22 @@ inline void validate_expr(const let_exprt &value)
   validate_operands(value, 3, "Let must have three operands");
 }
 
-
-/*! \brief A forall expression
+/*! \brief A base class for quantifier expressions
 */
-class forall_exprt:public binary_exprt
+class quantifier_exprt:public binary_predicate_exprt
 {
 public:
-  forall_exprt():binary_exprt(ID_forall)
+  explicit quantifier_exprt(const irep_idt &_id):binary_predicate_exprt(_id)
   {
     op0()=symbol_exprt();
+  }
+
+  quantifier_exprt(
+    const irep_idt &_id,
+    const symbol_exprt &_symbol,
+    const exprt &_where)
+    : binary_predicate_exprt(_symbol, _id, _where)
+  {
   }
 
   symbol_exprt &symbol()
@@ -4716,38 +4815,132 @@ public:
   const exprt &where() const
   {
     return op1();
+  }
+};
+
+/*! \brief Cast a generic exprt to a \ref quantifier_exprt
+ *
+ * This is an unchecked conversion. \a expr must be known to be \ref
+ * quantifier_exprt.
+ *
+ * \param expr Source expression
+ * \return Object of type \ref quantifier_exprt
+ *
+ * \ingroup gr_std_expr
+*/
+inline const quantifier_exprt &to_quantifier_expr(const exprt &expr)
+{
+  DATA_INVARIANT(expr.operands().size()==2,
+                 "quantifier expressions must have two operands");
+  return static_cast<const quantifier_exprt &>(expr);
+}
+
+/*! \copydoc to_quantifier_expr(const exprt &)
+ * \ingroup gr_std_expr
+*/
+inline quantifier_exprt &to_quantifier_expr(exprt &expr)
+{
+  DATA_INVARIANT(expr.operands().size()==2,
+                 "quantifier expressions must have two operands");
+  return static_cast<quantifier_exprt &>(expr);
+}
+
+template<> inline bool can_cast_expr<quantifier_exprt>(const exprt &base)
+{
+  return base.id() == ID_forall || base.id() == ID_exists;
+}
+
+inline void validate_expr(const quantifier_exprt &value)
+{
+  validate_operands(value, 2,
+    "quantifier expressions must have two operands");
+}
+
+/*! \brief A forall expression
+*/
+class forall_exprt:public quantifier_exprt
+{
+public:
+  forall_exprt():quantifier_exprt(ID_forall)
+  {
+  }
+
+  forall_exprt(const symbol_exprt &_symbol, const exprt &_where)
+    : quantifier_exprt(ID_forall, _symbol, _where)
+  {
   }
 };
 
 /*! \brief An exists expression
 */
-class exists_exprt:public binary_exprt
+class exists_exprt:public quantifier_exprt
 {
 public:
-  exists_exprt():binary_exprt(ID_exists)
+  exists_exprt():quantifier_exprt(ID_exists)
   {
-    op0()=symbol_exprt();
   }
 
-  symbol_exprt &symbol()
+  exists_exprt(const symbol_exprt &_symbol, const exprt &_where)
+    : quantifier_exprt(ID_exists, _symbol, _where)
   {
-    return static_cast<symbol_exprt &>(op0());
-  }
-
-  const symbol_exprt &symbol() const
-  {
-    return static_cast<const symbol_exprt &>(op0());
-  }
-
-  exprt &where()
-  {
-    return op1();
-  }
-
-  const exprt &where() const
-  {
-    return op1();
   }
 };
+
+/*! \brief The popcount (counting the number of bits set to 1) expression
+*/
+class popcount_exprt: public unary_exprt
+{
+public:
+  popcount_exprt(): unary_exprt(ID_popcount)
+  {
+  }
+
+  popcount_exprt(const exprt &_op, const typet &_type)
+    : unary_exprt(ID_popcount, _op, _type)
+  {
+  }
+
+  explicit popcount_exprt(const exprt &_op)
+    : unary_exprt(ID_popcount, _op, _op.type())
+  {
+  }
+};
+
+/*! \brief Cast a generic exprt to a \ref popcount_exprt
+ *
+ * This is an unchecked conversion. \a expr must be known to be \ref
+ * popcount_exprt.
+ *
+ * \param expr Source expression
+ * \return Object of type \ref popcount_exprt
+ *
+ * \ingroup gr_std_expr
+*/
+inline const popcount_exprt &to_popcount_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_popcount);
+  DATA_INVARIANT(expr.operands().size() == 1, "popcount must have one operand");
+  return static_cast<const popcount_exprt &>(expr);
+}
+
+/*! \copydoc to_popcount_expr(const exprt &)
+ * \ingroup gr_std_expr
+*/
+inline popcount_exprt &to_popcount_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_popcount);
+  DATA_INVARIANT(expr.operands().size() == 1, "popcount must have one operand");
+  return static_cast<popcount_exprt &>(expr);
+}
+
+template <>
+inline bool can_cast_expr<popcount_exprt>(const exprt &base)
+{
+  return base.id() == ID_popcount;
+}
+inline void validate_expr(const popcount_exprt &value)
+{
+  validate_operands(value, 1, "popcount must have one operand");
+}
 
 #endif // CPROVER_UTIL_STD_EXPR_H

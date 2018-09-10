@@ -12,12 +12,11 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #ifndef CPROVER_CPP_CPP_LANGUAGE_H
 #define CPROVER_CPP_CPP_LANGUAGE_H
 
-/*! \defgroup gr_cpp C++ front-end */
-
 #include <memory>
 
-#include <util/language.h>
 #include <util/make_unique.h> // unique_ptr
+
+#include <langapi/language.h>
 
 #include "cpp_parse_tree.h"
 

@@ -162,24 +162,26 @@ inline void free(void *ptr)
   __CPROVER_precondition(ptr==0 || __CPROVER_POINTER_OFFSET(ptr)==0,
                          "free argument has offset zero");
 
+  // catch double free
+  __CPROVER_precondition(ptr==0 || __CPROVER_deallocated!=ptr,
+                         "double free");
+
+  // catch people who try to use free(...) for stuff
+  // allocated with new[]
+  __CPROVER_precondition(ptr==0 ||
+                         __CPROVER_malloc_object!=ptr ||
+                         !__CPROVER_malloc_is_new_array,
+                         "free called for new[] object");
+
   if(ptr!=0)
   {
-    // catch double free
-    if(__CPROVER_deallocated==ptr)
-      __CPROVER_assert(0, "double free");
-
-    // catch people who try to use free(...) for stuff
-    // allocated with new[]
-    __CPROVER_assert(__CPROVER_malloc_object!=ptr ||
-                     !__CPROVER_malloc_is_new_array,
-                     "free called for new[] object");
-
     // non-deterministically record as deallocated
     __CPROVER_bool record=__VERIFIER_nondet___CPROVER_bool();
     if(record) __CPROVER_deallocated=ptr;
 
     // detect memory leaks
-    if(__CPROVER_memory_leak==ptr) __CPROVER_memory_leak=0;
+    if(__CPROVER_memory_leak==ptr)
+      __CPROVER_memory_leak=0;
   }
 }
 
@@ -206,7 +208,7 @@ inline long strtol(const char *nptr, char **endptr, int base)
 {
   __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
-  __CPROVER_assert(__CPROVER_is_zero_string(nptr),
+  __CPROVER_precondition(__CPROVER_is_zero_string(nptr),
     "zero-termination of argument of strtol");
   #endif
 
@@ -329,7 +331,7 @@ inline char *getenv(const char *name)
 
   (void)*name;
   #ifdef __CPROVER_STRING_ABSTRACTION
-  __CPROVER_assert(__CPROVER_is_zero_string(name),
+  __CPROVER_precondition(__CPROVER_is_zero_string(name),
     "zero-termination of argument of getenv");
   #endif
 
@@ -367,6 +369,9 @@ inline void *realloc(void *ptr, __CPROVER_size_t malloc_size)
 {
   __CPROVER_HIDE:;
 
+  __CPROVER_precondition(ptr==0 || __CPROVER_DYNAMIC_OBJECT(ptr),
+                         "realloc argument is dynamic object");
+
   // if ptr is NULL, this behaves like malloc
   if(ptr==0)
     return malloc(malloc_size);
@@ -378,9 +383,6 @@ inline void *realloc(void *ptr, __CPROVER_size_t malloc_size)
     free(ptr);
     return malloc(1);
   }
-
-  __CPROVER_assert(__CPROVER_DYNAMIC_OBJECT(ptr),
-                   "realloc argument is dynamic object");
 
   // this shouldn't move if the new size isn't bigger
   void *res;
@@ -402,6 +404,51 @@ inline void *valloc(__CPROVER_size_t malloc_size)
 
   __CPROVER_HIDE:;
   return malloc(malloc_size);
+}
+
+/* FUNCTION: posix_memalign */
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+#undef posix_memalign
+
+inline void *malloc(__CPROVER_size_t malloc_size);
+inline int
+posix_memalign(void **ptr, __CPROVER_size_t alignment, __CPROVER_size_t size)
+{
+__CPROVER_HIDE:;
+
+  __CPROVER_size_t multiplier = alignment / sizeof(void *);
+  // Modeling the posix_memalign checks on alignment.
+  if(
+    alignment % sizeof(void *) != 0 || ((multiplier) & (multiplier - 1)) != 0 ||
+    alignment == 0)
+  {
+    return EINVAL;
+  }
+  // The address of the allocated memory is supposed to be aligned with
+  // alignment. As cbmc doesn't model address alignment,
+  // assuming MALLOC_ALIGNMENT = MAX_INT_VALUE seems fair.
+  // As _mid_memalign simplifies for alignment <= MALLOC_ALIGNMENT
+  // to a malloc call, it should be sound, if we do it too.
+
+  // The originial posix_memalign check on the pointer is:
+
+  // void *tmp = malloc(size);
+  // if(tmp != NULL){
+  //   *ptr = tmp;
+  //   return 0;
+  // }
+  // return ENOMEM;
+
+  // As _CPROVER_allocate used in malloc never returns null,
+  // this check is not applicable and can be simplified:
+
+  *ptr = malloc(size);
+  return 0;
 }
 
 /* FUNCTION: random */

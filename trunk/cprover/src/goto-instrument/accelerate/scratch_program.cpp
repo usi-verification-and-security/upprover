@@ -29,7 +29,6 @@ bool scratch_programt::check_sat(bool do_slice)
   add_instruction(END_FUNCTION);
 
   remove_skip(*this);
-  update();
 
 #ifdef DEBUG
   std::cout << "Checking following program for satness:\n";
@@ -39,7 +38,7 @@ bool scratch_programt::check_sat(bool do_slice)
   symex.constant_propagation=constant_propagation;
   goto_symex_statet::propagationt::valuest constants;
 
-  symex(symex_state, functions, *this);
+  symex.symex_with_state(symex_state, functions, symex_symbol_table);
 
   if(do_slice)
   {

@@ -14,22 +14,19 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 #include <solvers/refinement/string_constraint_generator.h>
 
 /// Add axioms enforcing that `res` is the concatenation of `s1` with
-/// the substring of `s2` starting at index `start_index` and ending
-/// at index `end_index`.
-///
-/// If `start_index >= end_index`, the value returned is `s1`.
-/// If `end_index > |s2|` and/or `start_index < 0`, the appended string will
-/// be of length `end_index - start_index` and padded with non-deterministic
-/// values.
+/// the substring of `s2` starting at index `start_index'` and ending
+/// at index `end_index'`.
+/// Where start_index' is max(0, start_index) and end_index' is
+/// max(min(end_index, s2.length), start_index')
+/// If s1.length + end_index' - start_index' is greater than the maximal integer
+/// of the type of res.length, then the result gets truncated to the size
+/// of this maximal integer.
 ///
 /// These axioms are:
-///   1. \f$end\_index > start\_index \Rightarrow |res| = |s_1| + end\_index -
-///        start\_index
-///     \f$
-///   2. \f$end\_index \le start\_index \Rightarrow res = s_1 \f$
-///   3. \f$\forall i<|s_1|. res[i]=s_1[i] \f$
-///   4. \f$\forall i< end\_index - start\_index.\ res[i+|s_1|]
-///        = s_2[start\_index+i]\f$
+///   1. \f$|res| = overflow ? |s_1| + end\_index' - start\_index'
+///                          : max_int \f$
+///   2. \f$\forall i<|s_1|. res[i]=s_1[i] \f$
+///   3. \f$\forall i< |res| - |s_1|.\ res[i+|s_1|] = s_2[start\_index'+i]\f$
 ///
 /// \param res: an array of characters expression
 /// \param s1: an array of characters expression
@@ -44,28 +41,64 @@ exprt string_constraint_generatort::add_axioms_for_concat_substr(
   const exprt &start_index,
   const exprt &end_index)
 {
-  binary_relation_exprt prem(end_index, ID_gt, start_index);
+  const typet &index_type = start_index.type();
+  const exprt start1 = maximum(start_index, from_integer(0, index_type));
+  const exprt end1 = maximum(minimum(end_index, s2.length()), start1);
 
-  exprt res_length=plus_exprt_with_overflow_check(
-    s1.length(), minus_exprt(end_index, start_index));
-  implies_exprt a1(prem, equal_exprt(res.length(), res_length));
-  axioms.push_back(a1);
+  // Axiom 1.
+  lemmas.push_back(
+    length_constraint_for_concat_substr(res, s1, s2, start_index, end_index));
 
-  implies_exprt a2(not_exprt(prem), equal_exprt(res.length(), s1.length()));
-  axioms.push_back(a2);
+  // Axiom 2.
+  constraints.push_back([&] {
+    const symbol_exprt idx =
+      fresh_univ_index("QA_index_concat", res.length().type());
+    return string_constraintt(
+      idx, zero_if_negative(s1.length()), equal_exprt(s1[idx], res[idx]));
+  }());
 
-  symbol_exprt idx=fresh_univ_index("QA_index_concat", res.length().type());
-  string_constraintt a3(idx, s1.length(), equal_exprt(s1[idx], res[idx]));
-  axioms.push_back(a3);
+  // Axiom 3.
+  constraints.push_back([&] {
+    const symbol_exprt idx2 =
+      fresh_univ_index("QA_index_concat2", res.length().type());
+    const equal_exprt res_eq(
+      res[plus_exprt(idx2, s1.length())], s2[plus_exprt(start1, idx2)]);
+    const minus_exprt upper_bound(res.length(), s1.length());
+    return string_constraintt(idx2, zero_if_negative(upper_bound), res_eq);
+  }());
 
-  symbol_exprt idx2=fresh_univ_index("QA_index_concat2", res.length().type());
-  equal_exprt res_eq(
-    res[plus_exprt(idx2, s1.length())], s2[plus_exprt(start_index, idx2)]);
-  string_constraintt a4(idx2, minus_exprt(end_index, start_index), res_eq);
-  axioms.push_back(a4);
+  return from_integer(0, get_return_code_type());
+}
 
-  // We should have a enum type for the possible error codes
-  return from_integer(0, res.length().type());
+/// Add axioms enforcing that the length of `res` is that of the concatenation
+/// of `s1` with the substring of `s2` starting at index `start'`
+/// and ending at index `end'`.
+/// Where start_index' is max(0, start) and end' is
+/// max(min(end, s2.length), start')
+exprt length_constraint_for_concat_substr(
+  const array_string_exprt &res,
+  const array_string_exprt &s1,
+  const array_string_exprt &s2,
+  const exprt &start,
+  const exprt &end)
+{
+  PRECONDITION(res.length().type().id() == ID_signedbv);
+  const exprt start1 = maximum(start, from_integer(0, start.type()));
+  const exprt end1 = maximum(minimum(end, s2.length()), start1);
+  const plus_exprt res_length(s1.length(), minus_exprt(end1, start1));
+  const exprt overflow = sum_overflows(res_length);
+  const exprt max_int = to_signedbv_type(res.length().type()).largest_expr();
+  return equal_exprt(res.length(), if_exprt(overflow, max_int, res_length));
+}
+
+/// Add axioms enforcing that the length of `res` is that of the concatenation
+/// of `s1` with `s2`
+exprt length_constraint_for_concat(
+  const array_string_exprt &res,
+  const array_string_exprt &s1,
+  const array_string_exprt &s2)
+{
+  return equal_exprt(res.length(), plus_exprt(s1.length(), s2.length()));
 }
 
 /// Add axioms enforcing that `res` is the concatenation of `s1` with
@@ -85,19 +118,28 @@ exprt string_constraint_generatort::add_axioms_for_concat_char(
   const exprt &c)
 {
   const typet &index_type = res.length().type();
-  const equal_exprt a1(
-    res.length(), plus_exprt(s1.length(), from_integer(1, index_type)));
-  axioms.push_back(a1);
+  lemmas.push_back(length_constraint_for_concat_char(res, s1));
 
   symbol_exprt idx = fresh_univ_index("QA_index_concat_char", index_type);
-  string_constraintt a2(idx, s1.length(), equal_exprt(s1[idx], res[idx]));
-  axioms.push_back(a2);
+  string_constraintt a2(
+    idx, zero_if_negative(s1.length()), equal_exprt(s1[idx], res[idx]));
+  constraints.push_back(a2);
 
   equal_exprt a3(res[s1.length()], c);
-  axioms.push_back(a3);
+  lemmas.push_back(a3);
 
   // We should have a enum type for the possible error codes
   return from_integer(0, get_return_code_type());
+}
+
+/// Add axioms enforcing that the length of `res` is that of the concatenation
+/// of `s1` with
+exprt length_constraint_for_concat_char(
+  const array_string_exprt &res,
+  const array_string_exprt &s1)
+{
+  return equal_exprt(
+    res.length(), plus_exprt(s1.length(), from_integer(1, s1.length().type())));
 }
 
 /// Add axioms enforcing that `res` is equal to the concatenation of `s1` and

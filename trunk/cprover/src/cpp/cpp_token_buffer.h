@@ -14,6 +14,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include "cpp_token.h"
 
+#include <list>
+
+#include <util/invariant.h>
+
 class cpp_token_buffert
 {
 public:
@@ -43,7 +47,7 @@ public:
   // the token that is currently being read from the file
   cpp_tokent &current_token()
   {
-    assert(!tokens.empty());
+    PRECONDITION(!tokens.empty());
     return tokens.back();
   }
 

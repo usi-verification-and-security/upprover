@@ -10,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/threeval.h>
 
-#include "../prop/prop.h"
+#include <solvers/prop/prop.h>
 
 #include "boolbv_width.h"
 
@@ -145,4 +145,11 @@ void boolbv_mapt::set_literals(
     mb.is_set=true;
     mb.l=literal;
   }
+}
+
+void boolbv_mapt::erase_literals(
+  const irep_idt &identifier,
+  const typet &)
+{
+  mapping.erase(identifier);
 }

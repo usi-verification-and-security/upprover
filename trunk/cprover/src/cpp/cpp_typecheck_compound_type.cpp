@@ -11,6 +11,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include "cpp_typecheck.h"
 
+#ifdef DEBUG
+#include <iostream>
+#endif
+
 #include <algorithm>
 
 #include <util/arith_tools.h>
@@ -49,6 +53,24 @@ bool cpp_typecheckt::has_volatile(const typet &type)
   {
     forall_subtypes(it, type)
       if(has_volatile(*it))
+        return true;
+
+    return false;
+  }
+  else
+    return false;
+}
+
+bool cpp_typecheckt::has_auto(const typet &type)
+{
+  if(type.id() == ID_auto)
+    return true;
+  else if(
+    type.id() == ID_merged_type || type.id() == ID_frontend_pointer ||
+    type.id() == ID_pointer)
+  {
+    forall_subtypes(it, type)
+      if(has_auto(*it))
         return true;
 
     return false;
@@ -242,8 +264,7 @@ void cpp_typecheckt::typecheck_compound_type(
   }
 
   // create type symbol
-  typet symbol_type(ID_symbol);
-  symbol_type.set(ID_identifier, symbol_name);
+  symbol_typet symbol_type(symbol_name);
   qualifiers.write(symbol_type);
   type.swap(symbol_type);
 }
@@ -357,8 +378,7 @@ void cpp_typecheckt::typecheck_compound_declarator(
     throw 0;
   }
 
-  if(is_constructor &&
-     base_name!=id2string(symbol.base_name))
+  if(is_constructor && base_name != symbol.base_name)
   {
     error().source_location=cpp_name.source_location();
     error() << "member function must return a value or void" << eom;
@@ -379,7 +399,7 @@ void cpp_typecheckt::typecheck_compound_declarator(
   irep_idt identifier;
 
   // the below is a temporary hack
-  // if(is_method || is_static)d
+  // if(is_method || is_static)
   if(id2string(cpp_scopes.current_scope().prefix).find("#anon")==
      std::string::npos ||
      is_method || is_static)
@@ -406,7 +426,7 @@ void cpp_typecheckt::typecheck_compound_declarator(
   if(cpp_name.is_operator())
   {
     component.set("is_operator", true);
-    component.type().set("#is_operator", true);
+    component.type().set(ID_C_is_operator, true);
   }
 
   if(is_cast_operator)
@@ -422,11 +442,11 @@ void cpp_typecheckt::typecheck_compound_declarator(
   if(is_static)
   {
     component.set(ID_is_static, true);
-    component.type().set("#is_static", true);
+    component.type().set(ID_C_is_static, true);
   }
 
   if(is_typedef)
-    component.set("is_type", true);
+    component.set(ID_is_type, true);
 
   if(is_mutable)
     component.set("is_mutable", true);
@@ -436,6 +456,14 @@ void cpp_typecheckt::typecheck_compound_declarator(
 
   if(is_method)
   {
+    if(
+      value.id() == ID_code &&
+      to_code(value).get_statement() == ID_cpp_delete)
+    {
+      value.make_nil();
+      component.set(ID_access, "noaccess");
+    }
+
     component.set(ID_is_inline, declaration.member_spec().is_inline());
 
     // the 'virtual' name of the function
@@ -449,7 +477,7 @@ void cpp_typecheckt::typecheck_compound_declarator(
       virtual_name+="$const";
 
     if(has_volatile(method_qualifier))
-      virtual_name+="$virtual";
+      virtual_name += "$volatile";
 
     if(component.type().get(ID_return_type)==ID_destructor)
       virtual_name="@dtor";
@@ -489,25 +517,21 @@ void cpp_typecheckt::typecheck_compound_declarator(
     else // virtual
     {
       component.type().set(ID_C_is_virtual, true);
-      component.type().set("#virtual_name", virtual_name);
+      component.type().set(ID_C_virtual_name, virtual_name);
 
       // Check if it is a pure virtual method
-      if(is_virtual)
+      if(value.is_not_nil() && value.id() == ID_constant)
       {
-        if(value.is_not_nil() && value.id()==ID_constant)
+        mp_integer i;
+        to_integer(value, i);
+        if(i!=0)
         {
-          mp_integer i;
-          to_integer(value, i);
-          if(i!=0)
-          {
-            error().source_location=declarator.name().source_location();
-            error() << "expected 0 to mark pure virtual method, got "
-                    << i << eom;
-            throw 0;
-          }
-          component.set("is_pure_virtual", true);
-          value.make_nil();
+          error().source_location = declarator.name().source_location();
+          error() << "expected 0 to mark pure virtual method, got " << i << eom;
+          throw 0;
         }
+        component.set("is_pure_virtual", true);
+        value.make_nil();
       }
 
       typecheck_member_function(
@@ -616,47 +640,36 @@ void cpp_typecheckt::typecheck_compound_declarator(
 
         // do the body of the function
         typecast_exprt late_cast(
+          lookup(args[0].get(ID_C_identifier)).symbol_expr(),
           to_code_type(component.type()).parameters()[0].type());
 
-        late_cast.op0()=
-          namespacet(symbol_table).lookup(
-            args[0].get(ID_C_identifier)).symbol_expr();
+        side_effect_expr_function_callt expr_call;
+        expr_call.function() =
+          symbol_exprt(component.get_name(), component.type());
+        expr_call.arguments().reserve(args.size());
+        expr_call.arguments().push_back(late_cast);
+
+        for(const auto &arg : args)
+        {
+          expr_call.arguments().push_back(
+            lookup(arg.get(ID_C_identifier)).symbol_expr());
+        }
 
         if(code_type.return_type().id()!=ID_empty &&
            code_type.return_type().id()!=ID_destructor)
         {
-          side_effect_expr_function_callt expr_call;
-          expr_call.function()=
-            symbol_exprt(component.get_name(), component.type());
           expr_call.type()=to_code_type(component.type()).return_type();
-          expr_call.arguments().reserve(args.size());
-          expr_call.arguments().push_back(late_cast);
+          exprt already_typechecked(ID_already_typechecked);
+          already_typechecked.move_to_operands(expr_call);
 
-          for(std::size_t i=1; i < args.size(); i++)
-          {
-            expr_call.arguments().push_back(
-              namespacet(symbol_table).lookup(
-                args[i].get(ID_C_identifier)).symbol_expr());
-          }
-
-          func_symb.value=code_returnt(expr_call);
+          func_symb.value = code_returnt(already_typechecked).make_block();
         }
         else
         {
-          code_function_callt code_func;
-          code_func.function()=
-            symbol_exprt(component.get_name(), component.type());
-          code_func.arguments().reserve(args.size());
-          code_func.arguments().push_back(late_cast);
+          exprt already_typechecked(ID_already_typechecked);
+          already_typechecked.move_to_operands(expr_call);
 
-          for(std::size_t i=1; i < args.size(); i++)
-          {
-            code_func.arguments().push_back(
-              namespacet(symbol_table).lookup(
-                args[i].get(ID_C_identifier)).symbol_expr());
-          }
-
-          func_symb.value=code_func;
+          func_symb.value = code_expressiont(already_typechecked).make_block();
         }
 
         // add this new function to the list of components
@@ -671,6 +684,8 @@ void cpp_typecheckt::typecheck_compound_declarator(
           const bool failed=!symbol_table.insert(std::move(func_symb)).second;
           CHECK_RETURN(!failed);
         }
+
+        put_compound_into_scope(new_compo);
 
         // next base
         virtual_bases.erase(virtual_bases.begin());
@@ -873,9 +888,9 @@ void cpp_typecheckt::typecheck_friend_declaration(
     // typecheck ftype
 
     // TODO
-//    typecheck_type(ftype);
-//    assert(ftype.id()==ID_symbol);
-//    symbol.type.add("#friends").move_to_sub(ftype);
+    //    typecheck_type(ftype);
+    //    assert(ftype.id()==ID_symbol_type);
+    //    symbol.type.add("ID_C_friends").move_to_sub(ftype);
 
     return;
   }
@@ -885,7 +900,7 @@ void cpp_typecheckt::typecheck_friend_declaration(
 
   for(auto &sub_it : declaration.declarators())
   {
-    bool has_value=sub_it.value().is_not_nil();
+    bool has_value = sub_it.value().is_not_nil();
 
     if(!has_value)
     {
@@ -899,7 +914,7 @@ void cpp_typecheckt::typecheck_friend_declaration(
           declaration.type(), declaration.storage_spec(),
           declaration.member_spec(), sub_it);
       exprt symb_expr=cpp_symbol_expr(conv_symb);
-      symbol.type.add("#friends").move_to_sub(symb_expr);
+      symbol.type.add(ID_C_friends).move_to_sub(symb_expr);
     }
     else
     {
@@ -914,7 +929,7 @@ void cpp_typecheckt::typecheck_friend_declaration(
 
       exprt symb_expr=cpp_symbol_expr(conv_symb);
 
-      symbol.type.add("#friends").move_to_sub(symb_expr);
+      symbol.type.add(ID_C_friends).move_to_sub(symb_expr);
     }
   }
 }
@@ -1432,12 +1447,9 @@ void cpp_typecheckt::convert_anon_struct_union_member(
     cpp_scopes.current_scope().prefix+
     base_name.c_str();
 
-  typet symbol_type(ID_symbol);
-  symbol_type.set(ID_identifier, struct_union_symbol.name);
+  const symbol_typet symbol_type(struct_union_symbol.name);
 
-  struct_typet::componentt component;
-  component.set(ID_name, identifier);
-  component.type()=symbol_type;
+  struct_typet::componentt component(identifier, symbol_type);
   component.set_access(access);
   component.set_base_name(base_name);
   component.set_pretty_name(base_name);
@@ -1450,7 +1462,7 @@ void cpp_typecheckt::convert_anon_struct_union_member(
 
   put_compound_into_scope(component);
 
-  struct_union_symbol.type.set("#unnamed_object", base_name);
+  struct_union_symbol.type.set(ID_C_unnamed_object, base_name);
 }
 
 bool cpp_typecheckt::get_component(
@@ -1472,10 +1484,8 @@ bool cpp_typecheckt::get_component(
 
   for(const auto &component : components)
   {
-    exprt tmp(ID_member, component.type());
-    tmp.set(ID_component_name, component.get_name());
+    member_exprt tmp(object, component.get_name(), component.type());
     tmp.add_source_location()=source_location;
-    tmp.copy_to_operands(object);
 
     if(component.get_name()==component_name)
     {
@@ -1486,18 +1496,16 @@ bool cpp_typecheckt::get_component(
       {
         if(disable_access_control)
         {
-          member.set("#not_accessible", true);
+          member.set(ID_C_not_accessible, true);
           member.set(ID_C_access, component.get(ID_access));
         }
         else
         {
-          #if 0
           error().source_location=source_location;
-          str << "error: member `" << component_name
-              << "' is not accessible (" << component.get(ID_access) << ")";
-          str << "\nstruct name: " << final_type.get(ID_name);
+          error() << "error: member `" << component_name
+                  << "' is not accessible (" << component.get(ID_access) << ")"
+                  << eom;
           throw 0;
-          #endif
         }
       }
 
@@ -1512,8 +1520,7 @@ bool cpp_typecheckt::get_component(
 
       return true; // component found
     }
-    else if(
-      follow(component.type()).find("#unnamed_object").is_not_nil())
+    else if(follow(component.type()).find(ID_C_unnamed_object).is_not_nil())
     {
       // could be anonymous union or struct
 
@@ -1527,12 +1534,10 @@ bool cpp_typecheckt::get_component(
         {
           if(check_component_access(component, final_type))
           {
-            #if 0
             error().source_location=source_location;
-            str << "error: member `" << component_name
-                << "' is not accessible";
+            error() << "error: member `" << component_name
+                    << "' is not accessible" << eom;
             throw 0;
-            #endif
           }
 
           if(object.get_bool(ID_C_lvalue))
@@ -1591,8 +1596,7 @@ bool cpp_typecheckt::check_component_access(
   }
 
   // check friendship
-  const irept::subt &friends=
-    struct_union_type.find("#friends").get_sub();
+  const irept::subt &friends = struct_union_type.find(ID_C_friends).get_sub();
 
   forall_irep(f_it, friends)
   {
@@ -1627,7 +1631,7 @@ void cpp_typecheckt::get_bases(
   forall_irep(it, bases)
   {
     assert(it->id()==ID_base);
-    assert(it->get(ID_type)==ID_symbol);
+    assert(it->get(ID_type) == ID_symbol_type);
 
     const struct_typet &base=
       to_struct_type(lookup(it->find(ID_type).get(ID_identifier)).type);
@@ -1649,7 +1653,7 @@ void cpp_typecheckt::get_virtual_bases(
   forall_irep(it, bases)
   {
     assert(it->id()==ID_base);
-    assert(it->get(ID_type)==ID_symbol);
+    assert(it->get(ID_type) == ID_symbol_type);
 
     const struct_typet &base=
       to_struct_type(lookup(it->find(ID_type).get(ID_identifier)).type);

@@ -8,20 +8,21 @@
 #define SYMEX_ASSERTION_NO_PARTITIONT_H
 
 #include <goto-symex/goto_symex.h>
-
 class hifrog_symex_target_equationt;
 class assertion_infot;
+class path_storaget;
 
 class symex_no_partitiont : public goto_symext {
 public:
     symex_no_partitiont(
-            const namespacet &_ns,
-            symbol_tablet &_new_symbol_table,
-            hifrog_symex_target_equationt &_target,
-            message_handlert &_message_handler,
-            const goto_programt &_goto_program,
-            bool _use_slicing=true
-          );
+            const optionst & _options,
+            path_storaget & _path_storage,
+            const symbol_tablet & _outer_symbol_table,
+            hifrog_symex_target_equationt & _target,
+            message_handlert & _message_handler,
+            const goto_programt & _goto_program,
+            bool _use_slicing = true
+    );
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
 
@@ -47,7 +48,10 @@ public:
 // Data Members    
     std::map<irep_idt, std::string> guard_expln;
 protected:
-    bool get_unwind(const symex_targett::sourcet & source, unsigned unwind) override;
+    bool get_unwind(
+    const symex_targett::sourcet &source,
+    const goto_symex_statet::call_stackt &context,
+    unsigned unwind) override;
 
 private:
     unsigned int max_unwind = 1;
@@ -65,6 +69,8 @@ private:
     unsigned loc;
 
     bool use_slicing;
+    
+    symbol_tablet new_symbol_table;
     
     bool process_planned(statet &state, const goto_functionst &goto_functions, bool force_check);
 

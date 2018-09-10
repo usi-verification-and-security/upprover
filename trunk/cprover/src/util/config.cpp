@@ -18,6 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "std_expr.h"
 #include "cprover_prefix.h"
 #include "string2int.h"
+#include "string_utils.h"
 
 configt config;
 
@@ -154,11 +155,11 @@ void configt::ansi_ct::set_arch_spec_i386()
   switch(mode)
   {
   case flavourt::GCC:
-  case flavourt::APPLE:
+  case flavourt::CLANG:
     defines.push_back("i386");
     defines.push_back("__i386");
     defines.push_back("__i386__");
-    if(mode==flavourt::APPLE)
+    if(mode == flavourt::CLANG)
       defines.push_back("__LITTLE_ENDIAN__");
     break;
 
@@ -187,14 +188,15 @@ void configt::ansi_ct::set_arch_spec_x86_64()
   switch(mode)
   {
   case flavourt::GCC:
-  case flavourt::APPLE:
+  case flavourt::CLANG:
     defines.push_back("__LP64__");
     defines.push_back("__x86_64");
     defines.push_back("__x86_64__");
     defines.push_back("_LP64");
     defines.push_back("__amd64__");
     defines.push_back("__amd64");
-    if(mode==flavourt::APPLE)
+
+    if(os == ost::OS_MACOS)
       defines.push_back("__LITTLE_ENDIAN__");
     break;
 
@@ -232,13 +234,13 @@ void configt::ansi_ct::set_arch_spec_power(const irep_idt &subarch)
   switch(mode)
   {
   case flavourt::GCC:
-  case flavourt::APPLE:
+  case flavourt::CLANG:
     defines.push_back("__powerpc");
     defines.push_back("__powerpc__");
     defines.push_back("__POWERPC__");
     defines.push_back("__ppc__");
 
-    if(mode==flavourt::APPLE)
+    if(os == ost::OS_MACOS)
       defines.push_back("__BIG_ENDIAN__");
 
     if(subarch!="powerpc")
@@ -294,7 +296,7 @@ void configt::ansi_ct::set_arch_spec_arm(const irep_idt &subarch)
   switch(mode)
   {
   case flavourt::GCC:
-  case flavourt::APPLE:
+  case flavourt::CLANG:
     if(subarch=="arm64")
       defines.push_back("__aarch64__");
     else
@@ -335,7 +337,7 @@ void configt::ansi_ct::set_arch_spec_alpha()
     defines.push_back("_M_ALPHA");
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -385,7 +387,7 @@ void configt::ansi_ct::set_arch_spec_mips(const irep_idt &subarch)
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -414,7 +416,7 @@ void configt::ansi_ct::set_arch_spec_s390()
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -442,7 +444,7 @@ void configt::ansi_ct::set_arch_spec_s390x()
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -482,7 +484,7 @@ void configt::ansi_ct::set_arch_spec_sparc(const irep_idt &subarch)
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -513,7 +515,7 @@ void configt::ansi_ct::set_arch_spec_ia64()
     defines.push_back("_M_IA64");
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -548,7 +550,7 @@ void configt::ansi_ct::set_arch_spec_x32()
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -602,7 +604,7 @@ void configt::ansi_ct::set_arch_spec_hppa()
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -632,7 +634,7 @@ void configt::ansi_ct::set_arch_spec_sh4()
     UNREACHABLE; // not supported by Visual Studio
     break;
 
-  case flavourt::APPLE:
+  case flavourt::CLANG:
   case flavourt::CODEWARRIOR:
   case flavourt::ARM:
   case flavourt::ANSI:
@@ -652,13 +654,21 @@ configt::ansi_ct::c_standardt configt::ansi_ct::default_c_standard()
   // By default, clang on FreeBSD builds C code in GNU C99
   return c_standardt::C99;
   #else
-  return c_standardt::C99;
+  // By default, gcc 5.4 or higher use gnu11; older versions use gnu89
+  return c_standardt::C11;
   #endif
 }
 
 configt::cppt::cpp_standardt configt::cppt::default_cpp_standard()
 {
+  // g++ 6.3 uses gnu++14
+  // g++ 5.4 uses gnu++98
+  // clang 6.0 uses c++14
+  #if defined _WIN32
+  return cpp_standardt::CPP14;
+  #else
   return cpp_standardt::CPP98;
+  #endif
 }
 
 void configt::set_arch(const irep_idt &arch)
@@ -737,8 +747,8 @@ bool configt::set(const cmdlinet &cmdline)
 
   ansi_c.single_precision_constant=false;
   ansi_c.for_has_scope=true; // C99 or later
+  ansi_c.ts_18661_3_Floatn_types=false;
   ansi_c.c_standard=ansi_ct::default_c_standard();
-  ansi_c.use_fixed_for_float=false;
   ansi_c.endianness=ansi_ct::endiannesst::NO_ENDIANNESS;
   ansi_c.os=ansi_ct::ost::NO_OS;
   ansi_c.arch="none";
@@ -789,12 +799,6 @@ bool configt::set(const cmdlinet &cmdline)
 
   if(cmdline.isset("include"))
     ansi_c.include_files=cmdline.get_values("include");
-
-  if(cmdline.isset("floatbv"))
-    ansi_c.use_fixed_for_float=false;
-
-  if(cmdline.isset("fixedbv"))
-    ansi_c.use_fixed_for_float=true;
 
   // the default architecture is the one we run on
   irep_idt this_arch=this_architecture();
@@ -887,7 +891,7 @@ bool configt::set(const cmdlinet &cmdline)
   {
     ansi_c.lib=configt::ansi_ct::libt::LIB_FULL;
     ansi_c.os=configt::ansi_ct::ost::OS_MACOS;
-    ansi_c.mode=ansi_ct::flavourt::APPLE;
+    ansi_c.mode = ansi_ct::flavourt::CLANG;
     ansi_c.preprocessor=ansi_ct::preprocessort::CLANG;
   }
   else if(os=="linux" || os=="solaris")
@@ -901,7 +905,7 @@ bool configt::set(const cmdlinet &cmdline)
   {
     ansi_c.lib=configt::ansi_ct::libt::LIB_FULL;
     ansi_c.os=configt::ansi_ct::ost::OS_LINUX;
-    ansi_c.mode=ansi_ct::flavourt::GCC;
+    ansi_c.mode=ansi_ct::flavourt::CLANG;
     ansi_c.preprocessor=ansi_ct::preprocessort::CLANG;
   }
   else
@@ -912,6 +916,9 @@ bool configt::set(const cmdlinet &cmdline)
     ansi_c.mode=ansi_ct::flavourt::GCC;
     ansi_c.preprocessor=ansi_ct::preprocessort::GCC;
   }
+
+  if(ansi_c.preprocessor == ansi_ct::preprocessort::GCC)
+    ansi_c.Float128_type = true;
 
   set_arch(arch);
 
@@ -1141,9 +1148,9 @@ void configt::set_from_symbol_table(
 
   ansi_c.char_is_unsigned=unsigned_from_ns(ns, "char_is_unsigned")!=0;
   ansi_c.wchar_t_is_unsigned=unsigned_from_ns(ns, "wchar_t_is_unsigned")!=0;
-  ansi_c.use_fixed_for_float=unsigned_from_ns(ns, "fixed_for_float")!=0;
-  // for_has_scope, single_precision_constant, rounding_mode not
-  // stored in namespace
+  // for_has_scope, single_precision_constant, rounding_mode,
+  // ts_18661_3_Floatn_types are not architectural features,
+  // and thus not stored in namespace
 
   ansi_c.alignment=unsigned_from_ns(ns, "alignment");
 
@@ -1211,17 +1218,17 @@ irep_idt configt::this_architecture()
 
   #ifdef __alpha__
   this_arch="alpha";
-  #elif __armel__
+  #elif defined(__armel__)
   this_arch="armel";
-  #elif __aarch64__
+  #elif defined(__aarch64__)
   this_arch="arm64";
-  #elif __arm__
+  #elif defined(__arm__)
     #ifdef __ARM_PCS_VFP
     this_arch="armhf"; // variant of arm with hard float
     #else
     this_arch="arm";
     #endif
-  #elif __mipsel__
+  #elif defined(__mipsel__)
     #if _MIPS_SIM==_ABIO32
     this_arch="mipsel";
     #elif _MIPS_SIM==_ABIN32
@@ -1229,7 +1236,7 @@ irep_idt configt::this_architecture()
     #else
     this_arch="mips64el";
     #endif
-  #elif __mips__
+  #elif defined(__mips__)
     #if _MIPS_SIM==_ABIO32
     this_arch="mips";
     #elif _MIPS_SIM==_ABIN32
@@ -1237,7 +1244,7 @@ irep_idt configt::this_architecture()
     #else
     this_arch="mips64";
     #endif
-  #elif __powerpc__
+  #elif defined(__powerpc__)
     #if defined(__ppc64__) || defined(__PPC64__) || \
         defined(__powerpc64__) || defined(__POWERPC64__)
       #ifdef __LITTLE_ENDIAN__
@@ -1248,33 +1255,33 @@ irep_idt configt::this_architecture()
     #else
     this_arch="powerpc";
     #endif
-  #elif __sparc__
+  #elif defined(__sparc__)
     #ifdef __arch64__
     this_arch="sparc64";
     #else
     this_arch="sparc";
     #endif
-  #elif __ia64__
+  #elif defined(__ia64__)
   this_arch="ia64";
-  #elif __s390x__
+  #elif defined(__s390x__)
   this_arch="s390x";
-  #elif __s390__
+  #elif defined(__s390__)
   this_arch="s390";
-  #elif __x86_64__
+  #elif defined(__x86_64__)
     #ifdef __ILP32__
     this_arch="x32"; // variant of x86_64 with 32-bit pointers
     #else
     this_arch="x86_64";
     #endif
-  #elif __i386__
+  #elif defined(__i386__)
   this_arch="i386";
-  #elif _WIN64
+  #elif defined(_WIN64)
   this_arch="x86_64";
-  #elif _WIN32
+  #elif defined(_WIN32)
   this_arch="i386";
-  #elif __hppa__
+  #elif defined(__hppa__)
   this_arch="hppa";
-  #elif __sh__
+  #elif defined(__sh__)
   this_arch="sh4";
   #else
   // something new and unknown!
@@ -1286,31 +1293,18 @@ irep_idt configt::this_architecture()
 
 void configt::set_classpath(const std::string &cp)
 {
-  std::string current;
-  for(std::size_t pos=0; pos<cp.size(); pos++)
-  {
-    // These are separated by colons on Unix, and semicolons on
-    // Windows.
-    #ifdef _WIN32
-    const char cp_separator=';';
-    #else
-    const char cp_separator=':';
-    #endif
+// These are separated by colons on Unix, and semicolons on
+// Windows.
+#ifdef _WIN32
+  const char cp_separator = ';';
+#else
+  const char cp_separator = ':';
+#endif
 
-    if(cp[pos]==cp_separator)
-    {
-      if(!current.empty())
-      {
-        java.classpath.push_back(current);
-        current.clear();
-      }
-    }
-    else
-      current+=cp[pos];
-  }
-
-  if(!current.empty())
-    java.classpath.push_back(current);
+  std::vector<std::string> class_path;
+  split_string(cp, cp_separator, class_path);
+  java.classpath.insert(
+    java.classpath.end(), class_path.begin(), class_path.end());
 }
 
 irep_idt configt::this_operating_system()

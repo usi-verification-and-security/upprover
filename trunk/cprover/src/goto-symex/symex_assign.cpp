@@ -12,25 +12,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "goto_symex.h"
 
 #include <util/byte_operators.h>
-#include <util/cprover_prefix.h>
-
 #include <util/c_types.h>
+#include <util/cprover_prefix.h>
+#include <util/pointer_offset_size.h>
 
 #include "goto_symex_state.h"
 
 // #define USE_UPDATE
-
-void goto_symext::symex_assign_rec(
-  statet &state,
-  const code_assignt &code)
-{
-  code_assignt deref_code=code;
-
-  clean_expr(deref_code.lhs(), state, true);
-  clean_expr(deref_code.rhs(), state, false);
-
-  symex_assign(state, deref_code);
-}
 
 void goto_symext::symex_assign(
   statet &state,
@@ -39,8 +27,8 @@ void goto_symext::symex_assign(
   exprt lhs=code.lhs();
   exprt rhs=code.rhs();
 
-  replace_nondet(lhs);
-  replace_nondet(rhs);
+  clean_expr(lhs, state, true);
+  clean_expr(rhs, state, false);
 
   if(rhs.id()==ID_side_effect)
   {
@@ -66,7 +54,11 @@ void goto_symext::symex_assign(
     else if(statement==ID_allocate)
       symex_allocate(state, lhs, side_effect_expr);
     else if(statement==ID_printf)
-      symex_printf(state, lhs, side_effect_expr);
+    {
+      if(lhs.is_not_nil())
+        throw "printf: unexpected assignment";
+      symex_printf(state, side_effect_expr);
+    }
     else if(statement==ID_gcc_builtin_va_arg_next)
       symex_gcc_builtin_va_arg_next(state, lhs, side_effect_expr);
     else
@@ -162,11 +154,11 @@ void goto_symext::symex_assign_rec(
   else if(lhs.id()==ID_typecast)
     symex_assign_typecast(
       state, to_typecast_expr(lhs), full_lhs, rhs, guard, assignment_type);
-  else if(lhs.id()==ID_string_constant ||
-          lhs.id()=="NULL-object" ||
-          lhs.id()=="zero_string" ||
-          lhs.id()=="is_zero_string" ||
-          lhs.id()=="zero_string_length")
+  else if(lhs.id() == ID_string_constant ||
+          lhs.id() == ID_null_object ||
+          lhs.id() == "zero_string" ||
+          lhs.id() == "is_zero_string" ||
+          lhs.id() == "zero_string_length")
   {
     // ignore
   }
@@ -244,7 +236,8 @@ void goto_symext::symex_assign_symbol(
     ssa_rhs,
     ns,
     options.get_bool_option("simplify"),
-    constant_propagation);
+    constant_propagation,
+    allow_pointer_unsoundness);
 
   exprt ssa_full_lhs=full_lhs;
   ssa_full_lhs=add_to_lhs(ssa_full_lhs, ssa_lhs);
@@ -257,9 +250,19 @@ void goto_symext::symex_assign_symbol(
   tmp_guard.append(guard);
 
   // do the assignment
-  const symbolt &symbol=ns.lookup(ssa_lhs.get_original_expr());
+  const symbolt &symbol =
+    ns.lookup(to_symbol_expr(ssa_lhs.get_original_expr()));
+
   if(symbol.is_auxiliary)
     assignment_type=symex_targett::assignment_typet::HIDDEN;
+
+  log.conditional_output(
+    log.debug(),
+    [this, &ssa_lhs](messaget::mstreamt &mstream) {
+      mstream << "Assignment to " << ssa_lhs.get_identifier()
+              << " [" << pointer_offset_bits(ssa_lhs.type(), ns) << " bits]"
+              << messaget::eom;
+    });
 
   target.assignment(
     tmp_guard.as_expr(),
@@ -337,8 +340,8 @@ void goto_symext::symex_assign_array(
   // into
   //   a'==a WITH [i:=e]
 
-  exprt new_rhs(ID_with, lhs_type);
-  new_rhs.copy_to_operands(lhs_array, lhs_index, rhs);
+  with_exprt new_rhs(lhs_array, lhs_index, rhs);
+  new_rhs.type() = lhs_type;
 
   exprt new_full_lhs=add_to_lhs(full_lhs, lhs);
 
@@ -367,7 +370,7 @@ void goto_symext::symex_assign_struct_member(
   {
     assert(lhs_struct.operands().size()==1);
 
-    if(lhs_struct.op0().id()=="NULL-object")
+    if(lhs_struct.op0().id() == ID_null_object)
     {
       // ignore, and give up
       return;
@@ -410,8 +413,7 @@ void goto_symext::symex_assign_struct_member(
   // into
   //   a'==a WITH [c:=e]
 
-  exprt new_rhs(ID_with, lhs_struct.type());
-  new_rhs.copy_to_operands(lhs_struct, exprt(ID_member_name), rhs);
+  with_exprt new_rhs(lhs_struct, exprt(ID_member_name), rhs);
   new_rhs.op1().set(ID_component_name, component_name);
 
   exprt new_full_lhs=add_to_lhs(full_lhs, lhs);

@@ -8,14 +8,10 @@
 #include <goto-programs/xml_goto_trace.h>
 #include <util/find_symbols.h>
 #include <ansi-c/expr2c.h>
-#include <util/time_stopping.h>
 #include <util/ui_message.h>
 #include "../error_trace.h"
-
+#include <funfrog/utils/time_utils.h>
 #include "prepare_formula_no_partition.h"
-
-
-extern time_periodt global_satsolver_time;
 
 /*******************************************************************
 
@@ -32,13 +28,12 @@ bool prepare_formula_no_partitiont::convert_to_formula_and_solve(convertort &con
 {
   bool sat=false;
 
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   equation.convert(convertor);
 
-  after=current_time();
+  auto after=timestamp();
 
-  status() << "CONVERSION TIME: " << (after-before) << eom;
+  status() << "CONVERSION TIME: " << time_gap(after,before) << eom;
 
   // Decides the equation
   sat = is_satisfiable(solver);
@@ -68,13 +63,12 @@ bool prepare_formula_no_partitiont::convert_to_formula_and_solve(convertort &con
 bool prepare_formula_no_partitiont::is_satisfiable(
         solvert &solver)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   bool r = solver.solve();
-  after=current_time();
-  solving_time = (after-before);
-  global_satsolver_time += (after-before);
-  status() << "SOLVER TIME: " << (after-before) << eom;
+  auto after=timestamp();
+  //solving_time = time_gap(after,before);
+  //global_satsolver_time += solving_time; // TODO
+  status() << "SOLVER TIME: " << time_gap(after,before) << eom;
   status() << "RESULT: ";
 
   // solve it

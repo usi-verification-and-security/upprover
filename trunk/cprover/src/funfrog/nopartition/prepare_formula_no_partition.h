@@ -9,14 +9,12 @@
 
 #include <util/namespace.h>
 #include <util/ui_message.h>
-#include <util/time_stopping.h>
 #include <util/threeval.h>
+#include "../utils/time_utils.h"
 #include "../assertion_info.h"
 #include "hifrog_symex_target_equation_no_partition.h"
 
 class solvert;
-
-extern time_periodt global_satsolver_time;
 
 class prepare_formula_no_partitiont:public messaget
 {
@@ -53,7 +51,7 @@ public:
     hifrog_symex_target_equationt &equation;
     
     // SAT solving time
-    time_periodt solving_time;
+    timet solving_time;
 
     ui_message_handlert &message_handler;
 

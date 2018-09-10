@@ -19,7 +19,7 @@ void memory_model_tsot::operator()(symex_target_equationt &equation)
   statistics() << "Adding TSO constraints" << eom;
 
   build_event_lists(equation);
-  build_clock_type(equation);
+  build_clock_type();
 
   read_from(equation);
   write_serialization_external(equation);
@@ -107,7 +107,7 @@ void memory_model_tsot::program_order(
 
         if((*e_it2)->is_memory_barrier())
         {
-          const codet &code=to_code((*e_it2)->source.pc->code);
+          const codet &code = (*e_it2)->source.pc->code;
 
           if((*e_it)->is_shared_read() &&
              !code.get_bool(ID_RRfence) &&

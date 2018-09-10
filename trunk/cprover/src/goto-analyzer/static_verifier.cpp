@@ -8,11 +8,14 @@ Author: Martin Brain, martin.brain@cs.ox.ac.uk
 
 #include "static_verifier.h"
 
-#include <util/xml.h>
-#include <util/xml_expr.h>
-#include <util/json.h>
 #include <util/json_expr.h>
+#include <util/message.h>
+#include <util/namespace.h>
+#include <util/options.h>
 
+#include <goto-programs/goto_model.h>
+
+#include <analyses/ai.h>
 
 /// Runs the analyzer and then prints out the domain
 /// \param goto_model: the program analyzed
@@ -52,7 +55,8 @@ bool static_verifier(
           continue;
 
         exprt e(i_it->guard);
-        const ai_domain_baset &domain(ai.abstract_state_before(i_it));
+        auto dp = ai.abstract_state_before(i_it);
+        const ai_domain_baset &domain(*dp);
         domain.ai_simplify(e, ns);
 
         json_objectt &j=json_result.push_back().make_object();
@@ -101,7 +105,8 @@ bool static_verifier(
           continue;
 
         exprt e(i_it->guard);
-        const ai_domain_baset &domain(ai.abstract_state_before(i_it));
+        auto dp = ai.abstract_state_before(i_it);
+        const ai_domain_baset &domain(*dp);
         domain.ai_simplify(e, ns);
 
         xmlt &x=xml_result.new_element("result");
@@ -157,7 +162,8 @@ bool static_verifier(
           continue;
 
         exprt e(i_it->guard);
-        const ai_domain_baset &domain(ai.abstract_state_before(i_it));
+        auto dp = ai.abstract_state_before(i_it);
+        const ai_domain_baset &domain(*dp);
         domain.ai_simplify(e, ns);
 
         out << '[' << i_it->source_location.get_property_id()

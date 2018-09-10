@@ -24,12 +24,11 @@ Author: Matt Lewis
 #include "polynomial.h"
 #include "path.h"
 #include "accelerator.h"
-#include "path_acceleration.h"
 #include "acceleration_utils.h"
 #include "cone_of_influence.h"
 #include "overflow_instrumenter.h"
 
-class polynomial_acceleratort:public path_accelerationt
+class polynomial_acceleratort
 {
 public:
   polynomial_acceleratort(
@@ -59,7 +58,7 @@ public:
   {
   }
 
-  virtual bool accelerate(patht &loop, path_acceleratort &accelerator);
+  bool accelerate(patht &loop, path_acceleratort &accelerator);
 
   bool fit_polynomial(
     goto_programt::instructionst &loop_body,

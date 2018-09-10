@@ -23,14 +23,12 @@ Author: Michael Tautschnig
 #include <iostream>
 #include <cstring>
 
-#include <util/run.h>
-#include <util/string2int.h>
-#include <util/tempdir.h>
 #include <util/config.h>
-#include <util/get_base_name.h>
 #include <util/cout_message.h>
-
-#include <cbmc/version.h>
+#include <util/get_base_name.h>
+#include <util/run.h>
+#include <util/tempdir.h>
+#include <util/version.h>
 
 #include "compile.h"
 
@@ -76,8 +74,6 @@ int as_modet::doit()
     return EX_OK;
   }
 
-  unsigned int verbosity=1;
-
   bool act_as_as86=
     base_name=="as86" ||
     base_name.find("goto-as86")!=std::string::npos;
@@ -86,28 +82,26 @@ int as_modet::doit()
      cmdline.isset("version"))
   {
     if(act_as_as86)
-      status() << "as86 version: 0.16.17 (goto-cc " CBMC_VERSION ")"
+      status() << "as86 version: 0.16.17 (goto-cc " << CBMC_VERSION << ")"
                << eom;
     else
       status() << "GNU assembler version 2.20.51.0.7 20100318"
-               << " (goto-cc " CBMC_VERSION ")" << eom;
+               << " (goto-cc " << CBMC_VERSION << ")" << eom;
 
-    status() << '\n' <<
-      "Copyright (C) 2006-2014 Daniel Kroening, Christoph Wintersteiger\n" <<
-      "CBMC version: " CBMC_VERSION << '\n' <<
-      "Architecture: " << config.this_architecture() << '\n' <<
-      "OS: " << config.this_operating_system() << eom;
+    status()
+      << '\n'
+      << "Copyright (C) 2006-2014 Daniel Kroening, Christoph Wintersteiger\n"
+      << "CBMC version: " << CBMC_VERSION << '\n'
+      << "Architecture: " << config.this_architecture() << '\n'
+      << "OS: " << config.this_operating_system() << eom;
 
     return EX_OK; // Exit!
   }
 
-  if(cmdline.isset("w-") || cmdline.isset("warn"))
-    verbosity=2;
-
-  if(cmdline.isset("verbosity"))
-    verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-
-  message_handler.set_verbosity(verbosity);
+  auto default_verbosity = (cmdline.isset("w-") || cmdline.isset("warn")) ?
+    messaget::M_WARNING : messaget::M_ERROR;
+  eval_verbosity(
+    cmdline.get_value("verbosity"), default_verbosity, message_handler);
 
   if(act_as_as86)
   {
@@ -273,7 +267,7 @@ int as_modet::run_as()
   std::cout << '\n';
   #endif
 
-  return run(new_argv[0], new_argv, cmdline.stdin_file, "");
+  return run(new_argv[0], new_argv, cmdline.stdin_file);
 }
 
 int as_modet::as_hybrid_binary()
@@ -310,7 +304,7 @@ int as_modet::as_hybrid_binary()
   debug() << "merging " << output_file << eom;
   std::string saved=output_file+".goto-cc-saved";
 
-  #ifdef __linux__
+  #if defined(__linux__) || defined(__FreeBSD_kernel__)
   if(result==0)
   {
     // remove any existing goto-cc section
@@ -320,7 +314,7 @@ int as_modet::as_hybrid_binary()
     objcopy_argv.push_back("--remove-section=goto-cc");
     objcopy_argv.push_back(output_file);
 
-    result=run(objcopy_argv[0], objcopy_argv, "", "");
+    result = run(objcopy_argv[0], objcopy_argv);
   }
 
   if(result==0)
@@ -333,7 +327,7 @@ int as_modet::as_hybrid_binary()
     objcopy_argv.push_back("goto-cc="+saved);
     objcopy_argv.push_back(output_file);
 
-    result=run(objcopy_argv[0], objcopy_argv, "", "");
+    result = run(objcopy_argv[0], objcopy_argv);
   }
 
   int remove_result=remove(saved.c_str());
@@ -360,7 +354,7 @@ int as_modet::as_hybrid_binary()
     lipo_argv.push_back("-output");
     lipo_argv.push_back(output_file);
 
-    result=run(lipo_argv[0], lipo_argv, "", "");
+    result = run(lipo_argv[0], lipo_argv);
   }
 
   int remove_result=remove(saved.c_str());
@@ -373,7 +367,7 @@ int as_modet::as_hybrid_binary()
 
   #else
   error() << "binary merging not implemented for this platform" << eom;
-  return 1;
+  result = 1;
   #endif
 
   return result;

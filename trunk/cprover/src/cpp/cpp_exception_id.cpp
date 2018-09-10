@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include "cpp_exception_id.h"
 
+#include <util/invariant.h>
+
 /// turns a type into a list of relevant exception IDs
 void cpp_exception_list_rec(
   const typet &src,
@@ -18,7 +20,7 @@ void cpp_exception_list_rec(
   const std::string &suffix,
   std::vector<irep_idt> &dest)
 {
-  if(src.id()==ID_symbol)
+  if(src.id() == ID_symbol_type)
   {
     cpp_exception_list_rec(ns.follow(src), ns, suffix, dest);
   }
@@ -91,6 +93,6 @@ irep_idt cpp_exception_id(
 {
   std::vector<irep_idt> ids;
   cpp_exception_list_rec(src, ns, "", ids);
-  assert(!ids.empty());
+  CHECK_RETURN(!ids.empty());
   return ids.front();
 }

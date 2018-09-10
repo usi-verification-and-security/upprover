@@ -1,18 +1,13 @@
-// Copyright 2017 Diffblue Limited. All Rights Reserved.
+/// Author: Diffblue Ltd.
 
 /// \file
 /// Symbol table base class interface
 
-/// \defgroup gr_symbol_table Symbol Table
-
 #ifndef CPROVER_UTIL_SYMBOL_TABLE_BASE_H
 #define CPROVER_UTIL_SYMBOL_TABLE_BASE_H
 
-#include <iosfwd>
 #include <map>
 #include <unordered_map>
-
-#include <util/optional.h>
 
 #include "symbol.h"
 
@@ -26,7 +21,7 @@ class symbol_tablet;
 class symbol_table_baset
 {
 public:
-  typedef std::unordered_map<irep_idt, symbolt, irep_id_hash> symbolst;
+  typedef std::unordered_map<irep_idt, symbolt> symbolst;
 
 public:
   const symbolst &symbols;
@@ -46,6 +41,8 @@ public:
 
   symbol_table_baset(const symbol_table_baset &other) = delete;
   symbol_table_baset &operator=(const symbol_table_baset &other) = delete;
+
+  virtual ~symbol_table_baset();
 
 public:
   /// Permits implicit cast to const symbol_tablet &
@@ -117,6 +114,91 @@ public:
   virtual void clear() = 0;
 
   void show(std::ostream &out) const;
+
+  class iteratort
+  {
+  private:
+    symbolst::iterator it;
+    std::function<void(const irep_idt &id)> on_get_writeable;
+
+  public:
+    explicit iteratort(symbolst::iterator it) : it(std::move(it))
+    {
+    }
+
+    iteratort(
+        const iteratort &it,
+        std::function<void(const irep_idt &id)> on_get_writeable)
+      : it(it.it), on_get_writeable(std::move(on_get_writeable))
+    {
+    }
+
+    // The following typedefs are NOLINT as they are needed by the STL
+    typedef symbolst::iterator::difference_type difference_type;     // NOLINT
+    typedef symbolst::const_iterator::value_type value_type;         // NOLINT
+    typedef symbolst::const_iterator::pointer pointer;               // NOLINT
+    typedef symbolst::const_iterator::reference reference;           // NOLINT
+    typedef symbolst::iterator::iterator_category iterator_category; // NOLINT
+
+    bool operator!=(const iteratort &other) const
+    {
+      return it != other.it;
+    }
+
+    bool operator==(const iteratort &other) const
+    {
+      return it == other.it;
+    }
+
+    /// Preincrement operator
+    /// Do not call on the end() iterator
+    iteratort &operator++()
+    {
+      ++it;
+      return *this;
+    }
+
+    /// Post-increment operator
+    /// \remarks Expensive copy. Avoid if possible.
+    iteratort operator++(int)
+    {
+      iteratort copy(*this);
+      this->operator++();
+      return copy;
+    }
+
+    /// Dereference operator
+    /// \remarks Dereferencing end() iterator is undefined behaviour
+    reference operator*() const
+    {
+      return *it;
+    }
+
+    /// Dereference operator (member access)
+    /// \remarks Dereferencing end() iterator is undefined behaviour
+    pointer operator->() const
+    {
+      return &**this;
+    }
+
+    /// Whereas the dereference operator gives a constant reference to the
+    /// current symbol, this method allows users to get a writeable reference
+    /// to the symbol
+    /// \remarks
+    /// This method calls the on_get_writeable method first to give derived
+    /// symbol table classes the opportunity to note that this symbol is being
+    /// written to before it is accessed.
+    /// \returns a non-const reference to the current symbol
+    symbolt &get_writeable_symbol()
+    {
+      if(on_get_writeable)
+        on_get_writeable((*this)->first);
+      return it->second;
+    }
+  };
+
+  virtual iteratort begin() = 0;
+  virtual iteratort end() = 0;
 };
 
 std::ostream &

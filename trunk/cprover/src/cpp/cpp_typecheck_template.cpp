@@ -635,13 +635,6 @@ void cpp_typecheckt::convert_template_function_or_member_specialization(
   cpp_declaratort declarator=declaration.declarators().front();
   cpp_namet &cpp_name=declarator.name();
 
-  if(cpp_name.is_qualified())
-  {
-    error().source_location=cpp_name.source_location();
-    error() << "qualifiers not expected here" << eom;
-    throw 0;
-  }
-
   // There is specialization (instantiation with template arguments)
   // but also function overloading (no template arguments)
 
@@ -793,8 +786,7 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
     // is it a type or not?
     if(declaration.get_bool(ID_is_type))
     {
-      parameter=exprt(ID_type, typet(ID_symbol));
-      parameter.type().set(ID_identifier, identifier);
+      parameter = exprt(ID_type, symbol_typet(identifier));
       parameter.type().add_source_location()=declaration.find_source_location();
     }
     else
@@ -829,8 +821,7 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
 
     if(cpp_declarator_converter.is_typedef)
     {
-      parameter=exprt(ID_type, typet(ID_symbol));
-      parameter.type().set(ID_identifier, symbol.name);
+      parameter = exprt(ID_type, symbol_typet(symbol.name));
       parameter.type().add_source_location()=declaration.find_location();
     }
     else

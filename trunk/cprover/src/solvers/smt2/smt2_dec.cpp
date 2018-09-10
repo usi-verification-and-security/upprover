@@ -37,7 +37,6 @@ std::string smt2_dect::decision_procedure_text() const
      solver==solvert::CVC3?"CVC3":
      solver==solvert::CVC4?"CVC4":
      solver==solvert::MATHSAT?"MathSAT":
-     solver==solvert::OPENSMT?"OpenSMT":
      solver==solvert::YICES?"Yices":
      solver==solvert::Z3?"Z3":
      "(unknown)");
@@ -126,14 +125,6 @@ decision_proceduret::resultt smt2_dect::dec_solve()
             + " > "+smt2_temp_file.temp_result_filename;
     break;
 
-  case solvert::OPENSMT:
-    command = "opensmt "
-            + smt2_temp_file.temp_out_filename
-            + " > "
-            + smt2_temp_file.temp_result_filename;
-    break;
-
-
   case solvert::YICES:
     //    command = "yices -smt -e "   // Calling convention for older versions
     command = "yices-smt2 "  //  Calling for 2.2.1
@@ -177,7 +168,7 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
   boolean_assignment.clear();
   boolean_assignment.resize(no_boolean_variables, false);
 
-  typedef std::unordered_map<irep_idt, irept, irep_id_hash> valuest;
+  typedef std::unordered_map<irep_idt, irept> valuest;
   valuest values;
 
   while(in)
@@ -198,6 +189,8 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
       // Examples:
       // ( (B0 true) )
       // ( (|__CPROVER_pipe_count#1| (_ bv0 32)) )
+      // ( (|some_integer| 0) )
+      // ( (|some_integer| (- 10)) )
 
       values[s0.id()]=s1;
     }
@@ -216,14 +209,11 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
     }
   }
 
-  for(identifier_mapt::iterator
-      it=identifier_map.begin();
-      it!=identifier_map.end();
-      it++)
+  for(auto &assignment : identifier_map)
   {
-    std::string conv_id=convert_identifier(it->first);
+    std::string conv_id=convert_identifier(assignment.first);
     const irept &value=values[conv_id];
-    it->second.value=parse_rec(value, it->second.type);
+    assignment.second.value=parse_rec(value, assignment.second.type);
   }
 
   // Booleans

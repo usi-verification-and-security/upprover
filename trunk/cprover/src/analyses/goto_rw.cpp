@@ -14,6 +14,7 @@ Date: April 2010
 #include <limits>
 #include <memory>
 
+#include <util/expr_util.h>
 #include <util/std_code.h>
 #include <util/std_expr.h>
 #include <util/pointer_offset_size.h>
@@ -23,6 +24,8 @@ Date: April 2010
 #include <util/simplify_expr.h>
 #include <util/make_unique.h>
 
+#include <langapi/language_util.h>
+
 #include <goto-programs/goto_functions.h>
 
 #include <pointer-analysis/goto_program_dereference.h>
@@ -31,8 +34,7 @@ range_domain_baset::~range_domain_baset()
 {
 }
 
-void range_domaint::output(
-  const namespacet &ns, std::ostream &out) const
+void range_domaint::output(const namespacet &, std::ostream &out) const
 {
   out << "[";
   for(const_iterator itr=begin();
@@ -120,8 +122,8 @@ void rw_range_sett::get_objects_if(
 void rw_range_sett::get_objects_dereference(
   get_modet mode,
   const dereference_exprt &deref,
-  const range_spect &range_start,
-  const range_spect &size)
+  const range_spect &,
+  const range_spect &)
 {
   const exprt &pointer=deref.pointer();
   get_objects_rec(get_modet::READ, pointer);
@@ -240,7 +242,7 @@ void rw_range_sett::get_objects_index(
   const range_spect &range_start,
   const range_spect &size)
 {
-  if(expr.array().id()=="NULL-object")
+  if(expr.array().id() == ID_null_object)
     return;
 
   range_spect sub_size=0;
@@ -411,10 +413,10 @@ void rw_range_sett::get_objects_typecast(
 
 void rw_range_sett::get_objects_address_of(const exprt &object)
 {
-  if(object.id()==ID_string_constant ||
-     object.id()==ID_label ||
-     object.id()==ID_array ||
-     object.id()=="NULL-object")
+  if(object.id() == ID_string_constant ||
+     object.id() == ID_label ||
+     object.id() == ID_array ||
+     object.id() == ID_null_object)
     // constant, nothing to do
     return;
   else if(object.id()==ID_symbol)
@@ -539,7 +541,7 @@ void rw_range_sett::get_objects_rec(
     {
       range_spect range_end=size==-1 ? -1 : range_start+size;
       if(size!=-1 && full_size!=-1)
-        range_end=std::max(range_end, full_size);
+        range_end=std::min(range_end, full_size);
 
       add(mode, identifier, range_start, range_end);
     }
@@ -556,8 +558,8 @@ void rw_range_sett::get_objects_rec(
     forall_operands(it, expr)
       get_objects_rec(mode, *it);
   }
-  else if(expr.id()=="NULL-object" ||
-          expr.id()==ID_string_constant)
+  else if(expr.id() == ID_null_object ||
+          expr.id() == ID_string_constant)
   {
     // dereferencing may yield some weird ones, ignore these
   }
@@ -615,8 +617,7 @@ void rw_range_set_value_sett::get_objects_dereference(
 
   // value_set_dereferencet::build_reference_to will turn *p into
   // DYNAMIC_OBJECT(p) ? *p : invalid_objectN
-  if(object.is_not_nil() &&
-     !value_set_dereferencet::has_dereference(object))
+  if(object.is_not_nil() && !has_subexpr(object, ID_dereference))
     get_objects_rec(mode, object, range_start, new_size);
 }
 
@@ -631,6 +632,8 @@ void guarded_range_domaint::output(
     if(itr!=begin())
       out << ";";
     out << itr->first << ":" << itr->second.first;
+    // we don't know what mode (language) we are in, so we rely on the default
+    // language to be reasonable for from_expr
     out << " if " << from_expr(ns, "", itr->second.second);
   }
   out << "]";
@@ -715,6 +718,7 @@ void goto_rw(goto_programt::const_targett target,
   switch(target->type)
   {
   case NO_INSTRUCTION_TYPE:
+  case INCOMPLETE_GOTO:
     UNREACHABLE;
     break;
 

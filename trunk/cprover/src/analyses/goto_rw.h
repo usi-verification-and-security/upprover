@@ -12,9 +12,9 @@ Date: April 2010
 #ifndef CPROVER_ANALYSES_GOTO_RW_H
 #define CPROVER_ANALYSES_GOTO_RW_H
 
-#include <map>
-#include <ostream>
+#include <iosfwd>
 #include <limits>
+#include <map>
 #include <memory> // unique_ptr
 
 #include <util/guard.h>
@@ -141,7 +141,7 @@ public:
   enum class get_modet { LHS_W, READ };
 
   virtual void get_objects_rec(
-    goto_programt::const_targett _target,
+    goto_programt::const_targett,
     get_modet mode,
     const exprt &expr)
   {

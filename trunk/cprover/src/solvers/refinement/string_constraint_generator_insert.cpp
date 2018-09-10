@@ -11,11 +11,18 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 
 #include <solvers/refinement/string_refinement_invariant.h>
 #include <solvers/refinement/string_constraint_generator.h>
+#include <util/deprecate.h>
 
 /// Add axioms ensuring the result `res` corresponds to `s1` where we
 /// inserted `s2` at position `offset`.
+/// We write offset' for `max(0, min(res.length, offset))`.
+/// These axioms are:
+/// 1. res.length = s1.length + s2.length
+/// 2. forall i < offset' . res[i] = s1[i]
+/// 3. forall i < s2.length. res[i + offset'] = s2[i]
+/// 4. forall i in [offset', s1.length). res[i + s2.length] = s1[i]
 /// This is equivalent to
-/// `res=concat(substring(s1, 0, offset), concat(s2, substring(s1, offset)))`.
+/// `res=concat(substring(s1, 0, offset'), concat(s2, substring(s1, offset')))`.
 /// \param res: array of characters expression
 /// \param s1: array of characters expression
 /// \param s2: array of characters expression
@@ -30,25 +37,48 @@ exprt string_constraint_generatort::add_axioms_for_insert(
 {
   PRECONDITION(offset.type()==s1.length().type());
   const typet &index_type = s1.length().type();
-  const typet &char_type = s1.content().type().subtype();
-  array_string_exprt pref = fresh_string(index_type, char_type);
-  exprt return_code1 =
-    add_axioms_for_substring(pref, s1, from_integer(0, offset.type()), offset);
-  array_string_exprt suf = fresh_string(index_type, char_type);
-  exprt return_code2 = add_axioms_for_substring(suf, s1, offset, s1.length());
-  array_string_exprt concat1 = fresh_string(index_type, char_type);
-  exprt return_code3 = add_axioms_for_concat(concat1, pref, s2);
-  exprt return_code4 = add_axioms_for_concat(res, concat1, suf);
-  return if_exprt(
-    equal_exprt(return_code1, from_integer(0, return_code1.type())),
-    if_exprt(
-      equal_exprt(return_code2, from_integer(0, return_code1.type())),
-      if_exprt(
-        equal_exprt(return_code3, from_integer(0, return_code1.type())),
-        return_code4,
-        return_code3),
-      return_code2),
-    return_code1);
+  const exprt offset1 =
+    maximum(from_integer(0, index_type), minimum(s1.length(), offset));
+
+  // Axiom 1.
+  lemmas.push_back(length_constraint_for_insert(res, s1, s2));
+
+  // Axiom 2.
+  constraints.push_back([&] { // NOLINT
+    const symbol_exprt i = fresh_symbol("QA_insert1", index_type);
+    return string_constraintt(i, offset1, equal_exprt(res[i], s1[i]));
+  }());
+
+  // Axiom 3.
+  constraints.push_back([&] { // NOLINT
+    const symbol_exprt i = fresh_symbol("QA_insert2", index_type);
+    return string_constraintt(
+      i,
+      zero_if_negative(s2.length()),
+      equal_exprt(res[plus_exprt(i, offset1)], s2[i]));
+  }());
+
+  // Axiom 4.
+  constraints.push_back([&] { // NOLINT
+    const symbol_exprt i = fresh_symbol("QA_insert3", index_type);
+    return string_constraintt(
+      i,
+      offset1,
+      zero_if_negative(s1.length()),
+      equal_exprt(res[plus_exprt(i, s2.length())], s1[i]));
+  }());
+
+  return from_integer(0, get_return_code_type());
+}
+
+/// Add axioms ensuring the length of `res` corresponds to that of `s1` where we
+/// inserted `s2`.
+exprt length_constraint_for_insert(
+  const array_string_exprt &res,
+  const array_string_exprt &s1,
+  const array_string_exprt &s2)
+{
+  return equal_exprt(res.length(), plus_exprt(s1.length(), s2.length()));
 }
 
 /// Insertion of a string in another at a specific index
@@ -98,10 +128,11 @@ exprt string_constraint_generatort::add_axioms_for_insert(
 }
 
 /// add axioms corresponding to the StringBuilder.insert(I) java function
-/// \deprecated
+/// \deprecated should convert the value to string and call insert
 /// \param f: function application with three arguments: a string, an
 ///   integer offset, and an integer
 /// \return an expression
+DEPRECATED("should convert the value to string and call insert")
 exprt string_constraint_generatort::add_axioms_for_insert_int(
   const function_application_exprt &f)
 {
@@ -113,7 +144,7 @@ exprt string_constraint_generatort::add_axioms_for_insert_int(
   const typet &index_type = s1.length().type();
   const typet &char_type = s1.content().type().subtype();
   array_string_exprt s2 = fresh_string(index_type, char_type);
-  exprt return_code = add_axioms_from_int(s2, f.arguments()[4]);
+  exprt return_code = add_axioms_for_string_of_int(s2, f.arguments()[4]);
   return add_axioms_for_insert(res, s1, s2, offset);
 }
 
@@ -122,6 +153,7 @@ exprt string_constraint_generatort::add_axioms_for_insert_int(
 /// \param f: function application with three arguments: a string, an
 ///   integer offset, and a Boolean
 /// \return a new string expression
+DEPRECATED("should convert the value to string and call insert")
 exprt string_constraint_generatort::add_axioms_for_insert_bool(
   const function_application_exprt &f)
 {
@@ -162,6 +194,7 @@ exprt string_constraint_generatort::add_axioms_for_insert_char(
 /// \param f: function application with three arguments: a string, an
 ///   integer offset, and a double
 /// \return a string expression
+DEPRECATED("should convert the value to string and call insert")
 exprt string_constraint_generatort::add_axioms_for_insert_double(
   const function_application_exprt &f)
 {
@@ -183,6 +216,7 @@ exprt string_constraint_generatort::add_axioms_for_insert_double(
 /// \param f: function application with three arguments: a string, an
 ///   integer offset, and a float
 /// \return a new string expression
+DEPRECATED("should convert the value to string and call insert")
 exprt string_constraint_generatort::add_axioms_for_insert_float(
   const function_application_exprt &f)
 {

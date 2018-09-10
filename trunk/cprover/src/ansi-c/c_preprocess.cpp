@@ -8,107 +8,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "c_preprocess.h"
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-
-#if defined(__linux__) || \
-    defined(__FreeBSD_kernel__) || \
-    defined(__GNU__) || \
-    defined(__unix__) || \
-    defined(__CYGWIN__) || \
-    defined(__MACH__)
-#include <unistd.h>
-#endif
-
-#include <fstream>
-
 #include <util/c_types.h>
 #include <util/config.h>
-#include <util/invariant.h>
-#include <util/message.h>
+#include <util/suffix.h>
 #include <util/tempfile.h>
 #include <util/unicode.h>
-#include <util/arith_tools.h>
-#include <util/std_types.h>
-#include <util/prefix.h>
 
-#define GCC_DEFINES_16 \
-  " -D__INT_MAX__=32767"\
-  " -D__CHAR_BIT__=8"\
-  " -D__SCHAR_MAX__=127"\
-  " -D__SHRT_MAX__=32767"\
-  " -D__INT32_TYPE__=long"\
-  " -D__LONG_LONG_MAX__=2147483647L"\
-  " -D__LONG_MAX__=2147483647" \
-  " -D__SIZE_TYPE__=\"unsigned int\""\
-  " -D__PTRDIFF_TYPE__=int"\
-  " -D__WINT_TYPE__=\"unsigned int\""\
-  " -D__INTMAX_TYPE__=\"long long int\""\
-  " -D__UINTMAX_TYPE__=\"long long unsigned int\""\
-  " -D__INTPTR_TYPE__=\"int\""\
-  " -D__UINTPTR_TYPE__=\"unsigned int\""
-
-#define GCC_DEFINES_32 \
-  " -D__INT_MAX__=2147483647"\
-  " -D__CHAR_BIT__=8"\
-  " -D__SCHAR_MAX__=127"\
-  " -D__SHRT_MAX__=32767"\
-  " -D__INT32_TYPE__=int"\
-  " -D__LONG_LONG_MAX__=9223372036854775807LL"\
-  " -D__LONG_MAX__=2147483647L" \
-  " -D__SIZE_TYPE__=\"long unsigned int\""\
-  " -D__PTRDIFF_TYPE__=int"\
-  " -D__WINT_TYPE__=\"unsigned int\""\
-  " -D__INTMAX_TYPE__=\"long long int\""\
-  " -D__UINTMAX_TYPE__=\"long long unsigned int\""\
-  " -D__INTPTR_TYPE__=\"long int\""\
-  " -D__UINTPTR_TYPE__=\"long unsigned int\""
-
-#define GCC_DEFINES_LP64 \
-  " -D__INT_MAX__=2147483647"\
-  " -D__CHAR_BIT__=8"\
-  " -D__SCHAR_MAX__=127"\
-  " -D__SHRT_MAX__=32767"\
-  " -D__INT32_TYPE__=int"\
-  " -D__LONG_LONG_MAX__=9223372036854775807LL"\
-  " -D__LONG_MAX__=9223372036854775807L"\
-  " -D__SIZE_TYPE__=\"long unsigned int\""\
-  " -D__PTRDIFF_TYPE__=long"\
-  " -D__WINT_TYPE__=\"unsigned int\""\
-  " -D__INTMAX_TYPE__=\"long int\""\
-  " -D__UINTMAX_TYPE__=\"long unsigned int\""\
-  " -D__INTPTR_TYPE__=\"long int\""\
-  " -D__UINTPTR_TYPE__=\"long unsigned int\""
-
-#define GCC_DEFINES_LLP64 \
-  " -D__INT_MAX__=2147483647"\
-  " -D__CHAR_BIT__=8"\
-  " -D__SCHAR_MAX__=127"\
-  " -D__SHRT_MAX__=32767"\
-  " -D__INT32_TYPE__=int"\
-  " -D__LONG_LONG_MAX__=9223372036854775807LL"\
-  " -D__LONG_MAX__=2147483647"\
-  " -D__SIZE_TYPE__=\"long long unsigned int\""\
-  " -D__PTRDIFF_TYPE__=\"long long\""\
-  " -D__WINT_TYPE__=\"unsigned int\""\
-  " -D__INTMAX_TYPE__=\"long long int\""\
-  " -D__UINTMAX_TYPE__=\"long long unsigned int\""\
-  " -D__INTPTR_TYPE__=\"long long int\""\
-  " -D__UINTPTR_TYPE__=\"long long unsigned int\""
-
-/// produce a string with the maximum value of a given type
-static std::string type_max(const typet &src)
-{
-  if(src.id()==ID_signedbv)
-    return integer2string(
-      power(2, to_signedbv_type(src).get_width()-1)-1);
-  else if(src.id()==ID_unsignedbv)
-    return integer2string(
-      power(2, to_unsignedbv_type(src).get_width()-1)-1);
-  else
-    UNREACHABLE;
-}
+#include <fstream>
 
 /// quote a string for bash and CMD
 static std::string shell_quote(const std::string &src)
@@ -204,19 +110,19 @@ static void error_parse_line(
 
     while(*tptr!=0)
     {
-      if(strncmp(tptr, " line ", 6)==0 && state!=4)
+      if(has_prefix(tptr, " line ") && state != 4)
       {
         state=1;
         tptr+=6;
         continue;
       }
-      else if(strncmp(tptr, " column ", 8)==0 && state!=4)
+      else if(has_prefix(tptr, " column ") && state != 4)
       {
         state=2;
         tptr+=8;
         continue;
       }
-      else if(strncmp(tptr, " function ", 10)==0 && state!=4)
+      else if(has_prefix(tptr, " function ") && state != 4)
       {
         state=3;
         tptr+=10;
@@ -344,13 +250,7 @@ bool c_preprocess(
 /// ANSI-C preprocessing
 static bool is_dot_i_file(const std::string &path)
 {
-  const char *ext=strrchr(path.c_str(), '.');
-  if(ext==nullptr)
-    return false;
-  if(std::string(ext)==".i" ||
-     std::string(ext)==".ii")
-    return true;
-  return false;
+  return has_suffix(path, ".i") || has_suffix(path, ".ii");
 }
 
 /// ANSI-C preprocessing
@@ -416,18 +316,24 @@ bool c_preprocess_visual_studio(
 
   // use Visual Studio's CL
 
-  std::string stderr_file=get_temporary_file("tmp.stderr", "");
-  std::string command_file_name=get_temporary_file("tmp.cl-cmd", "");
+  temporary_filet stderr_file("tmp.stderr", "");
+  temporary_filet command_file_name("tmp.cl-cmd", "");
 
   {
-    std::ofstream command_file(command_file_name);
+    std::ofstream command_file(command_file_name());
 
-    // This marks the file as UTF-8, which Visual Studio
+    // This marks the command file as UTF-8, which Visual Studio
     // understands.
     command_file << char(0xef) << char(0xbb) << char(0xbf);
 
-    command_file << "/nologo" << "\n";
-    command_file << "/E" << "\n";
+    command_file << "/nologo" << '\n';
+    command_file << "/E" << '\n';
+
+    // This option will make CL produce utf-8 output, as
+    // opposed to 8-bit with some code page.
+    // It only works on Visual Studio 2015 or newer.
+    command_file << "/source-charset:utf-8" << '\n';
+
     command_file << "/D__CPROVER__" << "\n";
     command_file << "/D__WORDSIZE=" << config.ansi_c.pointer_width << "\n";
 
@@ -437,23 +343,24 @@ bool c_preprocess_visual_studio(
       // yes, both _WIN32 and _WIN64 get defined
       command_file << "/D_WIN64" << "\n";
     }
+    else if(config.ansi_c.int_width == 16 && config.ansi_c.pointer_width == 32)
+    {
+      // 16-bit LP32 is an artificial architecture we simulate when using --16
+      DATA_INVARIANT(
+        pointer_diff_type() == signed_long_int_type(),
+        "Pointer difference expected to be long int typed");
+      command_file << "/D__PTRDIFF_TYPE__=long" << '\n';
+    }
     else
     {
       DATA_INVARIANT(
         pointer_diff_type()==signed_int_type(),
         "Pointer difference expected to be int typed");
       command_file << "/D__PTRDIFF_TYPE__=int" << "\n";
-      command_file << "/U_WIN64" << "\n";
     }
 
     if(config.ansi_c.char_is_unsigned)
       command_file << "/J" << "\n"; // This causes _CHAR_UNSIGNED to be defined
-
-    // Standard Defines, ANSI9899 6.10.8
-    command_file << "/D__STDC_VERSION__=199901L" << "\n";
-    command_file << "/D__STDC_IEC_559__=1" << "\n";
-    command_file << "/D__STDC_IEC_559_COMPLEX__=1" << "\n";
-    command_file << "/D__STDC_ISO_10646__=1" << "\n";
 
     for(const auto &define : config.ansi_c.defines)
       command_file << "/D" << shell_quote(define) << "\n";
@@ -469,23 +376,20 @@ bool c_preprocess_visual_studio(
     command_file << shell_quote(file) << "\n";
   }
 
-  std::string tmpi=get_temporary_file("tmp.cl", "");
+  temporary_filet tmpi("tmp.cl", "");
 
-  std::string command="CL @\""+command_file_name+"\"";
-  command+=" > \""+tmpi+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  std::string command = "CL @\"" + command_file_name() + "\"";
+  command += " > \"" + tmpi() + "\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   // _popen isn't very reliable on WIN32
   // that's why we use system()
   int result=system(command.c_str());
 
-  std::ifstream instream(tmpi);
+  std::ifstream instream(tmpi());
 
   if(!instream)
   {
-    unlink(tmpi.c_str());
-    unlink(stderr_file.c_str());
-    unlink(command_file_name.c_str());
     message.error() << "CL Preprocessing failed (open failed)"
                     << messaget::eom;
     return true;
@@ -494,14 +398,10 @@ bool c_preprocess_visual_studio(
   outstream << instream.rdbuf(); // copy
 
   instream.close();
-  unlink(tmpi.c_str());
-  unlink(command_file_name.c_str());
 
   // errors/warnings
-  std::ifstream stderr_stream(stderr_file);
+  std::ifstream stderr_stream(stderr_file());
   error_parse(stderr_stream, result==0, message);
-
-  unlink(stderr_file.c_str());
 
   if(result!=0)
   {
@@ -561,7 +461,7 @@ bool c_preprocess_codewarrior(
   // preprocessing
   messaget message(message_handler);
 
-  std::string stderr_file=get_temporary_file("tmp.stderr", "");
+  temporary_filet stderr_file("tmp.stderr", "");
 
   std::string command;
 
@@ -581,36 +481,31 @@ bool c_preprocess_codewarrior(
 
   int result;
 
-  std::string tmpi=get_temporary_file("tmp.cl", "");
+  temporary_filet tmpi("tmp.cl", "");
   command+=" \""+file+"\"";
-  command+=" -o \""+tmpi+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  command += " -o \"" + tmpi() + "\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   result=system(command.c_str());
 
-  std::ifstream stream_i(tmpi);
+  std::ifstream stream_i(tmpi());
 
   if(stream_i)
   {
     postprocess_codewarrior(stream_i, outstream);
 
     stream_i.close();
-    unlink(tmpi.c_str());
   }
   else
   {
-    unlink(tmpi.c_str());
-    unlink(stderr_file.c_str());
     message.error() << "Preprocessing failed (fopen failed)"
                     << messaget::eom;
     return true;
   }
 
   // errors/warnings
-  std::ifstream stderr_stream(stderr_file);
+  std::ifstream stderr_stream(stderr_file());
   error_parse(stderr_stream, result==0, message);
-
-  unlink(stderr_file.c_str());
 
   if(result!=0)
   {
@@ -635,7 +530,7 @@ bool c_preprocess_gcc_clang(
   // preprocessing
   messaget message(message_handler);
 
-  std::string stderr_file=get_temporary_file("tmp.stderr", "");
+  temporary_filet stderr_file("tmp.stderr", "");
 
   std::string command;
 
@@ -644,191 +539,100 @@ bool c_preprocess_gcc_clang(
   else
     command="gcc";
 
-  command +=" -E -undef -D__CPROVER__";
+  command += " -E -D__CPROVER__";
 
-  command+=" -D__WORDSIZE="+std::to_string(config.ansi_c.pointer_width);
+  const irep_idt &arch = config.ansi_c.arch;
 
-  command+=" -D__DBL_MIN_EXP__=\"(-1021)\"";
-  command+=" -D__FLT_MIN__=1.17549435e-38F";
-  command+=" -D__DEC64_SUBNORMAL_MIN__=0.000000000000001E-383DD";
-  command+=" -D__CHAR_BIT__=8";
-  command+=" -D__DBL_DENORM_MIN__=4.9406564584124654e-324";
-  command+=" -D__FLT_EVAL_METHOD__=0";
-  command+=" -D__DBL_MIN_10_EXP__=\"(-307)\"";
-  command+=" -D__FINITE_MATH_ONLY__=0";
-  command+=" -D__DEC64_MAX_EXP__=384";
-  command+=" -D__SHRT_MAX__=32767";
-  command+=" -D__LDBL_MAX__=1.18973149535723176502e+4932L";
-  command+=" -D__DEC32_EPSILON__=1E-6DF";
-  command+=" -D__SCHAR_MAX__=127";
-  command+=" -D__USER_LABEL_PREFIX__=_";
-  command+=" -D__DEC64_MIN_EXP__=\"(-383)\"";
-  command+=" -D__DBL_DIG__=15";
-  command+=" -D__FLT_EPSILON__=1.19209290e-7F";
-  command+=" -D__LDBL_MIN__=3.36210314311209350626e-4932L";
-  command+=" -D__DEC32_MAX__=9.999999E96DF";
-  command+=" -D__DECIMAL_DIG__=21";
-  command+=" -D__LDBL_HAS_QUIET_NAN__=1";
-  command+=" -D__DYNAMIC__=1";
-  command+=" -D__GNUC__=4";
-  command+=" -D__FLT_HAS_DENORM__=1";
-  command+=" -D__DBL_MAX__=1.7976931348623157e+308";
-  command+=" -D__DBL_HAS_INFINITY__=1";
-  command+=" -D__DEC32_MIN_EXP__=\"(-95)\"";
-  command+=" -D__LDBL_HAS_DENORM__=1";
-  command+=" -D__DEC32_MIN__=1E-95DF";
-  command+=" -D__DBL_MAX_EXP__=1024";
-  command+=" -D__DEC128_EPSILON__=1E-33DL";
-  command+=" -D__SSE2_MATH__=1";
-  command+=" -D__GXX_ABI_VERSION=1002";
-  command+=" -D__FLT_MIN_EXP__=\"(-125)\"";
-  command+=" -D__DBL_MIN__=2.2250738585072014e-308";
-  command+=" -D__DBL_HAS_QUIET_NAN__=1";
-  command+=" -D__DEC128_MIN__=1E-6143DL";
-  command+=" -D__REGISTER_PREFIX__=";
-  command+=" -D__DBL_HAS_DENORM__=1";
-  command+=" -D__DEC_EVAL_METHOD__=2";
-  command+=" -D__DEC128_MAX__=9.999999999999999999999999999999999E6144DL";
-  command+=" -D__FLT_MANT_DIG__=24";
-  command+=" -D__DEC64_EPSILON__=1E-15DD";
-  command+=" -D__DEC128_MIN_EXP__=\"(-6143)\"";
-  command+=" -D__DEC32_SUBNORMAL_MIN__=0.000001E-95DF";
-  command+=" -D__FLT_RADIX__=2";
-  command+=" -D__LDBL_EPSILON__=1.08420217248550443401e-19L";
-  command+=" -D__k8=1";
-  command+=" -D__LDBL_DIG__=18";
-  command+=" -D__FLT_HAS_QUIET_NAN__=1";
-  command+=" -D__FLT_MAX_10_EXP__=38";
-  command+=" -D__FLT_HAS_INFINITY__=1";
-  command+=" -D__DEC64_MAX__=9.999999999999999E384DD";
-  command+=" -D__DEC64_MANT_DIG__=16";
-  command+=" -D__DEC32_MAX_EXP__=96";
-  // NOLINTNEXTLINE(whitespace/line_length)
-  command+=" -D__DEC128_SUBNORMAL_MIN__=0.000000000000000000000000000000001E-6143DL";
-  command+=" -D__LDBL_MANT_DIG__=64";
-  command+=" -D__CONSTANT_CFSTRINGS__=1";
-  command+=" -D__DEC32_MANT_DIG__=7";
-  command+=" -D__k8__=1";
-  command+=" -D__pic__=2";
-  command+=" -D__FLT_DIG__=6";
-  command+=" -D__FLT_MAX_EXP__=128";
-  // command+=" -D__BLOCKS__=1";
-  command+=" -D__DBL_MANT_DIG__=53";
-  command+=" -D__DEC64_MIN__=1E-383DD";
-  command+=" -D__LDBL_MIN_EXP__=\"(-16381)\"";
-  command+=" -D__LDBL_MAX_EXP__=16384";
-  command+=" -D__LDBL_MAX_10_EXP__=4932";
-  command+=" -D__DBL_EPSILON__=2.2204460492503131e-16";
-  command+=" -D__GNUC_PATCHLEVEL__=1";
-  command+=" -D__LDBL_HAS_INFINITY__=1";
-  command+=" -D__INTMAX_MAX__=9223372036854775807L";
-  command+=" -D__FLT_DENORM_MIN__=1.40129846e-45F";
-  command+=" -D__PIC__=2";
-  command+=" -D__FLT_MAX__=3.40282347e+38F";
-  command+=" -D__FLT_MIN_10_EXP__=\"(-37)\"";
-  command+=" -D__DEC128_MAX_EXP__=6144";
-  command+=" -D__GNUC_MINOR__=2";
-  command+=" -D__DBL_MAX_10_EXP__=308";
-  command+=" -D__LDBL_DENORM_MIN__=3.64519953188247460253e-4951L";
-  command+=" -D__DEC128_MANT_DIG__=34";
-  command+=" -D__LDBL_MIN_10_EXP__=\"(-4931)\"";
-
-  if(preprocessor==configt::ansi_ct::preprocessort::CLANG)
+  if(config.ansi_c.pointer_width == 16)
   {
-    command+=" -D_Noreturn=\"__attribute__((__noreturn__))\"";
-    command+=" -D__llvm__";
-    command+=" -D__clang__";
+    if(arch == "i386" || arch == "x86_64" || arch == "x32")
+      command += " -m16";
+    else if(has_prefix(id2string(arch), "mips"))
+      command += " -mips16";
   }
-
-  if(config.ansi_c.int_width==16)
-    command+=GCC_DEFINES_16;
-  else if(config.ansi_c.int_width==32)
+  else if(config.ansi_c.pointer_width == 32)
   {
-    if(config.ansi_c.pointer_width==64)
-    {
-      if(config.ansi_c.long_int_width==32)
-        command+=GCC_DEFINES_LLP64; // Windows, for instance
-      else
-        command+=GCC_DEFINES_LP64;
-    }
-    else
-      command+=GCC_DEFINES_32;
+    if(arch == "i386" || arch == "x86_64")
+      command += " -m32";
+    else if(arch == "x32")
+      command += " -mx32";
+    else if(has_prefix(id2string(arch), "mips"))
+      command += " -mabi=32";
+    else if(arch == "powerpc" || arch == "ppc64" || arch == "ppc64le")
+      command += " -m32";
+    else if(arch == "s390" || arch == "s390x")
+      command += " -m31"; // yes, 31, not 32!
+    else if(arch == "sparc" || arch == "sparc64")
+      command += " -m32";
+  }
+  else if(config.ansi_c.pointer_width == 64)
+  {
+    if(arch == "i386" || arch == "x86_64" || arch == "x32")
+      command += " -m64";
+    else if(has_prefix(id2string(arch), "mips"))
+      command += " -mabi=64";
+    else if(arch == "powerpc" || arch == "ppc64" || arch == "ppc64le")
+      command += " -m64";
+    else if(arch == "s390" || arch == "s390x")
+      command += " -m64";
+    else if(arch == "sparc" || arch == "sparc64")
+      command += " -m64";
   }
 
   // The width of wchar_t depends on the OS!
-  {
-    command+=" -D__WCHAR_MAX__="+type_max(wchar_t_type());
-
-    std::string sig=config.ansi_c.wchar_t_is_unsigned?"unsigned":"signed";
-
-    if(config.ansi_c.wchar_t_width==config.ansi_c.short_int_width)
-      command+=" -D__WCHAR_TYPE__=\""+sig+" short int\"";
-    else if(config.ansi_c.wchar_t_width==config.ansi_c.int_width)
-      command+=" -D__WCHAR_TYPE__=\""+sig+" int\"";
-    else if(config.ansi_c.wchar_t_width==config.ansi_c.long_int_width)
-      command+=" -D__WCHAR_TYPE__=\""+sig+" long int\"";
-    else if(config.ansi_c.wchar_t_width==config.ansi_c.char_width)
-      command+=" -D__WCHAR_TYPE__=\""+sig+" char\"";
-    else
-      UNREACHABLE;
-  }
+  if(config.ansi_c.wchar_t_width == config.ansi_c.short_int_width)
+    command += " -fshort-wchar";
 
   if(config.ansi_c.char_is_unsigned)
-    command+=" -D __CHAR_UNSIGNED__"; // gcc
+    command += " -funsigned-char";
 
-  switch(config.ansi_c.os)
+  if(config.ansi_c.os == configt::ansi_ct::ost::NO_OS)
+    command += " -nostdinc";
+
+  // Set the standard
+  if(has_suffix(file, ".cpp") || has_suffix(file, ".CPP") ||
+#ifndef _WIN32
+     has_suffix(file, ".C") ||
+#endif
+     has_suffix(file, ".c++") || has_suffix(file, ".C++") ||
+     has_suffix(file, ".cp") || has_suffix(file, ".CP"))
   {
-  case configt::ansi_ct::ost::OS_LINUX:
-    command+=" -Dlinux -D__linux -D__linux__ -D__gnu_linux__";
-    command+=" -Dunix -D__unix -D__unix__";
-    command+=" -D__USE_UNIX98";
-    break;
+    switch(config.cpp.cpp_standard)
+    {
+    case configt::cppt::cpp_standardt::CPP98:
+      command += " -std=gnu++98";
+      break;
 
-  case configt::ansi_ct::ost::OS_MACOS:
-    command+=" -D__APPLE__ -D__MACH__";
-    // needs to be __APPLE_CPP__ for C++
-    command+=" -D__APPLE_CC__";
-    break;
+    case configt::cppt::cpp_standardt::CPP03:
+      command += " -std=gnu++03";
+      break;
 
-  case configt::ansi_ct::ost::OS_WIN:
-    command+=" -D _WIN32";
+    case configt::cppt::cpp_standardt::CPP11:
+      command += " -std=gnu++11";
+      break;
 
-    if(config.ansi_c.mode!=configt::ansi_ct::flavourt::VISUAL_STUDIO)
-      command+=" -D _M_IX86=Blend";
-
-    if(config.ansi_c.arch=="x86_64")
-      command+=" -D _WIN64"; // yes, both _WIN32 and _WIN64 get defined
-
-    if(config.ansi_c.char_is_unsigned)
-      command+=" -D _CHAR_UNSIGNED"; // This is Visual Studio
-    break;
-
-  case configt::ansi_ct::ost::NO_OS:
-    command+=" -nostdinc"; // make sure we don't mess with the system library
-    break;
-
-  default:
-    UNREACHABLE;
+    case configt::cppt::cpp_standardt::CPP14:
+      command += " -std=gnu++14";
+      break;
+    }
   }
-
-  // Standard Defines, ANSI9899 6.10.8
-  switch(config.ansi_c.c_standard)
+  else
   {
-  case configt::ansi_ct::c_standardt::C89:
-    break; // __STDC_VERSION__ is not defined
+    switch(config.ansi_c.c_standard)
+    {
+    case configt::ansi_ct::c_standardt::C89:
+      command += " -std=gnu++89";
+      break;
 
-  case configt::ansi_ct::c_standardt::C99:
-    command += " -D __STDC_VERSION__=199901L";
-    break;
+    case configt::ansi_ct::c_standardt::C99:
+      command += " -std=gnu99";
+      break;
 
-  case configt::ansi_ct::c_standardt::C11:
-    command += " -D __STDC_VERSION__=201112L";
-    break;
+    case configt::ansi_ct::c_standardt::C11:
+      command += " -std=gnu11";
+      break;
+    }
   }
-
-  command += " -D __STDC_IEC_559__=1";
-  command += " -D __STDC_IEC_559_COMPLEX__=1";
-  command += " -D __STDC_ISO_10646__=1";
 
   for(const auto &define : config.ansi_c.defines)
     command+=" -D"+shell_quote(define);
@@ -857,39 +661,35 @@ bool c_preprocess_gcc_clang(
   #endif
 
   #ifdef _WIN32
-  std::string tmpi=get_temporary_file("tmp.gcc", "");
+  temporary_filet tmpi("tmp.gcc", "");
   command+=" \""+file+"\"";
-  command+=" -o \""+tmpi+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  command += " -o \"" + tmpi() + "\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   // _popen isn't very reliable on WIN32
   // that's why we use system() and a temporary file
   result=system(command.c_str());
 
-  std::ifstream instream(tmpi);
+  std::ifstream instream(tmpi());
 
   // errors/warnings
-  std::ifstream stderr_stream(stderr_file);
+  std::ifstream stderr_stream(stderr_file());
   error_parse(stderr_stream, result==0, message);
-
-  unlink(stderr_file.c_str());
 
   if(instream)
   {
     outstream << instream.rdbuf();
     instream.close();
-    unlink(tmpi.c_str());
   }
   else
   {
-    unlink(tmpi.c_str());
     message.error() << "GCC preprocessing failed (open failed)"
                     << messaget::eom;
     result=1;
   }
   #else
   command+=" \""+file+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   FILE *stream=popen(command.c_str(), "r");
 
@@ -909,10 +709,8 @@ bool c_preprocess_gcc_clang(
   }
 
   // errors/warnings
-  std::ifstream stderr_stream(stderr_file);
+  std::ifstream stderr_stream(stderr_file());
   error_parse(stderr_stream, result==0, message);
-
-  unlink(stderr_file.c_str());
 
   #endif
 
@@ -938,42 +736,34 @@ bool c_preprocess_arm(
   // preprocessing using armcc
   messaget message(message_handler);
 
-  std::string stderr_file=get_temporary_file("tmp.stderr", "");
+  temporary_filet stderr_file("tmp.stderr", "");
 
   std::string command;
 
   command="armcc -E -D__CPROVER__";
 
-//  command+=" -D__sizeof_int="+std::to_string(config.ansi_c.int_width/8);
-//  command+=" -D__sizeof_long="+std::to_string(config.ansi_c.long_int_width/8);
-//  command+=" -D__sizeof_ptr="+std::to_string(config.ansi_c.pointer_width/8);
-  // command+=" -D__EDG_VERSION__=308";
-  // command+=" -D__EDG__";
-//  command+=" -D__CC_ARM=1";
-  // command+=" -D__ARMCC_VERSION=410000";
-//  command+=" -D__arm__";
+  if(config.ansi_c.endianness == configt::ansi_ct::endiannesst::IS_BIG_ENDIAN)
+    command += " --bigend";
+  else
+    command += " --littleend";
 
-//  if(config.ansi_c.endianness==configt::ansi_ct::IS_BIG_ENDIAN)
-//    command+=" -D__BIG_ENDIAN";
+  if(config.ansi_c.char_is_unsigned)
+    command += " --unsigned_chars";
+  else
+    command += " --signed_chars";
 
-//  if(config.ansi_c.char_is_unsigned)
-//    command+=" -D__CHAR_UNSIGNED__";
-
-  if(config.ansi_c.os!=configt::ansi_ct::ost::OS_WIN)
+  // Set the standard
+  switch(config.ansi_c.c_standard)
   {
-    command+=" -D__WORDSIZE="+std::to_string(config.ansi_c.pointer_width);
+  case configt::ansi_ct::c_standardt::C89:
+    command += " --c90";
+    break;
 
-    if(config.ansi_c.int_width==16)
-      command+=GCC_DEFINES_16;
-    else if(config.ansi_c.int_width==32)
-      command+=GCC_DEFINES_32;
-    else if(config.ansi_c.int_width==64)
-      command+=GCC_DEFINES_LP64;
+  case configt::ansi_ct::c_standardt::C99:
+  case configt::ansi_ct::c_standardt::C11:
+    command += " --c99";
+    break;
   }
-
-  // Standard Defines, ANSI9899 6.10.8
-  command+=" -D__STDC__";
-  // command+=" -D__STDC_VERSION__=199901L";
 
   for(const auto &define : config.ansi_c.defines)
     command+=" "+shell_quote("-D"+define);
@@ -984,34 +774,31 @@ bool c_preprocess_arm(
   int result;
 
   #ifdef _WIN32
-  std::string tmpi=get_temporary_file("tmp.cl", "");
+  temporary_filet tmpi("tmp.cl", "");
   command+=" \""+file+"\"";
-  command+=" > \""+tmpi+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  command += " > \"" + tmpi() + "\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   // _popen isn't very reliable on WIN32
   // that's why we use system() and a temporary file
   result=system(command.c_str());
 
-  std::ifstream instream(tmpi);
+  std::ifstream instream(tmpi());
 
   if(!instream)
   {
     outstream << instream.rdbuf(); // copy
     instream.close();
-    unlink(tmpi.c_str());
   }
   else
   {
-    unlink(tmpi.c_str());
-    unlink(stderr_file.c_str());
     message.error() << "ARMCC preprocessing failed (fopen failed)"
                     << messaget::eom;
     return true;
   }
   #else
   command+=" \""+file+"\"";
-  command+=" 2> \""+stderr_file+"\"";
+  command += " 2> \"" + stderr_file() + "\"";
 
   FILE *stream=popen(command.c_str(), "r");
 
@@ -1025,7 +812,6 @@ bool c_preprocess_arm(
   }
   else
   {
-    unlink(stderr_file.c_str());
     message.error() << "ARMCC preprocessing failed (popen failed)"
                     << messaget::eom;
     return true;
@@ -1033,10 +819,8 @@ bool c_preprocess_arm(
   #endif
 
   // errors/warnings
-  std::ifstream stderr_stream(stderr_file);
+  std::ifstream stderr_stream(stderr_file());
   error_parse(stderr_stream, result==0, message);
-
-  unlink(stderr_file.c_str());
 
   if(result!=0)
   {

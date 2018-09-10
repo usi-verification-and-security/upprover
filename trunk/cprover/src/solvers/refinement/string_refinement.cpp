@@ -20,25 +20,23 @@ Author: Alberto Griggio, alberto.griggio@gmail.com
 #include <solvers/refinement/string_refinement.h>
 
 #include <iomanip>
+#include <numeric>
 #include <stack>
 #include <util/expr_iterator.h>
-#include <util/arith_tools.h>
+#include <util/expr_util.h>
 #include <util/simplify_expr.h>
 #include <solvers/sat/satcheck.h>
 #include <solvers/refinement/string_constraint_instantiation.h>
-#include <java_bytecode/java_types.h>
 #include <unordered_set>
-
-static exprt substitute_array_with_expr(const exprt &expr, const exprt &index);
+#include <util/magic.h>
 
 static bool is_valid_string_constraint(
   messaget::mstreamt &stream,
   const namespacet &ns,
-  const string_constraintt &expr);
+  const string_constraintt &constraint);
 
 static optionalt<exprt> find_counter_example(
   const namespacet &ns,
-  ui_message_handlert::uit ui,
   const exprt &axiom,
   const symbol_exprt &var);
 
@@ -49,7 +47,7 @@ static optionalt<exprt> find_counter_example(
 ///   * the negation of `a` is an existential formula `b`;
 ///   * we substituted symbols in `b` by their values found in `get`;
 ///   * arrays are concretized, meaning we attribute a value for characters that
-///     are unknown to get, for details see concretize_arrays_in_expression;
+///     are unknown to get, for details see substitute_array_access;
 ///   * `b` is simplified and array accesses are replaced by expressions
 ///     without arrays;
 ///   * we give lemma `b` to a fresh solver;
@@ -64,9 +62,7 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   const std::function<exprt(const exprt &)> &get,
   messaget::mstreamt &stream,
   const namespacet &ns,
-  std::size_t max_string_length,
   bool use_counter_example,
-  ui_message_handlert::uit ui,
   const union_find_replacet &symbol_resolve);
 
 static void initial_index_set(
@@ -120,9 +116,14 @@ static std::vector<exprt> instantiate(
 static optionalt<exprt> get_array(
   const std::function<exprt(const exprt &)> &super_get,
   const namespacet &ns,
-  const std::size_t max_string_length,
   messaget::mstreamt &stream,
   const array_string_exprt &arr);
+
+static exprt substitute_array_access(
+  const index_exprt &index_expr,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator,
+  const bool left_propagate);
 
 /// Convert index-value map to a vector of values. If a value for an
 /// index is not defined, set it to the value referenced by the next higher
@@ -162,19 +163,20 @@ static bool validate(const string_refinementt::infot &info)
   return true;
 }
 
-string_refinementt::string_refinementt(const infot &info, bool):
-  supert(info),
-  config_(info),
-  loop_bound_(info.refinement_bound),
-  generator(info, *info.ns) { }
+string_refinementt::string_refinementt(const infot &info, bool)
+  : supert(info),
+    config_(info),
+    loop_bound_(info.refinement_bound),
+    generator(*info.ns)
+{
+}
 
 string_refinementt::string_refinementt(const infot &info):
   string_refinementt(info, validate(info)) { }
 
-/// display the current index set, for debugging
+/// Write index set to the given stream, use for debugging
 static void display_index_set(
   messaget::mstreamt &stream,
-  const namespacet &ns,
   const index_set_pairt &index_set)
 {
   const auto eom=messaget::eom;
@@ -183,7 +185,7 @@ static void display_index_set(
   for(const auto &i : index_set.cumulative)
   {
     const exprt &s=i.first;
-    stream << "IS(" << from_expr(ns, "", s) << ")=={" << eom;
+    stream << "IS(" << format(s) << ")=={" << eom;
 
     for(const auto &j : i.second)
     {
@@ -193,7 +195,7 @@ static void display_index_set(
         count_current++;
         stream << "**";
       }
-      stream << "  " << from_expr(ns, "", j) << ";" << eom;
+      stream << "  " << format(j) << ";" << eom;
       count++;
     }
     stream << "}"  << eom;
@@ -225,7 +227,6 @@ static void display_index_set(
 ///      for details)
 static std::vector<exprt> generate_instantiations(
   messaget::mstreamt &stream,
-  const namespacet &ns,
   const string_constraint_generatort &generator,
   const index_set_pairt &index_set,
   const string_axiomst &axioms)
@@ -248,136 +249,22 @@ static std::vector<exprt> generate_instantiations(
   return lemmas;
 }
 
-/// Remove functions applications and create the necessary axioms.
-/// \param expr: an expression possibly containing function applications
-/// \param generator: generator for the string constraints
-/// \return an expression containing no function application
-static exprt substitute_function_applications(
-  exprt expr,
-  string_constraint_generatort &generator)
+/// Fill the array_pointer correspondence and replace the right hand sides of
+/// the corresponding equations
+static void make_char_array_pointer_associations(
+  string_constraint_generatort &generator,
+  std::vector<equal_exprt> &equations)
 {
-  for(auto &operand : expr.operands())
-    operand = substitute_function_applications(operand, generator);
-
-  if(expr.id() == ID_function_application)
-    return generator.add_axioms_for_function_application(
-      to_function_application_expr(expr));
-
-  return expr;
-}
-
-/// Remove functions applications and create the necessary axioms.
-/// \param equations: vector of equations
-/// \param generator: generator for the string constraints
-/// \return vector of equations where function application have been replaced
-static void substitute_function_applications_in_equations(
-  std::vector<equal_exprt> &equations,
-  string_constraint_generatort &generator)
-{
-  for(auto &eq : equations)
-    eq.rhs() = substitute_function_applications(eq.rhs(), generator);
-}
-
-/// For now, any unsigned bitvector type of width smaller or equal to 16 is
-/// considered a character.
-/// \note type that are not characters maybe detected as characters (for
-/// instance unsigned char in C), this will make dec_solve do unnecessary
-/// steps for these, but should not affect correctness.
-/// \param type: a type
-/// \return true if the given type represents characters
-bool is_char_type(const typet &type)
-{
-  return type.id() == ID_unsignedbv &&
-         to_unsignedbv_type(type).get_width() <= 16;
-}
-
-/// Distinguish char array from other types.
-/// For now, any unsigned bitvector type is considered a character.
-/// \param type: a type
-/// \param ns: namespace
-/// \return true if the given type is an array of characters
-bool is_char_array_type(const typet &type, const namespacet &ns)
-{
-  if(type.id()==ID_symbol)
-    return is_char_array_type(ns.follow(type), ns);
-  return type.id() == ID_array && is_char_type(type.subtype());
-}
-
-/// For now, any unsigned bitvector type is considered a character.
-/// \param type: a type
-/// \return true if the given type represents a pointer to characters
-bool is_char_pointer_type(const typet &type)
-{
-  return type.id() == ID_pointer && is_char_type(type.subtype());
-}
-
-/// \param type: a type
-/// \param pred: a predicate
-/// \return true if one of the subtype of `type` satisfies predicate `pred`.
-///         The meaning of "subtype" is in the algebraic datatype sense:
-///         for example, the subtypes of a struct are the types of its
-///         components, the subtype of a pointer is the type it points to,
-///         etc...
-///         For instance in the type `t` defined by
-///         `{ int a; char[] b; double * c; { bool d} e}`, `int`, `char`,
-///         `double` and `bool` are subtypes of `t`.
-bool has_subtype(
-  const typet &type,
-  const std::function<bool(const typet &)> &pred)
-{
-  if(pred(type))
-    return true;
-
-  if(type.id() == ID_struct || type.id() == ID_union)
+  for(equal_exprt &eq : equations)
   {
-    const struct_union_typet &struct_type = to_struct_union_type(type);
-    return std::any_of(
-      struct_type.components().begin(),
-      struct_type.components().end(), // NOLINTNEXTLINE
-      [&](const struct_union_typet::componentt &comp) {
-        return has_subtype(comp.type(), pred);
-      });
+    if(
+      const auto fun_app =
+        expr_try_dynamic_cast<function_application_exprt>(eq.rhs()))
+    {
+      if(const auto result = generator.make_array_pointer_association(*fun_app))
+        eq.rhs() = *result;
+    }
   }
-
-  return std::any_of( // NOLINTNEXTLINE
-    type.subtypes().begin(), type.subtypes().end(), [&](const typet &t) {
-      return has_subtype(t, pred);
-    });
-}
-
-/// \param type: a type
-/// \return true if a subtype of `type` is an pointer of characters.
-///         The meaning of "subtype" is in the algebraic datatype sense:
-///         for example, the subtypes of a struct are the types of its
-///         components, the subtype of a pointer is the type it points to,
-///         etc...
-static bool has_char_pointer_subtype(const typet &type)
-{
-  return has_subtype(type, is_char_pointer_type);
-}
-
-/// \param type: a type
-/// \return true if a subtype of `type` is string_typet.
-///         The meaning of "subtype" is in the algebraic datatype sense:
-///         for example, the subtypes of a struct are the types of its
-///         components, the subtype of a pointer is the type it points to,
-///         etc...
-static bool has_string_subtype(const typet &type)
-{
-  // NOLINTNEXTLINE
-  return has_subtype(
-    type, [](const typet &subtype) { return subtype == string_typet(); });
-}
-
-/// \param expr: an expression
-/// \param ns: namespace
-/// \return true if a subexpression of `expr` is an array of characters
-static bool has_char_array_subexpr(const exprt &expr, const namespacet &ns)
-{
-  for(auto it = expr.depth_begin(); it != expr.depth_end(); ++it)
-    if(is_char_array_type(it->type(), ns))
-      return true;
-  return false;
 }
 
 void replace_symbols_in_equations(
@@ -431,16 +318,15 @@ static union_find_replacet generate_symbol_resolution_from_equations(
     const exprt &rhs = eq.rhs();
     if(lhs.id()!=ID_symbol)
     {
-      stream << log_message << "non symbol lhs: " << from_expr(ns, "", lhs)
-             << " with rhs: " << from_expr(ns, "", rhs) << eom;
+      stream << log_message << "non symbol lhs: " << format(lhs)
+             << " with rhs: " << format(rhs) << eom;
       continue;
     }
 
     if(lhs.type()!=rhs.type())
     {
-      stream << log_message << "non equal types lhs: " << from_expr(ns, "", lhs)
-             << "\n####################### rhs: " << from_expr(ns, "", rhs)
-             << eom;
+      stream << log_message << "non equal types lhs: " << format(lhs)
+             << "\n####################### rhs: " << format(rhs) << eom;
       continue;
     }
 
@@ -453,8 +339,8 @@ static union_find_replacet generate_symbol_resolution_from_equations(
       // function applications can be ignored because they will be replaced
       // in the convert_function_application step of dec_solve
     }
-    else if(lhs.type().id() != ID_pointer &&
-      has_char_pointer_subtype(lhs.type()))
+    else if(
+      lhs.type().id() != ID_pointer && has_char_pointer_subtype(lhs.type(), ns))
     {
       if(rhs.type().id() == ID_struct)
       {
@@ -473,42 +359,12 @@ static union_find_replacet generate_symbol_resolution_from_equations(
       else
       {
         stream << log_message << "non struct with char pointer subexpr "
-               << from_expr(ns, "", rhs) << "\n  * of type "
-               << from_type(ns, "", rhs.type()) << eom;
+               << format(rhs) << "\n  * of type " << format(rhs.type()) << eom;
       }
     }
   }
   return solver;
 }
-
-/// Maps equation to expressions contained in them and conversely expressions to
-/// equations that contain them. This can be used on a subset of expressions
-/// which interests us, in particular strings. Equations are identified by an
-/// index of type `std::size_t` for more efficient insertion and lookup.
-class equation_symbol_mappingt
-{
-public:
-  // Record index of the equations that contain a given expression
-  std::map<exprt, std::vector<std::size_t>> equations_containing;
-  // Record expressions that are contained in the equation with the given index
-  std::unordered_map<std::size_t, std::vector<exprt>> strings_in_equation;
-
-  void add(const std::size_t i, const exprt &expr)
-  {
-    equations_containing[expr].push_back(i);
-    strings_in_equation[i].push_back(expr);
-  }
-
-  std::vector<exprt> find_expressions(const std::size_t i)
-  {
-    return strings_in_equation[i];
-  }
-
-  std::vector<std::size_t> find_equations(const exprt &expr)
-  {
-    return equations_containing[expr];
-  }
-};
 
 /// This is meant to be used on the lhs of an equation with string subtype.
 /// \param lhs: expression which is either of string type, or a symbol
@@ -575,7 +431,7 @@ static void add_string_equation_to_symbol_resolution(
   {
     symbol_resolve.make_union(eq.lhs(), eq.rhs());
   }
-  else if(has_string_subtype(eq.lhs().type()))
+  else if(has_subtype(eq.lhs().type(), ID_string, ns))
   {
     if(eq.rhs().type().id() == ID_struct)
     {
@@ -624,22 +480,23 @@ union_find_replacet string_identifiers_resolution_from_equations(
         equations_to_treat.push(i);
 
       std::vector<exprt> rhs_strings = extract_strings(eq.rhs());
-      for(const auto expr : rhs_strings)
+      for(const auto &expr : rhs_strings)
         equation_map.add(i, expr);
     }
-    else if(eq.lhs().type().id() != ID_pointer &&
-       has_string_subtype(eq.lhs().type()))
+    else if(
+      eq.lhs().type().id() != ID_pointer &&
+      has_subtype(eq.lhs().type(), ID_string, ns))
     {
       std::vector<exprt> lhs_strings = extract_strings_from_lhs(eq.lhs());
 
-      for(const auto expr : lhs_strings)
+      for(const auto &expr : lhs_strings)
         equation_map.add(i, expr);
 
       if(lhs_strings.empty())
       {
         stream << log_message << "non struct with string subtype "
-               << from_expr(ns, "", eq.lhs()) << "\n  * of type "
-               << from_type(ns, "", eq.lhs().type()) << eom;
+               << format(eq.lhs()) << "\n  * of type "
+               << format(eq.lhs().type()) << eom;
       }
 
       for(const exprt &expr : extract_strings(eq.rhs()))
@@ -669,15 +526,17 @@ union_find_replacet string_identifiers_resolution_from_equations(
   return result;
 }
 
-void output_equations(
+#ifdef DEBUG
+/// Output a vector of equations to the given stream, used for debugging.
+static void output_equations(
   std::ostream &output,
-  const std::vector<equal_exprt> &equations,
-  const namespacet &ns)
+  const std::vector<equal_exprt> &equations)
 {
   for(std::size_t i = 0; i < equations.size(); ++i)
-    output << "  [" << i << "] " << from_expr(ns, "", equations[i].lhs())
-           << " == " << from_expr(ns, "", equations[i].rhs()) << std::endl;
+    output << "  [" << i << "] " << format(equations[i].lhs())
+           << " == " << format(equations[i].rhs()) << std::endl;
 }
+#endif
 
 /// Main decision procedure of the solver. Looks for a valuation of variables
 /// compatible with the constraints that have been given to `set_to` so far.
@@ -747,7 +606,7 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 {
 #ifdef DEBUG
   debug() << "dec_solve: Initial set of equations" << eom;
-  output_equations(debug(), equations, ns);
+  output_equations(debug(), equations);
 #endif
 
   debug() << "dec_solve: Build symbol solver from equations" << eom;
@@ -757,8 +616,7 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 #ifdef DEBUG
   debug() << "symbol resolve:" << eom;
   for(const auto &pair : symbol_resolve.to_vector())
-    debug() << from_expr(ns, "", pair.first) << " --> "
-            << from_expr(ns, "", pair.second) << eom;
+    debug() << format(pair.first) << " --> " << format(pair.second) << eom;
 #endif
 
   const union_find_replacet string_id_symbol_resolve =
@@ -767,8 +625,7 @@ decision_proceduret::resultt string_refinementt::dec_solve()
   debug() << "symbol resolve string:" << eom;
   for(const auto &pair : string_id_symbol_resolve.to_vector())
   {
-    debug() << from_expr(ns, "", pair.first) << " --> "
-            << from_expr(ns, "", pair.second) << eom;
+    debug() << format(pair.first) << " --> " << format(pair.second) << eom;
   }
 #endif
 
@@ -782,92 +639,114 @@ decision_proceduret::resultt string_refinementt::dec_solve()
       string_id_symbol_resolve.replace_expr(eq.rhs());
   }
 
+  // Generator is also used by get, so we have to use it as a class member
+  // but we make sure it is cleared at each `dec_solve` call.
+  generator.clear_constraints();
+  make_char_array_pointer_associations(generator, equations);
+
 #ifdef DEBUG
-  output_equations(debug(), equations, ns);
+  output_equations(debug(), equations);
 #endif
 
-  debug() << "dec_solve: Replace function applications" << eom;
-  // Generator is also used by get, that's why we use a class member
-  substitute_function_applications_in_equations(equations, generator);
+  debug() << "dec_solve: compute dependency graph and remove function "
+          << "applications captured by the dependencies:" << eom;
+  std::vector<exprt> local_equations;
+  for(const equal_exprt &eq : equations)
+  {
+    if(!add_node(dependencies, eq, generator.array_pool))
+      local_equations.push_back(eq);
+  }
+  equations.clear();
+
 #ifdef DEBUG
-  output_equations(debug(), equations, ns);
+  dependencies.output_dot(debug());
+#endif
+
+  debug() << "dec_solve: add constraints" << eom;
+  dependencies.add_constraints(generator);
+
+#ifdef DEBUG
+  output_equations(debug(), equations);
 #endif
 
 #ifdef DEBUG
   debug() << "dec_solve: arrays_of_pointers:" << eom;
-  for(auto pair : generator.get_arrays_of_pointers())
+  for(auto pair : generator.array_pool.get_arrays_of_pointers())
   {
-    debug() << "  * " << from_expr(ns, "", pair.first) << "\t--> "
-            << from_expr(ns, "", pair.second) << " : "
-            << from_type(ns, "", pair.second.type()) << eom;
+    debug() << "  * " << format(pair.first) << "\t--> " << format(pair.second)
+            << " : " << format(pair.second.type()) << eom;
   }
 #endif
 
-  for(const auto &eq : equations)
+  for(const auto &eq : local_equations)
   {
 #ifdef DEBUG
-    debug() << "dec_solve: set_to " << from_expr(ns, "", eq) << eom;
+    debug() << "dec_solve: set_to " << format(eq) << eom;
 #endif
     supert::set_to(eq, true);
   }
 
-  const auto get = [this](const exprt &expr) { return this->get(expr); };
-  for(exprt axiom : generator.get_axioms())
-  {
-    symbol_resolve.replace_expr(axiom);
-    if(axiom.id()==ID_string_constraint)
-    {
-      string_constraintt univ_axiom = to_string_constraint(axiom);
+  const auto constraints = generator.get_constraints();
+  std::transform(
+    constraints.begin(),
+    constraints.end(),
+    std::back_inserter(axioms.universal),
+    [&](string_constraintt constraint) {
+      constraint.replace_expr(symbol_resolve);
       DATA_INVARIANT(
-        is_valid_string_constraint(error(), ns, univ_axiom),
+        is_valid_string_constraint(error(), ns, constraint),
         string_refinement_invariantt(
           "string constraints satisfy their invariant"));
-      axioms.universal.push_back(univ_axiom);
-    }
-    else if(axiom.id()==ID_string_not_contains_constraint)
-    {
-      string_not_contains_constraintt nc_axiom=
-        to_string_not_contains_constraint(axiom);
-      array_typet rtype = to_array_type(nc_axiom.s0().type());
+      return constraint;
+    });
+
+  const auto not_contains_constraints =
+    generator.get_not_contains_constraints();
+  std::transform(
+    not_contains_constraints.begin(),
+    not_contains_constraints.end(),
+    std::back_inserter(axioms.not_contains),
+    [&](string_not_contains_constraintt axiom) {
+      symbol_resolve.replace_expr(axiom);
+      return axiom;
+    });
+
+  for(const auto &nc_axiom : axioms.not_contains)
+  {
+    const auto &witness_type = [&] {
+      const auto &rtype = to_array_type(nc_axiom.s0().type());
       const typet &index_type = rtype.size().type();
-      array_typet witness_type(index_type, infinity_exprt(index_type));
-      generator.witness[nc_axiom]=
-        generator.fresh_symbol("not_contains_witness", witness_type);
-      axioms.not_contains.push_back(nc_axiom);
-    }
-    else
-    {
-      add_lemma(axiom);
-    }
+      return array_typet(index_type, infinity_exprt(index_type));
+    }();
+    generator.witness[nc_axiom] =
+      generator.fresh_symbol("not_contains_witness", witness_type);
   }
 
+  for(const exprt &lemma : generator.get_lemmas())
+    add_lemma(lemma);
+
   // Initial try without index set
+  const auto get = [this](const exprt &expr) { return this->get(expr); };
+  dependencies.clean_cache();
   const decision_proceduret::resultt res=supert::dec_solve();
   if(res==resultt::D_SATISFIABLE)
   {
     bool satisfied;
     std::vector<exprt> counter_examples;
-    std::tie(satisfied, counter_examples)=check_axioms(
+    std::tie(satisfied, counter_examples) = check_axioms(
       axioms,
       generator,
       get,
       debug(),
       ns,
-      generator.max_string_length,
       config_.use_counter_example,
-      supert::config_.ui,
       symbol_resolve);
-    if(!satisfied)
-    {
-      for(const auto &counter : counter_examples)
-        add_lemma(counter);
-      debug() << "check_SAT: got SAT but the model is not correct" << eom;
-    }
-    else
+    if(satisfied)
     {
       debug() << "check_SAT: the model is correct" << eom;
       return resultt::D_SATISFIABLE;
     }
+    debug() << "check_SAT: got SAT but the model is not correct" << eom;
   }
   else
   {
@@ -881,7 +760,6 @@ decision_proceduret::resultt string_refinementt::dec_solve()
   for(const auto &instance :
         generate_instantiations(
           debug(),
-          ns,
           generator,
           index_sets,
           axioms))
@@ -889,35 +767,30 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 
   while((loop_bound_--)>0)
   {
+    dependencies.clean_cache();
     const decision_proceduret::resultt res=supert::dec_solve();
 
     if(res==resultt::D_SATISFIABLE)
     {
       bool satisfied;
       std::vector<exprt> counter_examples;
-      std::tie(satisfied, counter_examples)=check_axioms(
+      std::tie(satisfied, counter_examples) = check_axioms(
         axioms,
         generator,
         get,
         debug(),
         ns,
-        generator.max_string_length,
         config_.use_counter_example,
-        supert::config_.ui,
         symbol_resolve);
-      if(!satisfied)
-      {
-        for(const auto &counter : counter_examples)
-          add_lemma(counter);
-        debug() << "check_SAT: got SAT but the model is not correct" << eom;
-      }
-      else
+      if(satisfied)
       {
         debug() << "check_SAT: the model is correct" << eom;
         return resultt::D_SATISFIABLE;
       }
 
-      debug() <<  "refining..." << eom;
+      debug() << "check_SAT: got SAT but the model is not correct, refining..."
+              << eom;
+
       // Since the model is not correct although we got SAT, we need to refine
       // the property we are checking by adding more indices to the index set,
       // and instantiating universal formulas with this indices.
@@ -925,7 +798,7 @@ decision_proceduret::resultt string_refinementt::dec_solve()
       index_sets.current.clear();
       update_index_set(index_sets, ns, current_constraints);
 
-      display_index_set(debug(), ns, index_sets);
+      display_index_set(debug(), index_sets);
 
       if(index_sets.current.empty())
       {
@@ -936,13 +809,17 @@ decision_proceduret::resultt string_refinementt::dec_solve()
           return resultt::D_ERROR;
         }
         else
-          debug() << "dec_solve: current index set is empty" << eom;
+        {
+          debug() << "dec_solve: current index set is empty, "
+                  << "adding counter examples" << eom;
+          for(const auto &counter : counter_examples)
+            add_lemma(counter);
+        }
       }
       current_constraints.clear();
       for(const auto &instance :
         generate_instantiations(
           debug(),
-          ns,
           generator,
           index_sets,
           axioms))
@@ -1001,20 +878,22 @@ void string_refinementt::add_lemma(
       ++it;
   }
 
-  debug() << "adding lemma " << from_expr(ns, "", simple_lemma) << eom;
+  debug() << "adding lemma " << format(simple_lemma) << eom;
 
   prop.l_set_to_true(convert(simple_lemma));
 }
 
 /// Get a model of an array and put it in a certain form.
 /// If the model is incomplete or if it is too big, return no value.
-/// \par parameters: an expression representing an array and an expression
-/// representing an integer
+/// \param super_get: function returning the valuation of an expression
+///        in a model
+/// \param ns: namespace
+/// \param stream: output stream for warning messages
+/// \param arr: expression of type array representing a string
 /// \return an optional array expression or array_of_exprt
 static optionalt<exprt> get_array(
   const std::function<exprt(const exprt &)> &super_get,
   const namespacet &ns,
-  const std::size_t max_string_length,
   messaget::mstreamt &stream,
   const array_string_exprt &arr)
 {
@@ -1030,8 +909,8 @@ static optionalt<exprt> get_array(
 
   if(size_val.id()!=ID_constant)
   {
-    stream << "(sr::get_array) string of unknown size: "
-           << from_expr(ns, "", size_val) << eom;
+    stream << "(sr::get_array) string of unknown size: " << format(size_val)
+           << eom;
     return {};
   }
 
@@ -1043,55 +922,31 @@ static optionalt<exprt> get_array(
   }
   std::size_t n = *n_opt;
 
-  const array_typet ret_type(char_type, from_integer(n, index_type));
-  array_exprt ret(ret_type);
-
-  if(n>max_string_length)
+  if(n > MAX_CONCRETE_STRING_SIZE)
   {
-    stream << "(sr::get_array) long string (size=" << n << ")" << eom;
-    return {};
+    stream << "(sr::get_array) long string (size " << format(arr.length())
+           << " = " << n << ") " << format(arr) << eom;
+    stream << "(sr::get_array) consider reducing string-max-input-length so "
+              "that no string exceeds "
+           << MAX_CONCRETE_STRING_SIZE
+           << " in length and "
+              "make sure all functions returning strings are loaded"
+           << eom;
+    stream << "(sr::get_array) this can also happen on invalid object access"
+           << eom;
+    return nil_exprt();
   }
 
-  if(n==0)
-    return empty_ret;
-
-  if(arr_val.id()=="array-list")
-  {
-    DATA_INVARIANT(
-      arr_val.operands().size()%2==0,
-      string_refinement_invariantt("and index expression must be on a symbol, "
-                                   "with, array_of, if, or array, and all "
-                                   "cases besides array are handled above"));
-    std::map<std::size_t, exprt> initial_map;
-    for(size_t i = 0; i < arr_val.operands().size(); i += 2)
-    {
-      exprt index = arr_val.operands()[i];
-      if(auto idx = numeric_cast<std::size_t>(index))
-      {
-        if(*idx < n)
-          initial_map[*idx] = arr_val.operands()[i + 1];
-      }
-    }
-
-    // Pad the concretized values to the left to assign the uninitialized
-    // values of result.
-    ret.operands()=fill_in_map_as_vector(initial_map);
-    return ret;
-  }
-  else if(arr_val.id()==ID_array)
-  {
-    // copy the `n` first elements of `arr_val`
-    for(size_t i=0; i<arr_val.operands().size() && i<n; i++)
-      ret.move_to_operands(arr_val.operands()[i]);
-    return ret;
-  }
-  else
-    return {};
+  if(
+    const auto &array = interval_sparse_arrayt::of_expr(
+      arr_val, from_integer(CHARACTER_FOR_UNKNOWN, char_type)))
+    return array->concretize(n, index_type);
+  return {};
 }
 
 /// convert the content of a string to a more readable representation. This
 /// should only be used for debugging.
-/// \par parameters: a constant array expression and a integer expression
+/// \param arr: a constant array expression
 /// \return a string
 static std::string string_of_array(const array_exprt &arr)
 {
@@ -1107,55 +962,52 @@ static std::string string_of_array(const array_exprt &arr)
 /// `super_get` and concretize unknown characters.
 /// \param super_get: give a valuation to variables
 /// \param ns: namespace
-/// \param max_string_length: limit up to which we concretize strings
 /// \param stream: output stream
 /// \param arr: array expression
 /// \return expression corresponding to `arr` in the model
 static exprt get_char_array_and_concretize(
   const std::function<exprt(const exprt &)> &super_get,
   const namespacet &ns,
-  const std::size_t max_string_length,
   messaget::mstreamt &stream,
   const array_string_exprt &arr)
 {
   const auto &eom = messaget::eom;
-  static const std::string indent("  ");
-  stream << "- " << from_expr(ns, "", arr) << ":\n";
-  stream << indent << indent << "- type: " << from_type(ns, "", arr.type())
-         << eom;
+  stream << "- " << format(arr) << ":\n";
+  stream << std::string(4, ' ') << "- type: " << format(arr.type()) << eom;
   const auto arr_model_opt =
-    get_array(super_get, ns, max_string_length, stream, arr);
+    get_array(super_get, ns, stream, arr);
   if(arr_model_opt)
   {
-    stream << indent << indent
-           << "- char_array: " << from_expr(ns, "", *arr_model_opt) << eom;
+    stream << std::string(4, ' ') << "- char_array: " << format(*arr_model_opt)
+           << '\n';
+    stream << std::string(4, ' ') << "- type : " << format(arr_model_opt->type())
+           << eom;
     const exprt simple = simplify_expr(*arr_model_opt, ns);
-    stream << indent << indent
-           << "- simplified_char_array: " << from_expr(ns, "", simple) << eom;
-    const exprt concretized_array =
-      concretize_arrays_in_expression(simple, max_string_length, ns);
-    stream << indent << indent << "- concretized_char_array: "
-           << from_expr(ns, "", concretized_array) << eom;
-
-    if(concretized_array.id() == ID_array)
+    stream << std::string(4, ' ') << "- simplified_char_array: " << format(simple)
+           << eom;
+    if(
+      const auto concretized_array = get_array(
+        super_get, ns, stream, to_array_string_expr(simple)))
     {
-      stream << indent << indent << "- as_string: \""
-             << string_of_array(to_array_expr(concretized_array)) << "\"\n";
-    }
-    else
-    {
-      stream << indent << "- warning: not an array" << eom;
-    }
+      stream << std::string(4, ' ')
+             << "- concretized_char_array: " << format(*concretized_array)
+             << eom;
 
-    stream << indent << indent
-           << "- type: " << from_type(ns, "", concretized_array.type()) << eom;
-    return concretized_array;
+      if(
+        const auto array_expr =
+          expr_try_dynamic_cast<array_exprt>(*concretized_array))
+      {
+        stream << std::string(4, ' ') << "- as_string: \""
+               << string_of_array(*array_expr) << "\"\n";
+      }
+      else
+        stream << std::string(2, ' ') << "- warning: not an array" << eom;
+      return *concretized_array;
+    }
+    return simple;
   }
-  else
-  {
-    stream << indent << indent << "- incomplete model" << eom;
-    return arr;
-  }
+  stream << std::string(4, ' ') << "- incomplete model" << eom;
+  return arr;
 }
 
 /// Display part of the current model by mapping the variables created by the
@@ -1164,255 +1016,165 @@ void debug_model(
   const string_constraint_generatort &generator,
   messaget::mstreamt &stream,
   const namespacet &ns,
-  const std::size_t max_string_length,
   const std::function<exprt(const exprt &)> &super_get,
   const std::vector<symbol_exprt> &boolean_symbols,
   const std::vector<symbol_exprt> &index_symbols)
 {
-  static const std::string indent("  ");
-
   stream << "debug_model:" << '\n';
-  for(const auto &pointer_array : generator.get_arrays_of_pointers())
+  for(const auto &pointer_array : generator.array_pool.get_arrays_of_pointers())
   {
     const auto arr = pointer_array.second;
     const exprt model = get_char_array_and_concretize(
-      super_get, ns, max_string_length, stream, arr);
+      super_get, ns, stream, arr);
 
-    stream << "- " << from_expr(ns, "", arr) << ":\n"
-           << indent << "- pointer: " << from_expr(ns, "", pointer_array.first)
-           << "\n"
-           << indent << "- model: " << from_expr(ns, "", model)
-           << messaget::eom;
+    stream << "- " << format(arr) << ":\n"
+           << "  - pointer: " << format(pointer_array.first) << "\n"
+           << "  - model: " << format(model) << messaget::eom;
   }
 
   for(const auto &symbol : boolean_symbols)
   {
     stream << " - " << symbol.get_identifier() << ": "
-           << from_expr(ns, "", super_get(symbol)) << '\n';
+           << format(super_get(symbol)) << '\n';
   }
 
   for(const auto &symbol : index_symbols)
   {
     stream << " - " << symbol.get_identifier() << ": "
-           << from_expr(ns, "", super_get(symbol)) << '\n';
+           << format(super_get(symbol)) << '\n';
   }
   stream << messaget::eom;
 }
 
 /// Create a new expression where 'with' expressions on arrays are replaced by
-/// 'if' expressions. e.g. for an array access arr[x], where: `arr :=
+/// 'if' expressions. e.g. for an array access arr[index], where: `arr :=
 /// array_of(12) with {0:=24} with {2:=42}` the constructed expression will be:
 /// `index==0 ? 24 : index==2 ? 42 : 12`
+/// If `left_propagate` is set to true, the expression will look like
+/// `index<=0 ? 24 : index<=2 ? 42 : 12`
 /// \param expr: A (possibly nested) 'with' expression on an `array_of`
-///   expression
+///   expression. The function checks that the expression is of the form
+///   `with_expr(with_expr(...(array_of(...)))`. This is the form in which
+///   array valuations coming from the underlying solver are given.
 /// \param index: An index with which to build the equality condition
 /// \return An expression containing no 'with' expression
-static exprt substitute_array_with_expr(const exprt &expr, const exprt &index)
+static exprt substitute_array_access(
+  const with_exprt &expr,
+  const exprt &index,
+  const bool left_propagate)
 {
-  if(expr.id()==ID_with)
-  {
-    const with_exprt &with_expr=to_with_expr(expr);
-    const exprt &then_expr=with_expr.new_value();
-    exprt else_expr=substitute_array_with_expr(with_expr.old(), index);
-    const typet &type=then_expr.type();
-    CHECK_RETURN(else_expr.type()==type);
-    CHECK_RETURN(index.type()==with_expr.where().type());
-    return if_exprt(
-      equal_exprt(index, with_expr.where()), then_expr, else_expr, type);
-  }
-  else
-  {
-    // Only handle 'with' expressions and 'array_of' expressions.
-    INVARIANT(
-      expr.id()==ID_array_of,
-      string_refinement_invariantt("only handles 'with' and 'array_of' "
-        "expressions, and expr is 'with' is handled above"));
-    return to_array_of_expr(expr).what();
-  }
+  return left_propagate ? interval_sparse_arrayt(expr).to_if_expression(index)
+                        : sparse_arrayt::to_if_expression(expr, index);
 }
 
-/// Fill an array represented by a list of with_expr by propagating values to
-/// the left. For instance `ARRAY_OF(12) WITH[2:=24] WITH[4:=42]` will give
-/// `{ 24, 24, 24, 42, 42 }`
-/// \param expr: an array expression in the form
-///   `ARRAY_OF(x) WITH [i0:=v0] ... WITH [iN:=vN]`
-/// \param string_max_length: bound on the length of strings
-/// \return an array expression with filled in values, or expr if it is simply
-///   an `ARRAY_OF(x)` expression
-exprt fill_in_array_with_expr(
-  const exprt &expr,
-  const std::size_t string_max_length)
+/// Create an equivalent expression where array accesses are replaced by 'if'
+/// expressions: for instance in array access `arr[index]`, where:
+/// `arr := {12, 24, 48}` the constructed expression will be:
+///    `index==0 ? 12 : index==1 ? 24 : 48`
+/// Avoids repetition so `arr := {12, 12, 24, 48}` will give
+///    `index<=1 ? 12 : index==1 ? 24 : 48`
+static exprt substitute_array_access(
+  const array_exprt &array_expr,
+  const exprt &index,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator)
 {
-  PRECONDITION(expr.type().id()==ID_array);
-  PRECONDITION(expr.id()==ID_with || expr.id()==ID_array_of);
-  const array_typet &array_type = to_array_type(expr.type());
-
-  // Map of the parts of the array that are initialized
-  std::map<std::size_t, exprt> initial_map;
-
-  // Set the last index to be sure the array will have the right length
-  const auto &array_size_opt = numeric_cast<std::size_t>(array_type.size());
-  if(array_size_opt && *array_size_opt > 0)
-    initial_map.emplace(
-      *array_size_opt - 1,
-      from_integer(CHARACTER_FOR_UNKNOWN, array_type.subtype()));
-
-  for(exprt it=expr; it.id()==ID_with; it=to_with_expr(it).old())
-  {
-    // Add to `initial_map` all the pairs (index,value) contained in `WITH`
-    // statements
-    const with_exprt &with_expr = to_with_expr(it);
-    const exprt &then_expr=with_expr.new_value();
-    const auto index =
-      numeric_cast_v<std::size_t>(to_constant_expr(with_expr.where()));
-    if(
-      index < string_max_length && (!array_size_opt || index < *array_size_opt))
-      initial_map.emplace(index, then_expr);
-  }
-
-  array_exprt result(array_type);
-  result.operands() = fill_in_map_as_vector(initial_map);
-  return result;
+  const typet &char_type = array_expr.type().subtype();
+  const exprt default_val = symbol_generator("out_of_bound_access", char_type);
+  const interval_sparse_arrayt sparse_array(array_expr, default_val);
+  return sparse_array.to_if_expression(index);
 }
 
-/// Fill an array represented by an array_expr by propagating values to
-/// the left for unknown values. For instance `{ 24 , * , * , 42, * }` will give
-/// `{ 24, 42, 42, 42, '?' }`
-/// \param expr: an array expression
-/// \param string_max_length: bound on the length of strings
-/// \return an array expression with filled in values
-exprt fill_in_array_expr(const array_exprt &expr, std::size_t string_max_length)
+static exprt substitute_array_access(
+  const if_exprt &if_expr,
+  const exprt &index,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator,
+  const bool left_propagate)
 {
-  PRECONDITION(expr.type().id() == ID_array);
-  const array_typet &array_type = to_array_type(expr.type());
-  PRECONDITION(array_type.subtype().id() == ID_unsignedbv);
+  // Substitute recursively in branches of conditional expressions
+  const exprt true_case = substitute_array_access(
+    index_exprt(if_expr.true_case(), index), symbol_generator, left_propagate);
+  const exprt false_case = substitute_array_access(
+    index_exprt(if_expr.false_case(), index), symbol_generator, left_propagate);
 
-  // Map of the parts of the array that are initialized
-  std::map<std::size_t, exprt> initial_map;
-  const auto &array_size_opt = numeric_cast<std::size_t>(array_type.size());
-
-  if(array_size_opt && *array_size_opt > 0)
-    initial_map.emplace(
-      *array_size_opt - 1,
-      from_integer(CHARACTER_FOR_UNKNOWN, array_type.subtype()));
-
-  for(std::size_t i = 0; i < expr.operands().size(); ++i)
-  {
-    if(i < string_max_length && expr.operands()[i].id() != ID_unknown)
-      initial_map[i] = expr.operands()[i];
-  }
-
-  array_exprt result(array_type);
-  result.operands()=fill_in_map_as_vector(initial_map);
-  return result;
+  return if_exprt(if_expr.cond(), true_case, false_case);
 }
 
-/// create an equivalent expression where array accesses and 'with' expressions
+static exprt substitute_array_access(
+  const index_exprt &index_expr,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator,
+  const bool left_propagate)
+{
+  const exprt &array = index_expr.array();
+  if(auto array_of = expr_try_dynamic_cast<array_of_exprt>(array))
+    return array_of->op();
+  if(auto array_with = expr_try_dynamic_cast<with_exprt>(array))
+    return substitute_array_access(
+      *array_with, index_expr.index(), left_propagate);
+  if(auto array_expr = expr_try_dynamic_cast<array_exprt>(array))
+    return substitute_array_access(
+      *array_expr, index_expr.index(), symbol_generator);
+  if(auto if_expr = expr_try_dynamic_cast<if_exprt>(array))
+    return substitute_array_access(
+      *if_expr, index_expr.index(), symbol_generator, left_propagate);
+
+  INVARIANT(
+    array.is_nil() || array.id() == ID_symbol,
+    std::string(
+      "in case the array is unknown, it should be a symbol or nil, id: ")
+    + id2string(array.id()));
+  return index_expr;
+}
+
+/// Auxiliary function for substitute_array_access
+/// Performs the same operation but modifies the argument instead of returning
+/// the resulting expression.
+static void substitute_array_access_in_place(
+  exprt &expr,
+  const std::function<symbol_exprt(const irep_idt &, const typet &)>
+    &symbol_generator,
+  const bool left_propagate)
+{
+  if(const auto index_expr = expr_try_dynamic_cast<index_exprt>(expr))
+  {
+    expr =
+      substitute_array_access(*index_expr, symbol_generator, left_propagate);
+  }
+
+  for(auto &op : expr.operands())
+    substitute_array_access_in_place(op, symbol_generator, left_propagate);
+}
+
+/// Create an equivalent expression where array accesses and 'with' expressions
 /// are replaced by 'if' expressions, in particular:
-///  * for an array access `arr[x]`, where:
+///  * for an array access `arr[index]`, where:
 ///    `arr := {12, 24, 48}` the constructed expression will be:
 ///    `index==0 ? 12 : index==1 ? 24 : 48`
-///  * for an array access `arr[x]`, where:
+///  * for an array access `arr[index]`, where:
 ///    `arr := array_of(12) with {0:=24} with {2:=42}` the constructed
 ///    expression will be: `index==0 ? 24 : index==2 ? 42 : 12`
 ///  * for an array access `(g1?arr1:arr2)[x]` where `arr1 := {12}` and
 ///    `arr2 := {34}`, the constructed expression will be: `g1 ? 12 : 34`
 ///  * for an access in an empty array `{ }[x]` returns a fresh symbol, this
 ///    corresponds to a non-deterministic result
+/// Note that if left_propagate is set to true, the `with` case will result in
+/// something like: `index <= 0 ? 24 : index <= 2 ? 42 : 12`
 /// \param expr: an expression containing array accesses
 /// \param symbol_generator: function which given a prefix and a type generates
 ///        a fresh symbol of the given type
+/// \param left_propagate: should values be propagated to the left in with
+///        expressions
 /// \return an expression containing no array access
-static void substitute_array_access(
-  exprt &expr,
+exprt substitute_array_access(
+  exprt expr,
   const std::function<symbol_exprt(const irep_idt &, const typet &)>
-    &symbol_generator)
+    &symbol_generator,
+  const bool left_propagate)
 {
-  for(auto &op : expr.operands())
-    substitute_array_access(op, symbol_generator);
-
-  if(expr.id()==ID_index)
-  {
-    index_exprt &index_expr=to_index_expr(expr);
-
-    if(index_expr.array().id()==ID_symbol)
-    {
-      expr=index_expr;
-      return;
-    }
-
-    if(index_expr.array().id()==ID_with)
-    {
-      expr=substitute_array_with_expr(index_expr.array(), index_expr.index());
-      return;
-    }
-
-    if(index_expr.array().id()==ID_array_of)
-    {
-      expr=to_array_of_expr(index_expr.array()).op();
-      return;
-    }
-
-    if(index_expr.array().id()==ID_if)
-    {
-      // Substitute recursively in branches of conditional expressions
-      if_exprt if_expr=to_if_expr(index_expr.array());
-      exprt true_case=index_exprt(if_expr.true_case(), index_expr.index());
-      substitute_array_access(true_case, symbol_generator);
-      exprt false_case=index_exprt(if_expr.false_case(), index_expr.index());
-      substitute_array_access(false_case, symbol_generator);
-      expr=if_exprt(if_expr.cond(), true_case, false_case);
-      return;
-    }
-
-    DATA_INVARIANT(
-      index_expr.array().id()==ID_array,
-      string_refinement_invariantt("and index expression must be on a symbol, "
-        "with, array_of, if, or array, and all cases besides array are handled "
-        "above"));
-    array_exprt &array_expr=to_array_expr(index_expr.array());
-
-    const typet &char_type = index_expr.array().type().subtype();
-
-    // Access to an empty array is undefined (non deterministic result)
-    if(array_expr.operands().empty())
-    {
-      expr = symbol_generator("out_of_bound_access", char_type);
-      return;
-    }
-
-    size_t last_index=array_expr.operands().size()-1;
-
-    exprt ite=array_expr.operands().back();
-
-    if(ite.type()!=char_type)
-    {
-      // We have to manually set the type for unknown values
-      INVARIANT(
-        ite.id()==ID_unknown,
-        string_refinement_invariantt("the last element can only have type char "
-          "or unknown, and it is not char type"));
-      ite.type()=char_type;
-    }
-
-    auto op_it=++array_expr.operands().rbegin();
-
-    for(size_t i=last_index-1;
-        op_it!=array_expr.operands().rend(); ++op_it, --i)
-    {
-      equal_exprt equals(index_expr.index(), from_integer(i, java_int_type()));
-      if(op_it->type()!=char_type)
-      {
-        INVARIANT(
-          op_it->id()==ID_unknown,
-          string_refinement_invariantt("elements can only have type char or "
-            "unknown, and it is not char type"));
-        op_it->type()=char_type;
-      }
-      ite=if_exprt(equals, *op_it, ite);
-    }
-    expr=ite;
-  }
+  substitute_array_access_in_place(expr, symbol_generator, left_propagate);
+  return expr;
 }
 
 /// Negates the constraint to be fed to a solver. The intended usage is to find
@@ -1421,161 +1183,61 @@ static void substitute_array_access(
 /// have been replaced by their valuation in the current model.
 /// \pre Symbols other than the universal variable should have been replaced by
 ///   their valuation in the current model.
-/// \param axiom: the not_contains constraint to add the negation of
+/// \param constraint: the not_contains constraint to add the negation of
 /// \param univ_var: the universal variable for the negation of the axiom
+/// \param get: valuation function, the result should have been simplified
 /// \return: the negation of the axiom under the current evaluation
 static exprt negation_of_not_contains_constraint(
-  const string_not_contains_constraintt &axiom,
-  const symbol_exprt &univ_var)
+  const string_not_contains_constraintt &constraint,
+  const symbol_exprt &univ_var,
+  const std::function<exprt(const exprt &)> &get)
 {
   // If the for all is vacuously true, the negation is false.
-  const exprt &lbu=axiom.univ_lower_bound();
-  const exprt &ubu=axiom.univ_upper_bound();
-  if(lbu.id()==ID_constant && ubu.id()==ID_constant)
-  {
-    const auto lb_int = numeric_cast<mp_integer>(lbu);
-    const auto ub_int = numeric_cast<mp_integer>(ubu);
-    if(!lb_int || !ub_int || *ub_int<=*lb_int)
-      return false_exprt();
-  }
-
-  const auto lbe = numeric_cast_v<mp_integer>(axiom.exists_lower_bound());
-  const auto ube = numeric_cast_v<mp_integer>(axiom.exists_upper_bound());
-
-  // If the premise is false, the implication is trivially true, so the
-  // negation is false.
-  if(axiom.premise()==false_exprt())
-    return false_exprt();
-
-  and_exprt univ_bounds(
-    binary_relation_exprt(lbu, ID_le, univ_var),
-    binary_relation_exprt(ubu, ID_gt, univ_var));
+  const auto lbe =
+    numeric_cast_v<mp_integer>(get(constraint.exists_lower_bound()));
+  const auto ube =
+    numeric_cast_v<mp_integer>(get(constraint.exists_upper_bound()));
+  const auto univ_bounds = and_exprt(
+    binary_relation_exprt(get(constraint.univ_lower_bound()), ID_le, univ_var),
+    binary_relation_exprt(get(constraint.univ_upper_bound()), ID_gt, univ_var));
 
   // The negated existential becomes an universal, and this is the unrolling of
   // that universal quantifier.
   std::vector<exprt> conjuncts;
+  conjuncts.reserve(numeric_cast_v<std::size_t>(ube - lbe));
   for(mp_integer i=lbe; i<ube; ++i)
   {
-    const constant_exprt i_exprt=from_integer(i, univ_var.type());
-    const equal_exprt equal_chars(
-      axiom.s0()[plus_exprt(univ_var, i_exprt)],
-      axiom.s1()[i_exprt]);
-    conjuncts.push_back(equal_chars);
+    const constant_exprt i_expr = from_integer(i, univ_var.type());
+    const exprt s0_char =
+      get(index_exprt(constraint.s0(), plus_exprt(univ_var, i_expr)));
+    const exprt s1_char = get(index_exprt(constraint.s1(), i_expr));
+    conjuncts.push_back(equal_exprt(s0_char, s1_char));
   }
-  exprt equal_strings=conjunction(conjuncts);
-  and_exprt negaxiom(univ_bounds, axiom.premise(), equal_strings);
-
-  return negaxiom;
-}
-
-/// Negates the constraint to be fed to a solver. The intended usage is to find
-/// an assignment of the universal variable that would violate the axiom. To
-/// avoid false positives, the symbols other than the universal variable should
-/// have been replaced by their valuation in the current model.
-/// \pre Symbols other than the universal variable should have been replaced by
-///   their valuation in the current model.
-/// \param axiom: the not_contains constraint to add the negation of
-/// \return: the negation of the axiom under the current evaluation
-static exprt negation_of_constraint(const string_constraintt &axiom)
-{
-  // If the for all is vacuously true, the negation is false.
-  const exprt &lb=axiom.lower_bound();
-  const exprt &ub=axiom.upper_bound();
-  if(lb.id()==ID_constant && ub.id()==ID_constant)
-  {
-    const auto lb_int = numeric_cast<mp_integer>(lb);
-    const auto ub_int = numeric_cast<mp_integer>(ub);
-    if(!lb_int || !ub_int || ub_int<=lb_int)
-      return false_exprt();
-  }
-
-  // If the premise is false, the implication is trivially true, so the
-  // negation is false.
-  if(axiom.premise()==false_exprt())
-    return false_exprt();
-
-  and_exprt premise(axiom.premise(), axiom.univ_within_bounds());
-  and_exprt negaxiom(premise, not_exprt(axiom.body()));
-
-  return negaxiom;
-}
-
-/// Result of the solver `supert` should not be interpreted literally for char
-/// arrays as not all indices are present in the index set.
-/// In the given expression, we populate arrays at the indices for which the
-/// solver has no constraint by copying values to the left.
-/// For example an expression `ARRAY_OF(0) WITH [1:=2] WITH [4:=3]` would
-/// be interpreted as `{ 2, 2, 3, 3, 3}`.
-/// \param expr: expression to interpret
-/// \param string_max_length: maximum size of arrays to consider
-/// \param ns: namespace, used to determine what is an array of character
-/// \return the interpreted expression
-exprt concretize_arrays_in_expression(
-  exprt expr,
-  std::size_t string_max_length,
-  const namespacet &ns)
-{
-  auto it=expr.depth_begin();
-  const auto end=expr.depth_end();
-  while(it!=end)
-  {
-    if(is_char_array_type(it->type(), ns))
-    {
-      if(it->id() == ID_with || it->id() == ID_array_of)
-      {
-        it.mutate() = fill_in_array_with_expr(*it, string_max_length);
-        it.next_sibling_or_parent();
-      }
-      else if(it->id() == ID_array)
-      {
-        it.mutate() = fill_in_array_expr(to_array_expr(*it), string_max_length);
-        it.next_sibling_or_parent();
-      }
-      else
-        ++it; // ignoring other expressions
-    }
-    else
-      ++it;
-  }
-  return expr;
+  const exprt equal_strings = conjunction(conjuncts);
+  return and_exprt(univ_bounds, get(constraint.premise()), equal_strings);
 }
 
 /// Debugging function which outputs the different steps an axiom goes through
 /// to be checked in check axioms.
+/// \tparam T: can be either string_constraintt or
+///   string_not_contains_constraintt
+template <typename T>
 static void debug_check_axioms_step(
   messaget::mstreamt &stream,
-  const namespacet &ns,
-  const exprt &axiom,
-  const exprt &axiom_in_model,
+  const T &axiom,
+  const T &axiom_in_model,
   const exprt &negaxiom,
   const exprt &with_concretized_arrays)
 {
-  static const std::string indent = "  ";
-  static const std::string indent2 = "    ";
-  stream << indent2 << "- axiom:\n" << indent2 << indent;
-
-  if(axiom.id() == ID_string_constraint)
-    stream << from_expr(ns, "", to_string_constraint(axiom));
-  else if(axiom.id() == ID_string_not_contains_constraint)
-    stream << from_expr(ns, "", to_string_not_contains_constraint(axiom));
-  else
-    stream << from_expr(ns, "", axiom);
-  stream << '\n' << indent2 << "- axiom_in_model:\n" << indent2 << indent;
-
-  if(axiom_in_model.id() == ID_string_constraint)
-    stream << from_expr(ns, "", to_string_constraint(axiom_in_model));
-  else if(axiom_in_model.id() == ID_string_not_contains_constraint)
-    stream << from_expr(
-      ns, "", to_string_not_contains_constraint(axiom_in_model));
-  else
-    stream << from_expr(ns, "", axiom_in_model);
-
-  stream << '\n'
-         << indent2 << "- negated_axiom:\n"
-         << indent2 << indent << from_expr(ns, "", negaxiom) << '\n';
-  stream << indent2 << "- negated_axiom_with_concretized_arrays:\n"
-         << indent2 << indent << from_expr(ns, "", with_concretized_arrays)
-         << '\n';
+  stream << std::string(4, ' ') << "- axiom:\n" << std::string(6, ' ');
+  stream << to_string(axiom);
+  stream << '\n' << std::string(4, ' ') << "- axiom_in_model:\n"
+         << std::string(6, ' ');
+  stream << to_string(axiom_in_model) << '\n'
+         << std::string(4, ' ') << "- negated_axiom:\n"
+         << std::string(6, ' ') << format(negaxiom) << '\n';
+  stream << std::string(4, ' ') << "- negated_axiom_with_concretized_arrays:\n"
+         << std::string(6, ' ') << format(with_concretized_arrays) << '\n';
 }
 
 /// \return true if the current model satisfies all the axioms
@@ -1586,14 +1248,10 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   const std::function<exprt(const exprt &)> &get,
   messaget::mstreamt &stream,
   const namespacet &ns,
-  std::size_t max_string_length,
   bool use_counter_example,
-  ui_message_handlert::uit ui,
   const union_find_replacet &symbol_resolve)
 {
   const auto eom=messaget::eom;
-  static const std::string indent = "  ";
-  static const std::string indent2 = "    ";
   // clang-format off
   const auto gen_symbol = [&](const irep_idt &id, const typet &type)
   {
@@ -1606,15 +1264,14 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   stream << "symbol_resolve:" << eom;
   auto pairs = symbol_resolve.to_vector();
   for(const auto &pair : pairs)
-    stream << "  - " << from_expr(ns, "", pair.first) << " --> "
-           << from_expr(ns, "", pair.second) << eom;
+    stream << "  - " << format(pair.first) << " --> " << format(pair.second)
+           << eom;
 
 #ifdef DEBUG
   debug_model(
     generator,
     stream,
     ns,
-    max_string_length,
     get,
     generator.get_boolean_symbols(),
     generator.get_index_symbols());
@@ -1628,35 +1285,31 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   for(size_t i=0; i<axioms.universal.size(); i++)
   {
     const string_constraintt &axiom=axioms.universal[i];
-    const symbol_exprt &univ_var=axiom.univ_var();
-    const exprt &bound_inf=axiom.lower_bound();
-    const exprt &bound_sup=axiom.upper_bound();
-    const exprt &prem=axiom.premise();
-    const exprt &body=axiom.body();
-
     const string_constraintt axiom_in_model(
-      univ_var, get(bound_inf), get(bound_sup), get(prem), get(body));
+      axiom.univ_var,
+      get(axiom.lower_bound),
+      get(axiom.upper_bound),
+      get(axiom.body));
 
-    exprt negaxiom=negation_of_constraint(axiom_in_model);
+    exprt negaxiom = axiom_in_model.negation();
     negaxiom = simplify_expr(negaxiom, ns);
-    exprt with_concretized_arrays =
-      concretize_arrays_in_expression(negaxiom, max_string_length, ns);
 
-    substitute_array_access(with_concretized_arrays, gen_symbol);
-
-    stream << indent << i << ".\n";
+    stream << std::string(2, ' ') << i << ".\n";
+    const exprt with_concretized_arrays =
+      substitute_array_access(negaxiom, gen_symbol, true);
     debug_check_axioms_step(
-      stream, ns, axiom, axiom_in_model, negaxiom, with_concretized_arrays);
+      stream, axiom, axiom_in_model, negaxiom, with_concretized_arrays);
 
-    if(const auto &witness=
-       find_counter_example(ns, ui, with_concretized_arrays, univ_var))
+    if(
+      const auto &witness =
+        find_counter_example(ns, with_concretized_arrays, axiom.univ_var))
     {
-      stream << indent2 << "- violated_for: " << univ_var.get_identifier()
-             << "=" << from_expr(ns, "", *witness) << eom;
+      stream << std::string(4, ' ') << "- violated_for: "
+             << format(axiom.univ_var) << "=" << format(*witness) << eom;
       violated[i]=*witness;
     }
     else
-      stream << indent2 << "- correct" << eom;
+      stream << std::string(4, ' ') << "- correct" << eom;
   }
 
   // Maps from indexes of violated not_contains axiom to a witness of violation
@@ -1667,47 +1320,22 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   for(std::size_t i = 0; i < axioms.not_contains.size(); i++)
   {
     const string_not_contains_constraintt &nc_axiom=axioms.not_contains[i];
-    const exprt &univ_bound_inf=nc_axiom.univ_lower_bound();
-    const exprt &univ_bound_sup=nc_axiom.univ_upper_bound();
-    const exprt &prem=nc_axiom.premise();
-    const exprt &exists_bound_inf=nc_axiom.exists_lower_bound();
-    const exprt &exists_bound_sup=nc_axiom.exists_upper_bound();
-    const array_string_exprt &s0 = nc_axiom.s0();
-    const array_string_exprt &s1 = nc_axiom.s1();
-
-    symbol_exprt univ_var=generator.fresh_univ_index(
+    const symbol_exprt univ_var = generator.fresh_univ_index(
       "not_contains_univ_var", nc_axiom.s0().length().type());
-    string_not_contains_constraintt nc_axiom_in_model(
-      get(univ_bound_inf),
-      get(univ_bound_sup),
-      get(prem),
-      get(exists_bound_inf),
-      get(exists_bound_sup),
-      to_array_string_expr(get(s0)),
-      to_array_string_expr(get(s1)));
+    const exprt negated_axiom = negation_of_not_contains_constraint(
+      nc_axiom, univ_var, [&](const exprt &expr) {
+        return simplify_expr(get(expr), ns); });
 
-    // necessary so that expressions such as `1 + (3 - (TRUE ? 0 : 0))` do not
-    // appear in bounds
-    nc_axiom_in_model =
-      to_string_not_contains_constraint(simplify_expr(nc_axiom_in_model, ns));
-
-    exprt negaxiom =
-      negation_of_not_contains_constraint(nc_axiom_in_model, univ_var);
-
-    negaxiom = simplify_expr(negaxiom, ns);
-    exprt with_concrete_arrays =
-      concretize_arrays_in_expression(negaxiom, max_string_length, ns);
-
-    substitute_array_access(with_concrete_arrays, gen_symbol);
-
-    stream << indent << i << ".\n";
+    stream << std::string(2, ' ') << i << ".\n";
     debug_check_axioms_step(
-      stream, ns, nc_axiom, nc_axiom_in_model, negaxiom, with_concrete_arrays);
+      stream, nc_axiom, nc_axiom, negated_axiom, negated_axiom);
 
-    if(const auto witness = find_counter_example(ns, ui, negaxiom, univ_var))
+    if(
+      const auto witness =
+        find_counter_example(ns, negated_axiom, univ_var))
     {
-      stream << indent2 << "- violated_for: " << univ_var.get_identifier()
-             << "=" << from_expr(ns, "", *witness) << eom;
+      stream << std::string(4, ' ') << "- violated_for: "
+             << univ_var.get_identifier() << "=" << format(*witness) << eom;
       violated_not_contains[i]=*witness;
     }
   }
@@ -1726,8 +1354,6 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
 
     if(use_counter_example)
     {
-      stream << "Adding counter-examples: " << eom;
-
       std::vector<exprt> lemmas;
 
       for(const auto &v : violated)
@@ -1735,17 +1361,14 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
         const exprt &val=v.second;
         const string_constraintt &axiom=axioms.universal[v.first];
 
-        implies_exprt instance(axiom.premise(), axiom.body());
-        replace_expr(axiom.univ_var(), val, instance);
+        exprt instance(axiom.body);
+        replace_expr(axiom.univ_var, val, instance);
         // We are not sure the index set contains only positive numbers
-        exprt bounds=and_exprt(
+        and_exprt bounds(
           axiom.univ_within_bounds(),
-          binary_relation_exprt(
-            from_integer(0, val.type()), ID_le, val));
-        replace_expr(axiom.univ_var(), val, bounds);
+          binary_relation_exprt(from_integer(0, val.type()), ID_le, val));
+        replace_expr(axiom.univ_var, val, bounds);
         const implies_exprt counter(bounds, instance);
-
-        stream << "  -  " << from_expr(ns, "", counter) << eom;
         lemmas.push_back(counter);
       }
 
@@ -1762,8 +1385,6 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
         indices.insert(std::pair<exprt, exprt>(comp_val, func_val));
         const exprt counter=::instantiate_not_contains(
           axiom, indices, generator)[0];
-
-        stream << "    -  " << from_expr(ns, "", counter) << eom;
         lemmas.push_back(counter);
       }
       return { false, lemmas };
@@ -1949,7 +1570,7 @@ static exprt compute_inverse_function(
   return sum_over_map(elems, f.type(), neg);
 }
 
-class find_qvar_visitort: public const_expr_visitort
+class find_qvar_visitort : public const_expr_visitort
 {
 private:
   const exprt &qvar_;
@@ -2057,53 +1678,68 @@ static void add_to_index_set(
   }
 }
 
+/// Given an array access of the form \a s[i] assumed to be part of a formula
+/// \f$ \forall q < u. charconstraint \f$, initialize the index set of \a s
+/// so that:
+///   - \f$ i[q -> u - 1] \f$ appears in the index set of \a s if \a s is a
+///     symbol
+///   - if \a s is an array expression, all index from \a 0 to
+///     \f$ s.length - 1 \f$ are in the index set
+///   - if \a s is an if expression we apply this procedure to the true and
+///     false cases
+/// \param index_set: the index_set to initialize
+/// \param ns: namespace, used for simplifying indexes
+/// \param qvar: the quantified variable \a q
+/// \param upper_bound: bound \a u on the quantified variable
+/// \param s: expression representing a string
+/// \param i: expression representing the index at which \a s is accessed
+static void initial_index_set(
+  index_set_pairt &index_set,
+  const namespacet &ns,
+  const exprt &qvar,
+  const exprt &upper_bound,
+  const exprt &s,
+  const exprt &i)
+{
+  PRECONDITION(s.id() == ID_symbol || s.id() == ID_array || s.id() == ID_if);
+  if(s.id() == ID_array)
+  {
+    for(std::size_t j = 0; j < s.operands().size(); ++j)
+      add_to_index_set(index_set, ns, s, from_integer(j, i.type()));
+    return;
+  }
+  if(auto ite = expr_try_dynamic_cast<if_exprt>(s))
+  {
+    initial_index_set(index_set, ns, qvar, upper_bound, ite->true_case(), i);
+    initial_index_set(index_set, ns, qvar, upper_bound, ite->false_case(), i);
+    return;
+  }
+  const minus_exprt u_minus_1(upper_bound, from_integer(1, upper_bound.type()));
+  exprt i_copy = i;
+  replace_expr(qvar, u_minus_1, i_copy);
+  add_to_index_set(index_set, ns, s, i_copy);
+}
+
 static void initial_index_set(
   index_set_pairt &index_set,
   const namespacet &ns,
   const string_constraintt &axiom)
 {
-  const symbol_exprt &qvar=axiom.univ_var();
-  std::list<exprt> to_process;
-  to_process.push_back(axiom.body());
-
-  while(!to_process.empty())
+  const symbol_exprt &qvar = axiom.univ_var;
+  const auto &bound = axiom.upper_bound;
+  auto it = axiom.body.depth_begin();
+  const auto end = axiom.body.depth_end();
+  while(it != end)
   {
-    const exprt cur = to_process.back();
-    to_process.pop_back();
-    if(cur.id() == ID_index && is_char_type(cur.type()))
+    if(it->id() == ID_index && is_char_type(it->type()))
     {
-      const index_exprt &index_expr = to_index_expr(cur);
-      const exprt &s = index_expr.array();
-      const exprt &i = index_expr.index();
-
-      if(s.id() == ID_array)
-      {
-        for(std::size_t j = 0; j < s.operands().size(); ++j)
-          add_to_index_set(index_set, ns, s, from_integer(j, i.type()));
-      }
-      else
-      {
-        const bool has_quant_var = find_qvar(i, qvar);
-
-        // if cur is of the form s[i] and no quantified variable appears in i
-        if(!has_quant_var)
-        {
-          add_to_index_set(index_set, ns, s, i);
-        }
-        else
-        {
-          // otherwise we add k-1
-          exprt copy(i);
-          const minus_exprt kminus1(
-            axiom.upper_bound(), from_integer(1, axiom.upper_bound().type()));
-          replace_expr(qvar, kminus1, copy);
-          add_to_index_set(index_set, ns, s, copy);
-        }
-      }
+      const auto &index_expr = to_index_expr(*it);
+      const auto &s = index_expr.array();
+      initial_index_set(index_set, ns, qvar, bound, s, index_expr.index());
+      it.next_sibling_or_parent();
     }
     else
-      forall_operands(it, cur)
-        to_process.push_back(*it);
+      ++it;
   }
 }
 
@@ -2171,29 +1807,32 @@ static void update_index_set(
   }
 }
 
-/// Finds an index on `str` used in `expr` that contains `qvar`, for instance
-/// with arguments ``(str[k]=='a')``, `str`, and `k`, the function should
-/// return `k`.
+/// Find indexes of `str` used in `expr` that contains `qvar`, for instance
+/// with arguments ``(str[k+1]=='a')``, `str`, and `k`, the function should
+/// return `k+1`.
 /// \param [in] expr: the expression to search
 /// \param [in] str: the string which must be indexed
 /// \param [in] qvar: the universal variable that must be in the index
-/// \return an index expression in `expr` on `str` containing `qvar`
-static exprt find_index(
-  const exprt &expr, const exprt &str, const symbol_exprt &qvar)
+/// \return index expressions in `expr` on `str` containing `qvar`.
+static std::unordered_set<exprt, irep_hash>
+find_indexes(const exprt &expr, const exprt &str, const symbol_exprt &qvar)
 {
-  const auto it=std::find_if(
-    expr.depth_begin(),
-    expr.depth_end(),
-    [&] (const exprt &e) -> bool
+  decltype(find_indexes(expr, str, qvar)) result;
+  auto index_str_containing_qvar = [&](const exprt &e) {
+    if(auto index_expr = expr_try_dynamic_cast<index_exprt>(e))
     {
-      return e.id()==ID_index
-             && to_index_expr(e).array()==str
-             && find_qvar(to_index_expr(e).index(), qvar);
-    });
+      const auto &arr = index_expr->array();
+      const auto str_it = std::find(arr.depth_begin(), arr.depth_end(), str);
+      return str_it != arr.depth_end() && find_qvar(index_expr->index(), qvar);
+    }
+    return false;
+  };
 
-  return it==expr.depth_end()
-         ?nil_exprt()
-         :to_index_expr(*it).index();
+  std::for_each(expr.depth_begin(), expr.depth_end(), [&](const exprt &e) {
+    if(index_str_containing_qvar(e))
+      result.insert(to_index_expr(e).index());
+  });
+  return result;
 }
 
 /// Instantiates a string constraint by substituting the quantifiers.
@@ -2214,20 +1853,24 @@ static exprt instantiate(
   const exprt &str,
   const exprt &val)
 {
-  exprt idx=find_index(axiom.body(), str, axiom.univ_var());
-  if(idx.is_nil())
-    return true_exprt();
-
-  exprt r=compute_inverse_function(stream, axiom.univ_var(), val, idx);
-  implies_exprt instance(axiom.premise(), axiom.body());
-  replace_expr(axiom.univ_var(), r, instance);
-  // We are not sure the index set contains only positive numbers
-  exprt bounds=and_exprt(
-    axiom.univ_within_bounds(),
-    binary_relation_exprt(
-      from_integer(0, val.type()), ID_le, val));
-  replace_expr(axiom.univ_var(), r, bounds);
-  return implies_exprt(bounds, instance);
+  const auto indexes = find_indexes(axiom.body, str, axiom.univ_var);
+  INVARIANT(
+    str.id() == ID_array || indexes.size() <= 1,
+    "non constant array should always be accessed at the same index");
+  exprt::operandst conjuncts;
+  for(const auto &index : indexes)
+  {
+    const exprt univ_var_value =
+      compute_inverse_function(stream, axiom.univ_var, val, index);
+    implies_exprt instance(
+      and_exprt(
+        binary_relation_exprt(axiom.univ_var, ID_ge, axiom.lower_bound),
+        binary_relation_exprt(axiom.univ_var, ID_lt, axiom.upper_bound)),
+      axiom.body);
+    replace_expr(axiom.univ_var, univ_var_value, instance);
+    conjuncts.push_back(instance);
+  }
+  return conjunction(conjuncts);
 }
 
 /// Instantiates a quantified formula representing `not_contains` by
@@ -2293,7 +1936,7 @@ exprt substitute_array_lists(exprt expr, size_t string_max_length)
   for(auto &operand : expr.operands())
     operand = substitute_array_lists(operand, string_max_length);
 
-  if(expr.id()=="array-list")
+  if(expr.id() == ID_array_list)
   {
     DATA_INVARIANT(
       expr.operands().size()>=2,
@@ -2321,55 +1964,81 @@ exprt substitute_array_lists(exprt expr, size_t string_max_length)
 /// Evaluates the given expression in the valuation found by
 /// string_refinementt::dec_solve.
 ///
-/// The difference with supert::get is that arrays of characters need to be
-/// concretized. See concretize_arrays_in_expression for how it is done.
+/// Arrays of characters are interpreted differently from the result of
+/// supert::get: values are propagated to the left to fill unknown.
 /// \param expr: an expression
 /// \return evaluated expression
 exprt string_refinementt::get(const exprt &expr) const
 {
-  // clang-format off
-  const auto super_get = [this](const exprt &expr)
-  {
+  const auto super_get = [this](const exprt &expr) {
     return supert::get(expr);
   };
-  // clang-format on
-
   exprt ecopy(expr);
   (void)symbol_resolve.replace_expr(ecopy);
+
+  // Special treatment for index expressions
+  const auto &index_expr = expr_try_dynamic_cast<index_exprt>(ecopy);
+  if(index_expr && is_char_type(index_expr->type()))
+  {
+    std::reference_wrapper<const exprt> current(index_expr->array());
+    while(current.get().id() == ID_if)
+    {
+      const auto &if_expr = expr_dynamic_cast<if_exprt>(current.get());
+      const exprt cond = get(if_expr.cond());
+      if(cond.is_true())
+        current = std::cref(if_expr.true_case());
+      else if(cond.is_false())
+        current = std::cref(if_expr.false_case());
+      else
+        UNREACHABLE;
+    }
+    const auto array = supert::get(current.get());
+    const auto index = get(index_expr->index());
+    const exprt unknown =
+      from_integer(CHARACTER_FOR_UNKNOWN, index_expr->type());
+    if(
+      const auto sparse_array = interval_sparse_arrayt::of_expr(array, unknown))
+    {
+      if(const auto index_value = numeric_cast<std::size_t>(index))
+        return sparse_array->at(*index_value);
+      return sparse_array->to_if_expression(index);
+    }
+
+    INVARIANT(
+      array.is_nil() || array.id() == ID_symbol,
+      std::string(
+        "apart from symbols, array valuations can be interpreted as "
+        "sparse arrays, id: ") +
+      id2string(array.id()));
+    return index_exprt(array, index);
+  }
 
   if(is_char_array_type(ecopy.type(), ns))
   {
     array_string_exprt &arr = to_array_string_expr(ecopy);
-    arr.length() = generator.get_length_of_string_array(arr);
-    const auto arr_model_opt =
-      get_array(super_get, ns, generator.max_string_length, debug(), arr);
-    // \todo Refactor with get array in model
-    if(arr_model_opt)
+    arr.length() = generator.array_pool.get_length(arr);
+
+    if(
+      const auto from_dependencies =
+        dependencies.eval(arr, [&](const exprt &expr) { return get(expr); }))
+      return *from_dependencies;
+
+    if(
+      const auto arr_model_opt =
+        get_array(super_get, ns, debug(), arr))
+      return *arr_model_opt;
+
+    if(generator.get_created_strings().count(arr))
     {
-      const exprt arr_model = simplify_expr(*arr_model_opt, ns);
-      const exprt concretized_array = concretize_arrays_in_expression(
-        arr_model, generator.max_string_length, ns);
-      return concretized_array;
-    }
-    else
-    {
-      auto set = generator.get_created_strings();
-      if(set.find(arr) != set.end())
+      const exprt length = super_get(arr.length());
+      if(const auto n = numeric_cast<std::size_t>(length))
       {
-        exprt length = super_get(arr.length());
-        if(const auto n = numeric_cast<std::size_t>(length))
-        {
-          exprt arr_model =
-            array_exprt(array_typet(arr.type().subtype(), length));
-          for(size_t i = 0; i < *n; i++)
-            arr_model.copy_to_operands(exprt(ID_unknown, arr.type().subtype()));
-          const exprt concretized_array = concretize_arrays_in_expression(
-            arr_model, generator.max_string_length, ns);
-          return concretized_array;
-        }
+        const interval_sparse_arrayt sparse_array(
+          from_integer(CHARACTER_FOR_UNKNOWN, arr.type().subtype()));
+        return sparse_array.concretize(*n, length.type());
       }
-      return arr;
     }
+    return arr;
   }
   return supert::get(ecopy);
 }
@@ -2378,26 +2047,17 @@ exprt string_refinementt::get(const exprt &expr) const
 /// is SAT, then true is returned and the given evaluation of `var` is stored
 /// in `witness`. If UNSAT, then what witness is is undefined.
 /// \param ns: namespace
-/// \param ui: message handler
 /// \param [in] axiom: the axiom to be checked
 /// \param [in] var: the variable whose evaluation will be stored in witness
 /// \return: the witness of the satisfying assignment if one
 /// exists. If UNSAT, then behaviour is undefined.
 static optionalt<exprt> find_counter_example(
   const namespacet &ns,
-  const ui_message_handlert::uit ui,
   const exprt &axiom,
   const symbol_exprt &var)
 {
   satcheck_no_simplifiert sat_check;
-  bv_refinementt::infot info;
-  info.ns=&ns;
-  info.prop=&sat_check;
-  info.refine_arithmetic=true;
-  info.refine_arrays=true;
-  info.max_node_refinement=5;
-  info.ui=ui;
-  bv_refinementt solver(info);
+  boolbvt solver(ns, sat_check);
   solver << axiom;
 
   if(solver()==decision_proceduret::resultt::D_SATISFIABLE)
@@ -2459,11 +2119,11 @@ is_linear_arithmetic_expr(const exprt &expr, const symbol_exprt &var)
 /// \param [in] expr: The string constraint to check
 /// \return true if the universal variable only occurs in index expressions,
 ///   false otherwise.
-static bool universal_only_in_index(const string_constraintt &expr)
+static bool universal_only_in_index(const string_constraintt &constr)
 {
-  for(auto it = expr.body().depth_begin(); it != expr.body().depth_end();)
+  for(auto it = constr.body.depth_begin(); it != constr.body.depth_end();)
   {
-    if(*it == expr.univ_var())
+    if(*it == constr.univ_var)
       return false;
     if(it->id() == ID_index)
       it.next_sibling_or_parent();
@@ -2477,35 +2137,20 @@ static bool universal_only_in_index(const string_constraintt &expr)
 /// \related string_constraintt
 /// \param stream: message stream
 /// \param ns: namespace
-/// \param [in] expr: the string constraint to check
+/// \param [in] constraint: the string constraint to check
 /// \return whether the constraint satisfies the invariant
 static bool is_valid_string_constraint(
   messaget::mstreamt &stream,
   const namespacet &ns,
-  const string_constraintt &expr)
+  const string_constraintt &constraint)
 {
   const auto eom=messaget::eom;
-  // Condition 1: The premise cannot contain any string indices
-  const array_index_mapt premise_indices=gather_indices(expr.premise());
-  if(!premise_indices.empty())
-  {
-    stream << "Premise has indices: " << from_expr(ns, "", expr) << ", map: {";
-    for(const auto &pair : premise_indices)
-    {
-      stream << from_expr(ns, "", pair.first) << ": {";
-      for(const auto &i : pair.second)
-        stream << from_expr(ns, "", i) <<  ", ";
-    }
-    stream << "}}" << eom;
-    return false;
-  }
-
-  const array_index_mapt body_indices=gather_indices(expr.body());
+  const array_index_mapt body_indices = gather_indices(constraint.body);
   // Must validate for each string. Note that we have an invariant that the
   // second value in the pair is non-empty.
   for(const auto &pair : body_indices)
   {
-    // Condition 2: All indices of the same string must be the of the same form
+    // Condition 1: All indices of the same string must be the of the same form
     const exprt rep=pair.second.back();
     for(size_t j=0; j<pair.second.size()-1; j++)
     {
@@ -2514,26 +2159,26 @@ static bool is_valid_string_constraint(
       const exprt result=simplify_expr(equals, ns);
       if(result.is_false())
       {
-        stream << "Indices not equal: " << from_expr(ns, "", expr) << ", str: "
-               << from_expr(ns, "", pair.first) << eom;
+        stream << "Indices not equal: " << to_string(constraint)
+               << ", str: " << format(pair.first) << eom;
         return false;
       }
     }
 
-    // Condition 3: f must be linear in the quantified variable
-    if(!is_linear_arithmetic_expr(rep, expr.univ_var()))
+    // Condition 2: f must be linear in the quantified variable
+    if(!is_linear_arithmetic_expr(rep, constraint.univ_var))
     {
-      stream << "f is not linear: " << from_expr(ns, "", expr) << ", str: "
-             << from_expr(ns, "", pair.first) << eom;
+      stream << "f is not linear: " << to_string(constraint)
+             << ", str: " << format(pair.first) << eom;
       return false;
     }
 
-    // Condition 4: the quantified variable can only occur in indices in the
+    // Condition 3: the quantified variable can only occur in indices in the
     // body
-    if(!universal_only_in_index(expr))
+    if(!universal_only_in_index(constraint))
     {
-      stream << "Universal variable outside of index:"
-             << from_expr(ns, "", expr) << eom;
+      stream << "Universal variable outside of index:" << to_string(constraint)
+             << eom;
       return false;
     }
   }

@@ -18,6 +18,23 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_model.h>
 #include <util/graph.h>
 
+/// A call graph (https://en.wikipedia.org/wiki/Call_graph) for a GOTO model
+/// or GOTO functions collection.
+///
+/// The public constructors build a complete call graph, while
+/// \ref call_grapht::create_from_root_function can be used to create a partial
+/// call graph rooted at a particular function.
+///
+/// The graph is stored as a `std::multimap`, and this class only provides basic
+/// tools to construct and query graphs, but it can be exported to a \ref grapht
+/// and thus processed using the full graph algorithms library using the
+/// \ref get_directed_graph method. See also \ref call_graph_helpers.h for
+/// helper methods that work with such grapht-derived call graphs.
+///
+/// The graph may optionally collect (and export) the callsite associated with
+/// each edge; pass the `collect_callsites` parameter to a constructor if you
+/// want this functionality, and query the \ref call_grapht::callsites
+/// collection.
 class call_grapht
 {
 public:
@@ -62,11 +79,14 @@ public:
   void output(std::ostream &out) const;
   void output_xml(std::ostream &out) const;
 
-  /// Type of the call graph. Note parallel edges (e.g. A having two callsites
-  /// both targeting B) result in multiple graph edges.
-  typedef std::multimap<irep_idt, irep_idt> grapht;
+  /// Type of the nodes in the call graph.
+  typedef std::unordered_set<irep_idt, irep_id_hash> nodest;
 
-  /// Type of a call graph edge in `grapht`
+  /// Type of the edges in the call graph. Note parallel edges (e.g. A having
+  /// two callsites both targeting B) result in multiple graph edges.
+  typedef std::multimap<irep_idt, irep_idt> edgest;
+
+  /// Type of a call graph edge in `edgest`
   typedef std::pair<irep_idt, irep_idt> edget;
 
   /// Type of a callsite stored in member `callsites`
@@ -84,7 +104,8 @@ public:
   /// backward compatibility; use `get_directed_graph()` to get a generic
   /// directed graph representation that provides more graph algorithms
   /// (shortest path, SCCs and so on).
-  grapht graph;
+  edgest edges;
+  nodest nodes;
 
   /// Map from call-graph edges to a set of callsites that make the given call.
   callsitest callsites;
@@ -115,7 +136,7 @@ public:
     friend class call_grapht;
 
     /// Maps function names onto node indices
-    std::unordered_map<irep_idt, node_indext, irep_id_hash> nodes_by_name;
+    std::unordered_map<irep_idt, node_indext> nodes_by_name;
 
   public:
     /// Find the graph node by function name
@@ -124,8 +145,7 @@ public:
     optionalt<node_indext> get_node_index(const irep_idt &function) const;
 
     /// Type of the node name -> node index map.
-    typedef
-      std::unordered_map<irep_idt, node_indext, irep_id_hash> nodes_by_namet;
+    typedef std::unordered_map<irep_idt, node_indext> nodes_by_namet;
 
     /// Get the node name -> node index map
     /// \return node-by-name map

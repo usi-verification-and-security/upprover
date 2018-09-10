@@ -1,4 +1,4 @@
-// Copyright 2017 Diffblue Limited. All Rights Reserved.
+/// Author: Diffblue Ltd.
 
 /// \file
 /// Model for lazy loading of functions
@@ -12,8 +12,9 @@
 #include <util/cmdline.h>
 #include <util/config.h>
 #include <util/journalling_symbol_table.h>
-#include <util/language.h>
 #include <util/unicode.h>
+
+#include <langapi/language.h>
 
 #include <fstream>
 
@@ -21,6 +22,8 @@
 lazy_goto_modelt::lazy_goto_modelt(
   post_process_functiont post_process_function,
   post_process_functionst post_process_functions,
+  can_generate_function_bodyt driver_program_can_generate_function_body,
+  generate_function_bodyt driver_program_generate_function_body,
   message_handlert &message_handler)
   : goto_model(new goto_modelt()),
     symbol_table(goto_model->symbol_table),
@@ -29,18 +32,26 @@ lazy_goto_modelt::lazy_goto_modelt(
       language_files,
       symbol_table,
       [this] (
+        const irep_idt &function_name,
         goto_functionst::goto_functiont &function,
         journalling_symbol_tablet &journalling_symbol_table) -> void
       {
         goto_model_functiont model_function(
           journalling_symbol_table,
           goto_model->goto_functions,
+          function_name,
           function);
         this->post_process_function(model_function, *this);
       },
+      driver_program_can_generate_function_body,
+      driver_program_generate_function_body,
       message_handler),
-    post_process_function(std::move(post_process_function)),
-    post_process_functions(std::move(post_process_functions)),
+    post_process_function(post_process_function),
+    post_process_functions(post_process_functions),
+    driver_program_can_generate_function_body(
+      driver_program_can_generate_function_body),
+    driver_program_generate_function_body(
+      driver_program_generate_function_body),
     message_handler(message_handler)
 {
   language_files.set_message_handler(message_handler);
@@ -54,19 +65,23 @@ lazy_goto_modelt::lazy_goto_modelt(lazy_goto_modelt &&other)
       language_files,
       symbol_table,
       [this] (
+        const irep_idt &function_name,
         goto_functionst::goto_functiont &function,
         journalling_symbol_tablet &journalling_symbol_table) -> void
       {
         goto_model_functiont model_function(
           journalling_symbol_table,
           goto_model->goto_functions,
+          function_name,
           function);
         this->post_process_function(model_function, *this);
       },
+      other.driver_program_can_generate_function_body,
+      other.driver_program_generate_function_body,
       other.message_handler),
     language_files(std::move(other.language_files)),
-    post_process_function(std::move(other.post_process_function)),
-    post_process_functions(std::move(other.post_process_functions)),
+    post_process_function(other.post_process_function),
+    post_process_functions(other.post_process_functions),
     message_handler(other.message_handler)
 {
 }

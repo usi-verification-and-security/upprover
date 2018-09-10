@@ -17,12 +17,13 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
+   "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"
 )
     #   Ensure NDEBUG is not set for release builds
     set(CMAKE_CXX_FLAGS_RELEASE "-O2")
     #   Enable lots of warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror -Wno-deprecated-declarations")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #   This would be the place to enable warnings for Windows builds, although
     #   config.inc doesn't seem to do that currently
@@ -34,26 +35,17 @@ set(sat_impl "minisat2" CACHE STRING
     "This setting controls the SAT library which is used. Valid values are 'minisat2' and 'glucose'"
 )
 
-add_subdirectory(src)
-
 if(${enable_cbmc_tests})
     enable_testing()
-    add_subdirectory(unit)
-    set_target_properties(
-        miniBDD
-        string_utils
-        testing_utils
-        unit
-        PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED true
-    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Daniel Kroening"
-    )
 endif()
 if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
+add_subdirectory(src)
 #add_subdirectory(regression)
+#add_subdirectory(unit)
+
+#add_subdirectory(jbmc)
 
 set_target_properties(
     analyses
@@ -62,8 +54,6 @@ set_target_properties(
     big-int
     cbmc
     cbmc-lib
-    #clobber
-    #clobber-lib
     cpp
     #driver
     goto-analyzer
@@ -76,24 +66,20 @@ set_target_properties(
     goto-instrument-lib
     goto-programs
     goto-symex
-    java_bytecode
-#    jbmc
-#    jbmc-lib
     jsil
     json
     langapi
     linking
     #miniBDD
-    miniz
     #mmcc
     pointer-analysis
     solvers
-    #string_utils
     test-bigint
     #testing-utils
     #unit
     util
     xml
+    #miniz
 
     PROPERTIES
     CXX_STANDARD 11

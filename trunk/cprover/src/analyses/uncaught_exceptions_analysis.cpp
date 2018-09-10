@@ -19,11 +19,10 @@ irep_idt uncaught_exceptions_domaint::get_exception_type(const typet &type)
 {
   PRECONDITION(type.id()==ID_pointer);
 
-  if(type.subtype().id()==ID_symbol)
-  {
+  if(type.subtype().id() == ID_symbol_type)
     return to_symbol_type(type.subtype()).get_identifier();
-  }
-  return ID_empty;
+  else
+    return ID_empty;
 }
 
 /// Returns the symbol corresponding to an exception
@@ -59,7 +58,7 @@ void uncaught_exceptions_domaint::join(
 void uncaught_exceptions_domaint::transform(
   const goto_programt::const_targett from,
   uncaught_exceptions_analysist &uea,
-  const namespacet &ns)
+  const namespacet &)
 {
   const goto_programt::instructiont &instruction=*from;
 
@@ -70,17 +69,12 @@ void uncaught_exceptions_domaint::transform(
     const exprt &exc_symbol=get_exception_symbol(instruction.code);
     // retrieve the static type of the thrown exception
     const irep_idt &type_id=get_exception_type(exc_symbol.type());
-    bool assertion_error=
-      id2string(type_id).find("java.lang.AssertionError")!=std::string::npos;
-    if(!assertion_error)
-    {
-      join(type_id);
-      // we must consider all the subtypes given that
-      // the runtime type is a subtype of the static type
-      std::vector<irep_idt> subtypes=
-        class_hierarchy.get_children_trans(type_id);
-      join(subtypes);
-    }
+    join(type_id);
+    // we must consider all the subtypes given that
+    // the runtime type is a subtype of the static type
+    std::vector<irep_idt> subtypes =
+      class_hierarchy.get_children_trans(type_id);
+    join(subtypes);
     break;
   }
   case CATCH:

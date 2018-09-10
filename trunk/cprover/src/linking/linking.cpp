@@ -12,15 +12,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "linking.h"
 
 #include <cassert>
-#include <stack>
+#include <deque>
+#include <unordered_set>
 
-#include <util/find_symbols.h>
-#include <util/source_location.h>
 #include <util/base_type.h>
-#include <util/std_expr.h>
-#include <util/std_types.h>
-#include <util/simplify_expr.h>
+#include <util/find_symbols.h>
 #include <util/pointer_offset_size.h>
+#include <util/simplify_expr.h>
 
 #include <langapi/language_util.h>
 
@@ -46,7 +44,7 @@ static const typet &follow_tags_symbols(
   const namespacet &ns,
   const typet &type)
 {
-  if(type.id()==ID_symbol)
+  if(type.id() == ID_symbol_type)
     return ns.follow(type);
   else if(type.id()==ID_c_enum_tag)
     return ns.follow_tag(to_c_enum_tag_type(type));
@@ -382,8 +380,6 @@ void linkingt::link_error(
   error() << "new definition in module `" << new_symbol.module
           << "' " << new_symbol.location << '\n'
           << type_to_string_verbose(ns, new_symbol) << eom;
-
-  throw 0;
 }
 
 void linkingt::link_warning(
@@ -452,15 +448,23 @@ void linkingt::duplicate_code_symbol(
     const code_typet &old_t=to_code_type(old_symbol.type);
     const code_typet &new_t=to_code_type(new_symbol.type);
 
-    // if one of them was an implicit declaration, just issue a warning
+    // if one of them was an implicit declaration then only conflicts on the
+    // return type are an error as we would end up with assignments with
+    // mismatching types; as we currently do not patch these by inserting type
+    // casts we need to fail hard
     if(!old_symbol.location.get_function().empty() &&
        old_symbol.value.is_nil())
     {
-      // issue a warning and overwrite
-      link_warning(
-        old_symbol,
-        new_symbol,
-        "implicit function declaration");
+      if(base_type_eq(old_t.return_type(), new_t.return_type(), ns))
+         link_warning(
+           old_symbol,
+           new_symbol,
+           "implicit function declaration");
+      else
+        link_error(
+          old_symbol,
+          new_symbol,
+          "implicit function declaration");
 
       old_symbol.type=new_symbol.type;
       old_symbol.location=new_symbol.location;
@@ -469,11 +473,16 @@ void linkingt::duplicate_code_symbol(
     else if(!new_symbol.location.get_function().empty() &&
             new_symbol.value.is_nil())
     {
-      // issue a warning
-      link_warning(
-        old_symbol,
-        new_symbol,
-        "ignoring conflicting implicit function declaration");
+      if(base_type_eq(old_t.return_type(), new_t.return_type(), ns))
+        link_warning(
+          old_symbol,
+          new_symbol,
+          "ignoring conflicting implicit function declaration");
+      else
+        link_error(
+          old_symbol,
+          new_symbol,
+          "implicit function declaration");
     }
     // handle (incomplete) function prototypes
     else if(base_type_eq(old_t.return_type(), new_t.return_type(), ns) &&
@@ -560,6 +569,9 @@ void linkingt::duplicate_code_symbol(
         old_symbol,
         new_symbol,
         "conflicting parameter counts of function declarations");
+
+      // error logged, continue typechecking other symbols
+      return;
     }
     else
     {
@@ -589,19 +601,31 @@ void linkingt::duplicate_code_symbol(
       if(o_it!=old_t.parameters().end())
       {
         if(!new_t.has_ellipsis() && old_symbol.value.is_not_nil())
+        {
           link_error(
             old_symbol,
             new_symbol,
             "conflicting parameter counts of function declarations");
+
+          // error logged, continue typechecking other symbols
+          return;
+        }
+
         replace=new_symbol.value.is_not_nil();
       }
       else if(n_it!=new_t.parameters().end())
       {
         if(!old_t.has_ellipsis() && new_symbol.value.is_not_nil())
+        {
           link_error(
             old_symbol,
             new_symbol,
             "conflicting parameter counts of function declarations");
+
+          // error logged, continue typechecking other symbols
+          return;
+        }
+
         replace=new_symbol.value.is_not_nil();
       }
 
@@ -677,6 +701,17 @@ void linkingt::duplicate_code_symbol(
           if(!found)
             break;
         }
+        // different non-pointer arguments with implementation - the
+        // implementation is always right, even though such code may
+        // be severely broken
+        else if(pointer_offset_bits(t1, ns)==pointer_offset_bits(t2, ns) &&
+                old_symbol.value.is_nil()!=new_symbol.value.is_nil())
+        {
+          if(warn_msg.empty())
+            warn_msg="non-pointer parameter types differ between "
+                     "declaration and definition";
+          replace=new_symbol.value.is_not_nil();
+        }
         else
           break;
 
@@ -695,6 +730,9 @@ void linkingt::duplicate_code_symbol(
           old_symbol,
           new_symbol,
           "conflicting function declarations");
+
+        // error logged, continue typechecking other symbols
+        return;
       }
       else
       {
@@ -752,10 +790,9 @@ bool linkingt::adjust_object_type_rec(
   if(base_type_eq(t1, t2, ns))
     return false;
 
-  if(t1.id()==ID_symbol ||
-     t1.id()==ID_struct_tag ||
-     t1.id()==ID_union_tag ||
-     t1.id()==ID_c_enum_tag)
+  if(
+    t1.id() == ID_symbol_type || t1.id() == ID_struct_tag ||
+    t1.id() == ID_union_tag || t1.id() == ID_c_enum_tag)
   {
     const irep_idt &identifier=t1.get(ID_identifier);
 
@@ -770,10 +807,9 @@ bool linkingt::adjust_object_type_rec(
 
     return false;
   }
-  else if(t2.id()==ID_symbol ||
-          t2.id()==ID_struct_tag ||
-          t2.id()==ID_union_tag ||
-          t2.id()==ID_c_enum_tag)
+  else if(
+    t2.id() == ID_symbol_type || t2.id() == ID_struct_tag ||
+    t2.id() == ID_union_tag || t2.id() == ID_c_enum_tag)
   {
     const irep_idt &identifier=t2.get(ID_identifier);
 
@@ -863,10 +899,15 @@ bool linkingt::adjust_object_type_rec(
       equal_exprt eq(old_size, new_size);
 
       if(!simplify_expr(eq, ns).is_true())
+      {
         link_error(
           info.old_symbol,
           info.new_symbol,
           "conflicting array sizes for variable");
+
+        // error logged, continue typechecking other symbols
+        return true;
+      }
     }
 
     return false;
@@ -945,6 +986,9 @@ void linkingt::duplicate_object_symbol(
         old_symbol,
         new_symbol,
         "conflicting types for variable");
+
+      // error logged, continue typechecking other symbols
+      return;
     }
     else if(set_to_new)
       old_symbol.type=new_symbol.type;
@@ -1009,10 +1053,15 @@ void linkingt::duplicate_non_type_symbol(
   bool is_code_new_symbol=new_symbol.type.id()==ID_code;
 
   if(is_code_old_symbol!=is_code_new_symbol)
+  {
     link_error(
       old_symbol,
       new_symbol,
       "conflicting definition for symbol");
+
+    // error logged, continue typechecking other symbols
+    return;
+  }
 
   if(is_code_old_symbol)
     duplicate_code_symbol(old_symbol, new_symbol);
@@ -1035,10 +1084,15 @@ void linkingt::duplicate_type_symbol(
   assert(new_symbol.is_type);
 
   if(!old_symbol.is_type)
+  {
     link_error(
       old_symbol,
       new_symbol,
       "conflicting definition for symbol");
+
+    // error logged, continue typechecking other symbols
+    return;
+  }
 
   if(old_symbol.type==new_symbol.type)
     return;
@@ -1149,62 +1203,53 @@ bool linkingt::needs_renaming_type(
   return true; // different
 }
 
-void linkingt::do_type_dependencies(id_sett &needs_to_be_renamed)
+void linkingt::do_type_dependencies(
+  std::unordered_set<irep_idt> &needs_to_be_renamed)
 {
   // Any type that uses a symbol that will be renamed also
   // needs to be renamed, and so on, until saturation.
 
   used_byt used_by;
 
-  forall_symbols(s_it, src_symbol_table.symbols)
+  for(const auto &symbol_pair : src_symbol_table.symbols)
   {
-    if(s_it->second.is_type)
+    if(symbol_pair.second.is_type)
     {
       // find type and array-size symbols
       find_symbols_sett symbols_used;
-      find_type_and_expr_symbols(s_it->second.type, symbols_used);
+      find_type_and_expr_symbols(symbol_pair.second.type, symbols_used);
 
-      for(find_symbols_sett::const_iterator
-          it=symbols_used.begin();
-          it!=symbols_used.end();
-          it++)
+      for(const auto &symbol_used : symbols_used)
       {
-        used_by[*it].insert(s_it->first);
+        used_by[symbol_used].insert(symbol_pair.first);
       }
     }
   }
 
-  std::stack<irep_idt> queue;
-
-  for(id_sett::const_iterator
-      d_it=needs_to_be_renamed.begin();
-      d_it!=needs_to_be_renamed.end();
-      d_it++)
-    queue.push(*d_it);
+  std::deque<irep_idt> queue(
+    needs_to_be_renamed.begin(), needs_to_be_renamed.end());
 
   while(!queue.empty())
   {
-    irep_idt id=queue.top();
-    queue.pop();
+    irep_idt id = queue.back();
+    queue.pop_back();
 
-    const id_sett &u=used_by[id];
+    const std::unordered_set<irep_idt> &u = used_by[id];
 
-    for(id_sett::const_iterator
-        d_it=u.begin();
-        d_it!=u.end();
-        d_it++)
-      if(needs_to_be_renamed.insert(*d_it).second)
+    for(const auto &dep : u)
+      if(needs_to_be_renamed.insert(dep).second)
       {
-        queue.push(*d_it);
+        queue.push_back(dep);
         #ifdef DEBUG
         debug() << "LINKING: needs to be renamed (dependency): "
-                << *d_it << eom;
+                << dep << eom;
         #endif
       }
   }
 }
 
-void linkingt::rename_symbols(const id_sett &needs_to_be_renamed)
+void linkingt::rename_symbols(
+  const std::unordered_set<irep_idt> &needs_to_be_renamed)
 {
   namespacet src_ns(src_symbol_table);
 
@@ -1248,7 +1293,7 @@ void linkingt::copy_symbols()
   }
 
   // Move over all the non-colliding ones
-  id_sett collisions;
+  std::unordered_set<irep_idt> collisions;
 
   for(const auto &named_symbol : src_symbols)
   {
@@ -1303,20 +1348,20 @@ void linkingt::typecheck()
 
   // PHASE 1: identify symbols to be renamed
 
-  id_sett needs_to_be_renamed;
+  std::unordered_set<irep_idt> needs_to_be_renamed;
 
-  forall_symbols(s_it, src_symbol_table.symbols)
+  for(const auto &symbol_pair : src_symbol_table.symbols)
   {
-    symbol_tablet::symbolst::const_iterator
-      m_it=main_symbol_table.symbols.find(s_it->first);
+    symbol_tablet::symbolst::const_iterator m_it =
+      main_symbol_table.symbols.find(symbol_pair.first);
 
-    if(m_it!=main_symbol_table.symbols.end() && // duplicate
-       needs_renaming(m_it->second, s_it->second))
+    if(
+      m_it != main_symbol_table.symbols.end() && // duplicate
+      needs_renaming(m_it->second, symbol_pair.second))
     {
-      needs_to_be_renamed.insert(s_it->first);
+      needs_to_be_renamed.insert(symbol_pair.first);
       #ifdef DEBUG
-      debug() << "LINKING: needs to be renamed: "
-              << s_it->first << eom;
+      debug() << "LINKING: needs to be renamed: " << symbol_pair.first << eom;
       #endif
     }
   }

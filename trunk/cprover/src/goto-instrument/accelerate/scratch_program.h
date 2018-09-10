@@ -23,6 +23,7 @@ Author: Matt Lewis
 #include <goto-programs/goto_functions.h>
 
 #include <goto-symex/goto_symex.h>
+#include <goto-symex/path_storage.h>
 #include <goto-symex/symex_target_equation.h>
 
 #include <solvers/smt2/smt2_dec.h>
@@ -38,14 +39,20 @@ public:
   scratch_programt(symbol_tablet &_symbol_table, message_handlert &mh)
     : constant_propagation(true),
       symbol_table(_symbol_table),
-      ns(symbol_table),
-      equation(ns),
-      symex(mh, ns, symbol_table, equation),
+      symex_symbol_table(),
+      ns(symbol_table, symex_symbol_table),
+      equation(),
+      path_storage(),
+      options(),
+      symex(mh, symbol_table, equation, options, path_storage),
       satcheck(util_make_unique<satcheckt>()),
       satchecker(ns, *satcheck),
       z3(ns, "accelerate", "", "", smt2_dect::solvert::Z3),
       checker(&z3) // checker(&satchecker)
   {
+    // Unconditionally set for performance reasons. This option setting applies
+    // only to this program.
+    options.set_option("simplify", true);
   }
 
   void append(goto_programt::instructionst &instructions);
@@ -73,8 +80,11 @@ protected:
   goto_symex_statet symex_state;
   goto_functionst functions;
   symbol_tablet &symbol_table;
-  const namespacet ns;
+  symbol_tablet symex_symbol_table;
+  namespacet ns;
   symex_target_equationt equation;
+  path_fifot path_storage;
+  optionst options;
   goto_symext symex;
 
   std::unique_ptr<propt> satcheck;

@@ -13,20 +13,8 @@ Date: September 2011
 
 #include "mmio.h"
 
-#include <util/cprover_prefix.h>
+#include <linking/static_lifetime_init.h>
 
-#include <goto-programs/goto_program.h>
-#include <goto-programs/goto_functions.h>
-
-#if 0
-#include <util/std_expr.h>
-#include <util/guard.h>
-#include <util/prefix.h>
-
-#include <goto-programs/remove_skip.h>
-#endif
-
-#include "interrupt.h"
 #include "rw_set.h"
 
 #ifdef LOCAL_MAY
@@ -90,10 +78,10 @@ void mmio(
           symbol_exprt w_used0_expr=symbol_exprt(vars.w_used0, bool_typet());
           symbol_exprt w_used1_expr=symbol_exprt(vars.w_used1, bool_typet());
 
-          exprt nondet_bool_expr=side_effect_nondet_exprt(bool_typet());
+          const side_effect_nondet_exprt nondet_bool_expr(bool_typet());
 
-          exprt choice0_rhs=and_exprt(nondet_bool_expr, w_used0_expr);
-          exprt choice1_rhs=and_exprt(nondet_bool_expr, w_used1_expr);
+          const and_exprt choice0_rhs(nondet_bool_expr, w_used0_expr);
+          const and_exprt choice1_rhs(nondet_bool_expr, w_used1_expr);
 
           // throw 2 Boolean dice
           shared_buffers.assignment(
@@ -101,25 +89,25 @@ void mmio(
           shared_buffers.assignment(
             goto_program, i_it, location, choice1, choice1_rhs);
 
-          exprt lhs=symbol_exprt(e_it->second.object, vars.type);
+          const symbol_exprt lhs(e_it->second.object, vars.type);
 
-          exprt value=
-            if_exprt(choice0_expr, w_buff0_expr,
-              if_exprt(choice1_expr, w_buff1_expr, lhs));
+          const if_exprt value(
+            choice0_expr,
+            w_buff0_expr,
+            if_exprt(choice1_expr, w_buff1_expr, lhs));
 
           // write one of the buffer entries
           shared_buffers.assignment(
             goto_program, i_it, location, e_it->second.object, value);
 
           // update 'used' flags
-          exprt w_used0_rhs=if_exprt(choice0_expr, false_exprt(), w_used0_expr);
-          exprt w_used1_rhs=
-            and_exprt(
-              if_exprt(
-                choice1_expr,
-                false_exprt(),
-                w_used1_expr),
-              w_used0_expr);
+          const if_exprt w_used0_rhs(choice0_expr, false_exprt(), w_used0_expr);
+          const and_exprt w_used1_rhs(
+            if_exprt(
+              choice1_expr,
+              false_exprt(),
+              w_used1_expr),
+            w_used0_expr);
 
           shared_buffers.assignment(
             goto_program, i_it, location, vars.w_used0, w_used0_rhs);
@@ -169,7 +157,7 @@ void mmio(
   // now instrument
 
   Forall_goto_functions(f_it, goto_model.goto_functions)
-    if(f_it->first!=CPROVER_PREFIX "initialize" &&
+    if(f_it->first != INITIALIZE_FUNCTION &&
        f_it->first!=goto_functionst::entry_point())
       mmio(value_sets, goto_model.symbol_table,
 #ifdef LOCAL_MAY

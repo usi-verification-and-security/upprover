@@ -1,17 +1,16 @@
-CBMC Version 5.8 from Git dev - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
-Date: 31/01/2018
+CBMC Version 5.10 from Git dev - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
+Date: 22/08/2018
 
 File Changed:
 =============
 - trunk/cprover/src/solvers/prop/prop_conv.h (move to public: propt &prop; // KE: change for hifrog)
-- trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
+- trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method) + declare constuct_get_goto_function method
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name() + try to remove dirty class, unless till stable!)
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations) + KE: remove dirty analysis
+- trunk/cprover/src/goto-symex/syme_main.cpp // goto_symext::get_goto_functiont goto_symext::constuct_get_goto_function // to allow out symex to work
 - trunk/cprover/src/goto-symex/symex_function_call.cpp // Add assert(0) - bool goto_symext::get_unwind_recursion, as long as the return is false.
 - trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
 - trunk/cprover/src/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
-- trunk/cprover/src/config.inc (change: add ../ to minisat2 path) —WE removed to CMAKE, therefore we do not need it anymore
-- trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore - assure we don't override it with junk
 - Remove dirty - once found
 
 minisat-2.2.1:

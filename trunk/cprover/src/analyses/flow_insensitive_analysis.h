@@ -9,6 +9,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /// \file
 /// Flow Insensitive Static Analysis
+///
+/// A framework for flow-insensitive analyses. Maintains a single global
+/// abstract value (an instance of \ref flow_insensitive_abstract_domain_baset,
+/// "the domain,") which instructions are invited to transform in turn.
+///
+/// Note this is unsound if used naively, because it follows the control-flow
+/// graph and terminates when an instruction makes no change to the domain and
+/// that instruction's successors have already been visited. Therefore a domain
+/// that relies upon every reachable instruction being re-visited upon the
+/// domain being updated must ensure that itself, for example by maintaining
+/// a map from locations to the latest version of the domain witnessed.
 
 #ifndef CPROVER_ANALYSES_FLOW_INSENSITIVE_ANALYSIS_H
 #define CPROVER_ANALYSES_FLOW_INSENSITIVE_ANALYSIS_H
@@ -44,16 +55,16 @@ public:
   }
 
   virtual void output(
-    const namespacet &ns,
-    std::ostream &out) const
+    const namespacet &,
+    std::ostream &) const
   {
   }
 
   typedef std::unordered_set<exprt, irep_hash> expr_sett;
 
   virtual void get_reference_set(
-    const namespacet &ns,
-    const exprt &expr,
+    const namespacet &,
+    const exprt &,
     expr_sett &expr_set)
   {
     // dummy, overload me!
@@ -95,8 +106,7 @@ public:
   {
   }
 
-  virtual void initialize(
-    const goto_programt &goto_program)
+  virtual void initialize(const goto_programt &)
   {
     if(!initialized)
     {
@@ -104,8 +114,7 @@ public:
     }
   }
 
-  virtual void initialize(
-    const goto_functionst &goto_functions)
+  virtual void initialize(const goto_functionst &)
   {
     if(!initialized)
     {

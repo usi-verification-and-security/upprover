@@ -8,14 +8,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "simplify_expr_class.h"
 
-#include <cassert>
-
-#include "expr.h"
-#include "namespace.h"
-#include "std_expr.h"
-#include "pointer_offset_size.h"
 #include "arith_tools.h"
 #include "base_type.h"
+#include "byte_operators.h"
+#include "namespace.h"
+#include "pointer_offset_size.h"
+#include "std_expr.h"
 
 bool simplify_exprt::simplify_member(exprt &expr)
 {
@@ -167,8 +165,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
       plus_exprt final_offset(struct_offset, member_offset);
       simplify_node(final_offset);
 
-      exprt result(op.id(), expr.type());
-      result.copy_to_operands(op.op0(), final_offset);
+      byte_extract_exprt result(op.id(), op.op0(), final_offset, expr.type());
       expr.swap(result);
 
       simplify_rec(expr);
@@ -193,11 +190,12 @@ bool simplify_exprt::simplify_member(exprt &expr)
     if(target_size!=-1)
     {
       mp_integer target_bits=target_size*8;
-      std::string bits=expr2bits(op, true);
+      const auto bits=expr2bits(op, true);
 
-      if(mp_integer(bits.size())>=target_bits)
+      if(bits.has_value() &&
+         mp_integer(bits->size())>=target_bits)
       {
-        std::string bits_cut=std::string(bits, 0, integer2size_t(target_bits));
+        std::string bits_cut=std::string(*bits, 0, integer2size_t(target_bits));
 
         exprt tmp=bits2expr(bits_cut, expr.type(), true);
 

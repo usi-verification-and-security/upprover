@@ -11,10 +11,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "bmc.h"
 
-#include <util/time_stopping.h>
+#include <chrono>
+#include <iomanip>
+
 #include <util/xml.h>
 #include <util/xml_expr.h>
 #include <util/json.h>
+#include <util/json_stream.h>
 #include <util/json_expr.h>
 
 #include <solvers/prop/cover_goals.h>
@@ -23,6 +26,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>
 #include <goto-programs/json_goto_trace.h>
+
+#include <langapi/language_util.h>
 
 #include "bv_cbmc.h"
 
@@ -139,6 +144,13 @@ protected:
   bmct &bmc;
 };
 
+static bool is_failed_assumption_step(
+  symex_target_equationt::SSA_stepst::const_iterator step,
+  const prop_convt &prop_conv)
+{
+  return step->is_assume() && prop_conv.l_get(step->cond_literal).is_false();
+}
+
 void bmc_covert::satisfying_assignment()
 {
   tests.push_back(testt());
@@ -168,21 +180,8 @@ void bmc_covert::satisfying_assignment()
     }
   }
 
-  build_goto_trace(bmc.equation, bmc.equation.SSA_steps.end(),
-                   solver, bmc.ns, test.goto_trace);
-
-  goto_tracet &goto_trace=test.goto_trace;
-
-  // Now delete anything after first failed assumption
-  for(goto_tracet::stepst::iterator
-      s_it1=goto_trace.steps.begin();
-      s_it1!=goto_trace.steps.end();
-      s_it1++)
-    if(s_it1->is_assume() && !s_it1->cond_value)
-    {
-      goto_trace.steps.erase(++s_it1, goto_trace.steps.end());
-      break;
-    }
+  build_goto_trace(
+    bmc.equation, is_failed_assumption_step, solver, bmc.ns, test.goto_trace);
 }
 
 bool bmc_covert::operator()()
@@ -191,8 +190,7 @@ bool bmc_covert::operator()()
 
   solver.set_message_handler(get_message_handler());
 
-  // stop the time
-  absolute_timet sat_start=current_time();
+  auto solver_start=std::chrono::steady_clock::now();
 
   // Collect _all_ goals in `goal_map'.
   // This maps property IDs to 'goalt'
@@ -224,10 +222,8 @@ bool bmc_covert::operator()()
     if(it->is_assert())
     {
       assert(it->source.pc->is_assert());
-      exprt c=
-        conjunction({ // NOLINT(whitespace/braces)
-          literal_exprt(it->guard_literal),
-          literal_exprt(!it->cond_literal) });
+      const and_exprt c(
+        literal_exprt(it->guard_literal), literal_exprt(!it->cond_literal));
       literalt l_c=solver.convert(c);
       goal_map[id(it->source.pc)].add_instance(it, l_c);
     }
@@ -251,12 +247,11 @@ bool bmc_covert::operator()()
 
   cover_goals();
 
-  // output runtime
-
   {
-    absolute_timet sat_stop=current_time();
+    auto solver_stop=std::chrono::steady_clock::now();
     status() << "Runtime decision procedure: "
-             << (sat_stop-sat_start) << "s" << eom;
+             << std::chrono::duration<double>(solver_stop-solver_start).count()
+             << "s" << eom;
   }
 
   // report
@@ -346,19 +341,19 @@ bool bmc_covert::operator()()
 
     case ui_message_handlert::uit::JSON_UI:
     {
-      json_objectt json_result;
-      json_arrayt &goals_array=json_result["goals"].make_array();
+      json_stream_objectt &json_result =
+        status().json_stream().push_back_stream_object();
       for(const auto &goal_pair : goal_map)
       {
         const goalt &goal=goal_pair.second;
 
-        json_objectt &result=goals_array.push_back().make_object();
-        result["status"]=json_stringt(goal.satisfied?"satisfied":"failed");
-        result["goal"]=json_stringt(id2string(goal_pair.first));
-        result["description"]=json_stringt(goal.description);
+        json_result["status"] =
+          json_stringt(goal.satisfied ? "satisfied" : "failed");
+        json_result["goal"] = json_stringt(goal_pair.first);
+        json_result["description"] = json_stringt(goal.description);
 
         if(goal.source_location.is_not_nil())
-          result["sourceLocation"]=json(goal.source_location);
+          json_result["sourceLocation"] = json(goal.source_location);
       }
       json_result["totalGoals"]=json_numbert(std::to_string(goal_map.size()));
       json_result["goalsCovered"]=json_numbert(std::to_string(goals_covered));
@@ -369,19 +364,19 @@ bool bmc_covert::operator()()
         json_objectt &result=tests_array.push_back().make_object();
         if(bmc.options.get_bool_option("trace"))
         {
-          jsont &json_trace=result["trace"];
+          json_arrayt &json_trace = json_result["trace"].make_array();
           convert(bmc.ns, test.goto_trace, json_trace, bmc.trace_options());
         }
         else
         {
-          json_arrayt &json_test=result["inputs"].make_array();
+          json_arrayt &json_test = json_result["inputs"].make_array();
 
           for(const auto &step : test.goto_trace.steps)
           {
             if(step.is_input())
             {
               json_objectt json_input;
-              json_input["id"]=json_stringt(id2string(step.io_id));
+              json_input["id"] = json_stringt(step.io_id);
               if(step.io_args.size()==1)
                 json_input["value"]=
                   json(step.io_args.front(), bmc.ns, ID_unknown);
@@ -392,11 +387,10 @@ bool bmc_covert::operator()()
         json_arrayt &goal_refs=result["coveredGoals"].make_array();
         for(const auto &goal_id : test.covered_goals)
         {
-          goal_refs.push_back(json_stringt(id2string(goal_id)));
+          goal_refs.push_back(json_stringt(goal_id));
         }
       }
 
-      result() << json_result;
       break;
     }
   }
@@ -426,9 +420,7 @@ bool bmc_covert::operator()()
 }
 
 /// Try to cover all goals
-bool bmct::cover(
-  const goto_functionst &goto_functions,
-  const optionst::value_listt &criteria)
+bool bmct::cover(const goto_functionst &goto_functions)
 {
   bmc_covert bmc_cover(goto_functions, *this);
   bmc_cover.set_message_handler(get_message_handler());

@@ -6,44 +6,49 @@ Author: Kareem Khazem <karkhaz@karkhaz.com>, 2017
 
 \*******************************************************************/
 
-#include <json/json_parser.h>
+#include "linker_script_merge.h"
 
 #include <algorithm>
-#include <cstdio>
-#include <iostream>
-#include <iterator>
 #include <fstream>
+#include <iterator>
 
 #include <util/arith_tools.h>
 #include <util/c_types.h>
-#include <util/expr.h>
-#include <util/get_base_name.h>
+#include <util/expr_initializer.h>
 #include <util/magic.h>
-#include <util/prefix.h>
 #include <util/run.h>
-#include <util/string2int.h>
 #include <util/tempfile.h>
 
-#include <linking/zero_initializer.h>
+#include <json/json_parser.h>
+
+#include <linking/static_lifetime_init.h>
 
 #include <goto-programs/read_goto_binary.h>
 
-#include "compile.h"
-#include "linker_script_merge.h"
-
 int linker_script_merget::add_linker_script_definitions()
 {
-  if(!cmdline.isset('T') || elf_binaries.size()!=1)
+  if(!cmdline.isset('T'))
     return 0;
-  const std::string &elf_file=*elf_binaries.begin();
-  const std::string &goto_file=*goto_binaries.begin();
+
+  temporary_filet linker_def_outfile("goto-cc-linker-info", ".json");
+  std::list<irep_idt> linker_defined_symbols;
+  int fail=
+    get_linker_script_data(
+      linker_defined_symbols,
+      compiler.symbol_table,
+      elf_binary,
+      linker_def_outfile());
+  // ignore linker script parsing failures until the code is tested more widely
+  if(fail!=0)
+    return 0;
 
   jsont data;
-  std::list<irep_idt> linker_defined_symbols;
-  int fail=get_linker_script_data(
-      data, linker_defined_symbols, compiler.symbol_table, elf_file);
+  fail=parse_json(linker_def_outfile(), get_message_handler(), data);
   if(fail!=0)
+  {
+    error() << "Problem parsing linker script JSON data" << eom;
     return fail;
+  }
 
   fail=linker_data_is_malformed(data);
   if(fail!=0)
@@ -55,8 +60,10 @@ int linker_script_merget::add_linker_script_definitions()
 
   symbol_tablet original_st;
   goto_functionst original_gf;
-  fail=read_goto_binary(goto_file, original_st, original_gf,
+
+  fail=read_goto_binary(goto_binary, original_st, original_gf,
       get_message_handler());
+
   if(fail!=0)
   {
     error() << "Unable to read goto binary for linker script merging" << eom;
@@ -65,10 +72,10 @@ int linker_script_merget::add_linker_script_definitions()
 
   fail=1;
   linker_valuest linker_values;
-  const auto &pair=original_gf.function_map.find(CPROVER_PREFIX "initialize");
+  const auto &pair=original_gf.function_map.find(INITIALIZE_FUNCTION);
   if(pair==original_gf.function_map.end())
   {
-    error() << "No " << CPROVER_PREFIX "initialize found in goto_functions"
+    error() << "No " << INITIALIZE_FUNCTION << " found in goto_functions"
             << eom;
     return fail;
   }
@@ -80,7 +87,7 @@ int linker_script_merget::add_linker_script_definitions()
       linker_values);
   if(fail!=0)
   {
-    error() << "Could not add linkerscript defs to __CPROVER_initialize" << eom;
+    error() << "Could not add linkerscript defs to " INITIALIZE_FUNCTION << eom;
     return fail;
   }
 
@@ -93,32 +100,36 @@ int linker_script_merget::add_linker_script_definitions()
 
   fail=pointerize_linker_defined_symbols(original_gf, original_st,
       linker_values);
+
   if(fail!=0)
   {
     error() << "Could not pointerize all linker-defined expressions" << eom;
     return fail;
   }
 
-  fail=compiler.write_object_file(goto_file, original_st, original_gf);
+  fail=compiler.write_object_file(goto_binary, original_st, original_gf);
+
   if(fail!=0)
     error() << "Could not write linkerscript-augmented binary" << eom;
+
   return fail;
 }
 
 linker_script_merget::linker_script_merget(
       compilet &compiler,
-      std::list<std::string> &elf_binaries,
-      std::list<std::string> &goto_binaries,
-      cmdlinet &cmdline,
+      const std::string &elf_binary,
+      const std::string &goto_binary,
+      const cmdlinet &cmdline,
       message_handlert &message_handler) :
     messaget(message_handler), compiler(compiler),
-    elf_binaries(elf_binaries), goto_binaries(goto_binaries),
+    elf_binary(elf_binary), goto_binary(goto_binary),
     cmdline(cmdline),
     replacement_predicates(
     {
       replacement_predicatet("address of array's first member",
-        [](const exprt expr){ return to_symbol_expr(expr.op0().op0()); },
-        [](const exprt expr)
+        [](const exprt &expr) -> const symbol_exprt&
+        { return to_symbol_expr(expr.op0().op0()); },
+        [](const exprt &expr, const namespacet &)
         {
           return expr.id()==ID_address_of &&
                  expr.type().id()==ID_pointer &&
@@ -133,8 +144,9 @@ linker_script_merget::linker_script_merget(
                  expr.op0().op1().type().id()==ID_signedbv;
         }),
       replacement_predicatet("address of array",
-        [](const exprt expr){ return to_symbol_expr(expr.op0()); },
-        [](const exprt expr)
+        [](const exprt &expr) -> const symbol_exprt&
+        { return to_symbol_expr(expr.op0()); },
+        [](const exprt &expr, const namespacet &)
         {
           return expr.id()==ID_address_of &&
                  expr.type().id()==ID_pointer &&
@@ -142,16 +154,29 @@ linker_script_merget::linker_script_merget(
                  expr.op0().id()==ID_symbol &&
                  expr.op0().type().id()==ID_array;
         }),
+      replacement_predicatet("address of struct",
+        [](const exprt &expr) -> const symbol_exprt&
+        { return to_symbol_expr(expr.op0()); },
+        [](const exprt &expr, const namespacet &ns)
+        {
+          return expr.id()==ID_address_of &&
+                 expr.type().id()==ID_pointer &&
+
+                 expr.op0().id()==ID_symbol &&
+                 ns.follow(expr.op0().type()).id()==ID_struct;
+        }),
       replacement_predicatet("array variable",
-        [](const exprt expr){ return to_symbol_expr(expr); },
-        [](const exprt expr)
+        [](const exprt &expr) -> const symbol_exprt&
+        { return to_symbol_expr(expr); },
+        [](const exprt &expr, const namespacet &)
         {
           return expr.id()==ID_symbol &&
                  expr.type().id()==ID_array;
         }),
       replacement_predicatet("pointer (does not need pointerizing)",
-        [](const exprt expr){ return to_symbol_expr(expr); },
-        [](const exprt expr)
+        [](const exprt &expr) -> const symbol_exprt&
+        { return to_symbol_expr(expr); },
+        [](const exprt &expr, const namespacet &)
         {
           return expr.id()==ID_symbol &&
                  expr.type().id()==ID_pointer;
@@ -164,6 +189,8 @@ int linker_script_merget::pointerize_linker_defined_symbols(
       symbol_tablet &symbol_table,
       const linker_valuest &linker_values)
 {
+  const namespacet ns(symbol_table);
+
   int ret=0;
   // First, pointerize the actual linker-defined symbols
   for(const auto &pair : linker_values)
@@ -191,7 +218,8 @@ int linker_script_merget::pointerize_linker_defined_symbols(
     int fail=pointerize_subexprs_of(
       symbol_table.get_writeable_ref(pair.first).value,
       to_pointerize,
-      linker_values);
+      linker_values,
+      ns);
     if(to_pointerize.empty() && fail==0)
       continue;
     ret=1;
@@ -216,7 +244,8 @@ int linker_script_merget::pointerize_linker_defined_symbols(
         if(to_pointerize.empty())
           continue;
         debug() << "Pointerizing a program expression..." << eom;
-        int fail=pointerize_subexprs_of(*insts, to_pointerize, linker_values);
+        int fail = pointerize_subexprs_of(
+          *insts, to_pointerize, linker_values, ns);
         if(to_pointerize.empty() && fail==0)
           continue;
         ret=1;
@@ -259,15 +288,17 @@ int linker_script_merget::replace_expr(
 int linker_script_merget::pointerize_subexprs_of(
     exprt &expr,
     std::list<symbol_exprt> &to_pointerize,
-    const linker_valuest &linker_values)
+    const linker_valuest &linker_values,
+    const namespacet &ns)
 {
   int fail=0, tmp=0;
   for(auto const &pair : linker_values)
     for(auto const &pattern : replacement_predicates)
     {
-      if(!pattern.match(expr))
+      if(!pattern.match(expr, ns))
         continue;
-      const symbol_exprt &inner_symbol=pattern.inner_symbol(expr);
+      // take a copy, expr will be changed below
+      const symbol_exprt inner_symbol=pattern.inner_symbol(expr);
       if(pair.first!=inner_symbol.get_identifier())
         continue;
       tmp=replace_expr(expr, linker_values, inner_symbol, pair.first,
@@ -292,7 +323,7 @@ int linker_script_merget::pointerize_subexprs_of(
 
   for(auto &op : expr.operands())
   {
-    tmp=pointerize_subexprs_of(op, to_pointerize, linker_values);
+    tmp=pointerize_subexprs_of(op, to_pointerize, linker_values, ns);
     fail=tmp?tmp:fail;
   }
   return fail;
@@ -384,7 +415,7 @@ int linker_script_merget::ls_data2instructions(
 
 
     // Array symbol_exprt
-    std::size_t array_size=integer2size_t(string2integer(d["size"].value));
+    mp_integer array_size = string2integer(d["size"].value);
     if(array_size > MAX_FLATTENED_ARRAY_SIZE)
     {
       warning() << "Object section '" << d["section"].value << "' of size "
@@ -403,7 +434,7 @@ int linker_script_merget::ls_data2instructions(
     array_loc.set_file(linker_script);
     std::ostringstream array_comment;
     array_comment << "Object section '" << d["section"].value << "' of size "
-            << integer2unsigned(array_size) << " bytes";
+                  << array_size << " bytes";
     array_loc.set_comment(array_comment.str());
     array_expr.add_source_location()=array_loc;
 
@@ -562,8 +593,7 @@ int linker_script_merget::ls_data2instructions(
   for(const auto &d : data["regions"].array)
   {
     code_function_callt f;
-    code_typet void_t;
-    void_t.return_type()=empty_typet();
+    const code_typet void_t({}, empty_typet());
     f.function()=symbol_exprt(CPROVER_PREFIX "allocated_memory", void_t);
     unsigned start=safe_string2unsigned(d["start"].value);
     unsigned size=safe_string2unsigned(d["size"].value);
@@ -589,8 +619,7 @@ int linker_script_merget::ls_data2instructions(
     sym.name=CPROVER_PREFIX "allocated_memory";
     sym.pretty_name=CPROVER_PREFIX "allocated_memory";
     sym.is_lvalue=sym.is_static_lifetime=true;
-    code_typet void_t;
-    void_t.return_type()=empty_typet();
+    const code_typet void_t({}, empty_typet());
     sym.type=void_t;
     symbol_table.add(sym);
   }
@@ -625,23 +654,24 @@ int linker_script_merget::ls_data2instructions(
 #endif
 
 int linker_script_merget::get_linker_script_data(
-    jsont &linker_data,
     std::list<irep_idt> &linker_defined_symbols,
     const symbol_tablet &symbol_table,
-    const std::string &out_file)
+    const std::string &out_file,
+    const std::string &def_out_file)
 {
   for(auto const &pair : symbol_table.symbols)
-    if(pair.second.is_extern && pair.second.value.is_nil()
-    && pair.second.name!="__CPROVER_memory")
+    if(pair.second.is_extern && pair.second.value.is_nil() &&
+       pair.second.name!="__CPROVER_memory")
       linker_defined_symbols.push_back(pair.second.name);
 
   std::ostringstream linker_def_str;
-  std::copy(linker_defined_symbols.begin(), linker_defined_symbols.end(),
-      std::ostream_iterator<irep_idt>(linker_def_str, "\n"));
+  std::copy(
+    linker_defined_symbols.begin(),
+    linker_defined_symbols.end(),
+    std::ostream_iterator<irep_idt>(linker_def_str, "\n"));
   debug() << "Linker-defined symbols: [" << linker_def_str.str() << "]\n"
           << eom;
 
-  temporary_filet linker_def_outfile("goto-cc-linker-info", ".json");
   temporary_filet linker_def_infile("goto-cc-linker-defs", "");
   std::ofstream linker_def_file(linker_def_infile());
   linker_def_file << linker_def_str.str();
@@ -653,29 +683,24 @@ int linker_script_merget::get_linker_script_data(
     "--script",   cmdline.get_value('T'),
     "--object",   out_file,
     "--sym-file", linker_def_infile(),
-    "--out-file", linker_def_outfile()
+    "--out-file", def_out_file
   };
-  if(cmdline.isset("verbosity"))
-  {
-    unsigned verb=safe_string2unsigned(cmdline.get_value("verbosity"));
-    if(verb>9)
-      argv.push_back("--very-verbose");
-    else if(verb>4)
-      argv.push_back("--verbose");
-  }
 
-  int rc=run(argv[0], argv, linker_def_infile(), linker_def_outfile());
+  if(get_message_handler().get_verbosity() >= messaget::M_DEBUG)
+    argv.push_back("--very-verbose");
+  else if(get_message_handler().get_verbosity() > messaget::M_RESULT)
+    argv.push_back("--verbose");
+
+  debug() << "RUN:";
+  for(std::size_t i=0; i<argv.size(); i++)
+    debug() << " " << argv[i];
+  debug() << eom;
+
+  int rc=run(argv[0], argv, linker_def_infile(), def_out_file);
   if(rc!=0)
-  {
-    error() << "Problem parsing linker script" << eom;
-    return rc;
-  }
+    warning() << "Problem parsing linker script" << eom;
 
-  int fail=parse_json(linker_def_outfile(), get_message_handler(),
-      linker_data);
-  if(fail!=0)
-    error() << "Problem parsing linker script JSON data" << eom;
-  return fail;
+  return rc;
 }
 
 int linker_script_merget::goto_and_object_mismatch(

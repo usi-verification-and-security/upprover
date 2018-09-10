@@ -21,26 +21,24 @@ Author: CM Wintersteiger, 2006
 
 #include <iostream>
 
-#include <util/string2int.h>
+#include <util/config.h>
+#include <util/file_util.h>
+#include <util/get_base_name.h>
 #include <util/message.h>
 #include <util/prefix.h>
-#include <util/config.h>
-#include <util/get_base_name.h>
-
-#include <cbmc/version.h>
 
 #include "compile.h"
 
-/// does it.
-static bool is_directory(const std::string &s)
+static bool has_directory_suffix(const std::string &path)
 {
-  if(s.empty())
-    return false;
-  char last_char=s[s.size()-1];
-  // Visual CL recognizes both
-  return last_char=='\\' || last_char=='/';
+  // MS CL decides whether a parameter is a directory on the
+  // basis of the / or \\ suffix; it doesn't matter
+  // whether the directory actually exists.
+  return path.empty() ? false :
+                        path.back()=='/' || path.back()=='\\';
 }
 
+/// does it.
 int ms_cl_modet::doit()
 {
   if(cmdline.isset('?') ||
@@ -50,8 +48,6 @@ int ms_cl_modet::doit()
     return EX_OK;
   }
 
-  unsigned int verbosity=1;
-
   compilet compiler(cmdline, message_handler, cmdline.isset("WX"));
 
   #if 0
@@ -60,11 +56,8 @@ int ms_cl_modet::doit()
     has_prefix(base_name, "goto-link");
   #endif
 
-  if(cmdline.isset("verbosity"))
-    verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-
-  compiler.set_message_handler(get_message_handler());
-  message_handler.set_verbosity(verbosity);
+  const auto verbosity = eval_verbosity(
+    cmdline.get_value("verbosity"), messaget::M_ERROR, message_handler);
 
   debug() << "Visual Studio mode" << eom;
 
@@ -83,17 +76,56 @@ int ms_cl_modet::doit()
   else
     compiler.mode=compilet::COMPILE_LINK_EXECUTABLE;
 
+  if(cmdline.isset("std"))
+  {
+    const std::string std_string = cmdline.get_value("std");
+
+    if(
+      std_string == ":c++14" || std_string == "=c++14" ||
+      std_string == ":c++17" || std_string == "=c++17" ||
+      std_string == ":c++latest" || std_string == "=c++latest")
+    {
+      // we don't have any newer version at the moment
+      config.cpp.set_cpp14();
+    }
+    else if(std_string == ":c++11" || std_string == "=c++11")
+    {
+      // this isn't really a Visual Studio variant, we just do this for GCC
+      // command-line compatibility
+      config.cpp.set_cpp11();
+    }
+    else
+      warning() << "unknown language standard " << std_string << eom;
+  }
+  else
+    config.cpp.set_cpp14();
+
   compiler.echo_file_name=true;
 
   if(cmdline.isset("Fo"))
   {
-    compiler.output_file_object=cmdline.get_value("Fo");
+    std::string Fo_value = cmdline.get_value("Fo");
 
-    // this could be a directory
-    if(is_directory(compiler.output_file_object) &&
-       cmdline.args.size()>=1)
-      compiler.output_file_object+=
-        get_base_name(cmdline.args[0], true)+".obj";
+    // this could be a directory or a file name
+    if(has_directory_suffix(Fo_value))
+    {
+      compiler.output_directory_object = Fo_value;
+
+      if(!is_directory(Fo_value))
+        warning() << "not a directory: " << Fo_value << eom;
+    }
+    else
+      compiler.output_file_object = Fo_value;
+  }
+
+  if(
+    compiler.mode == compilet::COMPILE_ONLY &&
+    cmdline.args.size() > 1 &&
+    compiler.output_directory_object.empty())
+  {
+    error() << "output directory required for /c with multiple input files"
+            << eom;
+    return EX_USAGE;
   }
 
   if(cmdline.isset("Fe"))
@@ -101,10 +133,17 @@ int ms_cl_modet::doit()
     compiler.output_file_executable=cmdline.get_value("Fe");
 
     // this could be a directory
-    if(is_directory(compiler.output_file_executable) &&
-       cmdline.args.size()>=1)
+    if(
+      has_directory_suffix(compiler.output_file_executable) &&
+      cmdline.args.size() >= 1)
+    {
+      if(!is_directory(compiler.output_file_executable))
+        warning() << "not a directory: "
+                  << compiler.output_file_executable << eom;
+
       compiler.output_file_executable+=
-        get_base_name(cmdline.args[0], true)+".exe";
+        get_base_name(cmdline.args[0], true) + ".exe";
+    }
   }
   else
   {
@@ -118,7 +157,7 @@ int ms_cl_modet::doit()
   if(cmdline.isset('J'))
     config.ansi_c.char_is_unsigned=true;
 
-  if(verbosity>8)
+  if(verbosity > messaget::M_STATISTICS)
   {
     std::list<std::string>::iterator it;
 

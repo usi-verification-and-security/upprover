@@ -22,7 +22,7 @@ partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
   summary_storet & summary_store,
   bool _store_summaries_with_assertion) :
-  symex_target_equationt(_ns),
+  symex_target_equationt(),
   current_partition_id(NO_PARTITION_ID),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),

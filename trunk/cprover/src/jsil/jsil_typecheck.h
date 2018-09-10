@@ -56,7 +56,7 @@ protected:
 
   void update_expr_type(exprt &expr, const typet &type);
   void make_type_compatible(exprt &expr, const typet &type, bool must);
-  void typecheck_type_symbol(symbolt &symbol) {}
+  void typecheck_type_symbol(symbolt &) {}
   void typecheck_non_type_symbol(symbolt &symbol);
   void typecheck_symbol_expr(symbol_exprt &symbol_expr);
   void typecheck_expr_side_effect_throw(side_effect_expr_throwt &expr);
@@ -94,7 +94,7 @@ protected:
   virtual std::string to_string(const exprt &expr);
   virtual std::string to_string(const typet &type);
 
-  std::unordered_set<irep_idt, irep_id_hash> already_typechecked;
+  std::unordered_set<irep_idt> already_typechecked;
 };
 
 #endif // CPROVER_JSIL_JSIL_TYPECHECK_H

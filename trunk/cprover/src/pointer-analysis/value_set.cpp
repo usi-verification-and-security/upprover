@@ -14,21 +14,18 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <ostream>
 
-#include <util/symbol_table.h>
-#include <util/simplify_expr.h>
-#include <util/base_type.h>
-#include <util/std_expr.h>
-#include <util/prefix.h>
-#include <util/std_code.h>
 #include <util/arith_tools.h>
-#include <util/pointer_offset_size.h>
-#include <util/cprover_prefix.h>
-
+#include <util/base_type.h>
 #include <util/c_types.h>
+#include <util/pointer_offset_size.h>
+#include <util/simplify_expr.h>
+
+#include <langapi/language_util.h>
 
 #ifdef DEBUG
-#include <langapi/language_util.h>
 #include <iostream>
+#include <util/format_expr.h>
+#include <util/format_type.h>
 #endif
 
 #include "add_failed_symbols.h"
@@ -330,7 +327,7 @@ void value_sett::get_value_set(
   #if 0
   for(value_setst::valuest::const_iterator it=dest.begin();
       it!=dest.end(); it++)
-    std::cout << "GET_VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+    std::cout << "GET_VALUE_SET: " << format(*it) << '\n';
   #endif
 }
 
@@ -347,6 +344,30 @@ void value_sett::get_value_set(
   get_value_set_rec(tmp, dest, "", tmp.type(), ns);
 }
 
+/// Check if 'suffix' starts with 'field'.
+/// Suffix is delimited by periods and '[]' (array access) tokens, so we're
+/// looking for ".field($|[]|.)"
+static bool suffix_starts_with_field(
+  const std::string &suffix, const std::string &field)
+{
+  return
+    !suffix.empty() &&
+    suffix[0] == '.' &&
+    suffix.compare(1, field.length(), field) == 0 &&
+    (suffix.length() == field.length() + 1 ||
+     suffix[field.length() + 1] == '.' ||
+     suffix[field.length() + 1] == '[');
+}
+
+static std::string strip_first_field_from_suffix(
+  const std::string &suffix, const std::string &field)
+{
+  INVARIANT(
+    suffix_starts_with_field(suffix, field),
+    "suffix should start with " + field);
+  return suffix.substr(field.length() + 1);
+}
+
 void value_sett::get_value_set_rec(
   const exprt &expr,
   object_mapt &dest,
@@ -355,7 +376,7 @@ void value_sett::get_value_set_rec(
   const namespacet &ns) const
 {
   #if 0
-  std::cout << "GET_VALUE_SET_REC EXPR: " << from_expr(ns, "", expr) << "\n";
+  std::cout << "GET_VALUE_SET_REC EXPR: " << format(expr) << "\n";
   std::cout << "GET_VALUE_SET_REC SUFFIX: " << suffix << '\n';
   #endif
 
@@ -506,7 +527,7 @@ void value_sett::get_value_set_rec(
     if(expr.get(ID_value)==ID_NULL &&
        expr_type.id()==ID_pointer)
     {
-      insert(dest, exprt("NULL-object", expr_type.subtype()), 0);
+      insert(dest, exprt(ID_null_object, expr_type.subtype()), 0);
     }
     else if(expr_type.id()==ID_unsignedbv ||
             expr_type.id()==ID_signedbv)
@@ -537,7 +558,7 @@ void value_sett::get_value_set_rec(
       // integer-to-pointer
 
       if(expr.op0().is_zero())
-        insert(dest, exprt("NULL-object", expr_type.subtype()), 0);
+        insert(dest, exprt(ID_null_object, expr_type.subtype()), 0);
       else
       {
         // see if we have something for the integer
@@ -714,72 +735,113 @@ void value_sett::get_value_set_rec(
   }
   else if(expr.id()==ID_struct)
   {
+    const auto &struct_components = to_struct_type(expr_type).components();
+    INVARIANT(
+      struct_components.size() == expr.operands().size(),
+      "struct expression should have an operand per component");
+    auto component_iter = struct_components.begin();
+    bool found_component = false;
+
     // a struct constructor, which may contain addresses
+
     forall_operands(it, expr)
-      get_value_set_rec(*it, dest, suffix, original_type, ns);
+    {
+      const std::string &component_name =
+        id2string(component_iter->get_name());
+      if(suffix_starts_with_field(suffix, component_name))
+      {
+        std::string remaining_suffix =
+          strip_first_field_from_suffix(suffix, component_name);
+        get_value_set_rec(*it, dest, remaining_suffix, original_type, ns);
+        found_component = true;
+      }
+      ++component_iter;
+    }
+
+    if(!found_component)
+    {
+      // Struct field doesn't appear as expected -- this has probably been
+      // cast from an incompatible type. Conservatively assume all fields may
+      // be of interest.
+      forall_operands(it, expr)
+        get_value_set_rec(*it, dest, suffix, original_type, ns);
+    }
   }
   else if(expr.id()==ID_with)
   {
-    assert(expr.operands().size()==3);
+    const with_exprt &with_expr = to_with_expr(expr);
 
-    // this is the array/struct
-    object_mapt tmp_map0;
-    get_value_set_rec(expr.op0(), tmp_map0, suffix, original_type, ns);
-
-    // this is the update value -- note NO SUFFIX
-    object_mapt tmp_map2;
-    get_value_set_rec(expr.op2(), tmp_map2, "", original_type, ns);
-
-    if(expr_type.id()==ID_struct)
+    // If the suffix is empty we're looking for the whole struct:
+    // default to combining both options as below.
+    if(expr_type.id() == ID_struct && !suffix.empty())
     {
-      #if 0
-      const object_map_dt &object_map0=tmp_map0.read();
-      irep_idt component_name=expr.op1().get(ID_component_name);
-
-      bool insert=true;
-
-      for(object_map_dt::const_iterator
-          it=object_map0.begin();
-          it!=object_map0.end();
-          it++)
+      irep_idt component_name = with_expr.where().get(ID_component_name);
+      if(suffix_starts_with_field(suffix, id2string(component_name)))
       {
-        const exprt &e=to_expr(it);
-
-        if(e.id()==ID_member &&
-           e.get(ID_component_name)==component_name)
-        {
-          if(insert)
-          {
-            dest.write().insert(tmp_map2.read().begin(), tmp_map2.read().end());
-            insert=false;
-          }
-        }
-        else
-          dest.write().insert(*it);
+        // Looking for the member overwritten by this WITH expression
+        std::string remaining_suffix =
+          strip_first_field_from_suffix(suffix, id2string(component_name));
+        get_value_set_rec(
+          with_expr.new_value(), dest, remaining_suffix, original_type, ns);
       }
-      #else
-      // Should be more precise! We only want "suffix"
-      make_union(dest, tmp_map0);
-      make_union(dest, tmp_map2);
-      #endif
+      else if(to_struct_type(expr_type).has_component(component_name))
+      {
+        // Looking for a non-overwritten member, look through this expression
+        get_value_set_rec(with_expr.old(), dest, suffix, original_type, ns);
+      }
+      else
+      {
+        // Member we're looking for is not defined in this struct -- this
+        // must be a reinterpret cast of some sort. Default to conservatively
+        // assuming either operand might be involved.
+        get_value_set_rec(expr.op0(), dest, suffix, original_type, ns);
+        get_value_set_rec(expr.op2(), dest, "", original_type, ns);
+      }
+    }
+    else if(expr_type.id() == ID_array && !suffix.empty())
+    {
+      std::string new_value_suffix;
+      if(has_prefix(suffix, "[]"))
+        new_value_suffix = suffix.substr(2);
+
+      // Otherwise use a blank suffix on the assumption anything involved with
+      // the new value might be interesting.
+
+      get_value_set_rec(with_expr.old(), dest, suffix, original_type, ns);
+      get_value_set_rec(
+        with_expr.new_value(), dest, new_value_suffix, original_type, ns);
     }
     else
     {
-      make_union(dest, tmp_map0);
-      make_union(dest, tmp_map2);
+      // Something else-- the suffixes used here are a rough guess at best,
+      // so this is imprecise.
+      get_value_set_rec(expr.op0(), dest, suffix, original_type, ns);
+      get_value_set_rec(expr.op2(), dest, "", original_type, ns);
     }
   }
   else if(expr.id()==ID_array)
   {
     // an array constructor, possibly containing addresses
+    std::string new_suffix = suffix;
+    if(has_prefix(suffix, "[]"))
+      new_suffix = suffix.substr(2);
+    // Otherwise we're probably reinterpreting some other type -- try persisting
+    // with the current suffix for want of a better idea.
+
     forall_operands(it, expr)
-      get_value_set_rec(*it, dest, suffix, original_type, ns);
+      get_value_set_rec(*it, dest, new_suffix, original_type, ns);
   }
   else if(expr.id()==ID_array_of)
   {
     // an array constructor, possibly containing an address
+    std::string new_suffix = suffix;
+    if(has_prefix(suffix, "[]"))
+      new_suffix = suffix.substr(2);
+    // Otherwise we're probably reinterpreting some other type -- try persisting
+    // with the current suffix for want of a better idea.
+
     assert(expr.operands().size()==1);
-    get_value_set_rec(expr.op0(), dest, suffix, original_type, ns);
+    get_value_set_rec(expr.op0(), dest, new_suffix, original_type, ns);
   }
   else if(expr.id()==ID_dynamic_object)
   {
@@ -887,7 +949,7 @@ void value_sett::get_value_set_rec(
   for(const auto &obj : dest.read())
   {
     const exprt &e=to_expr(obj);
-    std::cout << "  " << from_expr(ns, "", e) << "\n";
+    std::cout << "  " << format(e) << "\n";
   }
   std::cout << "\n";
   #endif
@@ -932,7 +994,7 @@ void value_sett::get_reference_set_rec(
   const namespacet &ns) const
 {
   #if 0
-  std::cout << "GET_REFERENCE_SET_REC EXPR: " << from_expr(ns, "", expr)
+  std::cout << "GET_REFERENCE_SET_REC EXPR: " << format(expr)
             << '\n';
   #endif
 
@@ -959,7 +1021,7 @@ void value_sett::get_reference_set_rec(
     #if 0
     for(expr_sett::const_iterator it=value_set.begin();
         it!=value_set.end(); it++)
-      std::cout << "VALUE_SET: " << from_expr(ns, "", *it) << '\n';
+      std::cout << "VALUE_SET: " << format(*it) << '\n';
     #endif
 
     return;
@@ -1096,10 +1158,10 @@ void value_sett::assign(
   bool add_to_sets)
 {
 #if 0
-  std::cout << "ASSIGN LHS: " << from_expr(ns, "", lhs) << " : "
-            << from_type(ns, "", lhs.type()) << '\n';
-  std::cout << "ASSIGN RHS: " << from_expr(ns, "", rhs) << " : "
-            << from_type(ns, "", rhs.type()) << '\n';
+  std::cout << "ASSIGN LHS: " << format(lhs) << " : "
+            << format(lhs.type()) << '\n';
+  std::cout << "ASSIGN RHS: " << format(rhs) << " : "
+            << format(rhs.type()) << '\n';
   std::cout << "--------------------------------------------\n";
   output(ns, std::cout);
 #endif
@@ -1148,8 +1210,8 @@ void value_sett::assign(
   }
   else if(type.id()==ID_array)
   {
-    exprt lhs_index(ID_index, type.subtype());
-    lhs_index.copy_to_operands(lhs, exprt(ID_unknown, index_type()));
+    const index_exprt lhs_index(
+      lhs, exprt(ID_unknown, index_type()), type.subtype());
 
     if(rhs.id()==ID_unknown ||
        rhs.id()==ID_invalid)
@@ -1186,16 +1248,16 @@ void value_sett::assign(
       {
         assert(rhs.operands().size()==3);
 
-        exprt op0_index(ID_index, type.subtype());
-        op0_index.copy_to_operands(rhs.op0(), exprt(ID_unknown, index_type()));
+        const index_exprt op0_index(
+          rhs.op0(), exprt(ID_unknown, index_type()), type.subtype());
 
         assign(lhs_index, op0_index, ns, is_simplified, add_to_sets);
         assign(lhs_index, rhs.op2(), ns, is_simplified, true);
       }
       else
       {
-        exprt rhs_index(ID_index, type.subtype());
-        rhs_index.copy_to_operands(rhs, exprt(ID_unknown, index_type()));
+        const index_exprt rhs_index(
+          rhs, exprt(ID_unknown, index_type()), type.subtype());
         assign(lhs_index, rhs_index, ns, is_simplified, true);
       }
     }
@@ -1304,7 +1366,7 @@ void value_sett::assign_rec(
   bool add_to_sets)
 {
   #if 0
-  std::cout << "ASSIGN_REC LHS: " << from_expr(ns, "", lhs) << '\n';
+  std::cout << "ASSIGN_REC LHS: " << format(lhs) << '\n';
   std::cout << "ASSIGN_REC LHS ID: " << lhs.id() << '\n';
   std::cout << "ASSIGN_REC SUFFIX: " << suffix << '\n';
 
@@ -1312,7 +1374,7 @@ void value_sett::assign_rec(
       it!=values_rhs.read().end();
       it++)
     std::cout << "ASSIGN_REC RHS: " <<
-      from_expr(ns, "", object_numbering[it->first]) << '\n';
+      format(object_numbering[it->first]) << '\n';
   std::cout << '\n';
   #endif
 
@@ -1408,7 +1470,7 @@ void value_sett::assign_rec(
     // someone writes into a string-constant
     // evil guy
   }
-  else if(lhs.id()=="NULL-object")
+  else if(lhs.id() == ID_null_object)
   {
     // evil as well
   }
@@ -1451,7 +1513,7 @@ void value_sett::do_function_call(
   for(std::size_t i=0; i<arguments.size(); i++)
   {
     const std::string identifier="value_set::dummy_arg_"+std::to_string(i);
-    exprt dummy_lhs=symbol_exprt(identifier, arguments[i].type());
+    const symbol_exprt dummy_lhs(identifier, arguments[i].type());
     assign(dummy_lhs, arguments[i], ns, false, false);
   }
 
@@ -1471,7 +1533,7 @@ void value_sett::do_function_call(
     const exprt v_expr=
       symbol_exprt("value_set::dummy_arg_"+std::to_string(i), it->type());
 
-    exprt actual_lhs=symbol_exprt(identifier, it->type());
+    const symbol_exprt actual_lhs(identifier, it->type());
     assign(actual_lhs, v_expr, ns, true, true);
     i++;
   }
@@ -1543,11 +1605,6 @@ void value_sett::apply_code_rec(
       else
         assign(lhs, exprt(ID_invalid), ns, false, false);
     }
-  }
-  else if(statement=="specc_notify" ||
-          statement=="specc_wait")
-  {
-    // ignore, does not change variables
   }
   else if(statement==ID_expression)
   {

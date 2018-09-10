@@ -10,9 +10,10 @@
 #include "prepare_formula.h"
 #include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include <util/time_stopping.h>
 #include "smt_summary_store.h"
 #include "assertion_info.h"
+#include "utils/time_utils.h"
+#include <langapi/language_util.h>
 #include "partitioning_slice.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
@@ -69,8 +70,7 @@ void get_numbers(std::set<int>& nums, std::string set){
 bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-  absolute_timet initial, final;
-  initial=current_time();
+  auto before=timestamp();
 
   omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -78,8 +78,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
   smt_summary_storet dummy;
-  symbol_tablet temp_table;
-  namespacet ns{this->symbol_table, temp_table};
   partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 
@@ -91,8 +89,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
 
   call_tree_nodet& summary_info = omega.get_call_tree_root();
+  std::unique_ptr<path_storaget> worklist;
   symex_assertion_sumt symex{
-          omega.get_goto_functions(), summary_info, ns, temp_table,
+          omega.get_goto_functions(), summary_info, options, *worklist, ns.get_symbol_table(),
           equation, message_handler, goto_program, last_assertion_loc,
           single_assertion_check, true, unwind_bound, false};
   symex.set_assertion_info_to_verify(&assertion);
@@ -333,9 +332,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 //      } //End of else branch in LRA experimental
   }  //End of Refinement
 
-  final = current_time();
+  auto after = timestamp();
 
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after,before) << eom;
 
 #ifdef PRODUCE_PROOF
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -391,12 +390,12 @@ void theory_refinert::report_success()
 }
 
 void theory_refinert::slice_target(partitioning_target_equationt & equation) {
-    auto before = current_time();
+    auto before = timestamp();
     statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
     partitioning_slice(equation);
     statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
-    auto after = current_time();
-    statistics() << "SLICER TIME: " << (after - before) << eom;
+    auto after = timestamp();
+    statistics() << "SLICER TIME: " << time_gap(after,before) << eom;
 }
 
 /*******************************************************************\

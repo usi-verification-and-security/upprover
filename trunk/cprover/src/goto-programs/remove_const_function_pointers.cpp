@@ -11,13 +11,20 @@ Author: Thomas Kiley, thomas.kiley@diffblue.com
 
 #include "remove_const_function_pointers.h"
 
-#include <ansi-c/c_qualifiers.h>
-#include <util/simplify_expr.h>
 #include <util/arith_tools.h>
+#include <util/format_expr.h>
+#include <util/simplify_expr.h>
+#include <util/std_expr.h>
+#include <util/symbol_table.h>
+
+#include "goto_functions.h"
 
 #define LOG(message, irep) \
-  debug() << "Case " << __LINE__ << " : " << message << "\n" \
-          << irep.pretty() << eom;
+  do { \
+    debug().source_location = irep.source_location(); \
+    debug() << message << ": " << format(irep) << eom; \
+  } \
+  while(0)
 
 /// To take a function call on a function pointer, and if possible resolve it to
 /// a small collection of possible values.
@@ -67,8 +74,8 @@ exprt remove_const_function_pointerst::replace_const_symbols(
   {
     if(is_const_expression(expression))
     {
-      const symbolt &symbol=
-        *symbol_table.lookup(expression.get(ID_identifier));
+      const symbolt &symbol =
+        *symbol_table.lookup(to_symbol_expr(expression).get_identifier());
       if(symbol.type.id()!=ID_code)
       {
         const exprt &symbol_value=symbol.value;
@@ -155,7 +162,7 @@ bool remove_const_function_pointerst::try_resolve_function_call(
   {
     if(simplified_expr.type().id()==ID_code)
     {
-      resolved_functions.insert(simplified_expr);
+      resolved_functions.insert(to_symbol_expr(simplified_expr));
       resolved=true;
     }
     else
@@ -395,7 +402,7 @@ bool remove_const_function_pointerst::try_resolve_expression(
   exprt simplified_expr=simplify_expr(expr, ns);
   bool resolved;
   expressionst resolved_expressions;
-  bool is_resolved_expression_const;
+  bool is_resolved_expression_const = false;
   if(simplified_expr.id()==ID_index)
   {
     const index_exprt &index_expr=to_index_expr(simplified_expr);
@@ -781,16 +788,10 @@ bool remove_const_function_pointerst::is_const_expression(
 ///   arrays are implicitly const in C.
 bool remove_const_function_pointerst::is_const_type(const typet &type) const
 {
-  c_qualifierst qualifers(type);
-  if(type.id()==ID_array)
-  {
-    c_qualifierst array_type_qualifers(type.subtype());
-    return qualifers.is_constant || array_type_qualifers.is_constant;
-  }
-  else
-  {
-    return qualifers.is_constant;
-  }
+  if(type.id() == ID_array && type.subtype().get_bool(ID_C_constant))
+    return true;
+
+  return type.get_bool(ID_C_constant);
 }
 
 /// To extract the value of the specific component within a struct

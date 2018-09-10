@@ -13,6 +13,8 @@ Author: CM Wintersteiger
 
 #include <util/message.h>
 
+#include "goto_model.h"
+
 void remove_unused_functions(
   goto_modelt &goto_model,
   message_handlert &message_handler)
@@ -73,15 +75,15 @@ void find_used_functions(
       {
         if(it->type==FUNCTION_CALL)
         {
-          const code_function_callt &call =
-            to_code_function_call(to_code(it->code));
+          const code_function_callt &call = to_code_function_call(it->code);
 
           // check that this is actually a simple call
           assert(call.function().id()==ID_symbol);
 
-          find_used_functions(call.function().get(ID_identifier),
-                              functions,
-                              seen);
+          const irep_idt &identifier =
+            to_symbol_expr(call.function()).get_identifier();
+
+          find_used_functions(identifier, functions, seen);
         }
       }
     }

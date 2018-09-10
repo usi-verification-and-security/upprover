@@ -4,12 +4,11 @@
 
 \*******************************************************************/
 
-#include <util/time_stopping.h>
 #include "prepare_formula.h"
-#include "error_trace.h"
-#include "partitioning_target_equation.h"
 
-time_periodt global_satsolver_time;
+#include "error_trace.h"
+#include <funfrog/utils/time_utils.h>
+#include "partitioning_target_equation.h"
 
 /*******************************************************************
 
@@ -24,13 +23,12 @@ time_periodt global_satsolver_time;
 \*******************************************************************/
 void prepare_formulat::convert_to_formula(convertort &convertor, interpolating_solvert &interpolator)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   equation.convert(convertor, interpolator);
 
-  after=current_time();
+  auto after=timestamp();
 
-    message.status() << "CONVERSION TIME: " << (after-before) << message.eom;
+    message.status() << "CONVERSION TIME: " << time_gap(after,before) << message.eom;
 }
 
 /*******************************************************************
@@ -48,11 +46,10 @@ void prepare_formulat::convert_to_formula(convertort &convertor, interpolating_s
 bool prepare_formulat::is_satisfiable(
 		solvert& decider)
 {
-  absolute_timet before, after;
-  before=current_time();
+  auto before=timestamp();
   bool is_sat = decider.solve();
-  after=current_time();
-    message.status() << "SOLVER TIME: " << (after-before) << message.eom;
+  auto after=timestamp();
+    message.status() << "SOLVER TIME: " << time_gap(after,before) << message.eom;
     message.status() << "RESULT: ";
 
   // solve it

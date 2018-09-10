@@ -13,25 +13,20 @@ Author: Michael Tautschnig, tautschn@amazon.com
 
 #include <util/arith_tools.h>
 #include <util/config.h>
-#include <util/symbol_table.h>
 #include <util/message.h>
-#include <util/std_types.h>
-#include <util/cprover_prefix.h>
 
 #include <goto-programs/goto_functions.h>
 
-#define INITIALIZE CPROVER_PREFIX "initialize"
+#include <linking/static_lifetime_init.h>
 
 static void create_initialize(symbol_tablet &symbol_table)
 {
   symbolt initialize;
-  initialize.name=CPROVER_PREFIX "initialize";
-  initialize.base_name=CPROVER_PREFIX "initialize";
+  initialize.name = INITIALIZE_FUNCTION;
+  initialize.base_name = INITIALIZE_FUNCTION;
   initialize.mode="jsil";
 
-  code_typet type;
-  type.return_type()=empty_typet();
-  initialize.type=type;
+  initialize.type = code_typet({}, empty_typet());
 
   code_blockt init_code;
 
@@ -46,7 +41,7 @@ static void create_initialize(symbol_tablet &symbol_table)
   initialize.value=init_code;
 
   if(symbol_table.add(initialize))
-    throw "failed to add " CPROVER_PREFIX "initialize";
+    throw "failed to add " INITIALIZE_FUNCTION;
 }
 
 bool jsil_entry_point(
@@ -130,10 +125,10 @@ bool jsil_entry_point(
 
   {
     symbol_tablet::symbolst::const_iterator init_it=
-      symbol_table.symbols.find(CPROVER_PREFIX "initialize");
+      symbol_table.symbols.find(INITIALIZE_FUNCTION);
 
     if(init_it==symbol_table.symbols.end())
-      throw "failed to find " CPROVER_PREFIX "initialize symbol";
+      throw "failed to find " INITIALIZE_FUNCTION " symbol";
 
     code_function_callt call_init;
     call_init.lhs().make_nil();
@@ -155,11 +150,8 @@ bool jsil_entry_point(
   // add "main"
   symbolt new_symbol;
 
-  code_typet main_type;
-  main_type.return_type()=empty_typet();
-
   new_symbol.name=goto_functionst::entry_point();
-  new_symbol.type.swap(main_type);
+  new_symbol.type = code_typet({}, empty_typet());
   new_symbol.value.swap(init_code);
 
   if(!symbol_table.insert(std::move(new_symbol)).second)
