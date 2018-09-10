@@ -2,10 +2,6 @@
 
 Module: Command Line Parsing
 
-Author: Daniel Kroening, kroening@kroening.com
-        CM Wintersteiger
-        Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_FUNFROG_PARSEOPTIONS_H

@@ -19,11 +19,8 @@ public:
     }
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor
-
-
-    virtual literalt const_from_str(const char* num);
     
-    virtual literalt get_and_clear_var_constraints() override;
+    virtual FlaRef get_and_clear_var_constraints() override;
     
     virtual PTRef expression_to_ptref(const exprt & expr) override;
 

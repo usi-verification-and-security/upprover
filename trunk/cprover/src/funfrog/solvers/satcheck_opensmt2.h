@@ -53,8 +53,9 @@ public:
 
   virtual resultt prop_solve() override;
   virtual tvt l_get(literalt a) const override;
-  bool is_assignment_true(literalt l) const override {
-      auto res = l_get(l);
+
+  bool is_assignment_true(FlaRef l) const override {
+      auto res = l_get(flaref_to_literal(l));
       return res.is_true();
   }
 
@@ -62,22 +63,41 @@ public:
       return get_bv_converter().get(expr);
   }
 
+  using cnf_solvert::land;
+  using convertort::land;
+  using cnf_solvert::lor;
+  using convertort::lor;
+  using cnf_solvert::set_equal;
+  using convertort::set_equal;
+
   virtual void lcnf(const bvt &bv) override;
 
-    virtual literalt land(literalt l1, literalt l2) override {
-        return cnf_solvert::land(l1, l2);
+    FlaRef land(FlaRef l1, FlaRef l2) override {
+        return literal_to_flaref(cnf_solvert::land(
+                flaref_to_literal(l1),
+                flaref_to_literal(l2)
+        ));
     }
-    virtual literalt lor(literalt l1, literalt l2) override {
-        return cnf_solvert::lor(l1, l2);
+    FlaRef lor(FlaRef l1, FlaRef l2) override {
+        return literal_to_flaref(cnf_solvert::lor(
+                flaref_to_literal(l1),
+                flaref_to_literal(l2)
+        ));
     }
 
-    virtual literalt lor(bvt const & bv) override {
-        return cnf_solvert::lor(bv);
+    FlaRef lor(std::vector<FlaRef> const & fv) override {
+        bvt bv{fv.size()};
+        std::transform(fv.begin(), fv.end(), bv.begin(), [](const FlaRef f) { return flaref_to_literal(f);});
+        return literal_to_flaref(cnf_solvert::lor(bv));
     }
 
-    virtual void set_equal(literalt l1, literalt l2) override {
-        return cnf_solvert::set_equal(l1, l2);
+    void set_equal(FlaRef l1, FlaRef l2) override {
+        return cnf_solvert::set_equal(
+                flaref_to_literal(l1),
+                flaref_to_literal(l2));
     }
+
+  void convert(const vector<literalt> & bv, vec<PTRef> & args);
 
   const virtual std::string solver_text() override;
   virtual void set_assignment(literalt a, bool value) override;
@@ -94,8 +114,8 @@ public:
   const boolbvt & get_bv_converter() const {return *boolbv_convert;}
   boolbvt & get_bv_converter() {return *boolbv_convert;}
 
-    void assert_literal(literalt lit) override{
-      this->l_set_to_true(lit);
+    void assert_literal(FlaRef lit) override{
+      this->l_set_to_true(flaref_to_literal(lit));
   }
 
 
@@ -130,9 +150,9 @@ protected:
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
 
-  literalt convert_bool_expr(const exprt &expr) override {
+  FlaRef convert_bool_expr(const exprt &expr) override {
       assert(is_boolean(expr));
-      return get_bv_converter().convert(expr);
+      return literal_to_flaref(get_bv_converter().convert(expr));
   }
 
   void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}

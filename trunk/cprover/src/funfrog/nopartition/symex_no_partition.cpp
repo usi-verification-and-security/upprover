@@ -1,17 +1,17 @@
-/* 
+/******************************************************************
  * File:   symex_assertion_no_partitiont.cpp
  * Author: karinek
- * 
- * Created on 20 April 2017, 17:51
- */
+ * Created on 20 April 2017
+*******************************************************************/
 #include "symex_no_partition.h"
 #include "../utils/time_utils.h"
 
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex_state.h>
 #include <goto-symex/symex_slice_class.h>
+
+#include "hifrog_symex_target_equation_no_partition.h"
 #include "../assertion_info.h"
-#include "smt_symex_target_equation.h"
 
 bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const goto_functionst& goto_functions)
 {

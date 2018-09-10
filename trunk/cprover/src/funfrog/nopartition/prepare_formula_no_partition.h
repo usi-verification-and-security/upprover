@@ -1,9 +1,8 @@
-/* 
+/*******************************************************************
  * File:   smt_assertion_no_partition.h
  * Author: karinek
- *
- * Created on 27 April 2017, 10:56
- */
+ * Created on 27 April 2017
+ *******************************************************************/
 
 #ifndef SMT_ASSERTION_NO_PARTITION_H
 #define SMT_ASSERTION_NO_PARTITION_H
@@ -11,20 +10,17 @@
 #include <util/namespace.h>
 #include <util/ui_message.h>
 #include <util/threeval.h>
-
 #include "../utils/time_utils.h"
 #include "../assertion_info.h"
-#include "smt_symex_target_equation.h"
+#include "hifrog_symex_target_equation_no_partition.h"
 
-class smtcheck_opensmt2;
+class solvert;
 
-extern timet global_satsolver_time;
-
-class smt_assertion_no_partitiont:public messaget 
+class prepare_formula_no_partitiont:public messaget
 {
     
 public:
-    smt_assertion_no_partitiont(
+    prepare_formula_no_partitiont(
             hifrog_symex_target_equationt &_target,
             ui_message_handlert &_message_handler,
             unsigned long &_max_memory_used) 
@@ -36,13 +32,13 @@ public:
 
     using SSA_steps_orderingt = std::vector<symex_target_equationt::SSA_stept*>;
 
-    virtual ~smt_assertion_no_partitiont() {}    
+    virtual ~prepare_formula_no_partitiont() {}
           
-    bool assertion_holds(smtcheck_opensmt2t& decider);
+    bool convert_to_formula_and_solve(convertort &convertor, solvert &solver);
    
-    bool is_satisfiable(smtcheck_opensmt2t& decider); 
+    bool is_satisfiable(solvert &solver);
 
-    void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
+    void error_trace(solvert &solver, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
     
     const SSA_steps_orderingt get_steps_exec_order() {
         SSA_steps_orderingt ret; ret.reserve(equation.SSA_steps.size());

@@ -2,7 +2,6 @@
 
 Module: Simple pretty printing visitor for exprt.
 
-Author: Ondrej Sery
 
 \*******************************************************************/
 #ifdef DISABLE_OPTIMIZATIONS

@@ -2,9 +2,6 @@
 
  Module: Assertion checker that extracts and uses function 
  summaries
-
- Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_SUMMARIZING_CHECKER_H
@@ -18,7 +15,7 @@
 
 #include <memory>
 
-class smt_assertion_no_partitiont;
+class prepare_formula_no_partitiont;
 class partitioning_target_equationt;
 class prop_assertion_sumt;
 class prepare_formulat;
@@ -32,6 +29,7 @@ class smtcheck_opensmt2t_uf;
 class smtcheck_opensmt2t_lra;
 class smtcheck_opensmt2t_lia;
 class satcheck_opensmt2t;
+class ssa_solvert;
 
 
 class core_checkert : private messaget
@@ -58,7 +56,7 @@ protected:
   const optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  check_opensmt2t* decider; // Can be Prop, LRA or UF solver!!
+  ssa_solvert* decider;
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
@@ -88,7 +86,7 @@ protected:
   void report_failure();
   void assertion_violated(prepare_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
-  void assertion_violated (smt_assertion_no_partitiont& prop,
+  void assertion_violated (prepare_formula_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);
 
     const goto_functionst & get_goto_functions() const {

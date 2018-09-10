@@ -2,9 +2,6 @@
 
  Module: Assertion checker that extracts and uses function 
  summaries
-
- Author: Ondrej Sery
-
 \*******************************************************************/
 #include "core_checker.h"
 
@@ -17,7 +14,7 @@
 #include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
-#include "nopartition/smt_assertion_no_partition.h"
+#include "funfrog/nopartition/prepare_formula_no_partition.h"
 #include "partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
@@ -432,15 +429,16 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     // the checker main loop:
     unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
-    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
+    prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+    auto solver = decider->get_solver();
     while (!end) {
         iteration_counter++;
 
         //Converts SSA to SMT formula
-        ssaToFormula.convert_to_formula( *decider, *(decider));
+        ssa_to_formula.convert_to_formula( *(decider->get_convertor()), *(decider->get_interpolating_solver()));
 
         // Decides the equation
-        bool is_sat = ssaToFormula.is_satisfiable(*decider);
+        bool is_sat = ssa_to_formula.is_satisfiable(*solver);
         summaries_used = omega.get_summaries_count();
         
         end = !is_sat;
@@ -465,7 +463,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
             // END of REPORT
 
             // figure out functions that can be refined
-            refiner.mark_sum_for_refine(*decider, omega.get_call_tree_root(), equation);
+            refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
             bool refined = !refiner.get_refined_functions().empty();
             if (!refined) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
@@ -490,7 +488,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
         // produce and store the summaries   
         if (!options.get_bool_option("no-itp")) {
             #ifdef PRODUCE_PROOF
-            if (decider->can_interpolate()) {
+            if (decider->get_interpolating_solver()->can_interpolate()) {
                 status() << ("Start generating interpolants...") << eom;
                 extract_interpolants(equation);
             } else {
@@ -519,7 +517,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     } // End of UNSAT section
     else // assertion was falsified
     {
-        assertion_violated(ssaToFormula, symex.guard_expln);
+        assertion_violated(ssa_to_formula, symex.guard_expln);
     }
     // FINAL REPORT
 
@@ -589,7 +587,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
-  smt_assertion_no_partitiont prop = smt_assertion_no_partitiont(
+  prepare_formula_no_partitiont prop = prepare_formula_no_partitiont(
           equation, message_handler, max_memory_used);
   
   unsigned count = 0;
@@ -618,8 +616,8 @@ bool core_checkert::assertion_holds_smt_no_partition(
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
 
-      end = prop.assertion_holds( 
-              *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+      end = prop.convert_to_formula_and_solve(
+              *(decider->get_convertor()), *(decider->get_solver()));
       unsigned summaries_count = omega.get_summaries_count();
       // MB: unused variable commented out
       //unsigned nondet_count = omega.get_nondets_count();
@@ -705,8 +703,10 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
 {
     if (!options.get_bool_option("no-error-trace"))
     {
-        prop.error_trace(*decider, ns, guard_expln);
-        if (decider->is_overapprox_encoding()){
+        auto solver = decider->get_solver();
+        assert(solver);
+        prop.error_trace(*solver, ns, guard_expln);
+        if (solver->is_overapprox_encoding()){
             status() << "\nA bug found." << eom;
             status() << "WARNING: Possibly due to the Theory conversion." << eom;
         } else {
@@ -727,21 +727,21 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
+void core_checkert::assertion_violated (prepare_formula_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
-    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    if (!options.get_bool_option("no-error-trace"))
-        prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->is_overapprox_encoding()){
-    	status() << "\nA bug found." << endl;
-    	status() << "WARNING: Possibly due to the Theory conversion." << eom;
-    } else {
-    	status() << "A real bug found." << eom;
+    if (!options.get_bool_option("no-error-trace")) {
+        auto solver = decider->get_solver();
+        assert(solver);
+        prop.error_trace(*solver, ns, guard_expln);
+        if (solver->is_overapprox_encoding()) {
+            status() << "\nA bug found." << endl;
+            status() << "WARNING: Possibly due to the Theory conversion." << eom;
+        } else {
+            status() << "A real bug found." << eom;
+        }
     }
     report_failure();
-
-    decider_smt = nullptr;
 }
 
 #ifdef PRODUCE_PROOF
@@ -761,7 +761,7 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   //SA & prop is not needed here; the entire class prepare_smt_formulat is useless.
   auto before=timestamp();
   
-  equation.extract_interpolants(*decider);
+  equation.extract_interpolants(*decider->get_interpolating_solver());
 
   auto after=timestamp();
   status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;

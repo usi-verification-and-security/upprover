@@ -2,8 +2,6 @@
 
  Module: Theory refiner
 
- Author: all
-
 \*******************************************************************/
 #include "theory_refiner.h"
 #include "error_trace.h"
@@ -120,8 +118,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   } else {  //do refinement
 
-      error_tracet error_trace;
-      const std::string &log=options.get_option("logic");
+   error_tracet error_trace;
+
+//LRA experimental section in theoref (Commented for now)
+/*    const std::string &log=options.get_option("logic");
 
       if (log == "qflra"){
 
@@ -138,7 +138,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
           std::vector<exprt> exprs = equation.get_exprs_to_refine();
           decider2.check_ce(exprs);
 
-      } else {
+      } else {*/
 
           status() << endl << "Trying to refine with CUF+BitBlast" << eom;
 
@@ -329,8 +329,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   }
               }
           }
-      }
-  }
+//      } //End of else branch in LRA experimental
+  }  //End of Refinement
 
   auto after = timestamp();
 

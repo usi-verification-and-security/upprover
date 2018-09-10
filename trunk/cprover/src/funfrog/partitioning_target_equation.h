@@ -3,8 +3,6 @@
 Module: Symex target equation which tracks different partitions for
 different deferred functions.
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITIONING_TARGET_EQUATION_H
@@ -23,12 +21,12 @@ Author: Ondrej Sery
 #endif
 
 #include <goto-symex/symex_target_equation.h>
+#include <funfrog/interface/convertor.h>
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"
 
 class partition_ifacet;
-class check_opensmt2t;
 class interpolating_solvert;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
@@ -88,9 +86,9 @@ public:
     return SSA_steps_exec_order;
   }
 
-  void extract_interpolants(check_opensmt2t& decider);
+  void extract_interpolants(interpolating_solvert &interpolator);
 
-  void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator);
+  void convert(convertort &prop_conv, interpolating_solvert &interpolator);
 
   partitionst& get_partitions() { return partitions; }
 
@@ -109,29 +107,26 @@ public:
 #endif
   
 protected:
-    void convert_partition(check_opensmt2t & decider,
-                           interpolating_solvert & interpolator, partitiont & partition);
-    void convert_partition_guards(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition(convertort &convertor,
+                           interpolating_solvert &interpolator, partitiont &partition);
+    void convert_partition_guards(convertort &convertor,
+                                  partitiont &partition);
 
-    void convert_partition_assignments(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition_assignments(convertort &convertor,
+                                       partitiont &partition);
 
   // Convert a specific partition assumptions of SSA steps
-    void convert_partition_assumptions(check_opensmt2t &decider,
-                                       partitiont& partition);
+    void convert_partition_assumptions(convertort &convertor,
+                                       partitiont &partition);
     // Convert a specific partition assertions of SSA steps
-    void convert_partition_assertions(check_opensmt2t &decider,
-                                      partitiont& partition);
+    void convert_partition_assertions(convertort &convertor,
+                                      partitiont &partition);
     // Convert a specific partition io of SSA steps
-    void convert_partition_io(check_opensmt2t &decider,
-                              partitiont& partition);
+    void convert_partition_io(convertort &convertor,
+                              partitiont &partition);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_partition_summary(check_opensmt2t & decider,
-                                   partitiont & partition);
-    // Convert a specific partition gotos of SSA steps
-    void convert_partition_goto_instructions(check_opensmt2t &decider,
-                                             partitiont& partition);
+    void convert_partition_summary(interpolating_solvert &interpolator,
+                                   partitiont &partition);
 
   // Id of the currently selected partition
   partition_idt current_partition_id;

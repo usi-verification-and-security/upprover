@@ -11,7 +11,7 @@ class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() = default;
+  smt_itpt() : interpolant{PTRef_Undef} {}
   ~smt_itpt() override = default;
 
   virtual  bool is_trivial() const override { return false; }
@@ -27,11 +27,17 @@ public:
 
   bool equals(itpt* other) const override;
 
+    // Getters & Setters
+  PTRef getInterpolant() const { return interpolant; }
+  void setInterpolant(PTRef pt) { interpolant = pt; }
+
 protected:
   // TODO: figure out better way how to store the interpolants
   Tterm templ;
 
   smtcheck_opensmt2t *m_decider;
+
+   PTRef interpolant;
 
 };
 

@@ -3,8 +3,6 @@
 Module: Symex slicer modified for partitioning_target _equation. This
 module is based on symex_slice_class.h and slice.[cpp/h]
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITIONING_SLICE_H

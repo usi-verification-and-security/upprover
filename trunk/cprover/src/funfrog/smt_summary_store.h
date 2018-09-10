@@ -2,14 +2,14 @@
 
 Module: Storage class for function summaries (union-find).
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #ifndef CPROVER_SMT_SUMMARY_STORE_H
 #define CPROVER_SMT_SUMMARY_STORE_H
 
 #include "summary_store.h"
+
+class smtcheck_opensmt2t;
 
 /* Created two classes to separate the creation of SMT summaries and Propositional encoding summaries */
 class smt_summary_storet :public summary_storet 

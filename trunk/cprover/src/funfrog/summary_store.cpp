@@ -2,8 +2,6 @@
 
 Module: Storage class for function summaries (union-find).
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #include "summary_store.h"

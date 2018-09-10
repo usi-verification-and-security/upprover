@@ -7,6 +7,7 @@
 \*******************************************************************/
 
 #include "error_trace.h"
+
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include <funfrog/utils/naming_helpers.h>
 #include "solvers/smtcheck_opensmt2_lra.h"
@@ -31,9 +32,9 @@ Function: error_trace::build_exec_order_goto_trace
  * ANY PROBLEMS with values, you should start look for here!
 
 \*******************************************************************/
-void error_tracet::build_goto_trace (
-  const SSA_steps_orderingt& SSA_steps,
-  check_opensmt2t &decider)
+void error_tracet::build_goto_trace(
+        const SSA_steps_orderingt &SSA_steps,
+        solvert &solver)
 {
 
   unsigned step_nr=0;
@@ -41,7 +42,7 @@ void error_tracet::build_goto_trace (
   for(auto ssa_step_ptr : SSA_steps)
   {
     const auto & SSA_step = *ssa_step_ptr;
-    if(!decider.is_assignment_true(SSA_step.guard_literal))
+    if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -98,7 +99,7 @@ void error_tracet::build_goto_trace (
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
         goto_trace_step.full_lhs_value = is_index_member_symbol(SSA_step.ssa_full_lhs) ?
-                                         decider.get_value(SSA_step.ssa_full_lhs) : decider.get_value(SSA_step.ssa_lhs);
+                                         solver.get_value(SSA_step.ssa_full_lhs) : solver.get_value(SSA_step.ssa_lhs);
     }
 
     /* Print nice return value info */
@@ -117,7 +118,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.io_args.push_back(arg);
       else
       {
-        exprt tmp=decider.get_value(arg);
+        exprt tmp=solver.get_value(arg);
         goto_trace_step.io_args.push_back(tmp);
       }
     }
@@ -127,7 +128,7 @@ void error_tracet::build_goto_trace (
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
       goto_trace_step.cond_value=
-    		  decider.is_assignment_true(SSA_step.cond_literal);
+    		  solver.is_assignment_true(literal_to_flaref(SSA_step.cond_literal));
 
       // we stop after a violated assertion
       if(SSA_step.is_assert() && !goto_trace_step.cond_value)
@@ -135,13 +136,12 @@ void error_tracet::build_goto_trace (
     }
   }
 }
-
-/**
- * LRA-version of the CE-formula (obsolete).
- * analogous to the CUF-version (see next method)
- * used for debugging / comparison with CUF-version
- * (not in the theory-refinement algorithm)
- */
+/*******************************************************************\
+ * experimental LRA-version of the CE-formula (obsolete).
+ * Only used for debugging / comparison with CUF-version (see next method)
+(SA: Currently this is not in the theory-refinement core algorithm, but DONOT delete it)
+\*******************************************************************/
+/*
 void error_tracet::build_goto_trace_formula (
   partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider,
@@ -236,17 +236,19 @@ void error_tracet::build_goto_trace_formula (
   decider2.close_partition();
   std::cout << "CE-formula constructed\n";
 }
+*/
 
-/**
- * CUF-version of the CE-formula
- * used in the theory-refinement algorithm
- * 
- * CEX extraction
- */
-void error_tracet::build_goto_trace_formula (
-  std::vector<exprt>& exprs,
-  std::map<const exprt, int>& model,
-  smtcheck_opensmt2t &decider)
+/*******************************************************************\
+
+CUF-version of the CE-formula
+used in the theory-refinement algorithm
+
+Purpose: CEX extraction
+\*******************************************************************/
+void error_tracet::build_goto_trace_formula(
+        std::vector<exprt> &exprs,
+        std::map<const exprt, int> &model,
+        solvert &solver)
 {
     std::set<exprt> vars;
     std::map<const irep_idt, std::vector<exprt>*> non_interp_classes;
@@ -259,12 +261,13 @@ void error_tracet::build_goto_trace_formula (
 
     for (auto it = vars.begin(); it != vars.end(); ++it)
     {
-        exprt val = decider.get_value(*it);
+        exprt val = solver.get_value(*it);
 
         const irep_idt val_val = val.get(ID_value);
         if (val_val.size() == 0) continue;
 
         int ptr;
+        //handling CUF values (n, u, a) in the CE-formula construction
         if (val_val[0] == 'n'){
             ptr = atoi(val_val.c_str() + 1);
 		    // store the max value among n-values (will be used after the loop):
@@ -311,9 +314,9 @@ Function: error_trace::show_trace_vars_value
  Purpose: To check that it is really a full concrete path
 
 \*******************************************************************/
-error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &decider, const SSA_steps_orderingt& SSA_steps)
+error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(solvert &solver, const SSA_steps_orderingt &SSA_steps)
 {
-    if (decider.is_overapprox_encoding())
+    if (solver.is_overapprox_encoding())
     {
         // Check the error trace symbols, 
         for(SSA_steps_orderingt::const_iterator
@@ -322,7 +325,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &de
             it++)
         {
             const symex_target_equationt::SSA_stept &SSA_step=**it;
-            if(!decider.is_assignment_true(SSA_step.guard_literal))
+            if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
                 continue;
             if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
                 continue;

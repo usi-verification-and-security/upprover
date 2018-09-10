@@ -2,8 +2,6 @@
 
 Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
-Author: Grigory Fedyukovich
-
 \*******************************************************************/
 #include "smtcheck_opensmt2_la.h"
 #include <util/type.h>
@@ -64,24 +62,6 @@ PTRef smtcheck_opensmt2t_la::numeric_constant(const exprt & expr)
     rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     assert(rconst != PTRef_Undef);
     return rconst;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_la::const_from_str
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-// FIXME: this should be gone!
-literalt smtcheck_opensmt2t_la::const_from_str(const char* num)
-{
-    PTRef rconst = lalogic->mkConst(num); // Can have a wrong conversion sometimes!
-    return ptref_to_literal(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 /*******************************************************************\
@@ -901,9 +881,9 @@ Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
  Purpose: Free all inner objects
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_la::get_and_clear_var_constraints()
+FlaRef smtcheck_opensmt2t_la::get_and_clear_var_constraints()
 {
-    literalt res = ptref_to_literal(ptr_assert_var_constraints);
+    auto res = ptref_to_flaref(ptr_assert_var_constraints);
     ptr_assert_var_constraints = logic->getTerm_true();
     return res;
 }

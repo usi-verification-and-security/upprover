@@ -2,8 +2,6 @@
 
 Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 
-Author: Grigory Fedyukovich
-
 \*******************************************************************/
 #include <queue>
 #include <unordered_set>
@@ -40,24 +38,24 @@ Function: smtcheck_opensmt2t::push_variable
 
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t::ptref_to_literal(PTRef ptl) {
+FlaRef smtcheck_opensmt2t::ptref_to_flaref(PTRef ptl) {
     assert(getLogic()->hasSortBool(ptl));
-    if (getLogic()->isTrue(ptl)) { return const_literal(true); }
-	literalt l (ptrefs.size(), false);
+    if (getLogic()->isTrue(ptl)) { return const_formula(true); }
+	FlaRef fr (ptrefs.size(), false);
 	ptrefs.push_back(ptl);
-	return l;
+	return fr;
 }
 
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
-bool smtcheck_opensmt2t::is_assignment_true(literalt a) const
+bool smtcheck_opensmt2t::is_assignment_true(FlaRef fr) const
 {
-  if (a.is_true())
+  if (fr.is_true())
     return true;
-  else if (a.is_false())
+  else if (fr.is_false())
     return false;
 
-  ValPair a_p = mainSolver->getValue(literal_to_ptref(a));
-  return ((*a_p.val == *true_str) ^ (a.sign()));
+  ValPair a_p = mainSolver->getValue(flaref_to_ptref(fr));
+  return ((*a_p.val == *true_str) ^ (fr.sign()));
 }
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
@@ -66,45 +64,45 @@ void smtcheck_opensmt2t::set_to_true(PTRef ptr)
     current_partition.push_back(ptr);
 }
 
-void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
+void smtcheck_opensmt2t::set_equal(FlaRef l1, FlaRef l2){
     vec<PTRef> args;
-    PTRef pl1 = literal_to_ptref(l1);
-    PTRef pl2 = literal_to_ptref(l2);
+    PTRef pl1 = flaref_to_ptref(l1);
+    PTRef pl2 = flaref_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     set_to_true(ans);
 }
 
-literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
+FlaRef smtcheck_opensmt2t::land(FlaRef l1, FlaRef l2){
     vec<PTRef> args;
-    PTRef pl1 = literal_to_ptref(l1);
-    PTRef pl2 = literal_to_ptref(l2);
+    PTRef pl1 = flaref_to_ptref(l1);
+    PTRef pl2 = flaref_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    return ptref_to_literal(ans);
+    return ptref_to_flaref(ans);
 }
 
-literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
+FlaRef smtcheck_opensmt2t::lor(FlaRef l1, FlaRef l2){
     vec<PTRef> args;
-    PTRef pl1 = literal_to_ptref(l1);
-    PTRef pl2 = literal_to_ptref(l2);
+    PTRef pl1 = flaref_to_ptref(l1);
+    PTRef pl2 = flaref_to_ptref(l2);
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkOr(args);
-    return ptref_to_literal(ans);
+    return ptref_to_flaref(ans);
 }
 
-literalt smtcheck_opensmt2t::lor(const bvt& bv){
+FlaRef smtcheck_opensmt2t::lor(const vector<FlaRef> & bv){
     vec<PTRef> args;
     for(auto lit : bv)
     {
-        PTRef tmpp = literal_to_ptref(lit);
+        PTRef tmpp = flaref_to_ptref(lit);
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    return ptref_to_literal(ans);
+    return ptref_to_flaref(ans);
 }
 
 PTRef smtcheck_opensmt2t::constant_to_ptref(const exprt & expr){

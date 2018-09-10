@@ -1,9 +1,8 @@
-/* 
+/*******************************************************************
  * File:   symex_assertion_no_partition.h
  * Author: karinek
- *
- * Created on 20 April 2017, 17:51
- */
+ * Created on 20 April 2017
+ *******************************************************************/
 
 #ifndef SYMEX_ASSERTION_NO_PARTITIONT_H
 #define SYMEX_ASSERTION_NO_PARTITIONT_H

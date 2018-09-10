@@ -34,28 +34,28 @@ public:
 
   bool is_overapproximating() const override {return true;}
 
-  bool is_assignment_true(literalt a) const override; // Common to all
+  bool is_assignment_true(FlaRef fr) const override; // Common to all
 
   using check_opensmt2t::set_to_true;
   void set_to_true(PTRef); // Common to all
 
-  void set_equal(literalt l1, literalt l2) override; // Common to all
+  void set_equal(FlaRef l1, FlaRef l2) override; // Common to all
 
-  virtual literalt convert_bool_expr(const exprt &expr) override{
+  virtual FlaRef convert_bool_expr(const exprt & expr) override {
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
       // FIXME: PTRef to literal should maybe consider negation, caching...
-      return ptref_to_literal(ptref);
+      return ptref_to_flaref(ptref);
   }
 
-  literalt land(literalt l1, literalt l2) override; // Common to all
+  FlaRef land(FlaRef l1, FlaRef l2) override; // Common to all
 
-  literalt lor(literalt l1, literalt l2) override; // Common to all
+  FlaRef lor(FlaRef l1, FlaRef l2) override; // Common to all
 
-  literalt lor(const bvt & b) override; // Common to all
+  FlaRef lor(const vector<FlaRef> & b) override; // Common to all
 
-  void assert_literal(literalt lit) override{
-      set_to_true(literal_to_ptref(lit));
+  void assert_literal(const FlaRef lit) override{
+      set_to_true(flaref_to_ptref(lit));
   }
   
 #ifdef PRODUCE_PROOF
@@ -80,7 +80,7 @@ public:
   
   std::string getSimpleHeader(); // Get all the declarations without the variables
  
-  virtual exprt get_value(const exprt &expr) override;
+  exprt get_value(const exprt &expr) override;
 
   void dump_function(std::ostream& out, const Tterm& templ) {
       logic->dumpFunction(out, templ);
@@ -153,7 +153,7 @@ protected:
 
   PTRef create_unsupported_uf_call(const exprt &expr); // common to all
 
-  literalt ptref_to_literal(PTRef ptl); // Common to all
+  FlaRef ptref_to_flaref(PTRef ptl); // Common to all
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 

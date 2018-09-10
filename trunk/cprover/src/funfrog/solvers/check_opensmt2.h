@@ -15,6 +15,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "funfrog/interface/solver/solver.h"
 #include "solver_options.h"
 #include "funfrog/interface/convertor.h"
+#include "funfrog/interface/ssa_solvert.h"
 
 #include <vector>
 
@@ -25,23 +26,21 @@ class exprt;
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 // General interface for OPENSMT2 calls
-class check_opensmt2t :  public interpolating_solvert, public solvert, public convertort
+class check_opensmt2t :  public interpolating_solvert, public solvert, public convertort, public ssa_solvert
 {
 public:
     check_opensmt2t();
           
     virtual ~check_opensmt2t();
 
-   // virtual literalt bool_expr_to_literal(const exprt & expr) = 0; //moved to iface
-   // virtual literalt land(literalt l1, literalt l2) = 0;
-   // virtual literalt lor(literalt l1, literalt l2) = 0;
-   // virtual literalt lor(const bvt & bv) = 0;
-    virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
+    // ********************* methods implementing ssa_solvert interface ***************************************
+#ifdef PRODUCE_PROOF
+    interpolating_solvert* get_interpolating_solver() override { return this; }
+#endif // PRODUCE_PROOF
+    solvert* get_solver() override { return this; }
 
-    literalt limplies(literalt a, literalt b)
-    {
-        return lor(!a, b);
-    }
+    convertort* get_convertor() override { return this; }
+    // *********************************************************************************************************
 
     template<typename Container>
     void assert_literals(const Container& c){
@@ -50,25 +49,17 @@ public:
         }
     }
 
-    virtual void assert_literal(literalt) = 0;
-
     void set_to_true(const exprt &expr) override {
-        literalt l = convert_bool_expr(expr);
+        auto l = convert_bool_expr(expr);
         assert_literal(l);
     }
 
-    void set_to_false(const exprt &expr){
-        literalt l = convert_bool_expr(expr);
+    void set_to_false(const exprt &expr) override{
+        auto l = convert_bool_expr(expr);
         assert_literal(!l); // assert the negation
     }
 
     Logic* getLogic() const {return logic;}
-
-    void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
-
-    literalt get_const_literal(bool val){
-        return const_literal(val);
-    }
     
     unsigned get_random_seed() override { return random_seed; }
     
@@ -79,8 +70,7 @@ public:
     { logic->dumpHeaderToFile(dump_out); }
 
     vec<Tterm> & get_functions() { return getLogic()->getFunctions();}
-  
-    virtual bool is_overapprox_encoding() const = 0;
+
 
     fle_part_idt new_partition() override;
 
@@ -175,14 +165,13 @@ protected:
     virtual void set_random_seed(unsigned int i) override;
      
     // Used only in check_opensmt2 sub-classes
-    PTRef literal_to_ptref(literalt l) const {
-        if(l.is_constant()){
-            return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
+    PTRef flaref_to_ptref(const FlaRef fr) const {
+        if(fr.is_constant()){
+            return fr.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
         }
-        assert(l.var_no() < ptrefs.size());
-        assert(l.var_no() != literalt::unused_var_no());
-        PTRef ptref = ptrefs[l.var_no()];
-        return l.sign() ? getLogic()->mkNot(ptref) : ptref;
+        assert(fr.no() < ptrefs.size());
+        PTRef ptref = ptrefs[fr.no()];
+        return fr.sign() ? getLogic()->mkNot(ptref) : ptref;
     }
 };
 

@@ -11,7 +11,7 @@ class check_opensmt2t;
 class itpt
 {
 public:
-  itpt() : interpolant{PTRef_Undef} {}
+
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
@@ -24,13 +24,6 @@ public:
   virtual void serialize(std::ostream& out) const = 0;
 
   virtual bool equals(itpt* other) const = 0;
-
-  // Getters & Setters
-  PTRef getInterpolant() const { return interpolant; }
-  void setInterpolant(PTRef pt) { interpolant = pt; }
-
-protected:
-  PTRef interpolant;
 
 };
 

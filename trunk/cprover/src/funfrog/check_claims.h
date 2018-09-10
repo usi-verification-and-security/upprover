@@ -1,8 +1,6 @@
 /*******************************************************************
 
- Module: Loopfrog's final claim checking
-
- Author: CM Wintersteiger
+ Module: Inspired by Loopfrog's final claim checking
 
 \*******************************************************************/
 

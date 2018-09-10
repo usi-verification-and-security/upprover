@@ -2,8 +2,6 @@
 
 Module: Storage class for function summaries (union-find).
 
-Author: Ondrej Sery
-
 \*******************************************************************/
 
 #include "solvers/smt_itp.h"
