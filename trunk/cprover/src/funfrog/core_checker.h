@@ -29,6 +29,7 @@ class smtcheck_opensmt2t_uf;
 class smtcheck_opensmt2t_lra;
 class smtcheck_opensmt2t_lia;
 class satcheck_opensmt2t;
+class ssa_solvert;
 
 
 class core_checkert : private messaget
@@ -54,7 +55,7 @@ protected:
   const optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  check_opensmt2t* decider; // Can be Prop, LRA or UF solver!!
+  ssa_solvert* decider;
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;

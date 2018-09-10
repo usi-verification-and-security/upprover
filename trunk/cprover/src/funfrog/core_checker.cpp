@@ -427,14 +427,15 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
     prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+    auto solver = decider->get_solver();
     while (!end) {
         iteration_counter++;
 
         //Converts SSA to SMT formula
-        ssa_to_formula.convert_to_formula( *decider, *(decider));
+        ssa_to_formula.convert_to_formula( *(decider->get_convertor()), *(decider->get_interpolating_solver()));
 
         // Decides the equation
-        bool is_sat = ssa_to_formula.is_satisfiable(*decider);
+        bool is_sat = ssa_to_formula.is_satisfiable(*solver);
         summaries_used = omega.get_summaries_count();
         
         end = !is_sat;
@@ -459,7 +460,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
             // END of REPORT
 
             // figure out functions that can be refined
-            refiner.mark_sum_for_refine(*decider, omega.get_call_tree_root(), equation);
+            refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
             bool refined = !refiner.get_refined_functions().empty();
             if (!refined) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
@@ -484,7 +485,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
         // produce and store the summaries   
         if (!options.get_bool_option("no-itp")) {
             #ifdef PRODUCE_PROOF
-            if (decider->can_interpolate()) {
+            if (decider->get_interpolating_solver()->can_interpolate()) {
                 status() << ("Start generating interpolants...") << eom;
                 extract_interpolants(equation);
             } else {
@@ -613,7 +614,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
       }
 
       end = prop.convert_to_formula_and_solve(
-              *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *decider);
+              *(decider->get_convertor()), *(decider->get_solver()));
       unsigned summaries_count = omega.get_summaries_count();
       // MB: unused variable commented out
       //unsigned nondet_count = omega.get_nondets_count();
@@ -699,8 +700,10 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
 {
     if (!options.get_bool_option("no-error-trace"))
     {
-        prop.error_trace(*decider, ns, guard_expln);
-        if (decider->is_overapprox_encoding()){
+        auto solver = decider->get_solver();
+        assert(solver);
+        prop.error_trace(*solver, ns, guard_expln);
+        if (solver->is_overapprox_encoding()){
             status() << "\nA bug found." << eom;
             status() << "WARNING: Possibly due to the Theory conversion." << eom;
         } else {
@@ -755,7 +758,7 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   absolute_timet before, after;
   before=current_time();
   
-  equation.extract_interpolants(*decider);
+  equation.extract_interpolants(*decider->get_interpolating_solver());
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
