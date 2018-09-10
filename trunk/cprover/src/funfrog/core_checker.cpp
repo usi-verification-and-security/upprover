@@ -730,18 +730,18 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
 void core_checkert::assertion_violated (prepare_formula_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
-    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    if (!options.get_bool_option("no-error-trace"))
-        prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->is_overapprox_encoding()){
-    	status() << "\nA bug found." << endl;
-    	status() << "WARNING: Possibly due to the Theory conversion." << eom;
-    } else {
-    	status() << "A real bug found." << eom;
+    if (!options.get_bool_option("no-error-trace")) {
+        auto solver = decider->get_solver();
+        assert(solver);
+        prop.error_trace(*solver, ns, guard_expln);
+        if (solver->is_overapprox_encoding()) {
+            status() << "\nA bug found." << endl;
+            status() << "WARNING: Possibly due to the Theory conversion." << eom;
+        } else {
+            status() << "A real bug found." << eom;
+        }
     }
     report_failure();
-
-    decider_smt = nullptr;
 }
 
 #ifdef PRODUCE_PROOF
