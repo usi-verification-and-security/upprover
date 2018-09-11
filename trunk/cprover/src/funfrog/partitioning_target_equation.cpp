@@ -16,6 +16,10 @@
 #include <algorithm>
 #include <iostream>
 
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+#endif //DISABLE_OPTIMIZATIONS
+
 using namespace hifrog;
 
 partitioning_target_equationt::partitioning_target_equationt(
@@ -847,7 +851,7 @@ void partitioning_target_equationt::convert(convertort &convertor,
 #ifdef DISABLE_OPTIMIZATIONS
     if (dump_SSA_tree)
       {
-        ofstream out_ssaT;
+        std::ofstream out_ssaT;
         out_ssaT.open(ssa_tree_file_name+"_"+std::to_string(get_unique_index())+".smt2");
 
         // Print all after the headers: decl and code
