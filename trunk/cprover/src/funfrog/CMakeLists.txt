@@ -43,7 +43,6 @@ set(HIFROG_SOURCE_FILES
         summary_info.h
         summary_store.cpp
         summary_store.h
-        #sumo.cpp
         symex_assertion_sum.cpp
         symex_assertion_sum.h
         theory_refiner.cpp
@@ -54,27 +53,15 @@ set(HIFROG_SOURCE_FILES
         version.h
         xml_interface.cpp
         xml_interface.h
-        utils/naming_helpers.h
-        utils/naming_helpers.cpp
-        utils/unsupported_operations.h
-        utils/unsupported_operations.cpp
-        utils/unsupported_operations_opensmt2.h
-        utils/unsupported_operations_opensmt2.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
-        #reportt.cpp reportt.h
-        utils/UnionFind.cpp
-        utils/UnionFind.h
-        utils/string_utils.h
-        utils/string_utils.cpp
-        utils/containers_utils.h
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
         interface/convertor.h 
-        utils/expressions_utils.cpp)
+    )
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
@@ -154,17 +141,18 @@ endif(USE_Z3)
 ######## end of Z3 related section
 
 add_subdirectory(solvers)
+add_subdirectory(utils)
 
 target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
 target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog-lib ansi-c cpp goto-symex pointer-analysis solvers util xml
+target_link_libraries(hifrog-lib hifrog-utils ansi-c cpp goto-symex pointer-analysis solvers util xml
 )
 
 target_link_libraries(hifrog hifrog-lib)
 
-set_target_properties(hifrog hifrog-lib
+set_target_properties(hifrog hifrog-lib hifrog-utils
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11

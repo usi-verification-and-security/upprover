@@ -35,7 +35,7 @@ set_target_properties(
     CXX_STANDARD_REQUIRED true
     )
 
-target_link_libraries(UtilsTest gtest gtest_main)
+target_link_libraries(UtilsTest hifrog-utils gtest gtest_main)
 target_include_directories(UtilsTest PRIVATE ${PROJECT_SOURCE_DIR}/funfrog)
 
 target_link_libraries(PropSummariesTest hifrog-lib gtest gtest_main)
