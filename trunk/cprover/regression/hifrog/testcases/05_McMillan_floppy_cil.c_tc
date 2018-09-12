@@ -1,1 +1,2 @@
-0,funfrog/05_McMillan/floppy_cil.c,qfuf,--claim,1,--no-summary-optimization,--unwind,1 
+0,funfrog/05_McMillan/floppy_cil.c,qfuf,--claim,1,--no-summary-optimization,--unwind,1,--solver,z3,--no-itp
+0,funfrog/05_McMillan/floppy_cil.c,qfuf,--claim,1,--no-summary-optimization,--unwind,1

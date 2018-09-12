@@ -1,5 +1,8 @@
 0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,prop,--claim,1,--unwind,20
+0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qflra,--claim,1,--unwind,20,--solver,z3,--no-itp
+0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qflia,--claim,1,--unwind,20,--solver,z3,--no-itp
 0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qflra,--claim,1,--unwind,20
+0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qflia,--claim,1,--unwind,20
 0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qfuf,--claim,1,--unwind,20
 0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qfcuf,--claim,1,--unwind,20
 0,benchmarks/loop_new_svcomp17_count_by_2_true-unreach-call_true-termination.c,qfcuf,--claim,1,--theoref,--no-itp,--bitwidth,32,--unwind,5,--type-byte-constraints,2,--heuristic,4

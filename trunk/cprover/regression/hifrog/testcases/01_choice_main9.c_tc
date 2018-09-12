@@ -1,2 +1,3 @@
 0,funfrog/01_choice/main9.c,prop,--claim,1
+0,funfrog/01_choice/main9.c,qflra,--claim,1,--solver,z3,--no-itp
 0,funfrog/01_choice/main9.c,qflra,--claim,1

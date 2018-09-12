@@ -1,3 +1,6 @@
 0,funfrog/03_simple/main2.c,prop,--claim,1
+0,funfrog/03_simple/main2.c,qflra,--claim,1,--solver,z3,--no-itp
 0,funfrog/03_simple/main2.c,qflra,--claim,1
+0,funfrog/03_simple/main2.c,qflia,--claim,1,--solver,z3,--no-itp
+0,funfrog/03_simple/main2.c,qflia,--claim,1
 0,funfrog/03_simple/main2.c,qfcuf,--claim,1,--theoref,--bitwidth,32

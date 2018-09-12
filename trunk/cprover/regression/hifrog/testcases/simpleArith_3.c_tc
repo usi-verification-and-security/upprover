@@ -1,9 +1,15 @@
 benchmarks/simpleArith_3_c2.c_out,benchmarks/simpleArith_3.c,prop,--claim,2
+benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflra,--claim,2,--solver,z3,--no-itp
+benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflia,--claim,2,--solver,z3,--no-itp
+benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qfuf,--claim,2,--solver,z3,--no-itp
 benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflra,--claim,2
+benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflia,--claim,2
 benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qfuf,--claim,2
 0,benchmarks/simpleArith_3.c,prop,--claim,1
 benchmarks/simpleArith_3_1_smt.c_out,benchmarks/simpleArith_3.c,qflra,--claim,1
+benchmarks/simpleArith_3_1_smt.c_out,benchmarks/simpleArith_3.c,qflia,--claim,1
 benchmarks/simpleArith_3_1_smt.c_out,benchmarks/simpleArith_3.c,qfuf,--claim,1
 benchmarks/simpleArith_3_c2.c_out,benchmarks/simpleArith_3.c,prop,--claim,2
 benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflra,--claim,2
+benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qflia,--claim,2
 benchmarks/simpleArith_3_smt.c_out,benchmarks/simpleArith_3.c,qfuf,--claim,2

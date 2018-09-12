@@ -1,3 +1,6 @@
 0,benchmarks/simple_if_2.c,prop,--claim,1
+benchmarks/simple_if_2_smt.c_out,benchmarks/simple_if_2.c,qflra,--claim,1,--solver,z3,--no-itp
 benchmarks/simple_if_2_smt.c_out,benchmarks/simple_if_2.c,qflra,--claim,1
+benchmarks/simple_if_2_smt.c_out,benchmarks/simple_if_2.c,qflia,--claim,1,--solver,z3,--no-itp
+benchmarks/simple_if_2_smt.c_out,benchmarks/simple_if_2.c,qflia,--claim,1
 benchmarks/simple_if_2_smt.c_out,benchmarks/simple_if_2.c,qfuf,--claim,1
