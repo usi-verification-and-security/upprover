@@ -43,7 +43,7 @@ public:
     const SSA_steps_orderingt get_steps_exec_order() {
         SSA_steps_orderingt ret; ret.reserve(equation.SSA_steps.size());
         for(symex_target_equationt::SSA_stepst::iterator it=equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); it++)
-            ret.push_back(&*it);;
+            ret.push_back(&*it);
         return ret;
     }
 

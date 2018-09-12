@@ -19,6 +19,7 @@ Author: Ondrej Sery
 #include <map>
 #include <memory>
 
+class smtcheck_opensmt2t;
 class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
@@ -31,7 +32,10 @@ public:
   // Serialization
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(std::vector<std::string> fileNames) = 0;
-
+  
+#ifdef LATTICE_REF_ALGORITHM
+  virtual void refresh_summaries_tterms(std::vector<std::string> fileNames, smtcheck_opensmt2t *_decider = nullptr)=0;
+#endif
   
   // An already stored summary is implied by the new one - it is released
   // and represented by the stronger one, the id is still valid but represented

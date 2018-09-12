@@ -14,6 +14,7 @@ set(HIFROG_SOURCE_FILES
         solvers/satcheck_opensmt2.h
         solvers/smt_itp.cpp
         solvers/smt_itp.h
+        solvers/smt_itp_z3.h
         solvers/smtcheck_opensmt2.cpp
         solvers/smtcheck_opensmt2.h
         solvers/smtcheck_opensmt2_cuf.cpp
@@ -26,6 +27,14 @@ set(HIFROG_SOURCE_FILES
         solvers/smtcheck_opensmt2_lra.h
         solvers/smtcheck_opensmt2_uf.cpp
         solvers/smtcheck_opensmt2_uf.h
+        solvers/smtcheck_z3.h
+        solvers/smtcheck_z3.cpp
+        solvers/smtcheck_z3_lia.h
+        solvers/smtcheck_z3_lia.cpp
+        solvers/smtcheck_z3_lra.h
+        solvers/smtcheck_z3_lra.cpp
+        solvers/smtcheck_z3_uf.h
+        solvers/smtcheck_z3_uf.cpp
         solvers/solver_options.h
         solvers/naming_boolbv.h
         assertion_info.h
@@ -58,6 +67,8 @@ set(HIFROG_SOURCE_FILES
         prepare_formula.h
         smt_summary_store.cpp
         smt_summary_store.h
+        smt_z3_summary_store.cpp
+        smt_z3_summary_store.h
         subst_scenario.cpp
         subst_scenario.h
         core_checker.cpp
@@ -81,6 +92,10 @@ set(HIFROG_SOURCE_FILES
         utils/naming_helpers.cpp
         utils/unsupported_operations.h
         utils/unsupported_operations.cpp
+        utils/unsupported_operations_opensmt2.h
+        utils/unsupported_operations_opensmt2.cpp
+        utils/unsupported_operations_z3.h
+        utils/unsupported_operations_z3.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
@@ -90,10 +105,12 @@ set(HIFROG_SOURCE_FILES
         utils/UnionFind.cpp
         utils/UnionFind.h
         utils/string_utils.h
+        utils/string_utils.cpp
         utils/containers_utils.h
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
-        interface/convertor.h utils/expressions_utils.cpp)
+        interface/convertor.h 
+        utils/expressions_utils.cpp)
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
@@ -133,7 +150,8 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
-    #-DDISABLE_OPTIMIZATIONS
+    -DDISABLE_OPTIMIZATIONS
+    -DLATTICE_REF_ALGORITHM
     )
 
 find_library(OPENSMT2_LIB NAMES opensmt2 libopensm2)
@@ -147,7 +165,7 @@ if(NOT OPENSMT2_INCLUDE)
 endif()
 
 target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
-target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+target_link_libraries(hifrog-lib ${OPENSMT2_LIB} -lz3 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
 target_link_libraries(hifrog-lib ansi-c cpp goto-symex pointer-analysis solvers util xml

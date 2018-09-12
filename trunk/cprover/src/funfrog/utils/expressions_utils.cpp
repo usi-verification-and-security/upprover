@@ -40,3 +40,20 @@ std::string create_bound_string(std::string base, int exp)
 
     return ret;
 }
+
+// Check if the expression is a linear operator
+bool is_linear_expression(const exprt &expr) {
+    // Must be true
+    if (!expr.has_operands()) return true;
+    if (expr.operands().size() < 2) return true;
+    if (expr.operands()[0].is_constant()) return true;
+    if (expr.operands()[1].is_constant()) return true;
+    
+    const irep_idt & _id = expr.id();
+    if(_id == ID_mult) return false;
+    if(_id == ID_div) return false;
+    if(_id == ID_floatbv_mult) return false;
+    if(_id == ID_floatbv_div) return false;
+    
+    return true; // unknown
+}

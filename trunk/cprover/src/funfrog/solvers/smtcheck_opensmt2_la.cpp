@@ -494,7 +494,7 @@ void smtcheck_opensmt2t_la::push_assumes2type(
         std::string upper_b)
 {
     if (type_constraints_level < 1 ) return;
-    PTRef ptr = create_constraints2type(var, lower_b, upper_b);;
+    PTRef ptr = create_constraints2type(var, lower_b, upper_b);
     set_to_true(ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
@@ -524,7 +524,7 @@ void smtcheck_opensmt2t_la::push_asserts2type(
     if (type_constraints_level < 2) return;
 
     // Else add the checks
-    PTRef ptr = create_constraints2type(var, lower_b, upper_b);;
+    PTRef ptr = create_constraints2type(var, lower_b, upper_b);
     ptr_assert_var_constraints = logic->mkAnd(ptr_assert_var_constraints, ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS

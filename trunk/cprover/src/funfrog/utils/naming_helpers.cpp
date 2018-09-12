@@ -106,3 +106,4 @@ const std::string HiFrogOptions::UNWIND{"unwind"};
 const std::string HiFrogOptions::NO_SLICING{"no-slicing"};
 const std::string HiFrogOptions::NO_ERROR_TRACE{"no-error-trace"};
 const std::string HiFrogOptions::LOGIC{"logic"};
+const std::string HiFrogOptions::SOLVER{"solver"};

@@ -20,6 +20,40 @@ void smt_summary_storet::serialize(std::ostream &out) const {
     }
 }
 
+#ifdef LATTICE_REF_ALGORITHM
+// In case we re-create the solver, we need to refresh the tterms in OpenSMT
+void smt_summary_storet::refresh_summaries_tterms(
+        std::vector<std::string> fileNames, 
+        smtcheck_opensmt2t *_decider)
+{
+    // KE: add support for many summary files for lattice refinement
+    for (const auto & fileName : fileNames) {
+        try {
+            std::cout << "\n----reReading summary file: " << fileName << std::endl;
+            if (_decider->read_formula_from_file(fileName.c_str())) {
+                vec<Tterm> & functions = _decider->get_functions();
+                storet::iterator itr = store.begin();
+                for (int i = 0; i < functions.size(); ++i) {
+                    Tterm &tterm = functions[i];
+
+                    // Get the old summary and update it
+                    static_cast<smt_itpt*>(itr->summary.get())->setTterm(tterm);
+                    static_cast<smt_itpt*>(itr->summary.get())->setDecider(_decider);
+                    static_cast<smt_itpt*>(itr->summary.get())->setInterpolant(tterm.getBody());
+
+                    // set for the next iteration
+                    itr++;
+                }
+            }
+        } catch (LRANonLinearException & e){
+            // OpenSMT with linear real arithmetic was trying to read a file with nonlinear operation in it
+            // Ignore this file.
+            std::cerr << "Non linear operation encounter in file " << fileName << ". Ignoring this file.\n";
+        }    
+    }
+}
+#endif
+
 // SMT logics deser
 void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
 

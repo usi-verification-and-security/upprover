@@ -128,4 +128,7 @@ void getVarsInExpr(exprt& e, std::set<exprt>& vars);
 //build the string of the upper and lower bounds
 std::string create_bound_string(std::string base, int exp);
 
+// Check for lia and lra if linear operator
+bool is_linear_expression(const exprt &expr);
+
 #endif //PROJECT_EXPRESSIONS_UTILS_H
