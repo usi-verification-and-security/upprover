@@ -1,0 +1,41 @@
+target_sources(hifrog-lib 
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/check_opensmt2.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/check_opensmt2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/itp.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/prop_itp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/prop_itp.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/satcheck_opensmt2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/satcheck_opensmt2.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smt_itp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smt_itp.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_cuf.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_cuf.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_la.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_la.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_lia.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_lia.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_lra.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_lra.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_uf.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_opensmt2_uf.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver_options.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/naming_boolbv.h
+)
+
+if(USE_Z3)
+    target_sources(hifrog-lib
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/smt_itp_z3.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_lia.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_lia.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_lra.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_lra.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_uf.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/smtcheck_z3_uf.cpp
+    )
+endif(USE_Z3)

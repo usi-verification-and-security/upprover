@@ -11,9 +11,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "solvers/smtcheck_z3_lra.h"
-#include "solvers/smtcheck_z3_uf.h"
-#include "solvers/smtcheck_z3_lia.h"
+
 #include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
@@ -23,12 +21,20 @@
 #include "symex_assertion_sum.h"
 #include <funfrog/utils/naming_helpers.h>
 #include <funfrog/utils/string_utils.h>
-#include "smt_z3_summary_store.h"   // Z3 smt store
+
 #include "smt_summary_store.h"      // OpenSMT smt store
 #include "prop_summary_store.h"     // OpenSMT prop store
 #include "theory_refiner.h"
 #include "partitioning_slice.h"
 #include "utils/unsupported_operations.h"
+
+#ifdef Z3_AVAILABLE
+#include "smt_z3_summary_store.h"   // Z3 smt store
+#include "solvers/smtcheck_z3_lra.h"
+#include "solvers/smtcheck_z3_uf.h"
+#include "solvers/smtcheck_z3_lia.h"
+#endif // Z3_AVAILABLE
+
 #include <langapi/language_util.h>
 #include <goto-symex/path_storage.h>
 #include <stdio.h>
@@ -162,9 +168,11 @@ ssa_solvert * core_checkert::initialize__euf_solver()
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
         return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
+#ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
         return new smtcheck_z3_uft(solver_options);
+#endif //Z3_AVAILABLE
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -213,9 +221,11 @@ ssa_solvert * core_checkert::initialize__lra_solver()
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
         return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
+#ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
         return new smtcheck_z3_lrat(solver_options);
+#endif //Z3_AVAILABLE
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -239,9 +249,11 @@ ssa_solvert * core_checkert::initialize__lia_solver()
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
         return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
+#ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
         return new smtcheck_z3_liat(solver_options);
+#endif //Z3_AVAILABLE
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -330,9 +342,11 @@ void core_checkert::initialize()
         if (_solver == "osmt") {
             auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
             summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
+#ifdef Z3_AVAILABLE
         } else if (_solver == "z3") {
             auto smt_decider = dynamic_cast<smtcheck_z3t*>(decider);
             summary_store = std::unique_ptr<summary_storet>(new smt_z3_summary_storet(smt_decider));
+#endif //Z3_AVAILABLE
         } else {
             summary_store = nullptr;
             status() << ("Use no summary store for the solver+logic current settings.") << eom;
