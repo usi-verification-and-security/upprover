@@ -185,7 +185,16 @@ void core_checkert::initialize__lra_option_solver()
     
     initialize_solver_options();
         
-    initialize_solver_debug_options();    
+    initialize_solver_debug_options();
+
+#ifdef PRODUCE_PROOF
+    if (options.is_set("itp-lra-algorithm")) {
+        solver_options.m_lra_itp_algorithm = options.get_unsigned_int_option("itp-lra-algorithm");
+    }
+    if (options.is_set("itp-lra-factor")) {
+        solver_options.m_lra_factor = options.get_option("itp-lra-factor");
+    }
+#endif // PRODUCE_PROOF
 }
 
 // Generic creation for any solver - lra
