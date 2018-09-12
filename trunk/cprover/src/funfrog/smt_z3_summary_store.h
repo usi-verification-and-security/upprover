@@ -27,11 +27,6 @@ public:
   virtual void serialize(std::ostream& out) const override;
   virtual void deserialize(std::vector<std::string> fileNames) override;
   virtual void insert_summary(summaryt *summary, const std::string & function_name) override;
-  
-#ifdef LATTICE_REF_ALGORITHM  
-  // Only CUF Solver! - TODO: remove it from interface
-  virtual void refresh_summaries_tterms(std::vector<std::string> fileNames, smtcheck_opensmt2t *_decider = nullptr) override;
-#endif
 
   void set_decider(smtcheck_z3t * decider) {
       this->m_decider = decider;

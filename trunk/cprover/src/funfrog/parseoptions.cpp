@@ -506,12 +506,6 @@ void funfrog_parseoptionst::help()
   "                               to the given file\n"
   "--load-summaries <filename1,>  load function summaries\n"
   "                               from the given file(s)\n"
-#ifdef LATTICE_REF_ALGORITHM            
-  "--load-sum-model <filename1,>  load a model of an unsupported function\n"
-  "                               as a set of summaries of the function\n" 
-  "--no-sum-refine                Skip summary refinement when using lattice only\n"
-//  "--sum-model-single-UNSAT       Using the summaries model till the first UNSAT\n"  
-#endif
   "--show-claims                  output the claims list\n"
   "                               and prints the total number of claims\n"
 //  "--bounds-check                 enable array bounds checks\n"

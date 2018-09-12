@@ -941,7 +941,7 @@ z3::expr smtcheck_z3t::flaref_to_ptref(FlaRef l) {
     return l.sign() ? !ptref : ptref;
 }
 
-void smtcheck_z3t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols, unsigned summary_instance_no) {
+void smtcheck_z3t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
     assert(!itp.is_trivial());
     assert(m_solver);  
     auto const & smt_itp_z3 = static_cast<smt_itp_z3t const &> (itp);

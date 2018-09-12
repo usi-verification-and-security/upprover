@@ -98,8 +98,7 @@ public:
     virtual FlaRef get_and_clear_var_constraints() override 
     { return const_formula(true); } // Replace lassert in non-incremental solving mode
         
-    virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols, 
-                    unsigned summary_instance_no=0) override;// Common to all    
+    virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;// Common to all    
     
 #ifdef PRODUCE_PROOF  
     // Extracts the symmetric interpolant of the specified set of

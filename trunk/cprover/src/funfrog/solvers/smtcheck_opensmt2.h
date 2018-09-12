@@ -9,7 +9,7 @@ Module: Wrapper for OpenSMT2
 
 #include "check_opensmt2.h"
 
-#include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
+#include "../utils/unsupported_operations_opensmt2.h" // KE: shall move all the code of unsupported here
 #include <funfrog/utils/expressions_utils.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
