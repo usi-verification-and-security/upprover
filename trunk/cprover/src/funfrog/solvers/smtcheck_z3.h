@@ -53,7 +53,7 @@ public:
 
     virtual fle_part_idt new_partition() override; // Common to all
 
-    void close_partition(); // Common to all
+    void close_partition() override; // Common to all
     
     virtual FlaRef convert_bool_expr(const exprt &expr) override{
         assert(is_boolean(expr));
@@ -114,7 +114,7 @@ public:
     { return false; } // Enable when interpolation works
     //{  return m_ready_to_interpolate; }
     
-    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols)
+    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override
     { assert(0); } // TODO: test interpolation for z3
     
     void generalize_summary(smt_itp_z3t & interpolant, std::vector<symbol_exprt> & common_symbols)
