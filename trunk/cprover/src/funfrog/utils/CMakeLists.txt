@@ -1,4 +1,4 @@
-add_library(hifrog-utils OBJECT)
+add_library(hifrog-utils)
 
 target_link_libraries(hifrog-utils PUBLIC util)
 target_include_directories(hifrog-utils PUBLIC ${PROJECT_SOURCE_DIR})
