@@ -1,4 +1,2 @@
 0,benchmarks/simple_if_4.c,qflra,--claim,1,--solver,z3,--no-itp
-0,benchmarks/simple_if_4.c,qflia,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_if_4.c,qflra,--claim,1
-0,benchmarks/simple_if_4.c,qflia,--claim,1
