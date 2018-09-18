@@ -7,6 +7,7 @@
 import subprocess
 import os
 import sys
+import argparse
 from datetime import datetime
 
 RED   = "\033[1;31m"
@@ -95,7 +96,7 @@ def run_single(args, shouldSuccess, folderpath, testname):
     os.remove(summaries_path)
     return True
 #-------------------------------------------------------
-def run(path_to_exec):
+def run(options):
     # where the testcases are located
     testdir = './testcases'
     fails_in_tests = 0
@@ -103,7 +104,7 @@ def run(path_to_exec):
     for subdirs, dirs, files in os.walk(testdir):
         for file in files:
             if file.endswith('.conf'):
-                res = run_test_case(path_to_exec, testdir, file)
+                res = run_test_case(options, testdir, file)
                 if not res:
                     fails_in_tests = fails_in_tests + 1
     print('')
@@ -117,7 +118,7 @@ def run(path_to_exec):
 #-------------------------------------------------------
 # for a given configuration file, we look for the source file and 
 #run hifrog on that source file for each configuratiom found in config file
-def run_test_case(path_to_exec, testdir, configfile):
+def run_test_case(options, testdir, configfile):
     # name of the test from config file without the .conf extension
     testname = configfile[:-5]
     # name of the source file
@@ -135,6 +136,8 @@ def run_test_case(path_to_exec, testdir, configfile):
     # each configuration on one line, arguments separated from expected result by ';'
     separator = ';'
     fail_count = 0
+    path_to_exec = options.executable
+    z3_allowed = options.z3
     for configuration in configurations:
         # ignore empty lines or lines starting wiht '#' -> comments
         if not configuration or configuration.startswith('#'):
@@ -146,6 +149,8 @@ def run_test_case(path_to_exec, testdir, configfile):
             continue
         # arguments with which to run hifrog
         args = fields[0].strip().split()
+        if 'z3' in args and not z3_allowed:
+            continue
         # expected result
         exp_res = fields[1].strip()
         res = run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir, testname)
@@ -223,12 +228,16 @@ def success(text):
     sys.stdout.write(RESET)
 
 if __name__ == '__main__':
-    exec_path = './hifrog'
-    if len(sys.argv) > 1:
-        exec_path = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--executable", help="path to HiFrog executable", default="./hifrog")
+    parser.add_argument("--z3", help="Enables testing also with z3 solver", action="store_true")
+    args = parser.parse_args()
+    #print(args.executable)
+    #print(args.z3)
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    exec_path=' ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ' + exec_path 
-    run(exec_path)
+    args.executable = ' ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ' + args.executable
+    #print(args.executable)
+    run(args)
 
