@@ -19,7 +19,6 @@ Author: Ondrej Sery
 #include <map>
 #include <memory>
 
-class smtcheck_opensmt2t;
 class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
