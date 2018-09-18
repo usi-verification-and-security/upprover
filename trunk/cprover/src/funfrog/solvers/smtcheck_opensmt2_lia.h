@@ -18,7 +18,7 @@ public:
     }
 
     virtual ~smtcheck_opensmt2t_lia(); // d'tor
-
+    
 #ifdef PRODUCE_PROOF
 
     virtual bool can_interpolate() const override { return false; }
@@ -27,6 +27,8 @@ public:
 protected:
 
     virtual void initializeSolver(const solver_optionst solver_options, const char *) override;
+    
+    virtual PTRef numeric_constant(const exprt & expr) override;
 
 };
 

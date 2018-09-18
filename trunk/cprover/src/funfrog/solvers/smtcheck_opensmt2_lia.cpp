@@ -4,7 +4,9 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
 \*******************************************************************/
 #include "smtcheck_opensmt2_lia.h"
+
 #include <util/type.h>
+#include <funfrog/utils/string_utils.h>
 
 /*******************************************************************\
 
@@ -63,4 +65,29 @@ Function: smtcheck_opensmt2t_lia::~smtcheck_opensmt2t_lia
 smtcheck_opensmt2t_lia::~smtcheck_opensmt2t_lia()
 {
     // Shall/When need to: freeSolver() ?
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t_lia::numeric_constante
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+PTRef smtcheck_opensmt2t_lia::numeric_constant(const exprt & expr)
+{
+    std::string num = extract_expr_str_number(expr);
+    
+    // If not an Integer - replace with unsupported variable!
+    if (!is_integer_string(num)) return unsupported_to_var(expr);
+    
+    // Else - continue with the constants creation
+    PTRef rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    assert(rconst != PTRef_Undef);
+    
+    return rconst;
 }

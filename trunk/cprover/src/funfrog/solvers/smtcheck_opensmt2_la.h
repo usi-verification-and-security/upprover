@@ -23,8 +23,6 @@ public:
     virtual FlaRef get_and_clear_var_constraints() override;
     
     virtual PTRef expression_to_ptref(const exprt & expr) override;
-
-    virtual PTRef numeric_constant(const exprt & expr) override;
     
     virtual SRef get_numeric_sort() const override {return lalogic->getSort_num();}
     

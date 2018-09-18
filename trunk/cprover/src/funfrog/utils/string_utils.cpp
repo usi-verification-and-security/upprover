@@ -24,3 +24,11 @@ std::string replace_all(std::string str, const std::string& from, const std::str
     }
     return str;
 }
+
+bool is_integer_string(std::string num)
+{
+    double as_double = std::stod (num);
+    int as_int = std::stoi (num);
+    
+    return (as_double == (double) as_int);
+}

@@ -2,7 +2,7 @@
 
 #include <util/type.h>
 #include <funfrog/utils/naming_helpers.h>
-#include "../utils/naming_helpers.h"
+#include <funfrog/utils/string_utils.h>
 
 /*******************************************************************\
 
@@ -72,12 +72,11 @@ z3::expr smtcheck_z3_liat::numeric_constant(const exprt &expr)
     // Can we convert it?
     assert((num.size() > 0) || (expr.type().id() == ID_c_enum) || (expr.type().id() == ID_c_enum_tag));
     
+    // If not an Integer - replace with unsupported variable!
+    if (!is_integer_string(num)) return unsupported_to_var(expr);
+    
     // Convert it into a constant expression
-    z3::expr rconst = (num.size() <= 0) 
-        ? m_query_context.int_val((expr.type().id() == ID_c_enum) 
-            ? expr.type().find(ID_tag).pretty().c_str()  // ID_c_enum
-            : id2string(to_constant_expr(expr).get_value()).c_str()) // ID_c_enum_tag
-        : m_query_context.int_val(std::to_string(stoi(num)).c_str()); // General Case
+    z3::expr rconst = m_query_context.int_val(std::to_string(stoi(num)).c_str()); // General Case
 
     return rconst; // Keeps the new PTRef + create for it a new index/flaref
 }

@@ -78,6 +78,26 @@ smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
 }
 
 /*******************************************************************\
+
+Function: smtcheck_opensmt2t_lra::numeric_constante
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+PTRef smtcheck_opensmt2t_lra::numeric_constant(const exprt & expr)
+{
+    std::string num = extract_expr_str_number(expr);
+    PTRef rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    assert(rconst != PTRef_Undef);
+    
+    return rconst;
+}
+
+/*******************************************************************\
 Function: smtcheck_opensmt2t_lra::check_ce
 
   Inputs:

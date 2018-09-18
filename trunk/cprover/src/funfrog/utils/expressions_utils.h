@@ -57,6 +57,21 @@ inline std::string extract_expr_str_number(const exprt &expr)
             << " :: " << expr.type().id() << ")" << endl;
     //std::cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
 #endif
+    
+    // Fix enum:
+    if(const_val.size() <= 0)
+    {
+        if (expr.type().id() == ID_c_enum)
+        {
+            const_val = expr.type().find(ID_tag).pretty();
+        }
+        else if (expr.type().id() == ID_c_enum_tag)
+        {
+            const_val = id2string(to_constant_expr(expr).get_value());
+        }
+    }
+    
+    assert(const_val.size()>0); // Must be a number
     return const_val;
 }
 

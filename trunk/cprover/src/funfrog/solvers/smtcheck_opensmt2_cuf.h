@@ -30,8 +30,6 @@ public:
 
   virtual PTRef expression_to_ptref(const exprt & expr) override;
 
-  virtual PTRef numeric_constant(const exprt & expr) override;
-
   virtual PTRef new_num_var(const std::string & var_name) override;
 
   virtual PTRef type_cast(const exprt & expr) override;
@@ -88,6 +86,8 @@ protected:
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
   virtual void initializeSolver(const solver_optionst solver_options, const char*) override;
+  
+  virtual PTRef numeric_constant(const exprt & expr) override;
 
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   

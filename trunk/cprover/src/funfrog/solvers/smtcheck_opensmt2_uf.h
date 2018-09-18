@@ -23,14 +23,14 @@ public:
   virtual PTRef expression_to_ptref(const exprt & expr) override;
   
   virtual SRef get_numeric_sort() const override {return sort_ureal;}
-
-  virtual PTRef numeric_constant(const exprt &expr) override;
   
   virtual PTRef type_cast(const exprt & expr) override;
   
 protected:
 
   virtual void initializeSolver(const solver_optionst solver_options, const char* name) override;
+  
+  virtual PTRef numeric_constant(const exprt &expr) override;
   
   PTRef new_num_var(const std::string & var_name) override;
     

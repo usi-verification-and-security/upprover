@@ -30,42 +30,6 @@ smtcheck_opensmt2t_la::~smtcheck_opensmt2t_la()
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_la::numeric_constante
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-PTRef smtcheck_opensmt2t_la::numeric_constant(const exprt & expr)
-{
-    std::string num = extract_expr_str_number(expr);
-    PTRef rconst = PTRef_Undef;
-    if(num.size() <= 0)
-    {
-        if (expr.type().id() == ID_c_enum)
-        {
-            num = expr.type().find(ID_tag).pretty();
-        }
-        else if (expr.type().id() == ID_c_enum_tag)
-        {
-            num = id2string(to_constant_expr(expr).get_value());
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-
-    rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
-    assert(rconst != PTRef_Undef);
-    return rconst;
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t_la::mult_numbers
 
   Inputs:

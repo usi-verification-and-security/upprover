@@ -24,6 +24,8 @@ public:
 protected:
     virtual void initializeSolver(const solver_optionst solver_options, const char *) override;
     
+    virtual PTRef numeric_constant(const exprt & expr) override;
+    
 #ifdef PRODUCE_PROOF
     
     void set_lra_factor(std::string factor) {itp_lra_factor = std::move(factor);}
