@@ -1,7 +1,5 @@
 0,benchmarks/simpleArith_4.c,prop,--claim,1
 benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qflra,--claim,1,--solver,z3,--no-itp
-benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qflia,--claim,1,--solver,z3,--no-itp
 benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qfuf,--claim,1,--solver,z3,--no-itp
 benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qflra,--claim,1
-benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qflia,--claim,1
 benchmarks/simpleArith_4_smt.c_out,benchmarks/simpleArith_4.c,qfuf,--claim,1
