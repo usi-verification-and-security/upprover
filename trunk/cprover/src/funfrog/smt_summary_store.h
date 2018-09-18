@@ -4,8 +4,8 @@ Module: Storage class for function summaries (union-find).
 
 \*******************************************************************/
 
-#ifndef CPROVER_SMT_SUMMARY_STORE_H
-#define CPROVER_SMT_SUMMARY_STORE_H
+#ifndef SMT_SUMMARY_STORE_H
+#define SMT_SUMMARY_STORE_H
 
 #include "summary_store.h"
 

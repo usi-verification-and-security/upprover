@@ -1,3 +1,6 @@
 0,funfrog/01_choice/main2_ok.c,prop
+0,funfrog/01_choice/main2_ok.c,qflra,--solver,z3,--no-itp
 0,funfrog/01_choice/main2_ok.c,qflra
+0,funfrog/01_choice/main2_ok.c,qflia,--solver,z3,--no-itp
+0,funfrog/01_choice/main2_ok.c,qflia
 0,funfrog/01_choice/main2_ok.c,qfcuf,--theoref,--bitwidth,32

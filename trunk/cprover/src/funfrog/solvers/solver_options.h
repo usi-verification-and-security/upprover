@@ -33,6 +33,7 @@ public:
     unsigned m_verbosity = 0;
     unsigned m_random_seed = 1;
     bool m_store_unsupported_info = false;
+    bool m_incremental_solver = false; // TODO: make it work for OpenSMT2
 
 #ifdef PRODUCE_PROOF
     unsigned m_certify=0;

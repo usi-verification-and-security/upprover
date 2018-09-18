@@ -1,4 +1,8 @@
 0,benchmarks/simple_assert_float.c,prop,--claim,1
+0,benchmarks/simple_assert_float.c,qflra,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_assert_float.c,qflra,--claim,1
+0,benchmarks/simple_assert_float.c,qflia,--claim,1,--solver,z3,--no-itp
+0,benchmarks/simple_assert_float.c,qflia,--claim,1
+0,benchmarks/simple_assert_float.c,qfuf,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_assert_float.c,qfuf,--claim,1
 0,benchmarks/simple_assert_float.c,qfcuf,--claim,1

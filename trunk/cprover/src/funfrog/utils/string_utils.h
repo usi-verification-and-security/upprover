@@ -8,17 +8,8 @@
 #include <string>
 #include <vector>
 
-std::vector<std::string> splitString(std::string s, char delim){
-    std::vector<std::string> res;
-    std::size_t idx = 0;
-    std::size_t next = 0;
-    do{
-        next = s.find(delim, idx);
-        res.push_back(s.substr(idx, next));
-        idx = next;
-        ++idx; // next points to the beginning of the found delimiter, need to move past it
-    } while(next != std::string::npos);
-    return res;
-}
+std::vector<std::string> splitString(std::string s, char delim);
+
+std::string replace_all(std::string str, const std::string& from, const std::string& to);
 
 #endif //PROJECT_STRING_UTILS_H

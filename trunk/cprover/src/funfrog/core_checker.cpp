@@ -11,6 +11,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
+
 #include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
@@ -20,11 +21,19 @@
 #include "symex_assertion_sum.h"
 #include <funfrog/utils/naming_helpers.h>
 #include <funfrog/utils/string_utils.h>
-#include "smt_summary_store.h"
-#include "prop_summary_store.h"
+
+#include "smt_summary_store.h"      // OpenSMT smt store
+#include "prop_summary_store.h"     // OpenSMT prop store
 #include "theory_refiner.h"
 #include "partitioning_slice.h"
 #include "utils/unsupported_operations.h"
+
+#ifdef Z3_AVAILABLE
+#include "smt_z3_summary_store.h"   // Z3 smt store
+#include "solvers/smtcheck_z3_lra.h"
+#include "solvers/smtcheck_z3_uf.h"
+#include "solvers/smtcheck_z3_lia.h"
+#endif // Z3_AVAILABLE
 
 #include <langapi/language_util.h>
 #include <goto-symex/path_storage.h>
@@ -99,7 +108,7 @@ core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _
 core_checkert::~core_checkert(){
     //delete decider;
 }
-
+  
 void core_checkert::initialize_solver()
 {
     std::string _logic = options.get_option(HiFrogOptions::LOGIC);
@@ -111,7 +120,7 @@ void core_checkert::initialize_solver()
     }
     else if(_logic == "qfcuf")
     {
-        initialize__cuf_option_solver();
+        initialize__cuf_option_solver(); 
         decider = initialize__cuf_solver();
         status() << ("Use QF_CUF logic.") << eom;
     }
@@ -129,7 +138,7 @@ void core_checkert::initialize_solver()
     }
     else if (_logic == "prop")
     {
-        initialize__prop_option_solver();
+        initialize__prop_option_solver(); 
         decider = initialize__prop_solver();
         status() << ("Use propositional logic.") << eom;
     }
@@ -153,10 +162,21 @@ void core_checkert::initialize__euf_option_solver()
     initialize_solver_debug_options();
 }
 // Generic creation for any solver - euf
-smtcheck_opensmt2t_uf * core_checkert::initialize__euf_solver()
+ssa_solvert * core_checkert::initialize__euf_solver()
 {
-    // OpenSMT:
-    return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
+    std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+    if (_solver == "osmt") {
+         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
+        return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
+#ifdef Z3_AVAILABLE
+    } else if (_solver == "z3") {
+         status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
+        return new smtcheck_z3_uft(solver_options);
+#endif //Z3_AVAILABLE
+    } else {
+        error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
+        exit(0); //Unsupported 
+    }
 }
 
 // Generic initialise for OpenSMT solver - cuf
@@ -174,8 +194,14 @@ void core_checkert::initialize__cuf_option_solver()
 // Only for OpenSMT solver - cuf
 smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
-    // OpenSMT:
-    return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
+    std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+    if (_solver == "osmt") {
+        status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
+        return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
+    } else {
+        error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
+        exit(0); //Unsupported 
+    }
 }
 
 // Generic initialise for any solver - lra
@@ -198,10 +224,21 @@ void core_checkert::initialize__lra_option_solver()
 }
 
 // Generic creation for any solver - lra
-smtcheck_opensmt2t_lra * core_checkert::initialize__lra_solver()
+ssa_solvert * core_checkert::initialize__lra_solver()
 {
-    // OpenSMT:
-    return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
+    std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+    if (_solver == "osmt") {
+         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
+        return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
+#ifdef Z3_AVAILABLE
+    } else if (_solver == "z3") {
+         status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
+        return new smtcheck_z3_lrat(solver_options);
+#endif //Z3_AVAILABLE
+    } else {
+        error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
+        exit(0); //Unsupported 
+    }
 }
 
 // Generic initialise for any solver - lia
@@ -209,16 +246,27 @@ void core_checkert::initialize__lia_option_solver()
 {
     solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
     
-    //initialize_solver_options(); // TODO: when we have interpolation
+    initialize_solver_options();
         
     initialize_solver_debug_options();    
 }
 
 // Generic creation for any solver - lia
-smtcheck_opensmt2t_lia * core_checkert::initialize__lia_solver()
+ssa_solvert * core_checkert::initialize__lia_solver()
 {
-    // OpenSMT:
-    return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
+    std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+    if (_solver == "osmt") {
+         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
+        return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
+#ifdef Z3_AVAILABLE
+    } else if (_solver == "z3") {
+         status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
+        return new smtcheck_z3_liat(solver_options);
+#endif //Z3_AVAILABLE
+    } else {
+        error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
+        exit(0); //Unsupported 
+    }
 }
 
 // Generic initialise for any solver - lia
@@ -237,14 +285,20 @@ void core_checkert::initialize__prop_option_solver()
 // Only for OpenSMT solver - prop
 satcheck_opensmt2t * core_checkert::initialize__prop_solver()
 {
+    // TODO: re-write for prop once needed
     if (options.get_bool_option("no-partitions")) {
         error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
         exit(0); //Unsupported 
     }
-    // If all OK, create the decider
     
-    // OpenSMT:
-    return new satcheck_opensmt2t(solver_options, "prop checker", ns);
+    std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+    if (_solver == "osmt") {
+        status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
+        return new satcheck_opensmt2t(solver_options, "prop checker", ns);
+    } else {
+        error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
+        exit(0); //Unsupported 
+    }
 }
 
 void core_checkert::initialize_solver_debug_options()
@@ -264,6 +318,12 @@ void core_checkert::initialize_solver_options()
   
     if(options.get_unsigned_int_option("random-seed")) 
         solver_options.m_random_seed = options.get_unsigned_int_option("random-seed");
+    
+    if (options.get_option("load-sum-model").size()!=0)
+        solver_options.m_store_unsupported_info = true;
+    
+    if (options.get_option("solver") == "z3" && !options.get_bool_option("sum-theoref"))
+        solver_options.m_incremental_solver = true;
         
 #ifdef PRODUCE_PROOF
     solver_options.m_certify = options.get_unsigned_int_option("check-itp");
@@ -276,6 +336,7 @@ void core_checkert::initialize_solver_options()
 #endif 
 } 
 
+// Called from check_claims after the constructor
 void core_checkert::initialize()
 {
     initialize_solver();
@@ -285,15 +346,27 @@ void core_checkert::initialize()
     // TODO: unify this mechanism
     if (options.get_option(HiFrogOptions::LOGIC) == "prop")
         summary_store = std::unique_ptr<summary_storet>(new prop_summary_storet());
-    else{
-        auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
-        summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
+    else {
+        std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+        if (_solver == "osmt") {
+            auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
+            summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
+#ifdef Z3_AVAILABLE
+        } else if (_solver == "z3") {
+            auto smt_decider = dynamic_cast<smtcheck_z3t*>(decider);
+            summary_store = std::unique_ptr<summary_storet>(new smt_z3_summary_storet(smt_decider));
+#endif //Z3_AVAILABLE
+        } else {
+            summary_store = nullptr;
+            status() << ("Use no summary store for the solver+logic current settings.") << eom;
+        }
     }
 
     // Load older summaries
     {
         const std::string& filenames = options.get_option("load-summaries");
         std::vector<std::string> summaries_files = splitString(filenames, ',');
+        assert(filenames.size()==0 || !summaries_files.empty()); // Test the splits function do work + avoid compilation issues
         if (!summaries_files.empty()) {
             summary_store->deserialize(summaries_files);
         }
@@ -840,7 +913,7 @@ void core_checkert::report_failure()
   {
 
     case ui_message_handlert::uit::PLAIN:
-	result() << "\nVERIFICATION FAILED" << eom;;
+	result() << "\nVERIFICATION FAILED" << eom;
 	break;
 
     case ui_message_handlert::uit::XML_UI:
@@ -1043,7 +1116,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     initialize__euf_option_solver();
-    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{initialize__euf_solver()};
+    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{new smtcheck_opensmt2t_uf(solver_options, "uf checker")};
     auto & uf_solver = *uf_solver_ptr;
 
 
@@ -1122,7 +1195,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     initialize__lra_option_solver();
-    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{initialize__lra_solver()};
+    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{new smtcheck_opensmt2t_lra(solver_options, "lra checker")};
     auto & lra_solver = *lra_solver_ptr;
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );

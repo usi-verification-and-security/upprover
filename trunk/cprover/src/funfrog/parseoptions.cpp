@@ -552,8 +552,8 @@ void funfrog_parseoptionst::help()
   "                                 5 - backward with dependencies\n"
   "                                 6 - forward with multiple refinement & dependencies\n"
   "                                 7 - backward with multiple refinement & dependencies\n"
-  "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
-
+  "--bitwidth <n>                 bitwidth for the CUF BV mode and CEX Validator\n\n"
+  "--no-cex-model                 skips the cex validator is model cannot be extracted \n"
 #ifdef PRODUCE_PROOF
   "\nSMT, Interpolation, and Proof Reduction options:\n"
   "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
@@ -584,6 +584,9 @@ void funfrog_parseoptionst::help()
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
+  "--solver                       SMT solving option, solver type:\n"
+  "                                 osmt - use OpenSMT2 solver,\n"
+  "                                 z3   - use Z3 solver\n"
 #endif
   "\nProgram representations:\n"
    "--show-symbol-table             show symbol table\n"
@@ -710,8 +713,27 @@ bool funfrog_parseoptionst::check_function_summarization()
     if (cmdline.isset("claims-opt"))
       store_claims(claim_map, claim_numbers);
     
+    // option unsupported in cuf or prop
+    if ((options.get_option("logic") == "prop") || (options.get_option("logic") == "qfcuf"))
+    {
+        // Solver type
+        if (options.get_option("solver") == "z3") {
+            error() << (options.get_option("logic") + " logic in HiFrog is supported only in OpenSMT2""\n") << eom;
+            exit(0); //Unsupported 
+        }        
+#ifdef DISABLE_OPTIMIZATIONS
+        // lattice refinement - refers to summaries
+        if (options.get_option("load-sum-model").size() > 0) {
+            error() << ("--load-sum-model option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
+            exit(0); //Unsupported 
+        }
+#endif       
+    }
+    
     // If we set bitwidth, check it sets right, it will be by default 8
-    if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
+    if ((options.get_option("logic") == "qfcuf")  // bitwidth exists only in cuf
+        || (options.get_option("load-sum-model").size()!=0)) // Or for latticeref
+    //if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
     {
       unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
       if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
@@ -810,11 +832,17 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
   } else { // Set a default name in case no name was provided by user
     options.set_option("dump-query-name", "query_default");
-  }  
+  }
+  
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else
   status() << "\n*** EXECUTE WITH OPTIMIZATIONS (DDISABLE_OPTIMIZATIONS is off) ***\n" << eom;
-#endif     
+#endif
+    if (cmdline.isset("solver")) {
+        options.set_option(HiFrogOptions::SOLVER, cmdline.get_value("solver"));
+    } else {
+        options.set_option(HiFrogOptions::SOLVER, "osmt");
+    }
   options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
@@ -822,6 +850,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   //options.set_option("list-templates", cmdline.isset("list-templates")); // FIXME
+  options.set_option("no-cex-model", cmdline.isset("no-cex-model"));
+  options.set_option("no-sum-refine", cmdline.isset("no-sum-refine")); 
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("partial-loops", cmdline.isset("partial-loops"));
 
@@ -932,6 +962,14 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("load-summaries", "__summaries");
   }
+  if (cmdline.isset("load-sum-model")) {
+    options.set_option("load-sum-model", cmdline.get_value("load-sum-model"));
+    options.set_option("no-itp", true); // Remove after fix the issue with lattice facts dumped into the summary of the code
+  } else {
+    options.set_option("load-sum-model","");
+  }
+  //if(cmdline.isset("sum-model-single-UNSAT"))
+  //  options.set_option("sum-model-single-UNSAT", true);
   if (cmdline.isset("load-omega")) {
     options.set_option("load-omega", cmdline.get_value("load-omega"));
   } else {

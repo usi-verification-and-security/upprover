@@ -1,3 +1,6 @@
 0,benchmarks/choice_if_wt_calls.c,prop,--claim,1
+0,benchmarks/choice_if_wt_calls.c,qflra,--claim,1,--solver,z3,--no-itp
 0,benchmarks/choice_if_wt_calls.c,qflra,--claim,1
+0,benchmarks/choice_if_wt_calls.c,qflia,--claim,1,--solver,z3,--no-itp
+0,benchmarks/choice_if_wt_calls.c,qflia,--claim,1
 0,benchmarks/choice_if_wt_calls.c,qfcuf,--theoref,--claim,1

@@ -1,4 +1,8 @@
 0,benchmarks/simple_assert_double.c,prop,--claim,1
+0,benchmarks/simple_assert_double.c,qflra,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_assert_double.c,qflra,--claim,1
+0,benchmarks/simple_assert_double.c,qflia,--claim,1,--solver,z3,--no-itp
+0,benchmarks/simple_assert_double.c,qflia,--claim,1
+0,benchmarks/simple_assert_double.c,qfuf,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_assert_double.c,qfuf,--claim,1
 0,benchmarks/simple_assert_double.c,qfcuf,--claim,1

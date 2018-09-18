@@ -5,29 +5,6 @@ set(HIFROG_SOURCE_FILES
         nopartition/hifrog_symex_target_equation_no_partition.h
         nopartition/symex_no_partition.cpp
         nopartition/symex_no_partition.h
-        solvers/check_opensmt2.h
-        solvers/check_opensmt2.cpp
-        solvers/itp.h
-        solvers/prop_itp.cpp
-        solvers/prop_itp.h
-        solvers/satcheck_opensmt2.cpp
-        solvers/satcheck_opensmt2.h
-        solvers/smt_itp.cpp
-        solvers/smt_itp.h
-        solvers/smtcheck_opensmt2.cpp
-        solvers/smtcheck_opensmt2.h
-        solvers/smtcheck_opensmt2_cuf.cpp
-        solvers/smtcheck_opensmt2_cuf.h
-        solvers/smtcheck_opensmt2_la.cpp
-        solvers/smtcheck_opensmt2_la.h
-        solvers/smtcheck_opensmt2_lia.cpp
-        solvers/smtcheck_opensmt2_lia.h
-        solvers/smtcheck_opensmt2_lra.cpp
-        solvers/smtcheck_opensmt2_lra.h
-        solvers/smtcheck_opensmt2_uf.cpp
-        solvers/smtcheck_opensmt2_uf.h
-        solvers/solver_options.h
-        solvers/naming_boolbv.h
         assertion_info.h
         call_stack.h
         check_claims.cpp
@@ -66,7 +43,6 @@ set(HIFROG_SOURCE_FILES
         summary_info.h
         summary_store.cpp
         summary_store.h
-        #sumo.cpp
         symex_assertion_sum.cpp
         symex_assertion_sum.h
         theory_refiner.cpp
@@ -77,23 +53,15 @@ set(HIFROG_SOURCE_FILES
         version.h
         xml_interface.cpp
         xml_interface.h
-        utils/naming_helpers.h
-        utils/naming_helpers.cpp
-        utils/unsupported_operations.h
-        utils/unsupported_operations.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
-        #reportt.cpp reportt.h
-        utils/UnionFind.cpp
-        utils/UnionFind.h
-        utils/string_utils.h
-        utils/containers_utils.h
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
-        interface/convertor.h utils/expressions_utils.cpp)
+        interface/convertor.h 
+    )
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
@@ -109,6 +77,7 @@ endif()
 
 
 option(PRODUCE_PROOF "" ON)
+option(USE_Z3 "" OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 
@@ -134,6 +103,7 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
     #-DDISABLE_OPTIMIZATIONS
+    #-DLATTICE_REF_ALGORITHM
     )
 
 find_library(OPENSMT2_LIB NAMES opensmt2 libopensm2)
@@ -146,16 +116,42 @@ if(NOT OPENSMT2_INCLUDE)
 	message(FATAL_ERROR "opensmt header files not found")
 endif()
 
+# Locating Z3 and setting related options
+if(USE_Z3)
+    find_package(Z3 CONFIG)
+    if(Z3_FOUND)
+        message("Located z3 version: ${Z3_VERSION_STRING}")
+        #message(${Z3_LIBRARIES})
+        #message(${Z3_CXX_INCLUDE_DIRS})
+
+        target_compile_definitions(hifrog-lib PUBLIC -DZ3_AVAILABLE)
+        target_include_directories(hifrog-lib PUBLIC ${Z3_CXX_INCLUDE_DIR})
+        target_link_libraries(hifrog-lib ${Z3_LIBRARIES})
+        target_sources(hifrog-lib PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/smt_z3_summary_store.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/smt_z3_summary_store.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils/unsupported_operations_z3.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils/unsupported_operations_z3.cpp
+            )
+    else(Z3_FOUND)
+        message(FATAL ERROR "Unable to locate Z3 on your system! Specify the location or disable Z3 by setting USE_Z3 option to OFF")
+    endif(Z3_FOUND)
+endif(USE_Z3)
+######## end of Z3 related section
+
+add_subdirectory(solvers)
+add_subdirectory(utils)
+
 target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
 target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog-lib ansi-c cpp goto-symex pointer-analysis solvers util xml
+target_link_libraries(hifrog-lib hifrog-utils ansi-c cpp goto-symex pointer-analysis solvers util xml
 )
 
 target_link_libraries(hifrog hifrog-lib)
 
-set_target_properties(hifrog hifrog-lib
+set_target_properties(hifrog hifrog-lib hifrog-utils
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11

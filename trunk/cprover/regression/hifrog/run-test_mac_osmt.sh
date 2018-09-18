@@ -50,46 +50,111 @@ function test_one {
   #fixed so can pass params that are numbers 
   p4="${4%\"}"
   p4="${p4#\"}"
+  if [ "$p4" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
   
   p5="${5%\"}"
   p5="${p5#\"}"
-  
+  if [ "$p5" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi  
+
   p6="${6%\"}"
   p6="${p6#\"}"
+  if [ "$p6" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
   
   p7="${7%\"}"
   p7="${p7#\"}"
+  if [ "$p7" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p8="${8%\"}"
   p8="${p8#\"}"
+  if [ "$p8" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p9="${9%\"}"
   p9="${p9#\"}"
+  if [ "$p9" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p10="${10%\"}"
   p10="${p10#\"}"
+  if [ "$p10" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p11="${11%\"}"
   p11="${p11#\"}"
+  if [ "$p11" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p12="${12%\"}"
   p12="${p12#\"}"
+  if [ "$p12" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p13="${13%\"}"
   p13="${p13#\"}"
+  if [ "$p13" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p14="${14%\"}"
   p14="${p14#\"}"
+  if [ "$p14" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p15="${15%\"}"
   p15="${p15#\"}"
+  if [ "$p15" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi
 
   p16="${16%\"}"
   p16="${p16#\"}"
+  if [ "$p16" == "z3" ] ; then
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    ((IGNORED++))
+    return 1
+  fi  
 
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16"
-  $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16"
+  $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
     echo "Verify output against: $EXPECTED_OUTPUT"
@@ -117,12 +182,12 @@ function test_one {
 
 
 ################### MAIN ###############################
-PATH_reg=$(readlink -f $0)
+PATH_reg=$(readlink $0)
 PATH_reg=${PATH_reg: : -16}
 echo "This is the script for running regression tests;supports: prop,qflra,qfuf,qfcuf."
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"
-echo " - script path: $(readlink -f $0)"
+echo " - script path: $(readlink $0)"
 echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
@@ -143,22 +208,24 @@ echo " - create dir for output data of the regression tests: $OUTDIR"
 # location, you may ignore this comment
 hifrog=./../../build/hifrog
 
+
+
 # Iterating over all the test cases - When result shall match the known results
 for filename in testcases/*.c_tc 
 do
     # Per file, run all its inner test cases. 0 => clear summaries
     isFirst=1
-    IFS=$'\n'
+    #IFS=$'\n'
     for next in `cat $filename`
     do
         temp="${next%\"}"
 	temp="${temp#\"}"
-	arr=(`echo $temp | sed 's/,/\n/g'`)
+	arr=(${temp//,/ })
         if (($isFirst==1))
         then
 	  	isFirst=0
 	    	# Prepare the environment
-		mkdir -p "$OUTDIR/${arr[1]: : -2}" 
+		mkdir -p "$OUTDIR/${arr[1]%.*}" 
                 echo "***** Create Directory for test-case ${arr[1]} *****" 
         fi
 	test_one ${arr[1]} ${arr[2]} ${arr[0]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]} ${arr[10]} ${arr[11]} ${arr[12]} ${arr[13]} ${arr[14]} ${arr[15]} ${arr[16]}

@@ -1,4 +1,10 @@
 0,benchmarks/loop_assert_7.c,prop,--claim,1,--unwind,3
+0,benchmarks/loop_assert_7.c,qflra,--claim,1,--unwind,3,--solver,z3,--no-itp
 0,benchmarks/loop_assert_7.c,qflra,--claim,1,--unwind,3
+0,benchmarks/loop_assert_7.c,qflia,--claim,1,--unwind,3,--solver,z3,--no-itp
+0,benchmarks/loop_assert_7.c,qflia,--claim,1,--unwind,3
 benchmarks/loop_assert_7_c2.c_out,benchmarks/loop_assert_7.c,prop,--claim,2,--unwind,3
+benchmarks/loop_assert_7_c2.c_out,benchmarks/loop_assert_7.c,qflra,--claim,2,--unwind,3,--solver,z3,--no-itp
 benchmarks/loop_assert_7_c2.c_out,benchmarks/loop_assert_7.c,qflra,--claim,2,--unwind,3
+benchmarks/loop_assert_7_c2.c_out,benchmarks/loop_assert_7.c,qflia,--claim,2,--unwind,3,--solver,z3,--no-itp
+benchmarks/loop_assert_7_c2.c_out,benchmarks/loop_assert_7.c,qflia,--claim,2,--unwind,3

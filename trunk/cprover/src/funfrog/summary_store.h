@@ -31,7 +31,6 @@ public:
   // Serialization
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(std::vector<std::string> fileNames) = 0;
-
   
   // An already stored summary is implied by the new one - it is released
   // and represented by the stronger one, the id is still valid but represented

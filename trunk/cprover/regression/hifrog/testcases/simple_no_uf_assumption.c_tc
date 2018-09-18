@@ -1,3 +1,7 @@
 0,benchmarks/simple_no_uf_assumption.c,prop,--claim,1
+0,benchmarks/simple_no_uf_assumption.c,qflra,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_no_uf_assumption.c,qflra,--claim,1
+0,benchmarks/simple_no_uf_assumption.c,qflia,--claim,1,--solver,z3,--no-itp
+0,benchmarks/simple_no_uf_assumption.c,qflia,--claim,1
+0,benchmarks/simple_no_uf_assumption.c,qfuf,--claim,1,--solver,z3,--no-itp
 0,benchmarks/simple_no_uf_assumption.c,qfuf,--claim,1

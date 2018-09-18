@@ -1,3 +1,8 @@
+0,funfrog/01_choice/main2_err.c,qflra,--claim,1,--solver,z3,--no-itp
+0,funfrog/01_choice/main2_err.c,qflia,--claim,1,--solver,z3,--no-itp
+0,funfrog/01_choice/main2_err.c,qfuf,--claim,1,--solver,z3,--no-itp
 0,funfrog/01_choice/main2_err.c,prop,--claim,1
 0,funfrog/01_choice/main2_err.c,qflra,--claim,1
+0,funfrog/01_choice/main2_err.c,qflia,--claim,1
 0,funfrog/01_choice/main2_err.c,qfuf,--claim,1
+

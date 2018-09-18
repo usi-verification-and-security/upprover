@@ -11,26 +11,28 @@
 #include <util/ui_message.h>
 #include <goto-programs/goto_model.h>
 #include <funfrog/solvers/solver_options.h>
+
+#include "solvers/smtcheck_opensmt2_lra.h"
+#include "solvers/smtcheck_opensmt2_uf.h"
 #include "subst_scenario.h"
 
 #include <memory>
 
 class prepare_formula_no_partitiont;
 class partitioning_target_equationt;
-class prop_assertion_sumt;
 class prepare_formulat;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
+class solvert;
 class prop_conv_solvert;
 class symex_assertion_sumt;
 class smtcheck_opensmt2t_cuf;
-class smtcheck_opensmt2t_uf;
-class smtcheck_opensmt2t_lra;
+//class smtcheck_opensmt2t_uf; - till merge
+//class smtcheck_opensmt2t_lra;
 class smtcheck_opensmt2t_lia;
 class satcheck_opensmt2t;
 class ssa_solvert;
-
 
 class core_checkert : private messaget
 {
@@ -63,11 +65,11 @@ protected:
    solver_optionst solver_options; // Init once, use when ever create a new solver
 
   void initialize_solver();
-  smtcheck_opensmt2t_uf * initialize__euf_solver();
+  ssa_solvert            * initialize__euf_solver();
   smtcheck_opensmt2t_cuf * initialize__cuf_solver();
-  smtcheck_opensmt2t_lra * initialize__lra_solver();
-  smtcheck_opensmt2t_lia * initialize__lia_solver();
-  satcheck_opensmt2t * initialize__prop_solver();
+  ssa_solvert            * initialize__lra_solver();
+  ssa_solvert            * initialize__lia_solver();
+  satcheck_opensmt2t     * initialize__prop_solver();
   
   void initialize_solver_options();
   void initialize_solver_debug_options();
@@ -81,7 +83,7 @@ protected:
 #ifdef PRODUCE_PROOF  
   void extract_interpolants(partitioning_target_equationt& equation);
 #endif
-
+  
   void report_success();
   void report_failure();
   void assertion_violated(prepare_formulat& prop,
@@ -99,11 +101,15 @@ protected:
 
     bool assertion_holds_(const assertion_infot & assertion, bool store_summaries_with_assertion);
     bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
+    bool assertion_holds_smt_wt_lattice(const assertion_infot& assertion,
+          bool store_summaries_with_assertion); // Lattice refinement version
     void slice_target(partitioning_target_equationt&);
     bool prepareSSA(symex_assertion_sumt& symex);
     bool refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine);
 
     bool is_option_set(std::string const & o) { return !options.get_option(o).empty();}
+    
+    void delete_and_initialize_solver();
 
 };
 

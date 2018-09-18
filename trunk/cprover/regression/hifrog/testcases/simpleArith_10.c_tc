@@ -1,3 +1,7 @@
 0,benchmarks/simpleArith_10.c,prop,--claim,1
-0,benchmarks/simpleArith_10.c,qfuf,--claim,1
-0,benchmarks/simpleArith_10.c,qflra,--claim,1
+0,benchmarks/simpleArith_10.c,qfuf,--claim,1,--unwind,20,--solver,z3,--no-itp
+0,benchmarks/simpleArith_10.c,qfuf,--claim,1,--unwind,20
+0,benchmarks/simpleArith_10.c,qflra,--claim,1,--unwind,20,--solver,z3,--no-itp
+0,benchmarks/simpleArith_10.c,qflra,--claim,1,--unwind,20
+0,benchmarks/simpleArith_10.c,qflia,--claim,1,--unwind,20,--solver,z3,--no-itp
+0,benchmarks/simpleArith_10.c,qflia,--claim,1,--unwind,20
