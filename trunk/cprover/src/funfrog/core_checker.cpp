@@ -1107,7 +1107,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     initialize__euf_option_solver();
-    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{initialize__euf_solver(1)};
+    auto uf_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_uf>{new smtcheck_opensmt2t_uf(solver_options, "uf checker")};
     auto & uf_solver = *uf_solver_ptr;
 
 
@@ -1186,7 +1186,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     initialize__lra_option_solver();
-    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{initialize__lra_solver(1)};
+    auto lra_solver_ptr = std::unique_ptr<smtcheck_opensmt2t_lra>{new smtcheck_opensmt2t_lra(solver_options, "lra checker")};
     auto & lra_solver = *lra_solver_ptr;
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );

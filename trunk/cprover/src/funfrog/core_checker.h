@@ -71,10 +71,6 @@ protected:
   ssa_solvert            * initialize__lia_solver();
   satcheck_opensmt2t     * initialize__prop_solver();
   
-  // Temp till merge
-  smtcheck_opensmt2t_uf* initialize__euf_solver(int x) { return new smtcheck_opensmt2t_uf(solver_options, "uf checker");}
-  smtcheck_opensmt2t_lra* initialize__lra_solver(int x) { return new smtcheck_opensmt2t_lra(solver_options, "lra checker");}
-  
   void initialize_solver_options();
   void initialize_solver_debug_options();
   void initialize__euf_option_solver();
