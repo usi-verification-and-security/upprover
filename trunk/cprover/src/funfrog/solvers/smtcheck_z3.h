@@ -181,6 +181,8 @@ protected:
     
     bool m_last_partition_closed = true;
 
+    std::string m_header_str;
+
 #ifdef DISABLE_OPTIMIZATIONS  
     // Dump all queries?
     bool          m_dump_queries;
@@ -188,8 +190,6 @@ protected:
     std::string   m_base_dump_query_name;
     std::string   m_pre_queries_file_name;
 
-    // Dump files header
-    std::string m_header_str;
     
     std::map <std::string,std::string> ite_map_str;
     std::set <std::string> var_set_str;

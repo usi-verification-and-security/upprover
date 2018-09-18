@@ -832,17 +832,17 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
   } else { // Set a default name in case no name was provided by user
     options.set_option("dump-query-name", "query_default");
-  }  
-  if (cmdline.isset("solver")) {
-    options.set_option("solver", cmdline.get_value("solver")); 
-  } else {
-    options.set_option("solver", "osmt");
   }
   
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else
   status() << "\n*** EXECUTE WITH OPTIMIZATIONS (DDISABLE_OPTIMIZATIONS is off) ***\n" << eom;
-#endif     
+#endif
+    if (cmdline.isset("solver")) {
+        options.set_option(HiFrogOptions::SOLVER, cmdline.get_value("solver"));
+    } else {
+        options.set_option(HiFrogOptions::SOLVER, "osmt");
+    }
   options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));

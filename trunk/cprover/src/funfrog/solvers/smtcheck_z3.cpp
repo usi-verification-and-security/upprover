@@ -221,7 +221,7 @@ bool smtcheck_z3t::solve()
                 m_solver->add(m_top_level_formulas[i]);
         }
     } catch (const z3::exception& e) { 
-        cerr << ";; Error during push z3 formula" << e.msg();  
+        std::cerr << ";; Error during push z3 formula" << e.msg();
         exit(0);
     }
 

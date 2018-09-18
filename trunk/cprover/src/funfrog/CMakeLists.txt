@@ -102,8 +102,8 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
-    -DDISABLE_OPTIMIZATIONS
-    -DLATTICE_REF_ALGORITHM
+    #-DDISABLE_OPTIMIZATIONS
+    #-DLATTICE_REF_ALGORITHM
     )
 
 find_library(OPENSMT2_LIB NAMES opensmt2 libopensm2)
