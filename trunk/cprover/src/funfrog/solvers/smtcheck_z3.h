@@ -17,10 +17,10 @@ using namespace z3;
 #include <util/symbol.h>
 
 #include "solver_options.h"
-#include "../utils/expressions_utils.h"
-#include "../utils/unsupported_operations_z3.h" // KE: shall move all the code of unsupported here
-#include "funfrog/interface/convertor.h"
-#include "funfrog/interface/ssa_solvert.h"
+#include <funfrog/utils/expressions_utils.h>
+#include <funfrog/utils/unsupported_operations_z3.h> // KE: shall move all the code of unsupported here
+#include <funfrog/interface/convertor.h>
+#include <funfrog/interface/ssa_solvert.h>
 
 // For interpolation
 #ifdef PRODUCE_PROOF

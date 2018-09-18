@@ -28,11 +28,11 @@ class boolbv_mapt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-  satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
+    satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
 
-  virtual ~satcheck_opensmt2t() {
-    freeSolver();
-  }
+    virtual ~satcheck_opensmt2t() {
+      freeSolver();
+    }
 
     bool is_overapprox_encoding() const override;
 
@@ -47,30 +47,30 @@ public:
               throw "Error during solving!";
       }
       throw std::logic_error("Unreachable");
-  }
+    }
 
-  bool is_overapproximating() const override {return false;}
+    bool is_overapproximating() const override {return false;}
 
-  virtual resultt prop_solve() override;
-  virtual tvt l_get(literalt a) const override;
+    virtual resultt prop_solve() override;
+    virtual tvt l_get(literalt a) const override;
 
-  bool is_assignment_true(FlaRef l) const override {
-      auto res = l_get(flaref_to_literal(l));
-      return res.is_true();
-  }
+    bool is_assignment_true(FlaRef l) const override {
+        auto res = l_get(flaref_to_literal(l));
+        return res.is_true();
+    }
 
-  exprt get_value(const exprt &expr) override {
-      return get_bv_converter().get(expr);
-  }
+    exprt get_value(const exprt &expr) override {
+        return get_bv_converter().get(expr);
+    }
 
-  using cnf_solvert::land;
-  using convertort::land;
-  using cnf_solvert::lor;
-  using convertort::lor;
-  using cnf_solvert::set_equal;
-  using convertort::set_equal;
+    using cnf_solvert::land;
+    using convertort::land;
+    using cnf_solvert::lor;
+    using convertort::lor;
+    using cnf_solvert::set_equal;
+    using convertort::set_equal;
 
-  virtual void lcnf(const bvt &bv) override;
+    virtual void lcnf(const bvt &bv) override;
 
     FlaRef land(FlaRef l1, FlaRef l2) override {
         return literal_to_flaref(cnf_solvert::land(
@@ -97,72 +97,71 @@ public:
                 flaref_to_literal(l2));
     }
 
-  void convert(const vector<literalt> & bv, vec<PTRef> & args);
+    const virtual std::string solver_text() override;
+    virtual void set_assignment(literalt a, bool value) override;
+    // extra MiniSat feature: solve with assumptions
+    virtual void set_assumptions(const bvt& _assumptions) override;
+    virtual bool is_in_conflict(literalt a) const override;
 
-  const virtual std::string solver_text() override;
-  virtual void set_assignment(literalt a, bool value) override;
-  // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt& _assumptions) override;
-  virtual bool is_in_conflict(literalt a) const override;
+    virtual bool has_set_assumptions() const override { return true; }
 
-  virtual bool has_set_assumptions() const override { return true; }
+    virtual bool has_is_in_conflict() const override { return true; }
 
-  virtual bool has_is_in_conflict() const override { return true; }
+    void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
 
-  void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
-
-  const boolbvt & get_bv_converter() const {return *boolbv_convert;}
-  boolbvt & get_bv_converter() {return *boolbv_convert;}
+    const boolbvt & get_bv_converter() const {return *boolbv_convert;}
+    boolbvt & get_bv_converter() {return *boolbv_convert;}
 
     void assert_literal(FlaRef lit) override{
-      this->l_set_to_true(flaref_to_literal(lit));
-  }
-
+        this->l_set_to_true(flaref_to_literal(lit));
+    }
 
 
 #ifdef PRODUCE_PROOF  
-  virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants) const override;
-  
-  virtual bool can_interpolate() const override;
+    virtual void get_interpolant(const interpolation_taskt& partition_ids,
+        interpolantst& interpolants) const override;
 
-  // Extract interpolant form OpenSMT Egraph
-  void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
+    virtual bool can_interpolate() const override;
 
-  // Simple recursive extraction of clauses from OpenSMT Egraph
-  literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
-    ptref_cachet& ptref_cache) const;
+    // Extract interpolant form OpenSMT Egraph
+    void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
 
-  void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
+    // Simple recursive extraction of clauses from OpenSMT Egraph
+    literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
+      ptref_cachet& ptref_cache) const;
 
-  void generalize_summary(prop_itpt& itp, const std::vector<symbol_exprt>& symbols);
+    void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
+
+    void generalize_summary(prop_itpt& itp, const std::vector<symbol_exprt>& symbols);
 #endif
   
-  const std::string& get_last_var() { return id_str; }
-  
-  literalt new_variable() override;
+    const std::string& get_last_var() { return id_str; }
+
+    literalt new_variable() override;
 
 protected:
-  // Use in the convert from SSA -> SMT-prop encoding
+    // Use in the convert from SSA -> SMT-prop encoding
 
-  // Solver verbosity
-  unsigned solver_verbosity;
-  // Mapping from variable indices to their E-nodes in PeRIPLO
-  std::string id_str;
+    // Solver verbosity
+    unsigned solver_verbosity;
+    // Mapping from variable indices to their E-nodes in PeRIPLO
+    std::string id_str;
 
-  FlaRef convert_bool_expr(const exprt &expr) override {
-      assert(is_boolean(expr));
-      return literal_to_flaref(get_bv_converter().convert(expr));
-  }
+    FlaRef convert_bool_expr(const exprt &expr) override {
+        assert(is_boolean(expr));
+        return literal_to_flaref(get_bv_converter().convert(expr));
+    }
+    
+    void convert(const vector<literalt> & bv, vec<PTRef> & args);
 
-  void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}
+    void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}
 
 #ifdef PRODUCE_PROOF  
-  void setup_reduction();
+    void setup_reduction();
 
-  void setup_interpolation();
+    void setup_interpolation();
 
-  void setup_proof_transformation();
+    void setup_proof_transformation();
 
 #endif
 
@@ -172,13 +171,13 @@ protected:
     { set_variable_name(a, std::string{name.c_str()}); }
     void set_variable_name(literalt a, const std::string & name);
 
-  // Initialize the OpenSMT context
-  virtual void initializeSolver(solver_optionst solver_options, const char*) override;
+    // Initialize the OpenSMT context
+    virtual void initializeSolver(solver_optionst solver_options, const char*) override;
 
 
-  void add_variables();
-  void increase_id();
-  unsigned decode_id(const char* id) const;
+    void add_variables();
+    void increase_id();
+    unsigned decode_id(const char* id) const;
 
 private:
     std::unique_ptr<boolbvt> boolbv_convert;

@@ -22,27 +22,23 @@ class prop_itpt: public itpt
 public:
     typedef std::vector<bvt> clausest;
 
-  prop_itpt() :itpt(), _no_variables(1), _no_orig_variables(1) {}
-  ~prop_itpt() {} 
+    prop_itpt() :itpt(), _no_variables(1), _no_orig_variables(1) {}
+    ~prop_itpt() {} 
 
-  virtual bool is_trivial() const override { return root_literal.is_constant(); }
-  void set_trivial() {root_literal = const_literal(true);}
+    virtual bool is_trivial() const override { return root_literal.is_constant(); }
+    void set_trivial() {root_literal = const_literal(true);}
 
-  literalt land(literalt a, literalt b);
-  literalt lor(literalt a, literalt b);
-  literalt lnot(literalt a);
-  void print(std::ostream& out) const;
+    literalt land(literalt a, literalt b);
+    literalt lor(literalt a, literalt b);
+    literalt lnot(literalt a);
+    void print(std::ostream& out) const;
 
-  // Serialization
-  virtual void serialize(std::ostream& out) const override;
-  void deserialize(std::istream& in);
+    // Serialization
+    virtual void serialize(std::ostream& out) const override;
+    void deserialize(std::istream& in);
 
-  const clausest & get_clauses() const {return clauses;}
-  clausest & get_clauses() {return clauses;}
-
-    literalt new_variable() {
-        return literalt(_no_variables++, false);
-    }
+    const clausest & get_clauses() const {return clauses;}
+    clausest & get_clauses() {return clauses;}
 
     std::vector<bool>& get_symbol_mask() { return symbol_mask; }
 
@@ -64,11 +60,11 @@ public:
     bool equals(itpt * other) const override;
 
 protected:
-  // Clauses of the interpolant representation
-  clausest clauses;
+    // Clauses of the interpolant representation
+    clausest clauses;
   
-  // Mask for used symbols
-  std::vector<bool> symbol_mask;
+    // Mask for used symbols
+    std::vector<bool> symbol_mask;
 
     // Literal equivalent to the interpolant root
     literalt root_literal;
@@ -79,13 +75,17 @@ protected:
     // Upper bound on the number of variables in the interpolant. Variables with
     // a higher number are due to Tseitin encoding
     unsigned _no_orig_variables;
+    
+    literalt new_variable() {
+        return literalt(_no_variables++, false);
+    }
 
-  void gate_and(literalt a, literalt b, literalt o);
-  void gate_or(literalt a, literalt b, literalt o);
-  
-  void print_clause(std::ostream& out, const bvt& clause) const;
+    void gate_and(literalt a, literalt b, literalt o);
+    void gate_or(literalt a, literalt b, literalt o);
 
-  const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
+    void print_clause(std::ostream& out, const bvt& clause) const;
+
+    const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
 };
 
 #endif

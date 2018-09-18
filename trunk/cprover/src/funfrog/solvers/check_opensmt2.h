@@ -1,4 +1,4 @@
-/*******************************************************************\
+/***s****************************************************************\
 
 Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 
@@ -78,33 +78,24 @@ public:
 
     virtual bool is_overapproximating() const = 0;
 
-   // virtual bool is_assignment_true(literalt a) const = 0; //SA: moved to the interface class solvert
-
-   // virtual exprt get_value(const exprt &expr) = 0;  //SA: moved to the interface class solvert
-
-#ifdef PRODUCE_PROOF
-    //virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0; //SA:moved to interface
-
-#endif //PRODUCE_PROOF
-
-  /* General consts for prop version - Shall be Static. No need to allocate these all the time */
-  static const char* false_str;
-  static const char* true_str;
+    /* General consts for prop version - Shall be Static. No need to allocate these all the time */
+    static const char* false_str;
+    static const char* true_str;
 
 protected:
-  // Common Data members
-  Opensmt* osmt;
-  Logic* logic;
-  MainSolver* mainSolver; 
+    // Common Data members
+    Opensmt* osmt;
+    Logic* logic;
+    MainSolver* mainSolver; 
 
-  // Count of the created partitions; This is used by HiFrog to id a partition; correspondence with OpenSMT partitions needs to be kept!
-  unsigned partition_count;
+    // Count of the created partitions; This is used by HiFrog to id a partition; correspondence with OpenSMT partitions needs to be kept!
+    unsigned partition_count;
 
-  //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
-  std::vector<PTRef> current_partition;
+    //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
+    std::vector<PTRef> current_partition;
 
-  // Flag indicating if last partition has been closed properly
-  bool last_partition_closed = true;
+    // Flag indicating if last partition has been closed properly
+    bool last_partition_closed = true;
 
     /** These correspond to partitions of OpenSMT (top-level assertions);
      * INVARIANT: top_level_formulas.size() == partition_count (after closing current partition)
@@ -118,40 +109,40 @@ protected:
     std::vector<PTRef> ptrefs;
     
 #ifdef PRODUCE_PROOF
-  // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
-  ItpAlgorithm itp_algorithm;
-  ItpAlgorithm itp_euf_algorithm;
-  ItpAlgorithm itp_lra_algorithm;
-  std::string itp_lra_factor;
+    // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
+    ItpAlgorithm itp_algorithm;
+    ItpAlgorithm itp_euf_algorithm;
+    ItpAlgorithm itp_lra_algorithm;
+    std::string itp_lra_factor;
 
-  // OpenSMT2 Params
-  bool reduction;
-  unsigned int reduction_graph;
-  unsigned int reduction_loops;
+    // OpenSMT2 Params
+    bool reduction;
+    unsigned int reduction_graph;
+    unsigned int reduction_loops;
 
     // Can we interpolate?
-  bool ready_to_interpolate;
+    bool ready_to_interpolate;
 
     void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
                                           std::vector<PTRef> &interpolants) const;
 #endif
   
-  unsigned random_seed;
+    unsigned random_seed;
 
-  int verbosity;
+    int verbosity;
 
-  int certify;
+    int certify;
   
 #ifdef DISABLE_OPTIMIZATIONS
-  // Dump all queries?
-  bool dump_queries;
-  bool dump_pre_queries;
-  std::string base_dump_query_name;
-  std::string pre_queries_file_name;
+    // Dump all queries?
+    bool dump_queries;
+    bool dump_pre_queries;
+    std::string base_dump_query_name;
+    std::string pre_queries_file_name;
 
-  // Code for init these options
-  void set_dump_query(bool f);
-  void set_dump_query_name(const string& n);
+    // Code for init these options
+    void set_dump_query(bool f);
+    void set_dump_query_name(const string& n);
 #endif 
   
     void insert_top_level_formulas();

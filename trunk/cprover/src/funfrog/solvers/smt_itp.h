@@ -11,33 +11,33 @@ class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() : interpolant{PTRef_Undef} {}
-  ~smt_itpt() override = default;
+    smt_itpt() : interpolant{PTRef_Undef} {}
+    ~smt_itpt() override = default;
 
-  virtual  bool is_trivial() const override { return false; }
+    virtual  bool is_trivial() const override { return false; }
 
-  void setDecider(check_opensmt2t *_s);
-  void setTterm(Tterm& t) { templ = t; }
+    void setDecider(check_opensmt2t *_s);
+    void setTterm(Tterm& t) { templ = t; }
 
-  Tterm & getTempl() {return templ;}
-  const Tterm & getTempl() const {return templ;}
+    Tterm & getTempl() {return templ;}
+    const Tterm & getTempl() const {return templ;}
 
-  // Serialization
-  virtual void serialize(std::ostream& out) const override;
+    // Serialization
+    virtual void serialize(std::ostream& out) const override;
 
-  bool equals(itpt* other) const override;
+    bool equals(itpt* other) const override;
 
     // Getters & Setters
-  PTRef getInterpolant() const { return interpolant; }
-  void setInterpolant(PTRef pt) { interpolant = pt; }
+    PTRef getInterpolant() const { return interpolant; }
+    void setInterpolant(PTRef pt) { interpolant = pt; }
 
 protected:
-  // TODO: figure out better way how to store the interpolants
-  Tterm templ;
+    // TODO: figure out better way how to store the interpolants
+    Tterm templ;
 
-  smtcheck_opensmt2t *m_decider;
+    smtcheck_opensmt2t *m_decider;
 
-   PTRef interpolant;
+    PTRef interpolant;
 
 };
 

@@ -12,18 +12,18 @@ class itpt
 {
 public:
 
-  virtual ~itpt() {} // d'tor
+    virtual ~itpt() {} // d'tor
 
-  virtual bool is_trivial() const =0;
+    virtual bool is_trivial() const =0;
 
-  // TODO: think about how to do it, or wheter it is neccessary
-  bool usesVar(unsigned index)
-  { return true;}
+    // TODO: think about how to do it, or wheter it is neccessary
+    bool usesVar(unsigned index)
+    { return true;}
 
-  // Serialization
-  virtual void serialize(std::ostream& out) const = 0;
+    // Serialization
+    virtual void serialize(std::ostream& out) const = 0;
 
-  virtual bool equals(itpt* other) const = 0;
+    virtual bool equals(itpt* other) const = 0;
 
 };
 
