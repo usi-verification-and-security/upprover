@@ -539,6 +539,9 @@ void funfrog_parseoptionst::help()
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
 #endif
   "--no-partitions                do not use partitions to create the BMC formula\n\n"
+  "--solver                       SMT solving option, solver type:\n"
+  "                                 osmt - use OpenSMT2 solver,\n"
+  "                                 z3   - use Z3 solver\n"
   "\nTheory Refinement options:\n"
   "--theoref                      use experimental Theory Refining algorithm\n"
   "--force                        force refining CUF to BV without counterexamples\n"
@@ -584,9 +587,6 @@ void funfrog_parseoptionst::help()
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
-  "--solver                       SMT solving option, solver type:\n"
-  "                                 osmt - use OpenSMT2 solver,\n"
-  "                                 z3   - use Z3 solver\n"
 #endif
   "\nProgram representations:\n"
    "--show-symbol-table             show symbol table\n"
