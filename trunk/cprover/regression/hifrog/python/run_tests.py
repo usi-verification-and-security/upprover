@@ -230,6 +230,7 @@ def success(text):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--executable", help="path to HiFrog executable", default="./hifrog")
+    parser.add_argument("--timeout", help="Set the timeout for each run (in seconds)", type=int, default=120)
     parser.add_argument("--z3", help="Enables testing also with z3 solver", action="store_true")
     args = parser.parse_args()
     #print(args.executable)
@@ -237,7 +238,7 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    args.executable = ' ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ' + args.executable
+    args.executable = ' ulimit -Sv 12000000; ulimit -St ' + str(args.timeout) + '; /usr/bin/time -p ' + args.executable
     #print(args.executable)
     run(args)
 
