@@ -18,3 +18,12 @@ TEST(Split_test, test_Multiple)
     ASSERT_EQ(res.size(), 3);
     ASSERT_EQ(res[2], "three");
 }
+
+TEST(IsInt_test, test_IsInt)
+{
+    ASSERT_TRUE(is_integer_string("1"));
+    ASSERT_TRUE(is_integer_string("0"));
+    ASSERT_TRUE(is_integer_string("-1"));
+    ASSERT_FALSE(is_integer_string("0.5"));
+    ASSERT_FALSE(is_integer_string("-0.5"));
+}
