@@ -65,9 +65,9 @@ public:
   partition_ifacet& get_iface() { return *partition_iface; }
   const partition_ifacet& get_iface() const { return *partition_iface; }
 
-  unsigned start_idx;
+  unsigned start_idx=0;
   // Index after the last SSA corresponding to this partition
-  unsigned end_idx;
+  unsigned end_idx=0;
   symex_target_equationt::SSA_stepst::iterator start_it;
   // Iterator after the last SSA corresponding to this partition
   symex_target_equationt::SSA_stepst::iterator end_it;
