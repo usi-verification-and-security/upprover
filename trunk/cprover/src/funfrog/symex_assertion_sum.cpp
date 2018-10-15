@@ -141,7 +141,7 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
             for(const auto & partition_iface : *partition_ifaces) {
                 if (partition_iface->partition_id != NO_PARTITION_ID) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
-                    assert(partition.has_abstract_representation());
+                    assert(partition.has_abstract_representation()); (void)(partition);
                     log.status() << "Refining partition: " << partition_iface->partition_id << messaget::eom;
                     //equation.invalidate_partition(partition_iface->partition_id);
                     equation.refine_partition(partition_iface->partition_id);

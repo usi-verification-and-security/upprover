@@ -386,6 +386,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_IO = (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
+    (void)(is_IO); // MB: to avoid compiler warning about unused variable in Release
     assert("Error: using non-SSA symbol in the SMT encoding"
          && (is_L2_SSA_symbol(expr) || is_IO)); // KE: can be new type that we don't take care of yet
     // If appears - please fix the code in partition_target_euqationt
