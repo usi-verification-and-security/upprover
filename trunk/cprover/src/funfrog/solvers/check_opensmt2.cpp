@@ -134,12 +134,7 @@ fle_part_idt check_opensmt2t::new_partition() {
 void check_opensmt2t::insert_top_level_formulas() {
     for(auto i = pushed_formulas; i < (unsigned)top_level_formulas.size(); ++i) {
         char *msg = nullptr;
-#ifdef PRODUCE_PROOF
-        mainSolver->insertFormula(top_level_formulas[i], i, &msg);
-#else
         mainSolver->insertFormula(top_level_formulas[i], &msg);
-#endif //PRODUCE_PROOF
-
         if (msg != nullptr) {
             free(msg); // If there is an error, consider print msg
         }
