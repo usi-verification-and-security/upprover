@@ -3,7 +3,7 @@
  Module: Command Line Parsing
 
 \*******************************************************************/
-#include "parseoptions.h"
+#include "parser_hifrog.h"
 
 #include <util/config.h>
 #include <iostream>
@@ -71,7 +71,7 @@
 
 /*******************************************************************
 
- Function: funfrog_parseoptionst::funfrog_parseoptionst 
+ Function: parser_hifrogt::parser_hifrogt
 
  Inputs:
 
@@ -81,7 +81,7 @@
 
  \*******************************************************************/
 
-funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
+parser_hifrogt::parser_hifrogt(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
   //messaget((std::string("FUNFROG") + FUNFROG_VERSION))
@@ -91,90 +91,15 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
 {
 }
 
-// KE: Comment out since there is no more ns object in the system!
-// Consider re-write but with proper documantation
-/*******************************************************************\
-
-Function: cbmc_parseoptionst::show_properties (show-claims)
-
-Inputs:
-
-Outputs:
-
-Purpose: shows the info about each claim. This method is a modification to the
- show_properties() function in the goto-programs/show_properties.cpp.
-
-\*******************************************************************/
-/*
-namespace {
-    void show_properties(
-            const namespacet &ns,
-            const irep_idt &identifier,
-            ui_message_handlert::uit ui,
-            const goto_programt &goto_program) {
-        static int total = 1;
-        for (const auto &ins : goto_program.instructions) {
-            if (!ins.is_assert())
-                continue;
-
-            const source_locationt &source_location = ins.source_location;
-
-            const irep_idt &comment = source_location.get_comment();
-            //const irep_idt &property_class=source_location.get_property_class();
-            const irep_idt description =
-                    (comment == "" ? "assertion" : comment);
-
-            irep_idt property_id = source_location.get_property_id();
-
-            switch (ui) {
-               
-                case ui_message_handlert::uit::JSON_UI:
-                    assert(false);
-                    break;
-
-                case ui_message_handlert::uit::PLAIN:
-                    std::cout << "#Claim[" << total << "]" << " *** Property " << property_id << ":\n";
-
-                    std::cout << "  At: " << ins.source_location << '\n'
-                              << "  Guard: " << description << '\n'
-                              //<< "  " << from_expr(ns, identifier, ins.guard)
-                              << '\n';
-                    total++;
-                    std::cout << '\n';
-                    break;
-
-                default:
-                    assert(false);
-            }
-        }
-    }
-
-}
-*/
-/*******************************************************************/
-/*
-namespace {
-    void show_properties(
-            const namespacet &ns,
-            ui_message_handlert::uit ui,
-            const goto_functionst &goto_functions) {
-        if (ui != ui_message_handlert::uit::JSON_UI)
-            for (const auto &fct : goto_functions.function_map)
-                if (!fct.second.is_inlined())
-                    show_properties(ns, fct.first, ui, fct.second.body);
-    }
-}
-*/
-
 /*******************************************************************
 
- Function: funfrog_parseoptionst::set_default_options
+ Function: parser_hifrogt::set_default_options
 
  MB: taken from cbmc_parse_optionst::set_default_options;
  especially simplify must be set to true
 
 \*******************************************************************/
-void funfrog_parseoptionst::set_default_options(optionst &options)
+void parser_hifrogt::set_default_options(optionst &options)
 {
     // Default true
     options.set_option("assertions", true);
@@ -192,7 +117,7 @@ void funfrog_parseoptionst::set_default_options(optionst &options)
 
 /*******************************************************************
 
- Function: funfrog_parseoptionst::process_goto_program
+ Function: parser_hifrogt::process_goto_program
 
  Inputs:
 
@@ -201,14 +126,13 @@ void funfrog_parseoptionst::set_default_options(optionst &options)
  Purpose:
 
 \*******************************************************************/
-bool funfrog_parseoptionst::process_goto_program(
+bool parser_hifrogt::process_goto_program(
         const optionst &options)
 {
   try
   {
     // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
-    //      
 
     // Remove inline assembler; this needs to happen before
     // adding the library.
@@ -325,7 +249,7 @@ bool funfrog_parseoptionst::process_goto_program(
 }
 /*******************************************************************
 
- Function: funfrog_parseoptionst::get_goto_program
+ Function: parser_hifrogt::get_goto_program
    
  Inputs:
 
@@ -334,7 +258,7 @@ bool funfrog_parseoptionst::process_goto_program(
  Purpose:
 
 \*******************************************************************/
-bool funfrog_parseoptionst::get_goto_program(
+bool parser_hifrogt::get_goto_program(
         const optionst &options)
 {
 
@@ -380,7 +304,7 @@ bool funfrog_parseoptionst::get_goto_program(
 }
 /*******************************************************************
 
- Function: funfrog_parseoptionst::doit
+ Function: parser_hifrogt::doit
 
  Inputs:
 
@@ -390,7 +314,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
 \*******************************************************************/
 
-int funfrog_parseoptionst::doit()
+int parser_hifrogt::doit()
 {
 	  if (config.set(cmdline))
 	  {
@@ -474,7 +398,7 @@ int funfrog_parseoptionst::doit()
 
 /*******************************************************************\
   
- Function: funfrog_parseoptionst::help
+ Function: parser_hifrogt::help
 
  Inputs:
 
@@ -483,7 +407,7 @@ int funfrog_parseoptionst::doit()
  Purpose: display command line help
 
 \*******************************************************************/
-void funfrog_parseoptionst::help()
+void parser_hifrogt::help()
 {
   std::cout <<"\n"
     "* * *                HiFrog " << HIFROG_VERSION
@@ -625,7 +549,7 @@ void funfrog_parseoptionst::help()
 
 \*******************************************************************/
 
-unsigned funfrog_parseoptionst::count(const goto_functionst &goto_functions) const
+unsigned parser_hifrogt::count(const goto_functionst &goto_functions) const
 {
     unsigned long c=0;
     for(goto_functionst::function_mapt::const_iterator it =
@@ -653,7 +577,7 @@ unsigned funfrog_parseoptionst::count(const goto_functionst &goto_functions) con
 
 \*******************************************************************/
 
-unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
+unsigned parser_hifrogt::count(const goto_programt &goto_program) const
 {
   std::cout << "    Instruction count: " << goto_program.instructions.size()
     << std::endl;
@@ -661,7 +585,7 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
 }
 
 // ns is changed to goto_model, if using ns check how to change it to goto_model
-bool funfrog_parseoptionst::check_function_summarization()
+bool parser_hifrogt::check_function_summarization()
 {
     claim_mapt claim_map;
     claim_numberst claim_numbers;
@@ -797,7 +721,7 @@ bool funfrog_parseoptionst::check_function_summarization()
  Purpose: 
 
 \*******************************************************************/
-void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
+void parser_hifrogt::set_options(const cmdlinet &cmdline)
 {
   set_default_options(options);
 
@@ -1031,7 +955,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
        Update if needed (once upgrade cprover)
 
 \*******************************************************************/
-void funfrog_parseoptionst::eval_verbosity()
+void parser_hifrogt::eval_verbosity()
 {
     // this is our default verbosity
     unsigned int v=messaget::M_STATISTICS;

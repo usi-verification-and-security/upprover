@@ -8,7 +8,7 @@ Contributors: Daniel Kroening, CM Wintersteiger, Ondrej Sery,
 \*******************************************************************/
 
 #include <signal.h>
-#include "parseoptions.h"
+#include "parser_hifrog.h"
 #include <iostream>
 
 /*******************************************************************\
@@ -25,11 +25,11 @@ Function: main
 
 int main(int argc, const char **argv)
 {
-  funfrog_parseoptionst parseoptions(argc, argv);
+  parser_hifrogt parser(argc, argv);
   int r = 0;
   try
   {
-    r = parseoptions.main();
+    r = parser.main();
   }
   catch (const char* e)
   {

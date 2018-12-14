@@ -4,8 +4,8 @@ Module: Command Line Parsing
 
 \*******************************************************************/
 
-#ifndef CPROVER_FUNFROG_PARSEOPTIONS_H
-#define CPROVER_FUNFROG_PARSEOPTIONS_H
+#ifndef PARSER_HIFROG_H_H
+#define PARSER_HIFROG_H_H
 
 #include <fstream>
 #include <cstdlib>
@@ -63,7 +63,7 @@ class value_set_alloc_adaptort;
   "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
   "(partial-loops)"
 
-class funfrog_parseoptionst:
+class parser_hifrogt:
   public parse_options_baset,
   public xml_interfacet,
   public messaget
@@ -75,7 +75,7 @@ public:
   void ssos(){
     cbmc_status_interface("Partial Inlining");
   }
-  funfrog_parseoptionst(int argc, const char **argv);
+  parser_hifrogt(int argc, const char **argv);
 
 protected:
   goto_modelt goto_model;

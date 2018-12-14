@@ -18,8 +18,8 @@ set(HIFROG_SOURCE_FILES
         expr_pretty_print.cpp
         expr_pretty_print.h
         languages.cpp
-        parseoptions.cpp
-        parseoptions.h
+        parser_hifrog.cpp
+        parser_hifrog.h
         partition.h
         partition_iface.h
         partition_iface.cpp
@@ -60,8 +60,8 @@ set(HIFROG_SOURCE_FILES
         solvers/interpolating_solver_fwd.h
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
-        interface/convertor.h 
-    )
+        interface/convertor.h
+        )
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)

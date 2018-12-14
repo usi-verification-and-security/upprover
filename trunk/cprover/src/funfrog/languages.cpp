@@ -18,11 +18,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <java_bytecode/java_bytecode_language.h>
 #endif
 
-#include "parseoptions.h"
+#include "parser_hifrog.h"
 
 /*******************************************************************\
 
-Function: funfrog_parseoptionst::register_languages
+Function: parser_hifrogt::register_languages
 
   Inputs:
 
@@ -32,7 +32,7 @@ Function: funfrog_parseoptionst::register_languages
 
 \*******************************************************************/
 
-void funfrog_parseoptionst::register_languages()
+void parser_hifrogt::register_languages()
 {
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);
