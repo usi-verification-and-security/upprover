@@ -4,12 +4,11 @@ Module: Command Line Parsing
 
 \*******************************************************************/
 
-#ifndef PARSER_HIFROG_H_H
-#define PARSER_HIFROG_H_H
+#ifndef PARSER_HIFROG_H
+#define PARSER_HIFROG_H
 
 #include <fstream>
 #include <cstdlib>
-#include <langapi/language_util.h>
 
 #include <util/options.h>
 #include "xml_interface.h"
@@ -19,12 +18,9 @@ Module: Command Line Parsing
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
-#include <goto-programs/goto_functions.h>
-#include <pointer-analysis/value_sets.h>
+//#include <goto-programs/goto_functions.h>
 
 #include <goto-programs/goto_model.h>
-
-class value_set_alloc_adaptort;
 
 #define FUNFROG_OPTIONS \
   "D:I:(16)(32)(64)(v):(version)" \
@@ -69,17 +65,14 @@ class parser_hifrogt:
   public messaget
 {
 public:
-  virtual int doit();
-  virtual void help();
+  int doit() override;
+  void help() override;
 
-  void ssos(){
-    cbmc_status_interface("Partial Inlining");
-  }
   parser_hifrogt(int argc, const char **argv);
 
 protected:
   goto_modelt goto_model;
-  ui_message_handlert ui_message_handler; // KE: due to chnage from register_languages to messaget
+  ui_message_handlert ui_message_handler; // KE: due to change from register_languages to messaget
 
   void register_languages();
   void get_command_line_options(optionst &);
@@ -90,10 +83,7 @@ protected:
 
   bool process_goto_program(const optionst &);
   bool get_goto_program(const optionst &);
-  bool check_function_summarization();
-
- // unsigned long report_mem(void) const;
- // unsigned long report_max_mem(unsigned long mem) const;
+  bool validate_input_options();
   
   void set_options(const cmdlinet &cmdline);
   void eval_verbosity();
@@ -102,8 +92,8 @@ protected:
   std::ofstream statfile;
 
 private:
-  void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; } // KE: adjust for CBMC 5.5 interface
-  void cbmc_status_interface(std::string msg) { status() << msg << eom; } // KE: adjust for CBMC 5.5 interface
+  void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; }
+  void cbmc_status_interface(std::string msg) { status() << msg << eom; }
 };
 
 #endif

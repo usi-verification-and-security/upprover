@@ -60,14 +60,6 @@ void get_claims(const goto_functionst &goto_functions,
                 claim_mapt &claim_map,
                 claim_numberst &claim_numbers);
 
-/*
-// KE: Not in use
-void show_claims(const namespacet &ns,
-                 const claim_mapt &claim_map, 
-                 const claim_numberst &claim_numbers,
-                 ui_message_handlert::uit ui);
-*/
-
 void store_claims(const claim_mapt &claim_map,
     const claim_numberst &claim_numbers);
 
