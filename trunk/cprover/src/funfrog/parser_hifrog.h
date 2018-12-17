@@ -75,7 +75,7 @@ protected:
   goto_modelt goto_model;
   ui_message_handlert ui_message_handler; // KE: due to change from register_languages to messaget
 
-  unsigned claim_user_num = 0;
+  unsigned claim_user_nr = 0;
   claim_numberst claim_numbers;
   claim_checkmapt claim_checkmap;
 

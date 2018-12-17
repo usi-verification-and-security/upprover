@@ -171,13 +171,13 @@ int parser_hifrogt::doit()
 
     calculate_show_claims(claim_numbers, claim_checkmap);
 
-    if(validate_input_options(claim_numbers, claim_user_num)) {
+    if(validate_input_options(claim_numbers, claim_user_nr)) {
         check_claims(goto_model,
                      claim_checkmap,
                      claim_numbers,
                      options,
                      ui_message_handler,
-                     claim_user_num);
+                     claim_user_nr);
     }
     else {
         cbmc_status_interface("Please check --help to revise the user's options ");
@@ -456,7 +456,7 @@ void parser_hifrogt::calculate_show_claims(claim_numberst &claim_numbers, claim_
 \*******************************************************************/
 
 // ns is changed to goto_model, if using ns check how to change it to goto_model
-bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers, unsigned &claim_user_num)
+bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers, unsigned &claim_user_nr)
 {
     // perform standalone check (all the functionality remains the same)
     if(cmdline.isset("claim") &&
@@ -476,8 +476,8 @@ bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers,
       return false;
     }
     else if(cmdline.isset("claim")) {
-      claim_user_num=atoi(cmdline.get_value("claim").c_str());
-      if (claim_user_num == 0 || claim_user_num > claim_numbers.size()) {
+      claim_user_nr=atoi(cmdline.get_value("claim").c_str());
+      if (claim_user_nr == 0 || claim_user_nr > claim_numbers.size()) {
     	cbmc_error_interface("Testclaim not found.");
         return false;
       }
@@ -489,7 +489,7 @@ bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers,
     {
       cbmc_error_interface("A specific claim is not set, nor any other claim specification is set.");
       cbmc_status_interface("Warrning: --claim is set to 1.");
-      claim_user_num = 1; // Set as defualt
+      claim_user_nr = 1; // Set as defualt
     }
     
     // option unsupported in cuf or prop

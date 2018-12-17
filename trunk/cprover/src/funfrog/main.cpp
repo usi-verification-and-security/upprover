@@ -3,7 +3,7 @@
 Module: Main Module
 Contributors: Daniel Kroening, CM Wintersteiger, Ondrej Sery,
                        Grigory Fedyukovich, Karine Even Mendoza,
-                       Martin Blicha, Sepideh Asadi
+                       Martin Blicha, Sepideh Asadi, Leonardo Alt
 
 \*******************************************************************/
 

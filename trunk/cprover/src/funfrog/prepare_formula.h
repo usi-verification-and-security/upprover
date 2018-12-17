@@ -1,6 +1,6 @@
 
-#ifndef SMT_ASSERTION_SUM_H
-#define SMT_ASSERTION_SUM_H
+#ifndef PREPARE_FORMULA_H
+#define PREPARE_FORMULA_H
 
 #include <util/message.h>
 #include <util/ui_message.h>

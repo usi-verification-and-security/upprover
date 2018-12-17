@@ -104,7 +104,7 @@ void check_claims(
   claim_numberst &claim_numbers,
   const optionst& options,
   ui_message_handlert &_message_handler,
-  unsigned claim_user_num)
+  unsigned claim_user_nr)
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res {options.get_unsigned_int_option("unwind")};
@@ -151,7 +151,7 @@ void check_claims(
 
     // GF: currently works only for one assertion (either specified in --claim or the first one)
     while(ass_ptr != main_body.instructions.end() &&
-              (claim_numbers[ass_ptr] != claim_user_num) == (claim_user_num != 0))
+              (claim_numbers[ass_ptr] != claim_user_nr) == (claim_user_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
@@ -238,7 +238,7 @@ void check_claims(
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     while(ass_ptr != main_body.instructions.end() &&
-            (claim_numbers[ass_ptr] != claim_user_num) == (claim_user_num != 0))
+            (claim_numbers[ass_ptr] != claim_user_nr) == (claim_user_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
@@ -317,7 +317,7 @@ Function: get_claims
 
 void get_claims(
   const goto_functionst &goto_functions,
-  claim_checkmapt &claim_map,
+  claim_checkmapt &claim_checkmap,
   claim_numberst &claim_numbers)
 {    
   forall_goto_functions(fit, goto_functions)
@@ -327,8 +327,8 @@ void get_claims(
       {
         if(it->type==ASSERT)
         {
-          claim_map[it] = std::make_pair(false, true);
-          claim_numbers[it] = claim_map.size();
+          claim_checkmap[it] = std::make_pair(false, true);
+          claim_numbers[it] = claim_checkmap.size();
         }
       }
   }
@@ -429,7 +429,7 @@ void show_claims(const namespacet &ns,
 }
 */
 
-void store_claims(const claim_checkmapt &claim_map,
+void store_claims(const claim_checkmapt &claim_checkmap,
                  const claim_numberst &claim_numbers)
 {
   std::ofstream mapping;
