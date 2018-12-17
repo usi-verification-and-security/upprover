@@ -84,9 +84,110 @@ parser_hifrogt::parser_hifrogt(int argc, const char **argv):
   //messaget(*(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
   messaget(ui_message_handler),
   ui_message_handler(cmdline, "FUNFROG " FUNFROG_VERSION)
+
 {
 }
+/*******************************************************************
 
+ Function: parser_hifrogt::doit
+
+ Purpose: invoke main modules
+
+\*******************************************************************/
+
+int parser_hifrogt::doit()
+{
+    if (config.set(cmdline))
+    {
+        usage_error();
+        exit(1);
+    }
+
+    if(cmdline.isset("version"))
+    {
+        std::cout << FUNFROG_VERSION << std::endl;
+        return 1;
+    }
+
+    register_languages();
+    set_options(cmdline);
+
+    //stream_message_handlert mh(std::cout);
+    set_message_handler(ui_message_handler);
+
+    eval_verbosity();
+
+
+    if(cmdline.args.size()==0)
+    {
+        cbmc_error_interface("Please provide an input file.");
+        return 1;
+    }
+    else if (cmdline.args.size()>1)
+    {
+        cbmc_error_interface("Multiple input files not supported.");
+        return 1;
+    }
+
+    std::ifstream infile(cmdline.args[0].c_str());
+    if (!infile)
+    {
+        cbmc_error_interface(std::string("Error opening file `")+cmdline.args[0]+"'.");
+        return 1;
+    }
+
+    //namespacet ns (symbol_table);
+    cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
+    auto before=timestamp();
+
+    if(get_goto_program(options))
+        return 6;
+
+    auto after=timestamp();
+    cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
+
+
+    if (cmdline.isset("show-symbol-table"))
+    {
+        show_symbol_table(goto_model, ui_message_handler.get_ui());
+        return true;
+    }
+
+    if(cmdline.isset("show-goto-functions"))
+    {
+
+        show_goto_functions(
+                goto_model,
+                get_message_handler(),
+                ui_message_handler.get_ui(),
+                false);
+        return true;
+    }
+
+//  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
+//    cbmc_status_interface("Please set either ratio or time for reduction or number of proof traversals.");
+//    return false;
+//  }
+
+    calculate_show_claims(claim_numbers, claim_checkmap);
+
+    if(validate_input_options(claim_numbers, claim_user_num)) {
+        check_claims(goto_model,
+                     claim_checkmap,
+                     claim_numbers,
+                     options,
+                     ui_message_handler,
+                     claim_user_num);
+    }
+    else {
+        cbmc_status_interface("Please check --help to revise the user's options ");
+        return 1;
+    }
+
+    cbmc_status_interface("#X: Done.");
+
+    return 0;
+}
 /*******************************************************************
 
  Function: parser_hifrogt::set_default_options
@@ -117,19 +218,19 @@ void parser_hifrogt::set_default_options(optionst &options)
 
  Purpose:
 
+ Note: KE: update  new cprover version - taken from:
+ cbmc_parseoptionst::process_goto_program
+  Consider adding more optimizations as full slicing or non-det statics
+
+    // Remove inline assembler; this needs to happen before
+    // adding the library.
+    //remove_asm(goto_model);
 \*******************************************************************/
 bool parser_hifrogt::process_goto_program(
         const optionst &options)
 {
   try
   {
-    // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
-    // Consider adding more optimizations as full slicing or non-det statics
-
-    // Remove inline assembler; this needs to happen before
-    // adding the library.
-    //remove_asm(goto_model);
-
     // KE: Only to prop logic
     if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
     {
@@ -284,98 +385,7 @@ bool parser_hifrogt::get_goto_program(
 
   return false;
 }
-/*******************************************************************
 
- Function: parser_hifrogt::doit
-
- Purpose: invoke main modules
-
-\*******************************************************************/
-
-int parser_hifrogt::doit()
-{
-	  if (config.set(cmdline))
-	  {
-	    usage_error();
-	    exit(1);
-	  }
-
-  if(cmdline.isset("version"))
-  {
-    std::cout << FUNFROG_VERSION << std::endl;
-    return 1;
-  }
-  
-  register_languages();
-  set_options(cmdline);  
-  
-  //stream_message_handlert mh(std::cout);
-  set_message_handler(ui_message_handler);
-
-  eval_verbosity();
-
-
-  if(cmdline.args.size()==0)
-  {
-    cbmc_error_interface("Please provide an input file.");
-    return 1;
-  }
-  else if (cmdline.args.size()>1)
-  {
-    cbmc_error_interface("Multiple input files not supported.");
-    return 1;
-  }
-
-  std::ifstream infile(cmdline.args[0].c_str());
-  if (!infile)
-  {
-    cbmc_error_interface(std::string("Error opening file `")+cmdline.args[0]+"'.");
-    return 1;
-  }
-
-  //namespacet ns (symbol_table);
-  cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
-  auto before=timestamp();
-  
-  if(get_goto_program(options))
-    return 6;
-
-  auto after=timestamp();
-  cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
-
-
-  if (cmdline.isset("show-symbol-table"))
-  {
-    show_symbol_table(goto_model, ui_message_handler.get_ui());
-    return true;
-  }
-
-  if(cmdline.isset("show-goto-functions"))
-  {
-
-    show_goto_functions(
-            goto_model,
-            get_message_handler(),
-            ui_message_handler.get_ui(),
-            false);
-    return true;
-  }
-
-//  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
-//    cbmc_status_interface("Please set either ratio or time for reduction or number of proof traversals.");
-//    return false;
-//  }
-
-  if(!validate_input_options()) {
-    cbmc_status_interface("Please check --help to revise the user's options ");
-    return 1;
-  }
-  //TODO: else check_claims()
-
-  cbmc_status_interface("#X: Done.");
-
-  return 0;
-}
 
 /*******************************************************************\
   
@@ -419,6 +429,26 @@ unsigned parser_hifrogt::count(const goto_programt &goto_program) const
 
  Function:
 
+ Purpose: Calculate claim numbers, and print them on demand
+
+\*******************************************************************/
+void parser_hifrogt::calculate_show_claims(claim_numberst &claim_numbers, claim_checkmapt &claim_checkmap) {
+
+    get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
+    cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")");
+
+    if (cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
+        show_properties(goto_model, get_message_handler(), ui_message_handler.get_ui());
+        cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
+        exit(0);
+    }
+    if (cmdline.isset("claims-opt"))
+        store_claims(claim_checkmap, claim_numbers);
+}
+/*******************************************************************\
+
+ Function:
+
  Purpose: Checks if the user has provided a valid input w.r.t to
  logic, claims, availability of interpolation engine, ...
 
@@ -426,22 +456,9 @@ unsigned parser_hifrogt::count(const goto_programt &goto_program) const
 \*******************************************************************/
 
 // ns is changed to goto_model, if using ns check how to change it to goto_model
-bool parser_hifrogt::validate_input_options()
+bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers, unsigned &claim_user_num)
 {
-    claim_mapt claim_map;
-    claim_numberst claim_numbers;
-    unsigned claim_nr=0;
-
-    get_claims(goto_model.goto_functions, claim_map, claim_numbers);
-    cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size())+")");
-
-    if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
-      show_properties(goto_model, get_message_handler(), ui_message_handler.get_ui());
-      cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
-      return true;
-    }
     // perform standalone check (all the functionality remains the same)
-  
     if(cmdline.isset("claim") &&
         (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
       cbmc_error_interface("A specific claim cannot be specified if any other claim specification is set.");
@@ -459,8 +476,8 @@ bool parser_hifrogt::validate_input_options()
       return false;
     }
     else if(cmdline.isset("claim")) {
-      claim_nr=atoi(cmdline.get_value("claim").c_str());
-      if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
+      claim_user_num=atoi(cmdline.get_value("claim").c_str());
+      if (claim_user_num == 0 || claim_user_num > claim_numbers.size()) {
     	cbmc_error_interface("Testclaim not found.");
         return false;
       }
@@ -472,11 +489,8 @@ bool parser_hifrogt::validate_input_options()
     {
       cbmc_error_interface("A specific claim is not set, nor any other claim specification is set.");
       cbmc_status_interface("Warrning: --claim is set to 1.");
-      claim_nr = 1; // Set as defualt
+      claim_user_num = 1; // Set as defualt
     }
-    
-    if (cmdline.isset("claims-opt"))
-      store_claims(claim_map, claim_numbers);
     
     // option unsupported in cuf or prop
     if ((options.get_option("logic") == "prop") || (options.get_option("logic") == "qfcuf"))
@@ -484,7 +498,7 @@ bool parser_hifrogt::validate_input_options()
         // Solver type
         if (options.get_option("solver") == "z3") {
             error() << (options.get_option("logic") + " logic in HiFrog is supported only in OpenSMT2""\n") << eom;
-            exit(0); //Unsupported 
+            return false; //Unsupported
         }        
 #ifdef DISABLE_OPTIMIZATIONS
         // lattice refinement - refers to summaries
@@ -503,7 +517,7 @@ bool parser_hifrogt::validate_input_options()
       if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
         cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
                 + ". Please re-run with bit-width parameter that is a pow of 2!");
-        exit(0);
+        return false;
       } else if (bitwidth > 32) {
         cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
       }  
@@ -515,39 +529,30 @@ bool parser_hifrogt::validate_input_options()
     }
     
     // FIXME: complete the code inside dump_list_templates
-    // KE: this is the right location, not working yet
-    // templates for user defined summaries
-    if(cmdline.isset("list-templates") && (options.get_option("logic") != "prop")) {
-        cbmc_status_interface("Listing templates\n");
-        
-        // Create the basic formula
-        UserDefinedSummaryt user_defined_summary;
-        std::string logic = std::string(options.get_option("logic"));
+    if(cmdline.isset("list-templates")) {
+        if (options.get_option("logic") != "prop") {
+            cbmc_error_interface("At present listing summary templates is not functioning.");
+            cbmc_status_interface("Listing templates\n");
 
-        // dump the summary into a file
-        assert(false); // MB: does not compile in this form, fix later
+            // Create the basic formula
+            UserDefinedSummaryt user_defined_summary;
+            std::string logic = std::string(options.get_option("logic"));
+
+            // dump the summary into a file
+            // MB: does not compile in this form, fix later
 //        user_defined_summary.dump_list_templates(ns,
 //                goto_functions.function_map[goto_functionst::entry_point()].body,
 //                goto_functions,
 //                options.get_unsigned_int_option("unwind"),
 //                logic,
 //                options.get_option("save-summaries"));
-        
-        return true;
-    }
-    else if (cmdline.isset("list-templates")) {
-        cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
-                + ". Please re-run with bit-width parameter that is a pow of 2!");
-        exit(0);
+        }
+        else{
+            cbmc_error_interface("Error: invalid request for listing the template; it is supported only in LRA and EUF");
+        }
+        return false;
     }
 
-    // TODO: move it to to-level function call in doit
-    check_claims(goto_model,
-                claim_map,
-                claim_numbers,
-                options,
-                ui_message_handler,
-                claim_nr);
     return true;
 }
 

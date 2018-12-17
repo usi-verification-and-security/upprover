@@ -94,17 +94,17 @@ Function: check_claims
 
  Outputs:
 
- Purpose:
+ Purpose: Core call for checking claims
 
 \*******************************************************************/
 
 void check_claims(
   const goto_modelt & goto_model,
-  claim_mapt &claim_map,
+  claim_checkmapt &claim_checkmap,
   claim_numberst &claim_numbers,
   const optionst& options,
   ui_message_handlert &_message_handler,
-  unsigned claim_nr)
+  unsigned claim_user_num)
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res {options.get_unsigned_int_option("unwind")};
@@ -133,7 +133,7 @@ void check_claims(
   std::vector <goto_programt::const_targett> multi_assert_loc;
 
   res.set_message_handler(_message_handler);
-  res.total_claims = claim_map.size();
+  res.total_claims = claim_checkmap.size();
 
   const auto & goto_functions = goto_model.goto_functions;
   const auto & main_body = goto_functions.function_map.at(goto_functionst::entry_point()).body;
@@ -151,7 +151,7 @@ void check_claims(
 
     // GF: currently works only for one assertion (either specified in --claim or the first one)
     while(ass_ptr != main_body.instructions.end() &&
-              (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
+              (claim_numbers[ass_ptr] != claim_user_num) == (claim_user_num != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
@@ -185,17 +185,17 @@ void check_claims(
           if(ass_ptr == main_body.instructions.end()){
               break;
           }
-          if(claim_map[ass_ptr].first) {
+          if(claim_checkmap[ass_ptr].first) {
               // this claim has already been checked;
               // with assert_grouping all occurrences of the same claim are checked together so we can skip all other occurences
               assert(assert_grouping);
               continue;
           }
-          assert(claim_map.find(ass_ptr) != claim_map.end());
+          assert(claim_checkmap.find(ass_ptr) != claim_checkmap.end());
           res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
           auto before=timestamp();
           bool single_res = core_checker.check_sum_theoref_single(assertion_infot{ass_ptr});
-          claim_map[ass_ptr] = std::make_pair(true, single_res);
+          claim_checkmap[ass_ptr] = std::make_pair(true, single_res);
           auto after = timestamp();
           res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << time_gap(after,before) << res.eom;
       }
@@ -209,7 +209,7 @@ void check_claims(
       for (const auto & entry : flipped) {
           auto claim_number = entry.first;
           const auto & assertion = entry.second;
-          const auto & claim_res = claim_map.at(assertion);
+          const auto & claim_res = claim_checkmap.at(assertion);
           bool checked = claim_res.first;
           bool safe = claim_res.second;
           if (!safe) finally_safe = false;
@@ -238,7 +238,7 @@ void check_claims(
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     while(ass_ptr != main_body.instructions.end() &&
-            (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
+            (claim_numbers[ass_ptr] != claim_user_num) == (claim_user_num != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
@@ -248,7 +248,7 @@ void check_claims(
       break;
 
     }
-    if (assert_grouping && claim_map[ass_ptr].first)
+    if (assert_grouping && claim_checkmap[ass_ptr].first)
       continue;
     
     if(!multi_assert)
@@ -276,15 +276,15 @@ void check_claims(
               assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
     }
 
-    claim_map[ass_ptr].first = true;
+    claim_checkmap[ass_ptr].first = true;
     
     if (pass)
     {
-      claim_map[ass_ptr].second = true;
+      claim_checkmap[ass_ptr].second = true;
     }
     else
     {
-      claim_map[ass_ptr].second = false;
+      claim_checkmap[ass_ptr].second = false;
     }
   }
 
@@ -311,13 +311,13 @@ Function: get_claims
 
  Outputs:
 
- Purpose:
+ Purpose: Calculates the number of claims
 
 \*******************************************************************/
 
 void get_claims(
   const goto_functionst &goto_functions,
-  claim_mapt &claim_map,
+  claim_checkmapt &claim_map,
   claim_numberst &claim_numbers)
 {    
   forall_goto_functions(fit, goto_functions)
@@ -348,7 +348,7 @@ Function: get_claims
 
 /*
 void show_claims(const namespacet &ns,
-                 const claim_mapt &claim_map, 
+                 const claim_checkmapt &claim_checkmap,
                  const claim_numberst &claim_numbers,
                  ui_message_handlert::uit ui)
 {
@@ -429,7 +429,7 @@ void show_claims(const namespacet &ns,
 }
 */
 
-void store_claims(const claim_mapt &claim_map,
+void store_claims(const claim_checkmapt &claim_map,
                  const claim_numberst &claim_numbers)
 {
   std::ofstream mapping;

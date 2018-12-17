@@ -21,6 +21,7 @@ Module: Command Line Parsing
 //#include <goto-programs/goto_functions.h>
 
 #include <goto-programs/goto_model.h>
+#include "check_claims.h"
 
 #define FUNFROG_OPTIONS \
   "D:I:(16)(32)(64)(v):(version)" \
@@ -74,6 +75,10 @@ protected:
   goto_modelt goto_model;
   ui_message_handlert ui_message_handler; // KE: due to change from register_languages to messaget
 
+  unsigned claim_user_num = 0;
+  claim_numberst claim_numbers;
+  claim_checkmapt claim_checkmap;
+
   void register_languages();
   void get_command_line_options(optionst &);
   void set_default_options(optionst &);
@@ -83,7 +88,8 @@ protected:
 
   bool process_goto_program(const optionst &);
   bool get_goto_program(const optionst &);
-  bool validate_input_options();
+  void calculate_show_claims(claim_numberst &, claim_checkmapt &);
+  bool validate_input_options (const claim_numberst &, unsigned &);
   
   void set_options(const cmdlinet &cmdline);
   void eval_verbosity();

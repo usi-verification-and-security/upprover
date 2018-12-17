@@ -52,23 +52,23 @@ public:
 
 
 typedef std::map<goto_programt::const_targett, 
-                std::pair<bool /* checked? */, bool /* safe? */ > > claim_mapt;
+                std::pair<bool /* checked? */, bool /* safe? */ > > claim_checkmapt;
 typedef std::map<goto_programt::const_targett, unsigned > claim_numberst;
 
 
 void get_claims(const goto_functionst &goto_functions,
-                claim_mapt &claim_map,
+                claim_checkmapt &claim_map,
                 claim_numberst &claim_numbers);
 
-void store_claims(const claim_mapt &claim_map,
+void store_claims(const claim_checkmapt &claim_map,
     const claim_numberst &claim_numbers);
 
 void check_claims(
   const goto_modelt & goto_model,
-  claim_mapt &claim_map,
+  claim_checkmapt &claim_checkmap,
   claim_numberst &claim_numbers,
   const optionst& options,
   ui_message_handlert &_message_handler,
-  unsigned claim_nr = 0);
+  unsigned claim_user_num = 0);
 
 #endif /*_CPROVER_LOOPFROG_CHECK_CLAIMS_H_*/
