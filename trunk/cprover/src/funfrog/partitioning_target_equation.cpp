@@ -189,7 +189,7 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
  Purpose: Fills in the SSA_steps_exec_order holding pointers to SSA steps 
  ordered in the order of program execution (i.e., as they would be normally 
  ordered in symex_target_equation).
-
+//also is used for building error trace
  \*******************************************************************/
 void partitioning_target_equationt::prepare_SSA_exec_order(
 		const partitiont& partition) {

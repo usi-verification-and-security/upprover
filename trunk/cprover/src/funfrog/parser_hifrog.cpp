@@ -830,7 +830,9 @@ void parser_hifrogt::help()
       " hifrog [options] <file>       run on goto-binary `file'\n"
       "\nGeneral Purpose options:\n"
       "--version                      show version information\n"
-
+      "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
+      "--sum-theoref                  for all the claims, automatically selects the lightest possible theory\n"
+      "                               and gradually strengthen it\n"
       "--save-summaries <filename>    save collected function summaries\n"
       "                               to the given file\n"
       "--load-summaries <filename1,>  load function summaries\n"
@@ -888,7 +890,6 @@ void parser_hifrogt::help()
       "--no-cex-model                 skips the cex validator is model cannot be extracted \n"
       #ifdef PRODUCE_PROOF
       "\nSMT, Interpolation, and Proof Reduction options:\n"
-      "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
 
       "--itp-algorithm                propositional interpolation algorithm: \n"
       "                                 0 - McMillan_s,\n"

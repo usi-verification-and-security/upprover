@@ -72,7 +72,7 @@ public:
   void prepare_partitions();
 
   // Returns SSA steps ordered in the order of program execution (i.e., as they
-  // would be normally ordered in symex_target_equation).
+  // would be normally ordered in symex_target_equation). //it is needed for building error trace
   const SSA_steps_orderingt& get_steps_exec_order() {
     if (SSA_steps_exec_order.size() != SSA_steps.size()) {
       // Prepare SSA ordering according to the program execution order.
