@@ -26,7 +26,7 @@ Module: Command Line Parsing
 #define FUNFROG_OPTIONS \
   "D:I:(16)(32)(64)(v):(version)" \
   "(i386-linux)(i386-macos)(ppc-macos)" \
-  "(show-program)(show-fpfreed-program)(show-dereferenced-program)" \
+  "(show-goto-functions)(show-fpfreed-program)(show-dereferenced-program)" \
   "(save-program)(save-fpfreed-program)(save-dereferenced-program)" \
   "(show-transformed-program)(show-inlined-program)" \
   "(save-transformed-program)(save-inlined-program)" \

@@ -919,7 +919,7 @@ void parser_hifrogt::help()
       #endif
       "\nProgram representations:\n"
       "--show-symbol-table             show symbol table\n"
-      "--show-program                  show goto program\n"
+      "--show-goto-functions           show goto functions(show goto program)\n"
       //  "\nRefinement options:\n"
       //  "--refine-mode <mode>:\n"
       //  "  0 | \"force-inlining\"         inline every function call\n"
