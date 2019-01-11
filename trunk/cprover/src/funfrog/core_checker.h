@@ -88,8 +88,8 @@ protected:
   void report_failure();
   void assertion_violated(prepare_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
-  void assertion_violated (prepare_formula_no_partitiont& prop,
-                  std::map<irep_idt, std::string> &guard_expln);
+  void assertion_violated_no_partition(prepare_formula_no_partitiont &prop,
+                                       std::map<irep_idt, std::string> &guard_expln);
 
     const goto_functionst & get_goto_functions() const {
         return goto_model.goto_functions;
@@ -99,7 +99,7 @@ protected:
         return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;
     }
 
-    bool assertion_holds_(const assertion_infot & assertion, bool store_summaries_with_assertion);
+    bool assertion_holds_smt(const assertion_infot &assertion, bool store_summaries_with_assertion);
     bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
     bool assertion_holds_smt_wt_lattice(const assertion_infot& assertion,
           bool store_summaries_with_assertion); // Lattice refinement version

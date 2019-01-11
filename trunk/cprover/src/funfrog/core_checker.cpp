@@ -13,20 +13,18 @@
 #include "solvers/satcheck_opensmt2.h"
 
 #include "dependency_checker.h"
-#include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
 #include "funfrog/nopartition/prepare_formula_no_partition.h"
 #include "partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
-#include <funfrog/utils/naming_helpers.h>
-#include <funfrog/utils/string_utils.h>
+//#include "funfrog/utils/naming_helpers.h"
+#include "funfrog/utils/string_utils.h"
 
 #include "smt_summary_store.h"      // OpenSMT smt store
 #include "prop_summary_store.h"     // OpenSMT prop store
-#include "theory_refiner.h"
 #include "partitioning_slice.h"
-#include "utils/unsupported_operations.h"
+//#include "utils/unsupported_operations.h"
 
 #ifdef Z3_AVAILABLE
 #include "smt_z3_summary_store.h"   // Z3 smt store
@@ -36,21 +34,15 @@
 #endif // Z3_AVAILABLE
 
 #include <langapi/language_util.h>
-#include <goto-symex/path_storage.h>
+//#include <goto-symex/path_storage.h>
 #include <stdio.h>
 #include <memory>
 
 namespace{
-    /*******************************************************************\
-
-Function: get_refine_mode
-
-  Inputs:
-
- Outputs:
+/*******************************************************************\
+ Function: get_refine_mode
 
  Purpose: Determining the refinement mode from a string.
-
 \*******************************************************************/
 
     refinement_modet get_refine_mode(const std::string& str)
@@ -67,17 +59,11 @@ Function: get_refine_mode
         }
     }
 
-/*******************************************************************\
+    /*******************************************************************\
+    Function: get_initial_mode
 
-Function: get_initial_mode
-
-  Inputs:
-
- Outputs:
-
- Purpose: Determining the initial mode from a string.
-
-\*******************************************************************/
+    Purpose: Determining the initial mode from a string.
+    \*******************************************************************/
 
     init_modet get_init_mode(const std::string& str)
     {
@@ -91,7 +77,10 @@ Function: get_initial_mode
         }
     }
 }
-
+/*******************************************************************
+ Function:
+ Purpose:  C'tor
+\*******************************************************************/
 core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
                              ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
         goto_model{_goto_model},
@@ -104,11 +93,18 @@ core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _
 {
     set_message_handler(_message_handler);
 }
-
+/*******************************************************************
+ Function:
+ Purpose:  D'tor
+\*******************************************************************/
 core_checkert::~core_checkert(){
     //delete decider;
 }
-  
+/*******************************************************************
+ Function:
+
+ Purpose:
+\*******************************************************************/
 void core_checkert::initialize_solver()
 {
     std::string _logic = options.get_option(HiFrogOptions::LOGIC);
@@ -148,8 +144,11 @@ void core_checkert::initialize_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
-// Generic initialise for any solver - euf
+ Purpose:  Generic initialise for any solver - euf
+\*******************************************************************/
 void core_checkert::initialize__euf_option_solver()
 {
 #ifdef PRODUCE_PROOF
@@ -161,7 +160,11 @@ void core_checkert::initialize__euf_option_solver()
         
     initialize_solver_debug_options();
 }
-// Generic creation for any solver - euf
+/*******************************************************************
+ Function:
+
+ Purpose:  Generic creation for any solver - euf
+\*******************************************************************/
 ssa_solvert * core_checkert::initialize__euf_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
@@ -178,8 +181,11 @@ ssa_solvert * core_checkert::initialize__euf_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
-// Generic initialise for OpenSMT solver - cuf
+ Purpose:  Generic initialise for OpenSMT solver - cuf
+\*******************************************************************/
 void core_checkert::initialize__cuf_option_solver()
 {
     solver_options.initialize_mix_encoding_solver_options(
@@ -191,7 +197,11 @@ void core_checkert::initialize__cuf_option_solver()
     initialize_solver_debug_options();
 }
 
-// Only for OpenSMT solver - cuf
+/*******************************************************************
+ Function:
+
+ Purpose: initialise - Only for OpenSMT solver - cuf
+\*******************************************************************/
 smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
@@ -203,8 +213,11 @@ smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
-// Generic initialise for any solver - lra
+ Purpose: Generic initialise for any solver - lra
+\*******************************************************************/
 void core_checkert::initialize__lra_option_solver()
 {
     solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
@@ -222,8 +235,11 @@ void core_checkert::initialize__lra_option_solver()
     }
 #endif // PRODUCE_PROOF
 }
+/*******************************************************************
+ Function:
 
-// Generic creation for any solver - lra
+ Purpose: Generic creation for any solver - lra
+\*******************************************************************/
 ssa_solvert * core_checkert::initialize__lra_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
@@ -240,8 +256,11 @@ ssa_solvert * core_checkert::initialize__lra_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
-// Generic initialise for any solver - lia
+ Purpose: Generic initialise for any solver - lia
+\*******************************************************************/
 void core_checkert::initialize__lia_option_solver()
 {
     solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
@@ -250,8 +269,11 @@ void core_checkert::initialize__lia_option_solver()
         
     initialize_solver_debug_options();    
 }
+/*******************************************************************
+ Function:
 
-// Generic creation for any solver - lia
+ Purpose: Generic creation for any solver - lia
+\*******************************************************************/
 ssa_solvert * core_checkert::initialize__lia_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
@@ -268,8 +290,11 @@ ssa_solvert * core_checkert::initialize__lia_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
-// Generic initialise for any solver - lia
+ Purpose: // Generic initialise for any solver - prop
+\*******************************************************************/
 void core_checkert::initialize__prop_option_solver()
 {
 #ifdef PRODUCE_PROOF     
@@ -281,8 +306,11 @@ void core_checkert::initialize__prop_option_solver()
         
     initialize_solver_debug_options();    
 }
+/*******************************************************************
+ Function:
 
-// Only for OpenSMT solver - prop
+ Purpose: Only for OpenSMT solver - prop
+\*******************************************************************/
 satcheck_opensmt2t * core_checkert::initialize__prop_solver()
 {
     // TODO: re-write for prop once needed
@@ -300,7 +328,11 @@ satcheck_opensmt2t * core_checkert::initialize__prop_solver()
         exit(0); //Unsupported 
     }
 }
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 void core_checkert::initialize_solver_debug_options()
 {
 #ifdef DISABLE_OPTIMIZATIONS
@@ -310,7 +342,11 @@ void core_checkert::initialize_solver_debug_options()
     options.get_option("dump-query-name"));
 #endif // DISABLE_OPTIMIZATIONS   
 }
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 void core_checkert::initialize_solver_options()
 {
     // Set all the rest of the option - KE: check what to shift to the part of SMT only
@@ -334,9 +370,12 @@ void core_checkert::initialize_solver_options()
         solver_options.m_reduction_graph = options.get_unsigned_int_option("reduce-proof-graph");
     }
 #endif 
-} 
+}
+/*******************************************************************
+ Function:
 
-// Called from check_claims after the constructor
+ Purpose: // Called from check_claims after the constructor
+\*******************************************************************/
 void core_checkert::initialize()
 {
     initialize_solver();
@@ -381,7 +420,11 @@ void core_checkert::initialize()
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
 }
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 void get_ints(std::vector<unsigned>& claims, std::string set){
 
   unsigned int length=set.length();
@@ -396,19 +439,11 @@ void get_ints(std::vector<unsigned>& claims, std::string set){
     idx=next;
   }
 }
-
 /*******************************************************************
-
  Function: core_checkert::assertion_holds
 
- Inputs:
-
- Outputs:
-
  Purpose: Checks if the given assertion of the GP holds
-
 \*******************************************************************/
-
 bool core_checkert::assertion_holds(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
@@ -436,23 +471,16 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
   if (options.get_bool_option("no-partitions")) // BMC alike version
     return assertion_holds_smt_no_partition(assertion);
   else
-    return assertion_holds_(assertion, store_summaries_with_assertion);
+    return assertion_holds_smt(assertion, store_summaries_with_assertion);
 }
-
 /*******************************************************************
-
  Function: core_checkert::assertion_holds_
 
- Inputs:
-
- Outputs:
-
  Purpose: Checks if the given assertion of the GP holds for smt encoding
-
 \*******************************************************************/
 
-bool core_checkert::assertion_holds_(const assertion_infot & assertion,
-                                     bool store_summaries_with_assertion)
+bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
+                                        bool store_summaries_with_assertion)
 {
     auto before = timestamp();
  
@@ -627,158 +655,11 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
   
   return is_verified;
 }
-
-/*******************************************************************
-
- Function: core_checkert::assertion_holds_smt_no_partition
-
- Inputs:
-
- Outputs:
-
- Purpose: Checks if the given assertion of the GP holds for smt encoding
-
-\*******************************************************************/
-
-bool core_checkert::assertion_holds_smt_no_partition(
-        const assertion_infot& assertion)
-{
-  auto before=timestamp();
-  
-  const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
-//  const bool no_ce_option = options.get_bool_option("no-error-trace");
-
-    const auto & const_summary_store = *summary_store;
-    auto has_summary = [&const_summary_store](const std::string & function_name){
-        return const_summary_store.has_summaries(function_name);
-    };
-  omega.set_initial_precision(assertion, has_summary);
-//  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
-//  const bool single_assertion_check = omega.is_single_assertion_check();
-
-  hifrog_symex_target_equationt equation(ns);
-#ifdef DISABLE_OPTIMIZATIONS
-  if (options.get_bool_option("dump-SSA-tree")) {
-    equation.set_dump_SSA_tree(true);
-    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
-  }
-#endif
-  
-  std::unique_ptr<path_storaget> worklist;
-  symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler, get_main_function(),!no_slicing_option};
-  symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
-
-
-  prepare_formula_no_partitiont prop = prepare_formula_no_partitiont(
-          equation, message_handler, max_memory_used);
-  
-  unsigned count = 0;
-  bool end = false;
-  std::cout <<"";
-
-  
-  while (!end)
-  {
-    count++;
-    end = (count == 1) 
-            ? symex.prepare_SSA(assertion, omega.get_goto_functions())
-            : symex.refine_SSA (assertion, false); // Missing sets of refined functions, TODO
-
-    //LA: good place?
-//    if(options.get_bool_option("list-templates"))
-//    {
-//        status() << "No listing templates option in this mode\n" << eom;
-//        return true;
-//    }
-
-    if (!end){
-      if (options.get_bool_option("claims-opt") && count == 1){
-        dependency_checkert(ns, message_handler, get_main_function(), omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
-                .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
-      }
-
-      end = prop.convert_to_formula_and_solve(
-              *(decider->get_convertor()), *(decider->get_solver()));
-      unsigned summaries_count = omega.get_summaries_count();
-      // MB: unused variable commented out
-      //unsigned nondet_count = omega.get_nondets_count();
-      if (end)
-      {
-        if (options.get_bool_option("no-itp"))
-          status() << ("Skip generating interpolants") << eom;
-
-        if (summaries_count == 0)
-        {
-          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
-        } else {
-          status() << "FUNCTION SUMMARIES (for " << summaries_count
-        	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-        }
-        report_success();
-      } else {
-          // TOOD - take care of the basic (old) refinement
-        /*if (summaries_count > 0 || nondet_count > 0) {
-          if (summaries_count > 0){
-            status() << "FUNCTION SUMMARIES (for " << summaries_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          if (nondet_count > 0){
-            status() << "HAVOCING (of " << nondet_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_call_tree_root(), equation);
-
-          if (refiner.get_refined_functions().size() == 0){
-            assertion_violated(prop, symex.guard_expln);
-            break;
-          } else {
-            //status("Counterexample is spurious");
-            status() << ("Go to next iteration\n") << eom;
-          }
-        } else {*/
-          assertion_violated(prop, symex.guard_expln);
-          break;
-        //}
-      }
-    }
-  }
-  auto after = timestamp();
-  omega.get_unwinding_depth();
-
-  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
-  status() << "Total number of steps: " << count << eom;
-  if (omega.get_recursive_total() > 0){
-    status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
-  }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << time_gap(after, before) << eom;
- 
-#ifdef PRODUCE_PROOF 
-    if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << ((assertion.is_assert_grouping()) 
-                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
-              "\n  file " << assertion.get_location()->source_location.get_file() <<
-              " line " << assertion.get_location()->source_location.get_line() <<
-              " function " << assertion.get_location()->source_location.get_function() << 
-              "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
-              "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
-              << eom;  
-#endif
-  
-  return end;
-}
-
   
 /*******************************************************************
-
  Function: core_checkert::assertion_violated
 
- Inputs:
-
- Outputs:
-
  Purpose: Prints the error trace for smt encoding
-
 \*******************************************************************/
 void core_checkert::assertion_violated (prepare_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
@@ -798,45 +679,13 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
     report_failure();
 }
 
-/*******************************************************************
 
- Function: core_checkert::assertion_violated
-
- Inputs:
-
- Outputs:
-
- Purpose: Prints the error trace for smt encoding
-
-\*******************************************************************/
-void core_checkert::assertion_violated (prepare_formula_no_partitiont& prop,
-				std::map<irep_idt, std::string> &guard_expln)
-{
-    if (!options.get_bool_option("no-error-trace")) {
-        auto solver = decider->get_solver();
-        assert(solver);
-        prop.error_trace(*solver, ns, guard_expln);
-        if (solver->is_overapprox_encoding()) {
-            status() << "\nA bug found." << endl;
-            status() << "WARNING: Possibly due to the Theory conversion." << eom;
-        } else {
-            status() << "A real bug found." << eom;
-        }
-    }
-    report_failure();
-}
 
 #ifdef PRODUCE_PROOF
 /*******************************************************************\
-
-Function: core_checkert::extract_interpolants_smt
-
-  Inputs:
-
- Outputs:
+ Function: core_checkert::extract_interpolants_smt
 
  Purpose: Extract and store the interpolation summaries for smt only
-
 \*******************************************************************/
 void core_checkert::extract_interpolants (partitioning_target_equationt& equation)
 {
@@ -859,15 +708,9 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
 #endif
 
 /*******************************************************************\
-
-Function: core_checkert::report_success
-
-  Inputs:
-
- Outputs:
+ Function: core_checkert::report_success
 
  Purpose:
-
 \*******************************************************************/
 
 void core_checkert::report_success()
@@ -896,17 +739,10 @@ void core_checkert::report_success()
 }
 
 /*******************************************************************\
-
-Function: core_checkert::report_failure
-
-  Inputs:
-
- Outputs:
+ Function: core_checkert::report_failure
 
  Purpose:
-
 \*******************************************************************/
-
 void core_checkert::report_failure()
 {
   switch(message_handler.get_ui())
@@ -930,22 +766,14 @@ void core_checkert::report_failure()
   }
 }
 
-/*******************************************************************\
-
-Function: core_checkert::report_failure
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 #ifdef PRODUCE_PROOF
 namespace{
-//Purpose: extracts summaries after successful verification; and dumps the summaries
-// in a specific summary-file for uf and lra separately based on the solver.
+/*******************************************************************\
+Function: extract_and_store_summaries
 
+Purpose: extracts summaries after successful verification; and dumps the summaries
+// in a specific summary-file for uf and lra separately based on the solver.
+\*******************************************************************/
     void extract_and_store_summaries(partitioning_target_equationt & equation, summary_storet & store,
                                       smtcheck_opensmt2t & decider , std::string & summary_file_name){
         equation.extract_interpolants(decider);
@@ -961,117 +789,123 @@ namespace{
         }
 
     }
+/*******************************************************************\
+ Function: reload_summaries
 
-/*******************************************************************/
-// Purpose:
-void reload_summaries(const namespacet &ns,
-                      smt_summary_storet & store, std::vector<std::string> const & filenames,
-                      smtcheck_opensmt2t_lra & decider, smtcheck_opensmt2t_uf & prev_solver) {
+ Purpose: LPAR 2018 paper
+\*******************************************************************/
+    void reload_summaries(const namespacet &ns,
+                          smt_summary_storet & store, std::vector<std::string> const & filenames,
+                          smtcheck_opensmt2t_lra & decider, smtcheck_opensmt2t_uf & prev_solver) {
 
-    // Put the whole summary file in string
-    std::stringstream dump;
-    dump << decider.getSimpleHeader();  // gets all the declarations without the variables
-    store.serialize(dump);
-    std::string sm = dump.str();
+        // Put the whole summary file in string
+        std::stringstream dump;
+        dump << decider.getSimpleHeader();  // gets all the declarations without the variables
+        store.serialize(dump);
+        std::string sm = dump.str();
 
-    // Detect unsupported functions
-    std::vector<std::string> unsupp_func = get_unsupported_funct_exprs(sm);
+        // Detect unsupported functions
+        std::vector<std::string> unsupp_func = get_unsupported_funct_exprs(sm);
 
-    // Detect if there are non-linear parts (searching for non-linear / or *):
-    std::set<PTRef> non_linears = prev_solver.get_non_linears();
-    if (non_linears.size() > 0 || !unsupp_func.empty())
-    {
-        const Logic& logic = *prev_solver.getLogic();
-        std::transform(non_linears.begin(), non_linears.end(), std::back_inserter(unsupp_func),
-                       [&logic](PTRef pt){ return std::string{logic.printTerm(pt)};});
-        // Notify the user
-        std::cerr << "Non linear operation encounter. Ignoring " << non_linears.size() << " expressions in the file.\n";
-
-        std::sort(unsupp_func.begin(), unsupp_func.end(), [](const std::string & first, const std::string & second){
-            return first.size() > second.size();
-        });
-
-        // Replace all non-linear expressions in unsupported variable
-        for(auto old_token : unsupp_func)
+        // Detect if there are non-linear parts (searching for non-linear / or *):
+        std::set<PTRef> non_linears = prev_solver.get_non_linears();
+        if (non_linears.size() > 0 || !unsupp_func.empty())
         {
-            // Get the old token we wish to abstract
-            std::string new_token = fresh_var_name_nonlinear();
-            prev_solver.getLogic()->mkVar(prev_solver.get_numeric_sort(), new_token.c_str());
-            // New Unsupported Var with no specific mapping or information saved
-            
-            // The symbol name in the old token
-            std::string::size_type n_before = 0;
-            std::string::size_type n_after = 0;
-            while ( ( n_before = old_token.find( "|", n_after) ) != std::string::npos )
+            const Logic& logic = *prev_solver.getLogic();
+            std::transform(non_linears.begin(), non_linears.end(), std::back_inserter(unsupp_func),
+                           [&logic](PTRef pt){ return std::string{logic.printTerm(pt)};});
+            // Notify the user
+            std::cerr << "Non linear operation encounter. Ignoring " << non_linears.size() << " expressions in the file.\n";
+
+            std::sort(unsupp_func.begin(), unsupp_func.end(), [](const std::string & first, const std::string & second){
+                return first.size() > second.size();
+            });
+
+            // Replace all non-linear expressions in unsupported variable
+            for(auto old_token : unsupp_func)
             {
-                if (( n_after = old_token.find( "|", n_before+1) ) != std::string::npos)
+                // Get the old token we wish to abstract
+                std::string new_token = fresh_var_name_nonlinear();
+                prev_solver.getLogic()->mkVar(prev_solver.get_numeric_sort(), new_token.c_str());
+                // New Unsupported Var with no specific mapping or information saved
+
+                // The symbol name in the old token
+                std::string::size_type n_before = 0;
+                std::string::size_type n_after = 0;
+                while ( ( n_before = old_token.find( "|", n_after) ) != std::string::npos )
                 {
-                    // Get SSA names in the old token
-                    std::string id_str_SSA = old_token.substr( n_before+1, n_after-n_before-1);
-                    std::string id_str_curr = id_str_SSA;
-                    irep_idt identifier = id_str_curr;
-
-                    // Get the symbol name of the SSA name:
-                    const symbolt *symbol =0;
-                    while (ns.lookup(identifier, symbol) && id_str_curr.size()>0)
+                    if (( n_after = old_token.find( "|", n_before+1) ) != std::string::npos)
                     {
-                        id_str_curr = id_str_curr.substr(0,id_str_curr.size()-1);
-                        identifier = id_str_curr;
-                    }
-//                        std::cout << "** Replace : " << id_str_SSA << " in " << id_str_curr << std::endl;
+                        // Get SSA names in the old token
+                        std::string id_str_SSA = old_token.substr( n_before+1, n_after-n_before-1);
+                        std::string id_str_curr = id_str_SSA;
+                        irep_idt identifier = id_str_curr;
 
-                    // Fix the old token to use symbols and not SSAs
-                    old_token.replace( n_before+1, id_str_SSA.size(), id_str_curr );
-                    n_before = old_token.find(id_str_curr, n_before) + id_str_curr.size()+1;
-                    n_after = n_before;
-                } else {
-                    break;
+                        // Get the symbol name of the SSA name:
+                        const symbolt *symbol =0;
+                        while (ns.lookup(identifier, symbol) && id_str_curr.size()>0)
+                        {
+                            id_str_curr = id_str_curr.substr(0,id_str_curr.size()-1);
+                            identifier = id_str_curr;
+                        }
+    //                        std::cout << "** Replace : " << id_str_SSA << " in " << id_str_curr << std::endl;
+
+                        // Fix the old token to use symbols and not SSAs
+                        old_token.replace( n_before+1, id_str_SSA.size(), id_str_curr );
+                        n_before = old_token.find(id_str_curr, n_before) + id_str_curr.size()+1;
+                        n_after = n_before;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Create the abstract summary:
+                std::string::size_type n = 0;
+                while ( ( n = sm.find( old_token, n ) ) != std::string::npos )
+                {
+                    sm.replace( n, old_token.size(), new_token );
+                    n += new_token.size();
+                }
+    //              std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
+            }
+
+            // Store to Temp. file
+            std::ofstream out;
+            out.open("__summaries_linear_temp");
+            //dumps define-fun()  into summary file
+            out << prev_solver.getSimpleHeader() << sm;
+            out.close();
+
+            std::vector<std::string> filenames_linear;
+            for(auto const & filename : filenames){   //takes care of the cases that uf-file has only mod as a non-linear exp
+                if(filename != "__summaries_uf"){
+                    filenames_linear.push_back(filename);
                 }
             }
+    //            filenames_linear.insert(filenames_linear.begin(), filenames.begin(), filenames.end());
+            filenames_linear.push_back(std::string("__summaries_linear_temp"));
 
-            // Create the abstract summary:
-            std::string::size_type n = 0;
-            while ( ( n = sm.find( old_token, n ) ) != std::string::npos )
-            {
-                sm.replace( n, old_token.size(), new_token );
-                n += new_token.size();
-            }
-//              std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
+            // Final stage:
+            store.set_decider(&decider);
+            store.deserialize(filenames_linear);
+
+            // Remove the temp. file
+            remove( "__summaries_linear_temp" );
+        } else {
+            // Final stage:
+            store.set_decider(&decider);
+            store.deserialize(filenames);
         }
-
-        // Store to Temp. file
-        std::ofstream out;
-        out.open("__summaries_linear_temp");
-        //dumps define-fun()  into summary file
-        out << prev_solver.getSimpleHeader() << sm;
-        out.close();
-
-        std::vector<std::string> filenames_linear;
-        for(auto const & filename : filenames){   //takes care of the cases that uf-file has only mod as a non-linear exp
-            if(filename != "__summaries_uf"){
-                filenames_linear.push_back(filename);
-            }
-        }
-//            filenames_linear.insert(filenames_linear.begin(), filenames.begin(), filenames.end());
-        filenames_linear.push_back(std::string("__summaries_linear_temp"));
-
-        // Final stage:
-        store.set_decider(&decider);
-        store.deserialize(filenames_linear);
-
-        // Remove the temp. file
-        remove( "__summaries_linear_temp" );
-    } else {
-        // Final stage:
-        store.set_decider(&decider);
-        store.deserialize(filenames);
     }
-}
 
-/*******************************************************************/
-// Purpose: reset means changing the partition information according
-// to the current state of the summary store. so first we updated the
-// store using method read_lra_summaries(), then we update the summary information
+/*******************************************************************
+ Function:
+
+ Purpose: reset means changing the partition information according
+  to the current state of the summary store. so first we updated the
+  store using method read_lra_summaries(), then we update the summary information
+\*******************************************************************/
+
     void reset_partition_info(partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
             partition.event_solver_reseted();
@@ -1099,16 +933,11 @@ void reload_summaries(const namespacet &ns,
     }
 }
 #endif // PRODUCE_PROOF
+
 /*******************************************************************\
+ Function: core_checkert::check_sum_theoref_single
 
-Function: core_checkert::check_sum_theoref_single
-
-  Inputs:
-
- Outputs:
-
- Purpose: main method to make summary-ref and theory-ref work together
-
+ Purpose: main method to make summary-ref and theory-ref work together (LPAR 2018)
 \*******************************************************************/
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
@@ -1244,7 +1073,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     delete decider;
     initialize__prop_option_solver();
     decider = initialize__prop_solver();
-    auto res = this->assertion_holds_(assertion, false);
+    auto res = this->assertion_holds_smt(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;
     }
@@ -1252,7 +1081,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 }
 
 #endif // PRODUCE_PROOF
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 void core_checkert::slice_target(partitioning_target_equationt & equation) {
     auto before = timestamp();
     statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
@@ -1261,7 +1094,11 @@ void core_checkert::slice_target(partitioning_target_equationt & equation) {
     auto after = timestamp();
     statistics() << "SLICER TIME: " << time_gap(after,before) << eom;
 }
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
     auto verified = symex.prepare_SSA();
     if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
@@ -1269,7 +1106,11 @@ bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
     }
     return verified;
 }
+/*******************************************************************
+ Function:
 
+ Purpose:
+\*******************************************************************/
 bool core_checkert::refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine) {
     auto verified = symex.refine_SSA(functions_to_refine);
     if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
