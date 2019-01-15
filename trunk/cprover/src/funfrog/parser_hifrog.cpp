@@ -140,8 +140,10 @@ int parser_hifrogt::doit()
     cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
     auto before=timestamp();
 
-    if(get_goto_program(options))
-        return 6;
+
+    goto_modelt goto_model;  //1st goto program associated with the original inputfile for normal use of hifrog & init_upgrade.
+    if(get_goto_program(goto_model, cmdline, options))     //optained 1st goto-program
+      {return 6;}
 
     auto after=timestamp();
     cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
@@ -169,7 +171,12 @@ int parser_hifrogt::doit()
 //    return false;
 //  }
 
-    calculate_show_claims(claim_numbers, claim_checkmap);
+    //preparation for Upgrade check
+    if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check")){
+      trigger_upgrade_check(goto_model);
+    }
+
+    calculate_show_claims(goto_model, claim_numbers, claim_checkmap);
 
     if(validate_input_options(claim_numbers, claim_user_nr)) {
         check_claims(goto_model,
@@ -214,148 +221,20 @@ void parser_hifrogt::set_default_options(optionst &options)
 
 /*******************************************************************
 
- Function: parser_hifrogt::process_goto_program
-
- Purpose:
-
- Note: KE: update  new cprover version - taken from:
- cbmc_parseoptionst::process_goto_program
-  Consider adding more optimizations as full slicing or non-det statics
-
-    // Remove inline assembler; this needs to happen before
-    // adding the library.
-    //remove_asm(goto_model);
-\*******************************************************************/
-bool parser_hifrogt::process_goto_program(
-        const optionst &options)
-{
-  try
-  {
-    // KE: Only to prop logic
-    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-    {
-        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
-        {
-            // add the library
-            link_to_library(
-                 goto_model, get_message_handler(), cprover_cpp_library_factory);
-            link_to_library(
-                goto_model, get_message_handler(), cprover_c_library_factory);
-        } 
-        else
-        {
-            cbmc_status_interface("Ignoring CPROVER library");
-        }
-    }
-    else
-    {
-        cbmc_status_interface("Ignoring CPROVER library");
-    }
-  
-    if(cmdline.isset("string-abstraction"))
-      string_instrumentation(
-              goto_model, get_message_handler());
-
-    status() << "Removal of function pointers and virtual functions" << eom;
-    remove_function_pointers(
-      get_message_handler(),
-      goto_model,
-      false); // HiFrog doesn't have pointer check, set the flag to false always
-    // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(goto_model);
-    
-    mm_io(goto_model);
-
-    // instrument library preconditions
-    instrument_preconditions(goto_model);
-
-    // remove returns, gcc vectors, complex
-    // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
-    remove_vector(goto_model);
-    remove_complex(goto_model);
-    rewrite_union(goto_model);
-
-    // add generic checks
-    status() << "Generic Property Instrumentation" << eom;
-    goto_check(options, goto_model);
-            
-    // HIFROG: We remove built-ins from smt logics
-    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-    {
-        if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
-        {
-            // checks don't know about adjusted float expressions
-            adjust_float_expressions(goto_model);
-        }
-    }
-
-    if(cmdline.isset("string-abstraction"))
-    {
-      status() << "String Abstraction" << eom;
-      string_abstraction(
-        goto_model,
-        get_message_handler());
-    }
-
-    // add failed symbols
-    // needs to be done before pointer analysis
-    add_failed_symbols(goto_model.symbol_table);
-
-    // recalculate numbers, etc.
-    goto_model.goto_functions.update();
-
-    // add loop ids
-    goto_model.goto_functions.compute_loop_numbers();
-   
-
-    // remove skips
-    remove_skip(goto_model);
-    goto_model.goto_functions.update();
-
-    label_properties(goto_model);
-  }
-
-  catch(const char *e)
-  {
-    cbmc_error_interface(e);
-    return true;
-  }
-
-  catch(const std::string e)
-  {
-    cbmc_error_interface(e);
-    return true;
-  }
-
-  catch(int)
-  {
-    return true;
-  }
-
-  catch(std::bad_alloc)
-  {
-    cbmc_error_interface("Out of memory");
-    return true;
-  }
-
-  return false;
-}
-/*******************************************************************
-
  Function:
 
- Purpose:
+ Purpose:  Get a Goto Program; initialize_goto_model does the whole job
 
 \*******************************************************************/
-bool parser_hifrogt::get_goto_program(
-        const optionst &options)
+bool parser_hifrogt::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline, optionst &options)
 {
 
   try
   {
-    goto_model=initialize_goto_model(cmdline, get_message_handler());
+    //goto model is obtained completely
+    goto_model = initialize_goto_model(cmdline, get_message_handler());
 
-    if(process_goto_program(options))
+    if(process_goto_program(cmdline, options, goto_model, *this ))
       return true;
   }
 
@@ -391,7 +270,7 @@ bool parser_hifrogt::get_goto_program(
   
  Function: 
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -426,13 +305,46 @@ unsigned parser_hifrogt::count(const goto_programt &goto_program) const
   return goto_program.instructions.size();
 }
 /*******************************************************************\
+ Function: trigger_upgrade_check
+
+ Purpose: making ready for upgrade checking
+\*******************************************************************/
+void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model){
+  // a bit of hack; for now slicing does not work in upgrade
+  options.set_option("no-slicing", true);
+  options.set_option("all-claims", true);  //for upgrade check this is always true
+
+
+  // perform the upgrade check (or preparation for that)
+  if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
+     cmdline.isset("claimset") || cmdline.isset("no-itp"))
+  {
+    cbmc_error_interface("Upgrade checking mode does not allow checking specific claims");
+  }
+
+ // bool init_ready = true; // the checks of existence of __omega and upg. version will be later
+  if (cmdline.isset("init-upgrade-check")){
+    check_claims(goto_model,
+                 claim_checkmap,
+                 claim_numbers,
+                 options,
+                 ui_message_handler,
+                 claim_user_nr);
+//    init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
+//                               goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
+    //should end and retun somewhere; does not proceed to next,
+  }
+
+   //TODO prepare calling for "check_upgrade" function
+}
+/*******************************************************************\
 
  Function:
 
  Purpose: Calculate claim numbers, and print them on demand
 
 \*******************************************************************/
-void parser_hifrogt::calculate_show_claims(claim_numberst &claim_numbers, claim_checkmapt &claim_checkmap) {
+void parser_hifrogt::calculate_show_claims(goto_modelt & goto_model, claim_numberst &claim_numbers, claim_checkmapt &claim_checkmap) {
 
     get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
     cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")");
@@ -941,4 +853,130 @@ void parser_hifrogt::help()
       //  "--xml-ui                       use XML-formatted output\n"
       //  "--xml-interface                stdio-XML interface\n"
       "\n";
+}
+
+/*******************************************************************
+
+ Function: standalone process_goto_program
+
+ Purpose: SA: This standalone function used to be a member function of parse;
+ but now inorder to be reusebale for several goto_model we took it out of parser_hifrog class.
+
+ Note: KE: Previously was inspired by: cbmc_parseoptionst::process_goto_program
+
+\*******************************************************************/
+bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto_modelt &goto_model,
+                          messaget &msg) {
+  try
+  {
+    // Only to prop logic
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
+    {
+      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")  //TODO extend it to other logics as well
+      {
+        // add the library
+        link_to_library(
+            goto_model, msg.get_message_handler(), cprover_cpp_library_factory);
+        link_to_library(
+            goto_model, msg.get_message_handler(), cprover_c_library_factory);
+      }
+      else
+      {
+        // use message for printing instead of cbmc_status_interface
+//      cbmc_status_interface("Ignoring CPROVER library");
+        msg.status() << "Ignoring CPROVER library" << msg.eom;
+      }
+    }
+    else
+    {
+      msg.status() << "Ignoring CPROVER library" <<  msg.eom;
+    }
+
+    if(cmdline.isset("string-abstraction"))
+      string_instrumentation(
+          goto_model, msg.get_message_handler());
+
+    msg.status() << "Removal of function pointers and virtual functions" << msg.eom;
+    remove_function_pointers(
+        msg.get_message_handler(),
+        goto_model,
+        false); // HiFrog doesn't have pointer check, set the flag to false always
+    // Java virtual functions -> explicit dispatch tables:
+    remove_virtual_functions(goto_model);
+
+    mm_io(goto_model);
+
+    // instrument library preconditions
+    instrument_preconditions(goto_model);
+
+    // remove returns, gcc vectors, complex
+    // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
+    remove_vector(goto_model);
+    remove_complex(goto_model);
+    rewrite_union(goto_model);
+
+    // add generic checks
+    msg.status() << "Generic Property Instrumentation" << msg.eom;
+    goto_check(options, goto_model);
+
+    // HIFROG: We remove built-ins from smt logics
+    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
+    {
+      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
+      {
+        // checks don't know about adjusted float expressions
+        adjust_float_expressions(goto_model);
+      }
+    }
+
+    if(cmdline.isset("string-abstraction"))
+    {
+      msg.status() << "String Abstraction" << msg.eom;
+      string_abstraction(
+          goto_model,
+          msg.get_message_handler());
+    }
+
+    // add failed symbols
+    // needs to be done before pointer analysis
+    add_failed_symbols(goto_model.symbol_table);
+
+    // recalculate numbers, etc.
+    goto_model.goto_functions.update();
+
+    // add loop ids
+    goto_model.goto_functions.compute_loop_numbers();
+
+
+    // remove skips
+    remove_skip(goto_model);
+    goto_model.goto_functions.update();
+
+    label_properties(goto_model);
+  }
+
+  catch(const char *e)
+  {
+    msg.error() << e <<msg.eom;
+    return true;
+  }
+
+  catch(const std::string e)
+  {
+    msg.error() << e <<msg.eom;
+    return true;
+  }
+
+  catch(int)
+  {
+    return true;
+  }
+
+  catch(std::bad_alloc)
+  {
+    msg.error() << "Out of memory" <<msg.eom;
+    return true;
+  }
+
+  return false;
 }

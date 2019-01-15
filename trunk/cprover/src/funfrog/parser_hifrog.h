@@ -72,7 +72,9 @@ public:
   parser_hifrogt(int argc, const char **argv);
 
 protected:
-  goto_modelt goto_model;
+//goto_modelt goto_model;   //SA: removed it from this class to allow the possibility of having
+                             //several goto-models in parsing stage(for e.g, we need it in upgrade-check)
+
   ui_message_handlert ui_message_handler; // KE: due to change from register_languages to messaget
 
   unsigned claim_user_nr = 0;
@@ -86,11 +88,13 @@ protected:
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
 
-  bool process_goto_program(const optionst &);
-  bool get_goto_program(const optionst &);
-  void calculate_show_claims(claim_numberst &, claim_checkmapt &);
+//move it outside of this class to be a standalone function for processing several goto-model in a single run
+//bool process_goto_program(const optionst &);
+
+  bool get_goto_program(goto_modelt &, cmdlinet &, optionst &);
+  void calculate_show_claims(goto_modelt &, claim_numberst &, claim_checkmapt &);
   bool validate_input_options (const claim_numberst &, unsigned &);
-  
+  void trigger_upgrade_check(const goto_modelt &);
   void set_options(const cmdlinet &cmdline);
   void eval_verbosity();
 
@@ -101,5 +105,9 @@ private:
   void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; }
   void cbmc_status_interface(std::string msg) { status() << msg << eom; }
 };
+
+// A standalone function; originally it was a member function of above class
+bool process_goto_program(const cmdlinet &cmdline, const optionst &, goto_modelt &goto_model,
+                          messaget &message);
 
 #endif
