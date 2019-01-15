@@ -206,8 +206,8 @@ int parser_hifrogt::doit()
 void parser_hifrogt::set_default_options(optionst &options)
 {
     // Default true
-    options.set_option("assertions", true);
-    options.set_option("assumptions", true);
+    options.set_option("assertions", true);   // always check assertions
+    options.set_option("assumptions", true);  // always use assumptions
     options.set_option("built-in-assertions", true);
     options.set_option("pretty-names", true);
     options.set_option("propagation", true);
@@ -218,7 +218,6 @@ void parser_hifrogt::set_default_options(optionst &options)
     // Other default
     options.set_option("arrays-uf", "auto");
 }
-
 /*******************************************************************
 
  Function:
@@ -516,11 +515,12 @@ void parser_hifrogt::set_options(const cmdlinet &cmdline)
 #else
   status() << "\n*** EXECUTE WITH OPTIMIZATIONS (DDISABLE_OPTIMIZATIONS is off) ***\n" << eom;
 #endif
-    if (cmdline.isset("solver")) {
-        options.set_option(HiFrogOptions::SOLVER, cmdline.get_value("solver"));
-    } else {
-        options.set_option(HiFrogOptions::SOLVER, "osmt");
-    }
+
+  if (cmdline.isset("solver")) {
+      options.set_option(HiFrogOptions::SOLVER, cmdline.get_value("solver"));
+  } else {
+      options.set_option(HiFrogOptions::SOLVER, "osmt");
+  }
   options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
@@ -534,10 +534,17 @@ void parser_hifrogt::set_options(const cmdlinet &cmdline)
   options.set_option("partial-loops", cmdline.isset("partial-loops"));
 
 #ifdef PRODUCE_PROOF
+//*********** Combination of Summary and Theory Refinement option***********
   options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
+
+//*********** Upgrade Checking options ***********
+  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
+  if (cmdline.isset("do-upgrade-check")) {
+    options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
+  }
 #endif
   
-  //theory refinement Options
+//*********** Theory Refinement Options ***********
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
@@ -552,15 +559,9 @@ void parser_hifrogt::set_options(const cmdlinet &cmdline)
       options.set_option("heuristic", cmdline.get_value("heuristic"));
   } else {
       options.set_option("heuristic", 4);
-  }//End of theory refinement Options
+  }//End of theory refinement Options ***********
 
-  // always check assertions
-  options.set_option("assertions", true);
-
-  // always use assumptions
-  options.set_option("assumptions", true);
-
-  // Use basic check as defualt
+//*********** defualt basic constraints on numerical data type***********
   options.set_option("type-constraints", 1);
   options.set_option("type-byte-constraints", 0);
 
@@ -622,9 +623,6 @@ void parser_hifrogt::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("claims-opt")) { // In Help Menu
     options.set_option("claims-opt", cmdline.get_value("claims-opt"));
   }
-  //if (cmdline.isset("do-upgrade-check")) { // KE: not working
-  //  options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
-  //}
   if (cmdline.isset("save-summaries")) {
     options.set_option("save-summaries", cmdline.get_value("save-summaries"));
   } else {
@@ -801,7 +799,11 @@ void parser_hifrogt::help()
       "--bitwidth <n>                 bitwidth for the CUF BV mode and CEX Validator\n\n"
       "--no-cex-model                 skips the cex validator is model cannot be extracted \n"
       #ifdef PRODUCE_PROOF
-      "\nSMT, Interpolation, and Proof Reduction options:\n"
+      "\nUpgrade options:\n"
+      "--init-upgrade-check           prepare for upgrade checking\n"
+      "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
+      "                               upgraded version (goto-binary)\n"
+      "\nInterpolation, and Proof Reduction options in SMT:\n"
 
       "--itp-algorithm                propositional interpolation algorithm: \n"
       "                                 0 - McMillan_s,\n"
