@@ -45,6 +45,7 @@ Module: Command Line Parsing
   "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
   "(theoref)(force)(custom):(heuristic):(bitwidth):" \
   "(sum-theoref)" \
+  "(init-upgrade-check)(do-upgrade-check):" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
