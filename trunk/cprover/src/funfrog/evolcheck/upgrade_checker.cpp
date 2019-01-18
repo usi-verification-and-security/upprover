@@ -34,5 +34,25 @@ bool check_initial(core_checkert &core_checker, messaget &msg) {
     	msg.status() << "\n Upgrade checking is not possible!" << msg.eom;
     	msg.status() << "Try standalone verification" << msg.eom;
   	}
-  	return result;
+	return result;    //you better move the report msgs to the caller place
+}
+
+/*******************************************************************\
+ Function: check_upgrade
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+\*******************************************************************/
+bool check_upgrade(const goto_programt &program_old,
+				   const goto_functionst &goto_functions_old,
+				   const goto_programt &program_new,
+				   const goto_functionst &goto_functions_new,
+				   const optionst& options,
+				   ui_message_handlert &message_handler) {
+  
+  
+	return true;
 }
