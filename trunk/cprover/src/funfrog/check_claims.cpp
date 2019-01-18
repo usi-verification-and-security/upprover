@@ -17,7 +17,7 @@
 
 #include "utils/time_utils.h"
 #include <langapi/language_util.h>
-
+#include "evolcheck/upgrade_checker.h"
 /*******************************************************************
 
  Function: find_assertion
@@ -173,6 +173,14 @@ void check_claims(
   core_checkert core_checker(goto_model, options, _message_handler, res.max_mem_used);
 
   core_checker.initialize();
+  
+/****** upgrade checking - bootstrapping mode ******/
+  bool init_ready = true;
+  if (options.get_bool_option("init-upgrade-check")){
+    messaget msg{_message_handler};
+    init_ready = check_initial(core_checker, msg);
+    return;
+  }
 
 #ifdef PRODUCE_PROOF
   if(options.get_bool_option("sum-theoref")){
@@ -231,7 +239,7 @@ void check_claims(
       return;
   }
 #endif
-  
+
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     core_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {

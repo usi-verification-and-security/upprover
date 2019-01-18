@@ -68,6 +68,7 @@
 #include <funfrog/utils/naming_helpers.h>
 
 #include <funfrog/utils/time_utils.h>
+#include "funfrog/evolcheck/upgrade_checker.h"
 
 /*******************************************************************
 
@@ -142,8 +143,9 @@ int parser_hifrogt::doit()
 
 
     goto_modelt goto_model;  //1st goto program associated with the original inputfile for normal use of hifrog & init_upgrade.
-    if(get_goto_program(goto_model, cmdline, options))     //optained 1st goto-program
-      {return 6;}
+    if(get_goto_program(goto_model, cmdline, options)) {    //optained 1st goto-program
+		return 6;
+	}
 
     auto after=timestamp();
     cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
@@ -166,29 +168,26 @@ int parser_hifrogt::doit()
         return true;
     }
 
-//  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
-//    cbmc_status_interface("Please set either ratio or time for reduction or number of proof traversals.");
-//    return false;
-//  }
-
-    //preparation for Upgrade check
-    if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check")){
-      trigger_upgrade_check(goto_model);
-    }
-
     calculate_show_claims(goto_model, claim_numbers, claim_checkmap);
 
     if(validate_input_options(claim_numbers, claim_user_nr)) {
-        check_claims(goto_model,
-                     claim_checkmap,
-                     claim_numbers,
-                     options,
-                     ui_message_handler,
-                     claim_user_nr);
+      	//preparation for Upgrade check
+    	if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check")){
+			trigger_upgrade_check(goto_model);
+			cbmc_status_interface("#X: Done.");
+        	return 0;
+    	}
+     	//perform standalone check for stream of assertions in a specific source file
+		check_claims(goto_model,
+                   claim_checkmap,
+                   claim_numbers,
+                   options,
+                   ui_message_handler,
+                   claim_user_nr);
     }
     else {
-        cbmc_status_interface("Please check --help to revise the user's options ");
-        return 1;
+    	cbmc_status_interface("Please check --help to revise the user's options ");
+    	return 1;
     }
 
     cbmc_status_interface("#X: Done.");
@@ -309,30 +308,31 @@ unsigned parser_hifrogt::count(const goto_programt &goto_program) const
  Purpose: making ready for upgrade checking
 \*******************************************************************/
 void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model){
-  // a bit of hack; for now slicing does not work in upgrade
-  options.set_option("no-slicing", true);
-  options.set_option("all-claims", true);  //for upgrade check this is always true
+	// a bit of hack; for now slicing does not work in upgrade
+	options.set_option("no-slicing", true);
+	options.set_option("all-claims", true);  //for upgrade check this is always true
 
 
-  // perform the upgrade check (or preparation for that)
-  if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
-     cmdline.isset("claimset") || cmdline.isset("no-itp"))
-  {
-    cbmc_error_interface("Upgrade checking mode does not allow checking specific claims");
-  }
+	// perform the upgrade check (or preparation for that)
+  	if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
+    	cmdline.isset("claimset") || cmdline.isset("no-itp"))
+	{
+    	cbmc_error_interface("Upgrade checking mode does not allow checking specific claims");
+  	}
 
- // bool init_ready = true; // the checks of existence of __omega and upg. version will be later
-  if (cmdline.isset("init-upgrade-check")){
-    check_claims(goto_model,
-                 claim_checkmap,
-                 claim_numbers,
-                 options,
-                 ui_message_handler,
-                 claim_user_nr);
+ 	// bool init_ready = true; // the checks of existence of __omega and upg. version will be later
+  	if (cmdline.isset("init-upgrade-check")) {
+		check_claims(goto_model,
+				   claim_checkmap,
+				   claim_numbers,
+				   options,
+				   ui_message_handler,
+				   claim_user_nr);
+		return;
+	}
 //    init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
 //                               goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
-    //should end and retun somewhere; does not proceed to next,
-  }
+	
 
    //TODO prepare calling for "check_upgrade" function
 }
