@@ -818,10 +818,13 @@ void parser_hifrogt::help()
       "--bitwidth <n>                 bitwidth for the CUF BV mode and CEX Validator\n\n"
       "--no-cex-model                 skips the cex validator is model cannot be extracted \n"
       #ifdef PRODUCE_PROOF
-      "\nUpgrade options:\n"
+      "\nUpgrade Checking options:\n"
       "--init-upgrade-check           prepare for upgrade checking\n"
       "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
       "                               upgraded version (goto-binary)\n"
+      "--save-omega <filename>        save the last used substitution scenario\n"
+      "                               to the given file\n"
+      "--load-omega <filename>        load substitution scenario\n"
       "\nInterpolation, and Proof Reduction options in SMT:\n"
 
       "--itp-algorithm                propositional interpolation algorithm: \n"
