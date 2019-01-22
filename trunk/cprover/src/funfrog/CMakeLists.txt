@@ -62,7 +62,8 @@ set(HIFROG_SOURCE_FILES
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
         interface/convertor.h
-        evolcheck/upgrade_checker.cpp evolcheck/upgrade_checker.h)
+        evolcheck/upgrade_checker.cpp evolcheck/upgrade_checker.h
+        evolcheck/diff.cpp evolcheck/diff.h)
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
