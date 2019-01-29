@@ -5,9 +5,7 @@
  This class was adapted from old SAT-based evolcheck developed by G. Fedyukovich
 
 \*******************************************************************/
-#include <i2string.h>
 #include "diff.h"
-#include <util/std_expr.h>
 
 //#define DEBUG_DIFF
 
@@ -48,7 +46,7 @@ std::string form(const exprt &expr)
         return expr.get_string(ID_value);
     } else if (expr.id()==ID_symbol){
         return expr.get_string("identifier");//.as_string();
-    } else if(expr.id()==ID_sideeffect){
+    } else if(expr.id()==ID_side_effect){
         if (expr.get(ID_statement)==ID_function_call){
             return form(expr.op0());//.to_string();
         }
@@ -179,7 +177,7 @@ bool difft :: is_untouched(const irep_idt &name)
     return true;
 }
 
-bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
+bool difft :: unroll_goto(const goto_functionst &goto_functions, const irep_idt &name,
                           goto_sequencet &goto_unrolled,
                           std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
 {
@@ -188,7 +186,7 @@ bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
 //  }
     
     unsigned loc = 0;
-    const goto_programt& program = goto_functions.function_map[name].body;
+    const goto_programt& program = goto_functions.function_map.at(name).body;
     for(goto_programt::const_targett it = program.instructions.begin();
         it!=program.instructions.end(); ++it)
     {
@@ -208,7 +206,7 @@ bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
             loc++;
         }
         
-        goto_unrolled.push_back(triple<std::string, unsigned, const locationt*>(cmd_str(it), tmp, &(it->location)));
+        goto_unrolled.push_back(triple<std::string, unsigned, const source_locationt*>(cmd_str(it), tmp, &(it->source_location)));
     }
     return true;
 }
@@ -262,7 +260,13 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
     
     return res;
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
                              goto_sequencet &goto_unrolled_2,
                              goto_sequencet &goto_common)
@@ -363,7 +367,13 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
         i_1++;
     }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 int difft :: get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions, unsigned old){
     //ToDo: create more sophisticated method
 //  if ((*functions[old].first) == name){
@@ -380,8 +390,14 @@ int difft :: get_call_loc(const irep_idt& name, std::vector<std::pair<const irep
     }
     return -1;
 }
+/*******************************************************************\
+ 
+ Function:
 
-bool difft :: do_diff()
+ Purpose:
+
+\*******************************************************************/
+bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_functionst &goto_functions_2)
 {
     if (do_write){
         // Load substituting scenario
@@ -390,7 +406,7 @@ bool difft :: do_diff()
         while (!in.eof()){
             std::string str;
             in >> str;
-            old_summs.push_back(str);
+            old_summs.push_back(str);   // contains all __omega as vec of string
         }
         in.close();
     }
@@ -400,9 +416,9 @@ bool difft :: do_diff()
     }
     
     unsigned loc = 0;
-    collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions_old, calltree_old, loc);
+    collect_functions(goto_functions_1, goto_functions_1.function_map.at("main").body, functions_old, calltree_old, loc);
     loc = 0;
-    collect_functions(goto_functions_2, goto_functions_2.function_map["main"].body, functions_new, calltree_new, loc);
+    collect_functions(goto_functions_2, goto_functions_2.function_map.at("main").body, functions_new, calltree_new, loc);
     
     if (do_write){
         stub_new_summs(0);
@@ -412,8 +428,8 @@ bool difft :: do_diff()
     goto_sequencet goto_unrolled_2;
     goto_sequencet goto_common;
     
-    contextt temp_context;
-    namespacet ns (temp_context);
+    symbol_tablet temp_symb;
+    namespacet ns (temp_symb);
     
     for (unsigned i = 0; i < functions_new.size(); i++)
     {
@@ -433,9 +449,9 @@ bool difft :: do_diff()
             }
         }
         
-        if(!base_type_eq(goto_functions_1.function_map[call_name].type,
-                         goto_functions_2.function_map[call_name].type, ns) && !locs_output){
-            status (std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface"));
+        if(!base_type_eq(goto_functions_1.function_map.at(call_name).type,
+                         goto_functions_2.function_map.at(call_name).type, ns) && !locs_output){
+            msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface") <<msg.eom;
             new_summs[i * 7 + 2] = "2";
             continue;
         }
@@ -467,11 +483,11 @@ bool difft :: do_diff()
             }
         }
         if (!locs_output)
-            status (std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
+            msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
                     (functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
                     (functions_new[i].second ? std::string("") : std::string(" (") +
-                                                                 i2string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())
-                                                                 + std::string(")")));
+                                                                 std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())
+                                                                 + std::string(")")) <<msg.eom;
         goto_unrolled_1.clear();
         goto_unrolled_2.clear();
         goto_common.clear();

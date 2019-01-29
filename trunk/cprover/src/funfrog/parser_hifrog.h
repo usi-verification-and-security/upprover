@@ -96,7 +96,7 @@ protected:
   bool get_goto_program(goto_modelt &, cmdlinet &, optionst &);
   void calculate_show_claims(goto_modelt &, claim_numberst &, claim_checkmapt &);
   bool validate_input_options (const claim_numberst &, unsigned &);
-  void trigger_upgrade_check(const goto_modelt &);
+  void trigger_upgrade_check(const goto_modelt &goto_model);
   void set_options(const cmdlinet &cmdline);
   void eval_verbosity();
 
@@ -108,6 +108,7 @@ private:
   void cbmc_status_interface(std::string msg) { status() << msg << eom; }
 };
 
+//Declaration:
 // A standalone function; originally it was a member function of above class
 bool process_goto_program(const cmdlinet &cmdline, const optionst &, goto_modelt &goto_model,
                           messaget &message);

@@ -348,10 +348,10 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model) {
     
     check_upgrade(
 		  // OLD!
-		  goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body, goto_model.goto_functions,
+		  goto_model.goto_functions.function_map.at(ID_main).body, goto_model.goto_functions,
 		  // NEW!
-		  new_model.goto_functions.function_map.at(goto_functionst::entry_point()).body, new_model.goto_functions,
-		  options, ui_message_handler);
+		  new_model.goto_functions.function_map.at(ID_main).body, new_model.goto_functions,
+		  new_model ,options, ui_message_handler);
     
   }
 }
