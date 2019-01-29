@@ -1,6 +1,6 @@
 /*******************************************************************
 
- Module: An interface between summarizing checker and summary info,
+ Module: An interface between core checker and summary info,
          providing a precision level for all function calls
          of the given program
 
@@ -24,7 +24,13 @@ void subst_scenariot::setup_default_precision(init_modet init)
      assert(false);
    }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void subst_scenariot::initialize_summary_info(
     call_tree_nodet& summary_info, const goto_programt& code)
 {
@@ -40,21 +46,21 @@ void subst_scenariot::initialize_summary_info(
 
       // we only do deterministic gotos for now
       if(inst->targets.size()!=1)
-        throw "no support for non-deterministic gotos";
+        throw "no support for non-deterministic goto (jump) instructions";
 
       unsigned tgt_location = (*inst->targets.begin())->location_number;
-      if(tgt_location < dst_location){
+      if(tgt_location < dst_location){    //if so means backwards goto :the loop still in continue
         goto_ranges.push_back(std::make_pair(
              global_loc - (dst_location - tgt_location),
              global_loc));
-        //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
+        std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
         for (call_sitest::iterator it = summary_info.get_call_sites().begin();
             it != summary_info.get_call_sites().end(); ++it)
           {
              if ((it->first)->location_number < dst_location &&
                  (it->first)->location_number > tgt_location)
                {
-                  (it->second).set_in_loop(true);
+                  (it->second).set_in_loop(true);     //"it" is inside the loop
                   // TODO: also, all nested function calls
                }
           }
@@ -106,7 +112,13 @@ void subst_scenariot::initialize_summary_info(
     }
   }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void subst_scenariot::clone_children(call_tree_nodet& call, call_tree_nodet& parent){
   for (call_sitest::iterator it = parent.get_call_sites().begin();
           it != parent.get_call_sites().end(); ++it)
@@ -224,7 +236,13 @@ void subst_scenariot::process_goto_locations()
     (*functions[i]).set_call_location(loc);
   }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose: Identifying assertions if it is inside a loop using GOTO(Jump) instructions's range
+
+\*******************************************************************/
 bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
 {
   for (unsigned j = 0; j < goto_ranges.size(); j++){
@@ -362,6 +380,13 @@ void deserialize_used_summaries(const std::string& line,
   }
 }
 
+/*******************************************************************\
+ 
+ Function: Usage ONly in Upgrade Check
+
+ Purpose: Writes substituting Scenario into a given file a default __omega or
+
+\*******************************************************************/
 void subst_scenariot::serialize(const std::string& file)
 {
   std::ofstream out;
@@ -396,6 +421,13 @@ void subst_scenariot::serialize(const std::string& file)
 
   out.close();
 }
+/*******************************************************************\
+ 
+ Function:
+
+ Purpose:
+
+\*******************************************************************/
 
 void subst_scenariot::deserialize(
     const std::string& file, const goto_programt& code)

@@ -34,7 +34,10 @@ bool check_initial(core_checkert &core_checker, messaget &msg) {
     	msg.status() << "\n Upgrade checking is not possible!" << msg.eom;
     	msg.status() << "Try standalone verification" << msg.eom;
   	}
-	return result;    //you better move the report msgs to the caller place
+    //to write the substitution scenario of 1st phase into a given file or __omega file
+    core_checker.serialize();
+  	
+  	return result;    //you better move the report msgs to the caller place
 }
 
 /*******************************************************************\

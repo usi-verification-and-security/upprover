@@ -48,6 +48,10 @@ public:
 #ifdef PRODUCE_PROOF
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
+    // public method that allows upgrade check to write the subst scenario into a __omega file
+    void serialize(){
+        omega.serialize(options.get_option("save-omega"));
+    };
 #endif // PRODUCE_PROOF
 
 protected:
