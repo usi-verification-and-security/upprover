@@ -96,7 +96,7 @@ protected:
   bool get_goto_program(goto_modelt &, cmdlinet &, optionst &);
   void calculate_show_claims(goto_modelt &, claim_numberst &, claim_checkmapt &);
   bool validate_input_options (const claim_numberst &, unsigned &);
-  void trigger_upgrade_check(const goto_modelt &goto_model);
+  void trigger_upgrade_check(const goto_modelt &);
   void set_options(const cmdlinet &cmdline);
   void eval_verbosity();
 

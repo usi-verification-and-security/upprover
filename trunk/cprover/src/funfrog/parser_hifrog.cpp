@@ -307,7 +307,7 @@ unsigned parser_hifrogt::count(const goto_programt &goto_program) const
 
  Purpose: making ready for upgrade checking
 \*******************************************************************/
-void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model) {
+void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model_old) {
     // a bit of hack; for now slicing does not work in upgrade
     options.set_option("no-slicing", true);
     options.set_option("all-claims", true);  //for upgrade check this is always true
@@ -321,7 +321,7 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model) {
   
     // bool init_ready = true; // the checks of existence of __omega and upg. version will be later
     if (cmdline.isset("init-upgrade-check")) {
-        check_claims(goto_model,
+        check_claims(goto_model_old,
                  claim_checkmap,
                  claim_numbers,
                  options,
@@ -329,9 +329,6 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model) {
                  claim_user_nr);
         return;
     }
-//    init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
-//                               goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
-  
   
 //2nd phase
     if (cmdline.isset("do-upgrade-check")) {
@@ -339,19 +336,20 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model) {
     
         auto new_filepath = cmdline.get_value("do-upgrade-check");
         auto old_args = cmdline.args;  //old file path
-        cmdline.args = {new_filepath};   //TODO: how about options? make sure you can use the old settings?
-        goto_modelt new_model;     // 2nd goto program associated with upgraded_file
+        cmdline.args = {new_filepath};
+        goto_modelt goto_model_new;     // 2nd goto model associated with upgraded_file
     
-        if (get_goto_program(new_model, cmdline, options)) {    //2nd go-to program is obtained
+        if (get_goto_program(goto_model_new, cmdline, options)) {
             return;
         }
     
     check_upgrade(
 		  // OLD!
-		  goto_model.goto_functions.function_map.at(ID_main).body, goto_model.goto_functions,
+		  goto_model_old,
 		  // NEW!
-		  new_model.goto_functions.function_map.at(ID_main).body, new_model.goto_functions,
-		  new_model ,options, ui_message_handler);
+		  goto_model_new,
+		  options,
+		  ui_message_handler);
     
   }
 }
