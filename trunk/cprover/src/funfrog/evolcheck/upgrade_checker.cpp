@@ -96,7 +96,7 @@ bool check_upgrade(
     
     upgrade_checkert upg_checker(goto_model_new, options, message_handler, max_mem_used);
     
-   // res_diff = upg_checker.check_upgrade(core_checker);
+    res_diff = upg_checker.check_upgrade();
     
     after = timestamp();
     
@@ -107,4 +107,84 @@ bool check_upgrade(
     return res_diff;
 }
 
+/*******************************************************************\
 
+Function: upgrade_checkert::check_upgrade
+
+ Purpose: Incremental check of the upgraded program.
+
+\*******************************************************************/
+bool upgrade_checkert::check_upgrade()
+{
+    
+    // Here we suppose that "__omega" already contains information about changes
+    // TODO: Maybe omega should be passed internally, not as a file.
+    omega.deserialize(options.get_option("save-omega"), goto_model.goto_functions.function_map.at("main").body);
+    omega.process_goto_locations();
+    omega.setup_last_assertion_loc(assertion_infot());
+    
+    // 3. Mark summaries as
+    //     - valid: the function was not changed                  => summary_info.preserved_node == true
+    //     - invalid: interface change                            [TBD], for now, all of them are 'unknown'
+    //                                / ass_in_subtree change     [TBD], suppose, every ass_in_subtree preserved
+    //     - unknown: function body changed                       => summary_info.preserved_node == false
+    
+    std::vector<call_tree_nodet*>& summs = omega.get_call_summaries();
+    for (unsigned i = summs.size() - 1; i > 0; i--){
+        // backward search, from the summary with the largest call location
+        
+        bool res = true;
+        
+        const irep_idt& name = (*summs[i]).get_function_id();
+
+#ifdef DEBUG_UPGR
+        std::cout << "checking summary #"<< i << ": " << name <<"\n";
+#endif
+        // if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
+        
+        const summary_ids_sett& used = (*summs[i]).get_used_summaries();
+        if (used.size() == 0 && !(*summs[i]).is_preserved_node()){
+            res = false;
+///SA            upward_traverse_call_tree((*summs[i]).get_parent(), res);
+        }
+        
+        for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
+//        summaryt& summary = summarization_context.get_summary_store().find_summary(*it);
+//        summary.print(std::cout);
+            
+            if (checked_summaries.find(*it) == checked_summaries.end()){
+                summary_ids_sett summary_to_check;
+                summary_to_check.insert(*it);
+                (*summs[i]).set_used_summaries(summary_to_check);
+///SA                upward_traverse_call_tree((*summs[i]), res);
+            } else {
+                status() << "function " << name << " is already checked" << eom;
+            }
+        }
+        /* } else {
+             status(std::string("ignoring function: ") + name.c_str()
+                 + std::string(" (loc. number ") + i2string((*summs[i]).get_call_location())
+                 + std::string(" is out of assertion scope)"));
+         }*/
+        if (!res) {
+///SA            status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/" << (omega.get_call_summaries().size() - 1) << eom;
+            report_failure();
+            return false;
+        }
+    }
+    
+    // 3. From the bottom of the tree, reverify all changed nodes
+    //    a. If the edge is unchanged, check implication of previously
+    //       used summaries
+    //        - OK/already valid: summary valid, don't propagate check upwards
+    //        - KO/already invalid: summary invalid, propagate check upwards
+    //    b. If the edge is changed, propagate check upwards (we don't know which summary
+    //       to check).
+    //
+    // NOTE: call check_summary to do the check \phi_f => I_f.
+    
+///SA    status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/"  << (omega.get_call_summaries().size() - 1) << eom;
+    serialize();
+    report_success();
+    return true;
+}

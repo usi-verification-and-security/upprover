@@ -10,6 +10,7 @@
 #define PROJECT_UPGRADE_CHECKER_H
 
 #include "funfrog/core_checker.h"
+#include <ui_message.h>
 
 class upgrade_checkert : public core_checkert
 {
@@ -28,9 +29,12 @@ public:
 				_options,
 			    _message_handler,
 				_max_memory_used)
-	
 	{};
+    
+    bool check_upgrade();
 
+protected:
+    summary_ids_sett checked_summaries;
 };
 
 //Declarations
