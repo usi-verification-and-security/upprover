@@ -76,7 +76,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
 
         assert(0);
     }
-    catch(std::bad_alloc)
+    catch(const std::bad_alloc &)
     {
         log.error() << "Out of memory" << log.eom;
         assert(0);

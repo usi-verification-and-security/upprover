@@ -332,7 +332,7 @@ bool parser_hifrogt::process_goto_program(
     return true;
   }
 
-  catch(std::bad_alloc)
+  catch(const std::bad_alloc&)
   {
     cbmc_error_interface("Out of memory");
     return true;
