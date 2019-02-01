@@ -1,6 +1,4 @@
-#!/usr/local/bin/python3
-#This script runs HiFrog twice(first without summary and second with reusing the summary) and then
-# checks with the expected results. It also dumps the verification results into a collected*.txt file 
+#!/usr/bin/env python3
 
 #usage: python3 run_tests.py <hifrog-executable-path>
 
@@ -27,8 +25,9 @@ def purge(dir, pattern):
             
 #-------------------------------------------------------
 def run_single(path_to_bin, configs_str, path_to_test):
-    note("Running test: " + path_to_test)
+    #note("Running test: " + path_to_test)
     command = path_to_bin + ' --sum-theoref ' + path_to_test
+    note("Running test: " + command)
     out = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     stdoutput = out.stdout.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
