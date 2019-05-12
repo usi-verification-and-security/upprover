@@ -85,7 +85,7 @@ protected:
     messaget &msg;
     
 private:
-    std::vector<std::pair<const irep_idt*, bool> > functions_old;
+    std::vector<std::pair<const irep_idt*, bool> > functions_old;    //mapping if a founction is touched or not
     
     std::vector<std::pair<const irep_idt*, bool> > functions_new;
     
@@ -99,7 +99,7 @@ private:
     
     bool do_write;
     
-    bool locs_output;
+    bool locs_output;   // default is false
     
     std::set<unsigned> locs_visited;
     

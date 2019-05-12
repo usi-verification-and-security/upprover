@@ -9,6 +9,9 @@
 
 //#define DEBUG_DIFF
 
+/*******************************************************************\
+ Purpose:
+\*******************************************************************/
 std::string form(const exprt &expr)
 {
     if (expr.has_operands()){
@@ -56,7 +59,9 @@ std::string form(const exprt &expr)
     }
     return "(not supported yet: "+expr.id_string()+")";
 }
-
+/*******************************************************************\
+ Purpose:
+\*******************************************************************/
 std::string cmd_str (goto_programt::const_targett &it)
 {
     std::string res;
@@ -114,23 +119,35 @@ std::string cmd_str (goto_programt::const_targett &it)
     }
     return res;
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose: simulates the behavior of existing code that tries to update new_sums based on old_sums
+ 
+\*******************************************************************/
 void difft :: stub_new_summs(unsigned loc){
     if (loc != 0){
-        new_summs.push_back("-");
+        new_summs.push_back("__CPROVER_initialize");  //later an actual function name is pushed
         new_summs.push_back(integer2string(loc)); // wrong, but working
-        new_summs.push_back("2");
-        new_summs.push_back("0");
-        new_summs.push_back("1");
-        new_summs.push_back("0");
-        new_summs.push_back("-");
+        new_summs.push_back("2");   //INLINE
+        new_summs.push_back("0");   //Is_preserved_node?
+        new_summs.push_back("1");   //Is_preserved_edge?    SA: Where is it useful?
+        new_summs.push_back("0");   //has assertion in subtree
+        new_summs.push_back("-");  //later a proper used_summaries will be pushed
     }
     std::vector <unsigned> calls = calltree_new[loc];
     for (unsigned i = 0; i < calls.size(); i++){
         stub_new_summs(calls[i]);
     }
 }
-
+/*******************************************************************\
+Purpose: Performs a DFS traversal on FUNCTION_CALLs. Starts from entry point of program
+and recursively
+and relates function IDs to number of childeren;
+fills two member fileds of difft class, namely functions_old, functions_new
+by populating &functions
+\*******************************************************************/
 void collect_functions(const goto_functionst &goto_functions, const goto_programt &program,
                        std::vector<std::pair<const irep_idt*, bool> > &functions,
                        std::map<unsigned, std::vector<unsigned> > &calltree, unsigned& global_loc)
@@ -150,21 +167,29 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
             const irep_idt &name = call.function().get("identifier");
             
             current_children.push_back(global_loc);
-            functions.push_back(std::make_pair(&name, false));
+            functions.push_back(std::make_pair(&name, false));    //false as a default
             
-            goto_functionst::function_mapt::const_iterator f_it =
+            goto_functionst::function_mapt::const_iterator f_it =      //finds
                     goto_functions.function_map.find(name);
             
             if(f_it!=goto_functions.function_map.end())
-            {
+            {   //Found
                 collect_functions(goto_functions, f_it->second.body, functions, calltree, global_loc);
             }
         }
     }
-    calltree[initial_loc] = current_children;
+    
+    calltree[initial_loc] = current_children;    // if no FUNCTION_CALL is detected in subtree, the default
+                                                // value of vector (empty) will be pushed
 }
 
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 bool difft :: is_untouched(const irep_idt &name)
 {
     for (unsigned i = 0; i < functions_old.size(); i++){
@@ -176,7 +201,13 @@ bool difft :: is_untouched(const irep_idt &name)
     }
     return true;
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose: TODO:SA: find a better name; it seems this func does not have anything to do with unrolling
+
+\*******************************************************************/
 bool difft :: unroll_goto(const goto_functionst &goto_functions, const irep_idt &name,
                           goto_sequencet &goto_unrolled,
                           std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
@@ -205,19 +236,25 @@ bool difft :: unroll_goto(const goto_functionst &goto_functions, const irep_idt 
             }
             loc++;
         }
-        
+        //adding location info to diff
         goto_unrolled.push_back(triple<std::string, unsigned, const source_locationt*>(cmd_str(it), tmp, &(it->source_location)));
     }
     return true;
 }
-
+/*******************************************************************\
+ Purpose:
+\*******************************************************************/
 void copy(goto_sequencet &goto_1,
           goto_sequencet &goto_2){
     for (unsigned i = 0; i < goto_2.size(); i++){
         goto_1.push_back(goto_2[i]);
     }
 }
-
+/*******************************************************************\
+ Purpose: if the new and old functions are the same returns true, size_1 == size_2 == size_c
+ Note:SA: TODO: needs a major improvement/change.
+          TODO: release the alocated memory 2-D array
+\*******************************************************************/
 bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
                       goto_sequencet &goto_unrolled_2,
                       goto_sequencet &goto_common){
@@ -225,11 +262,11 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
     unsigned size_2 = goto_unrolled_2.size();
     
     if (size_1 == 0 && size_2 == 0){
-        return true;
+        return true;                //nondet it holds
     }
     
     if (size_1 != 0 && size_2 != 0){
-        goto_sequencet **goto_common_s =
+        goto_sequencet **goto_common_s =                //SA: here the pointer to pointer provides 2-D array
                 new goto_sequencet*[size_1 + 1];
         for (unsigned i = 0; i <= size_1; ++i){
             goto_common_s[i] = new goto_sequencet[size_2 + 1];
@@ -259,7 +296,7 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
     bool res = size_1 == size_2 && size_c == size_1 && size_c == size_2;
     
     return res;
-}
+ }
 /*******************************************************************\
  
  Function:
@@ -285,7 +322,7 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
 #     ifdef DEBUG_DIFF
         std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
 #     endif
-        while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
+        while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){   //goto_common filled in opposite direction
 #     ifdef DEBUG_DIFF
             std::cout << "    [+] " << goto_unrolled_2[i_2].first
           << " // " << (*goto_unrolled_2[i_2].third).as_string()
@@ -338,8 +375,9 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
             i_2++;
         }
         i_c--;
-    }
+    } //End of while loop i_c>0
     
+////XML output for diff
     while (i_2 < size_2){
 #   ifdef DEBUG_DIFF
         std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
@@ -368,22 +406,21 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
     }
 }
 /*******************************************************************\
- 
+
  Function:
 
- Purpose:
-
+ Purpose: it does 2 things: if the name is alreday there & it's already visited
+        - matching between function calls in old and new binaries
 \*******************************************************************/
-int difft :: get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions, unsigned old){
+int difft :: get_call_loc(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& functions_old, unsigned old){
     //ToDo: create more sophisticated method
 //  if ((*functions[old].first) == name){
 //    locs_visited.insert(old_loc);
 //    return old;
 //  }
     
-    for (unsigned i = 0; i < functions.size(); i++){
-        if ((*functions[i].first) == name &&
-            locs_visited.find(i) == locs_visited.end()){
+    for (unsigned i = 0; i < functions_old.size(); i++){
+        if ((*functions_old[i].first) == new_call_name && locs_visited.find(i) == locs_visited.end()){
             locs_visited.insert(i);
             return i;
         }
@@ -399,7 +436,7 @@ int difft :: get_call_loc(const irep_idt& name, std::vector<std::pair<const irep
 \*******************************************************************/
 bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_functionst &goto_functions_2)
 {
-    if (do_write){
+    if (do_write){   // will write on __omega file later on
         // Load substituting scenario
         std::ifstream in;
         in.open(input);
@@ -431,34 +468,37 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     symbol_tablet temp_symb;
     namespacet ns (temp_symb);
     
-    for (unsigned i = 0; i < functions_new.size(); i++)
+    for (unsigned i = 0; i < functions_new.size(); i++)     //CProver_initialize are not in this vector
     {
-        bool pre_res_3 = false;
+        bool pre_comp_res = false;
         
         const irep_idt& call_name = (*functions_new[i].first);
         
         unsigned call_loc = get_call_loc(call_name, functions_old, i);
         
         if (do_write){
-            if (call_loc != -1){
-                for (unsigned j = 0; j < 7; j++)
+            if (call_loc != -1){     //if locs already has been visited it is -1
+                for (unsigned j = 0; j < 7; j++){
                     if (j != 4)
-                        new_summs[i * 7 + j] = old_summs[call_loc * 7 + j];
+                        new_summs[i * 7 + j] = old_summs[call_loc * 7 + j];   //when j=6 used_summaries are copied
+                }  // End of Forloop j
             } else {
-                new_summs[i * 7] = call_name.c_str();
+                new_summs[i * 7] = call_name.c_str();        // new function, so add the new function name
             }
         }
-        
+        //interface change support: if the signature of a function was changed, we mark it as changed,
+        // and invalidate all summaries(mark as Inline); so the upgrade checking algorithm starts with the parent)
         if(!base_type_eq(goto_functions_1.function_map.at(call_name).type,
                          goto_functions_2.function_map.at(call_name).type, ns) && !locs_output){
             msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface") <<msg.eom;
-            new_summs[i * 7 + 2] = "2";
+            new_summs[i * 7 + 2] = "2";  //Set INLINE precision if the current function has changed.
             continue;
         }
         
-        if (i == 0){
-            pre_res_3 = true;
-        } else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
+//SA        if (i == 0){ //SA: it is on __CPROVER_initialize
+//SA            pre_res_3 = true;
+//SA        }
+//SA        else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
             bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
                                          calltree_old, call_loc, false);
             
@@ -466,36 +506,38 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
                                          calltree_new, i, false);
             
             if (pre_res_1 && pre_res_2){
-                if (compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common)){
-                    pre_res_3 = true;
-                }
+                pre_comp_res = compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common);    //when f changed, it should return false
             }
-        }
-        functions_new[i].second = pre_res_3;
-        if (pre_res_3 == false){
+//SA      }
+        functions_new[i].second = pre_comp_res;
+        //if initial comparision failed, lets do a proper diff
+        if (pre_comp_res == false){
             do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
             if (do_write) {
-                new_summs[i*7 + 3] = "0";
-            }
-        } else {
-            if (do_write) {
-                new_summs[i*7 + 3] = "1";
+                new_summs[i*7 + 3] = "0";   //function has changed
             }
         }
+        else {
+            if (do_write) {
+                new_summs[i*7 + 3] = "1";   //it is a preserved_node
+            }
+        }
+        //report
         if (!locs_output)
             msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
                     (functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
                     (functions_new[i].second ? std::string("") : std::string(" (") +
-                                                                 std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())
+                                                                 std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())  //all-assert cmdline param
                                                                  + std::string(")")) <<msg.eom;
         goto_unrolled_1.clear();
         goto_unrolled_2.clear();
         goto_common.clear();
-    }
+    }   // End of Forloop over functions_new.size
     
+    // Writing new_summ's data into omega file
     if (do_write){
         std::ofstream out;
-        out.open(output);
+        out.open(output);    //if you don't provide a new file it will overwrite the old __omega file.
         for (unsigned i = 0; i < new_summs.size(); i++){
             out << new_summs[i] << std::endl;
         }
@@ -508,8 +550,8 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     
     bool res = true;
     for (unsigned i = 1; i < functions_old.size(); i++){
-        res &= functions_new[i].second;
-    }
+        res &= functions_new[i].second;     // continues Bit Wise AND for all the functions' res
+    }                                       //if false, at least one function has changed
     return res;
 }
 
