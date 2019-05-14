@@ -34,7 +34,7 @@ class smtcheck_opensmt2t_lia;
 class satcheck_opensmt2t;
 class ssa_solvert;
 
-class core_checkert : private messaget
+class core_checkert : public messaget
 {
 public:
   core_checkert(const goto_modelt & _goto_model, const optionst & _options,
@@ -51,7 +51,11 @@ public:
     // public method that allows upgrade check to write the subst scenario into a __omega file
     void serialize(){
         omega.serialize(options.get_option("save-omega"));
-    };
+    }
+    // public method that allows upgrade check to read the subst scenario from __omega file
+    void deserialize(const goto_programt & goto_program){
+        omega.deserialize(options.get_option("save-omega"), goto_program);
+    }
 #endif // PRODUCE_PROOF
 
 protected:
