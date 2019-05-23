@@ -5,6 +5,7 @@
  This class was adapted from old SAT-based evolcheck developed by G. Fedyukovich
 
 \*******************************************************************/
+//#include <term_entry.h>
 #include "diff.h"
 
 //#define DEBUG_DIFF
@@ -142,9 +143,9 @@ void difft :: stub_new_summs(unsigned loc){
     }
 }
 /*******************************************************************\
-Purpose: Performs a DFS traversal on FUNCTION_CALLs. Starts from entry point of program
-and recursively
-and relates function IDs to number of childeren;
+Purpose: Performs a DFS traversal on FUNCTION_CALLs. Starts from entry point of program (main)
+and recursively collects functions calls into vector called "functions"
+It also relates function IDs to number of childeren;
 fills two member fileds of difft class, namely functions_old, functions_new
 by populating &functions
 \*******************************************************************/
@@ -420,7 +421,8 @@ int difft :: get_call_loc(const irep_idt& new_call_name, std::vector<std::pair<c
 //  }
     
     for (unsigned i = 0; i < functions_old.size(); i++){
-        if ((*functions_old[i].first) == new_call_name && locs_visited.find(i) == locs_visited.end()){
+        if ((*functions_old[i].first) == new_call_name && locs_visited.find(i) == locs_visited.end()){  //locs_visted keeps i to ensure
+                                                                                                        //the next time to give a new i
             locs_visited.insert(i);
             return i;
         }
@@ -445,6 +447,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             in >> str;
             old_summs.push_back(str);   // contains all __omega as vec of string
         }
+        std::cout << "Size is : " << old_summs.size() <<std::endl;
         in.close();
     }
     
@@ -453,9 +456,9 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     }
     
     unsigned loc = 0;
-    collect_functions(goto_functions_1, goto_functions_1.function_map.at("main").body, functions_old, calltree_old, loc);
+    collect_functions(goto_functions_1, goto_functions_1.function_map.at(goto_functionst::entry_point()).body, functions_old, calltree_old, loc);
     loc = 0;
-    collect_functions(goto_functions_2, goto_functions_2.function_map.at("main").body, functions_new, calltree_new, loc);
+    collect_functions(goto_functions_2, goto_functions_2.function_map.at(goto_functionst::entry_point()).body, functions_new, calltree_new, loc);
     
     if (do_write){
         stub_new_summs(0);
@@ -468,7 +471,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     symbol_tablet temp_symb;
     namespacet ns (temp_symb);
     
-    for (unsigned i = 0; i < functions_new.size(); i++)     //CProver_initialize are not in this vector
+    for (unsigned i = 0; i < functions_new.size() ; i++)
     {
         bool pre_comp_res = false;
         
@@ -495,10 +498,10 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             continue;
         }
         
-//SA        if (i == 0){ //SA: it is on __CPROVER_initialize
-//SA            pre_res_3 = true;
-//SA        }
-//SA        else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
+         if (i == 0){ //SA: it is on __CPROVER_initialize
+             pre_comp_res = true;
+         }
+       else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
             bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
                                          calltree_old, call_loc, false);
             
@@ -508,7 +511,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             if (pre_res_1 && pre_res_2){
                 pre_comp_res = compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common);    //when f changed, it should return false
             }
-//SA      }
+      }
         functions_new[i].second = pre_comp_res;
         //if initial comparision failed, lets do a proper diff
         if (pre_comp_res == false){
