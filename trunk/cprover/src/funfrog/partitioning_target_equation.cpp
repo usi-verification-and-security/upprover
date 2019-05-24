@@ -37,7 +37,7 @@ partitioning_target_equationt::partitioning_target_equationt(
 #endif
   io_count_global(0),
   summary_store{summary_store},
-  store_summaries_with_assertion(_store_summaries_with_assertion)
+  store_summaries_with_assertion(_store_summaries_with_assertion)    //initializes boolean flag in all-claims with "true", otherwise false
   {
 #ifdef DISABLE_OPTIMIZATIONS
     partition_smt_decl = new std::map <std::string,exprt>();
@@ -959,6 +959,8 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         }
         // Store the interpolant
         summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
+        // Update the precision information for omega deserialization
+        partition.get_iface().call_tree_node.set_summary();
     }
 #else
     assert(0);
