@@ -52,7 +52,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                 }
                 old_function_count = functions.size();
             }
-        } catch (LRANonLinearException & e){
+        } catch (LANonLinearException & e){
             // OpenSMT with linear real arithmetic was trying to read a file with nonlinear operation in it
             // Ignore this file.
             std::cerr << "Non linear operation encounter in file " << fileName << ". Ignoring this file.\n";
