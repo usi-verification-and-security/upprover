@@ -11,7 +11,7 @@
 #include <util/ui_message.h>
 #include <goto-programs/goto_model.h>
 #include <funfrog/solvers/solver_options.h>
-
+#include "refiner_assertion_sum.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "subst_scenario.h"
@@ -57,7 +57,9 @@ public:
         omega.deserialize(options.get_option("save-omega"), goto_program);
     }
 #endif // PRODUCE_PROOF
-
+    inline refinement_modet get_refine_mode(const std::string& str);
+    inline init_modet get_init_mode(const std::string& str);
+    
 protected:
     const goto_modelt & goto_model;
     //symbol_tablet symex_symbol_table; MB: Symbol table needed only if we need information out of SYMEX about new symbols created there.
@@ -87,7 +89,7 @@ protected:
   void initialize__lia_option_solver();
   void initialize__prop_option_solver();
   
-  void setup_unwind(symex_bmct& symex);
+  //void setup_unwind(symex_bmct& symex);  //no usage anymore
 #ifdef PRODUCE_PROOF  
   void extract_interpolants(partitioning_target_equationt& equation);
 #endif

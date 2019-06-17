@@ -4,8 +4,6 @@
  summaries
 \*******************************************************************/
 #include "core_checker.h"
-
-#include "refiner_assertion_sum.h"
 #include "solvers/smtcheck_opensmt2_lia.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
@@ -45,7 +43,7 @@ namespace{
  Purpose: Determining the refinement mode from a string.
 \*******************************************************************/
 
-    refinement_modet get_refine_mode(const std::string& str)
+    refinement_modet core_checkert::get_refine_mode(const std::string& str)
     {
         if (str == "force-inlining" || str == "0"){
             return refinement_modet::FORCE_INLINING;
@@ -65,7 +63,7 @@ namespace{
     Purpose: Determining the initial mode from a string.
     \*******************************************************************/
 
-    init_modet get_init_mode(const std::string& str)
+    init_modet core_checkert::get_init_mode(const std::string& str)
     {
         if (str == "havoc-all" || str == "0"){
             return init_modet::ALL_HAVOCING;
@@ -73,7 +71,7 @@ namespace{
             return init_modet::ALL_SUBSTITUTING;
         } else {
             // by default
-            return init_modet::ALL_SUBSTITUTING;
+            return init_modet::ALL_SUBSTITUTING;   //when str="" goes here, means sumarry-use
         }
     }
 }
@@ -414,11 +412,13 @@ void core_checkert::initialize()
   // Prepare summary_info (encapsulated in omega), start with the lazy variant,
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
-
-  omega.initialize_summary_info (omega.get_call_tree_root(), get_main_function());
-  //omega.process_goto_locations();
-  init = get_init_mode(options.get_option("init-mode"));
-  omega.setup_default_precision(init);
+  if(!is_option_set("do-upgrade-check")){
+      omega.initialize_summary_info (omega.get_call_tree_root(), get_main_function());   //SA:TODO do u need this  in evolcheck? this 3 lines was not in the second phase of evolcheck.
+                                                                                        // it is only in init phase of evolcheck- second phase has its own initializer.
+      //omega.process_goto_locations();
+      init = get_init_mode(options.get_option("init-mode"));
+      omega.setup_default_precision(init);
+  }
 }
 /*******************************************************************
  Function:
@@ -521,7 +521,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     refiner_assertion_sumt refiner {
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc};
+              message_handler, last_assertion_loc, true};  //the last flag for upgrade check needs to be false
 
     bool end = prepareSSA(symex);
     if(!end && options.get_bool_option("claims-opt")){
@@ -1002,7 +1002,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     refiner_assertion_sumt localRefine{summary_store, omega,
                                            refinement_modet::SLICING_RESULT,
                                            this->get_message_handler(),
-                                           omega.get_last_assertion_loc()};
+                                           omega.get_last_assertion_loc(), true};  //the last flag for upgrade check needs to be false
 
 
     localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
