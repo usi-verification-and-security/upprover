@@ -16,6 +16,7 @@ void smt_summary_storet::serialize(std::ostream &out) const {
     for (const auto & summary_node : store){
         if(summary_node.is_repr()){
             summary_node.summary->serialize(out);
+          //  out << summary_node.summary->is_valid() << std::endl;   //UPG needed
         }
     }
 }

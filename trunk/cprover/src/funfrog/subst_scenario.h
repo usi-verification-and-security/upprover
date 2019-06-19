@@ -22,7 +22,7 @@
 class call_tree_nodet;
 
 enum class init_modet {
-    ALL_SUBSTITUTING,
+    ALL_SUBSTITUTING,     //means Inline
     ALL_HAVOCING
     // anything else?
 };
@@ -67,8 +67,8 @@ public:
   void serialize(const std::string& file);
   void deserialize(const std::string& file, const goto_programt& code);
 
-  void restore_summary_info(
-      call_tree_nodet& summary_info, const goto_programt& code, std::vector<std::string>& data);
+  void restore_call_info(
+          call_tree_nodet &call_info, const goto_programt &code, std::vector<std::string> &data);
 
   unsigned get_assertion_location(goto_programt::const_targett ass)
                         { return (assertions_visited[ass]).begin()->first; }

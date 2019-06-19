@@ -53,7 +53,7 @@ void subst_scenariot::initialize_summary_info(
         goto_ranges.push_back(std::make_pair(
              global_loc - (dst_location - tgt_location),
              global_loc));
-        std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
+        //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
         for (call_sitest::iterator it = summary_info.get_call_sites().begin();
             it != summary_info.get_call_sites().end(); ++it)
           {
@@ -191,6 +191,7 @@ unsigned subst_scenariot::get_precision_count(call_tree_nodet& summary, summary_
   return res;
 }
 
+//usage only in upgrade check
 void subst_scenariot::process_goto_locations()
 {
 /*  const unsigned goto_sz = goto_ranges.size();
@@ -390,7 +391,7 @@ void deserialize_used_summaries(const std::string& line,
 void subst_scenariot::serialize(const std::string& file)
 {
   std::ofstream out;
-  out.open(file.c_str());
+  out.open(file.c_str());  //initially creates empty __omega file
 
   if (out.fail()) {
     std::cerr << "Failed to serialize the substituting scenario (file: "
@@ -423,14 +424,14 @@ void subst_scenariot::serialize(const std::string& file)
 }
 /*******************************************************************\
  
- Function:
+ Function: Usage ONly in Upgrade Check
 
  Purpose:
 
 \*******************************************************************/
 
 void subst_scenariot::deserialize(
-    const std::string& file, const goto_programt& code)
+    const std::string& file, const goto_programt& code)  //file:__omega
 {
   std::vector<std::string> tmp;
   std::ifstream in;
@@ -444,15 +445,22 @@ void subst_scenariot::deserialize(
   global_loc = 0;
   functions.clear();
   assertions_visited.clear();
-  assert(tmp.size() % 7 == 0);
-  restore_summary_info(functions_root, code, tmp);
+  assert(tmp.size() % 7 == 0);    //temp contains all the info of omega file (function precision info)
+    restore_call_info(functions_root, code, tmp);
 }
 
-void subst_scenariot::restore_summary_info(
-    call_tree_nodet& summary_info, const goto_programt& code, std::vector<std::string>& data)
-{
-  summary_info.get_assertions().clear();
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+    Note: data contains __omega info
+\*******************************************************************/
+void subst_scenariot::restore_call_info(
+        call_tree_nodet &call_info, const goto_programt &code, std::vector<std::string> &data)
+{
+  call_info.get_assertions().clear();
+  //code.output(std::cout); //for printing
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
   {
@@ -460,14 +468,15 @@ void subst_scenariot::restore_summary_info(
 
     if (inst->type == FUNCTION_CALL)
     {
-      call_tree_nodet& call_site = summary_info.get_call_sites().insert(
+      call_tree_nodet& call_site = call_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, call_tree_nodet>(inst,
-              call_tree_nodet(&summary_info, global_loc)
+              call_tree_nodet(&call_info, global_loc)
               )).first->second;
 
       functions.push_back(&call_site);
 
       const irep_idt &target_function = data[(functions.size()-1)*7];
+     // std::cout << target_function.c_str() << std::endl; //be careful target_function(which is read from omega file) not to be different than inst(code.instruction)
       call_site.set_function_id(target_function);
       switch (atoi(data[(functions.size()-1)*7+2].c_str())){
         case 0: {call_site.set_precision(HAVOC);} break;
@@ -479,7 +488,7 @@ void subst_scenariot::restore_summary_info(
       if (data[(functions.size()-1)*7+4] == "1") { call_site.set_preserved_edge(); }
       if (data[(functions.size()-1)*7+5] == "1") { call_site.set_assertion_in_subtree(); }
       
-      if (data[(functions.size()-1)*7+6] != "-") {
+      if (data[(functions.size()-1)*7+6] != "-") {   //meaningful used_summaries
         summary_ids_sett used_summaries;
         deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summaries);
         call_site.set_used_summaries(used_summaries);
@@ -487,15 +496,21 @@ void subst_scenariot::restore_summary_info(
 
       const goto_programt &function_body =
           this->get_goto_function(target_function).body;
-      restore_summary_info(call_site, function_body, data);
+        restore_call_info(call_site, function_body, data);    //recursive call
     }
     else if (inst->type == ASSERT){
-      summary_info.get_assertions()[inst] = global_loc;
+      call_info.get_assertions()[inst] = global_loc;
       assertions_visited[inst][global_loc] = false;
     }
   }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+ 
+\*******************************************************************/
 void subst_scenariot::get_unwinding_depth()
 {
   rec_count_max = 0;

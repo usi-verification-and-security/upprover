@@ -5,7 +5,7 @@
 #ifndef PROJECT_PARTITION_REPRESENTATION_H
 #define PROJECT_PARTITION_REPRESENTATION_H
 
-enum class partition_representation : int{
+enum class partition_representation : int{          // 3 was skipped because of bitwise operators we later use
     NONE = 0,
     STUB = 1,
     SUMMARY = 2,

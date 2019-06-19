@@ -24,6 +24,13 @@
 #define VERBOSE false
 using namespace hifrog;
 
+/*******************************************************************\
+ 
+ Note: This method gets triggered when "claims-opt" or "claims-order" is ON.
+
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
   reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
@@ -56,7 +63,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
     initial=timestamp();
 
     // TODO: this takes a lot of time. Oct.2014: optimized a little bit
-    find_assert_deps();
+    find_assert_deps();   //2
 
     temp_end = timestamp();
     duration = time_gap(temp_end,initial);
@@ -65,7 +72,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
     initial = timestamp();
 
     //TODO: FIX THIS!
-    find_implications();
+    find_implications();   //3
 
     temp_end = timestamp();
     duration = time_gap(temp_end,initial);
@@ -152,7 +159,13 @@ void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
     if (just_dep.good()) {status () << "__just_hl_dep file is in the current directory. Exiting... " << eom; just_dep.close(); exit(1);}
     just_dep.close();
 }
+/*******************************************************************\
+ 
+ Function: call 1
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::find_var_deps(UnionFind<std::string> &deps_ds, std::map<std::string, bool> &visited)
 {
 
@@ -230,7 +243,13 @@ void dependency_checkert::find_var_deps(UnionFind<std::string> &deps_ds, std::ma
 //    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << '\n';
 
 }
+/*******************************************************************\
+ 
+ Function: call 2
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::find_assert_deps()
 {
     int deps=0;
@@ -293,7 +312,13 @@ void dependency_checkert::find_assert_deps()
 //{
 //	return (distance(a, b) < 0);
 //}
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 bool dependency_checkert::compare_assertions(std::size_t idx1, std::size_t idx2){
     assert(idx2 > idx1);
     return (idx2 - idx1) < treshold;
@@ -411,7 +436,13 @@ void dependency_checkert::print_SSA_steps_infos()
     */
 }
 #endif
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::print_dependents(std::map<std::string,bool> dependents, std::ostream &out)
 {
   std::map<std::string,bool>::iterator it;
@@ -421,7 +452,13 @@ void dependency_checkert::print_dependents(std::map<std::string,bool> dependents
     if ((*it).second == true) {if (count > 0) out << ", "; out << variable_name((*it).first); count++;}
   }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 std::string dependency_checkert::variable_name(dstringt name)
 {
   return variable_name(as_string(name));
@@ -431,7 +468,13 @@ std::string dependency_checkert::variable_name(std::string name)
 {
   return name.substr(name.find_last_of(':') + 1, 10);
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::get_expr_symbols(const exprt &expr, symbol_sett& symbols)
 {
 
@@ -444,7 +487,13 @@ void dependency_checkert::get_expr_symbols(const exprt &expr, symbol_sett& symbo
     symbols.insert(id);
   }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::print_expr_symbols(std::ostream &out, exprt expr)
 {
     symbol_sett s;
@@ -460,7 +509,13 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
     }
     //s.clear();
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 #ifdef DISABLE_OPTIMIZATIONS
 void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int indent)
 {
@@ -491,7 +546,13 @@ void dependency_checkert::print_SSA_steps()
     }
 }
 #endif
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 // TODO: send equation as in parameter - requires no additional changes!
 void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){
   const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
@@ -502,7 +563,13 @@ void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equatio
     SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
   }
 }
+/*******************************************************************\
+ 
+ Function: call 3
 
+ Purpose:
+
+\*******************************************************************/
 long dependency_checkert::find_implications() {
     long true_time, false_time, to_time;
     true_time = 0;
@@ -649,7 +716,13 @@ void dependency_checkert::convert_assumptions(
         it++;
     }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::convert_assertions(
         convertort &convertor, SSA_steps_it &it2)
 {
@@ -689,7 +762,13 @@ void dependency_checkert::convert_io(
         it++;
     }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::set_guards_to_true(convertort &convertor, const exprt &exp){
     if (exp.has_operands())
     {
@@ -705,7 +784,13 @@ void dependency_checkert::set_guards_to_true(convertort &convertor, const exprt 
         }
     }
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 void dependency_checkert::convert_delta_SSA(convertort &convertor,
                                             SSA_steps_it &it1, SSA_steps_it &it2)
 {
@@ -715,7 +800,13 @@ void dependency_checkert::convert_delta_SSA(convertort &convertor,
     convert_assertions(convertor, it2);
     convert_io(convertor, it1, it2);
 }
+/*******************************************************************\
+ 
+ Function:
 
+ Purpose:
+
+\*******************************************************************/
 std::pair<bool, timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{

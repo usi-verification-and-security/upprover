@@ -38,7 +38,7 @@ void prop_summary_storet::serialize(std::ostream& out) const
   }
 }
 
-// Prop-logic deser
+// Prop-logic deser   //SA: in evolcheck we need add validity as well
 void prop_summary_storet::deserialize(std::istream& in)
 {
   this->clear();

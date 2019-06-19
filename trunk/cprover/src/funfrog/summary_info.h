@@ -39,6 +39,8 @@ public:
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
+  //return call_start_symbols as a guard for function body;
+  // call_end symbol implies all assumptions in the function and inner calls!
   call_sitest& get_call_sites() { return call_sites; }
 
   const goto_programt::const_targett* get_target();

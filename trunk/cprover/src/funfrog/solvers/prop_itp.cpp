@@ -211,7 +211,7 @@ Function: prop_itpt::serialize
 
  Outputs:
 
- Purpose:
+ Purpose: Store the summaries
 
 \*******************************************************************/
 
