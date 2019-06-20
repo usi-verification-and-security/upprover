@@ -1042,6 +1042,8 @@ void partitioning_target_equationt::fill_function_templates(interpolating_solver
         auto & partition_iface = it->get_iface();
         auto iface_symbols = partition_iface.get_iface_symbols();
         std::string function_name = partition_iface.function_id.c_str();
+        if(skip_partition_with_name(function_name)) { continue; }
+
         summaryt * sum = interpolator.create_stub_summary(function_name);
         if (sum) {
             interpolator.generalize_summary(sum, iface_symbols);
