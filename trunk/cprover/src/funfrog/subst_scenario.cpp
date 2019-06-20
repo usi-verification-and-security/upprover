@@ -476,7 +476,7 @@ void subst_scenariot::get_unwinding_depth()
       call_tree_nodet* parent = functions[i];
 
       do{
-        parent = const_cast< call_tree_nodet * >(&parent->get_parent());
+        parent = &parent->get_parent();
         count_tmp++;
       } while
         (parent->is_recursion_nondet());

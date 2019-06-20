@@ -123,7 +123,7 @@ public:
     recursion_nondet = _recursion_nondet;
   }
 
-  bool is_recursion_nondet(){
+  bool is_recursion_nondet() const {
     return recursion_nondet;
   }
 
