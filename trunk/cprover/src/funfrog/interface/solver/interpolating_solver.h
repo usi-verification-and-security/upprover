@@ -12,6 +12,7 @@ interpolation.
 #include <funfrog/solvers/interpolating_solver_fwd.h>
 
 class symbol_exprt;
+class itp;
 
 class interpolating_solvert
 {
@@ -37,6 +38,8 @@ public:
   virtual bool can_interpolate() const=0;
 
   virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+
+  virtual itpt * create_stub_summary(const std::string & function_name) = 0;
 
 #endif
 

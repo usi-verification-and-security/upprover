@@ -58,24 +58,6 @@ namespace{
             return refinement_modet::SLICING_RESULT;
         }
     }
-
-    /*******************************************************************\
-    Function: get_initial_mode
-
-    Purpose: Determining the initial mode from a string.
-    \*******************************************************************/
-
-    init_modet get_init_mode(const std::string& str)
-    {
-        if (str == "havoc-all" || str == "0"){
-            return init_modet::ALL_HAVOCING;
-        } else if (str == "use-summaries" || str == "1"){
-            return init_modet::ALL_SUBSTITUTING;
-        } else {
-            // by default
-            return init_modet::ALL_SUBSTITUTING;
-        }
-    }
 }
 /*******************************************************************
  Function:
@@ -698,7 +680,7 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
   
   // Store the summaries
-  const std::string& summary_file = options.get_option("save-summaries");
+  const std::string& summary_file = options.get_option(HiFrogOptions::SAVE_FILE);
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());

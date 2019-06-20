@@ -1035,3 +1035,17 @@ void partitioning_target_equationt::convert_partition_assignments(convertort &co
     }
 # endif
 }
+
+void partitioning_target_equationt::fill_function_templates(interpolating_solvert & interpolator,
+                                                            std::vector<summaryt *> & templates) {
+    for (partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it) {
+        auto & partition_iface = it->get_iface();
+        auto iface_symbols = partition_iface.get_iface_symbols();
+        std::string function_name = partition_iface.function_id.c_str();
+        summaryt * sum = interpolator.create_stub_summary(function_name);
+        if (sum) {
+            interpolator.generalize_summary(sum, iface_symbols);
+        }
+        templates.push_back(sum);
+    }
+}

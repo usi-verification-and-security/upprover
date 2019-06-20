@@ -64,6 +64,8 @@ public:
 
     virtual bool can_interpolate() const override;
 
+    virtual itpt * create_stub_summary(const std::string & function_name) override;
+
     // Extract interpolant form OpenSMT files/data
     void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 

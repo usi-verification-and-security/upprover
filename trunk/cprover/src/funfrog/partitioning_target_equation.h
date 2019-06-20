@@ -97,6 +97,8 @@ public:
   std::vector<exprt> get_exprs_to_refine();
 
   const summary_storet & get_summary_store() const { return summary_store; }
+
+  void fill_function_templates(interpolating_solvert &interpolator, std::vector<summaryt*>& templates);
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
