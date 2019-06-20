@@ -119,6 +119,9 @@ public:
     
     void generalize_summary(smt_itp_z3t & interpolant, std::vector<symbol_exprt> & common_symbols)
     { assert(0); } // TODO: test interpolation for z3
+
+    virtual itpt * create_stub_summary(const std::string & function_name) override
+    { assert(false); return nullptr; }
     
 #endif    
     
