@@ -123,4 +123,41 @@ protected:
 
 };
 
+/*******************************************************************\
+ Function: get_refine_mode
+
+ Purpose: Determining the refinement mode from a string.
+\*******************************************************************/
+
+refinement_modet core_checkert::get_refine_mode(const std::string& str)
+{
+    if (str == "force-inlining" || str == "0"){
+        return refinement_modet::FORCE_INLINING;
+    } else if (str == "random-substitution" || str == "1"){
+        return refinement_modet::RANDOM_SUBSTITUTION;
+    } else if (str == "slicing-result" || str == "2"){
+        return refinement_modet::SLICING_RESULT;
+    } else {
+        // by default
+        return refinement_modet::SLICING_RESULT;
+    }
+}
+
+/*******************************************************************\
+Function: get_initial_mode
+
+Purpose: Determining the initial mode from a string.
+\*******************************************************************/
+
+init_modet core_checkert::get_init_mode(const std::string& str)
+{
+    if (str == "havoc-all" || str == "0"){
+        return init_modet::ALL_HAVOCING;
+    } else if (str == "use-summaries" || str == "1"){
+        return init_modet::ALL_SUBSTITUTING;
+    } else {
+        // by default
+        return init_modet::ALL_SUBSTITUTING;   //when str="" goes here, means sumarry-use
+    }
+}
 #endif
