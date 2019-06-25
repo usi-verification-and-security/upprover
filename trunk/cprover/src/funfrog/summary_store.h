@@ -54,6 +54,12 @@ public:
   const summary_idst& get_summaries(const std::string & function_name) const{
       return function_to_summaries.at(function_name);
   }
+  
+  // Removes summary from the summary store
+  void remove_summary(const summary_idt){
+  //TODO
+  }
+  
 protected:
 
   // Union find node
@@ -94,6 +100,10 @@ protected:
 
   const nodet& find_repr(summary_idt id) const;
   
+  //for upgrade check
+//  void mark_used_summaries(call_tree_nodet& summary_info, bool *used_mask);
+//  void remap_used_summaries(call_tree_nodet& summary_info, summary_idt *remap);
+
   // Maximal used id
   summary_idt max_id;
   summary_idt repr_count;
