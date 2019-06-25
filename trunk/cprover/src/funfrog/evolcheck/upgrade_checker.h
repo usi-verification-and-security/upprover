@@ -32,9 +32,13 @@ public:
 	{};
     
     bool check_upgrade();
+    bool check_summary(const assertion_infot& assertion,
+                       call_tree_nodet& summary_info, ui_message_handlert &message_handler);
 
 protected:
-    summary_ids_sett checked_summaries;
+    summary_ids_sett checked_summs;
+	void upward_traverse_call_tree(call_tree_nodet& summary_info, bool &is_verified);
+	void downward_traverse_call_tree(call_tree_nodet& summary_info);
 };
 
 //Declarations
