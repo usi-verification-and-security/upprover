@@ -10,7 +10,7 @@ Module: Storage class for function summaries (union-find).
 
 #include "utils/naming_helpers.h"
 
-// Serialization SMT
+// Serialization in SMT //print summary
 void smt_summary_storet::serialize(std::ostream &out) const {
     decider->getLogic()->dumpHeaderToFile(out);
     for (const auto & summary_node : store){

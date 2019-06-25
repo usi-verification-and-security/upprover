@@ -862,7 +862,6 @@ void symex_assertion_sumt::store_modified_globals(
   }
 //  constant_propagation = old_cp;
 }
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::store_return_value
@@ -1718,7 +1717,14 @@ void symex_assertion_sumt::analyze_globals() {
     analyze_globals_rec(goto_functionst::entry_point(), analyzed_functions);
 
 }
+/*******************************************************************\
 
+Function:
+
+ Purpose: Fills in the sets of accessed and modified globals using
+ recursive call graph traversal. We don't handle recursion here.
+
+\*******************************************************************/
 void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
                                                std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions) {
     const auto & body = goto_functions.function_map.at(function_to_analyze).body;

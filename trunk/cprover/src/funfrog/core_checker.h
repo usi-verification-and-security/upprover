@@ -11,7 +11,6 @@
 #include <util/ui_message.h>
 #include <goto-programs/goto_model.h>
 #include <funfrog/solvers/solver_options.h>
-
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "subst_scenario.h"
@@ -96,9 +95,12 @@ protected:
     }
 
     const goto_programt & get_main_function() const {
-        return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;
+        //the entry point is __CPROVER_start
+        return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;//      CPROVER_start
+                                                                                         //      /          \
+                                                                                         //   main     CPROVER_initialize
+                                                                                         //  f
     }
-
     bool assertion_holds_smt(const assertion_infot &assertion, bool store_summaries_with_assertion);
     bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
     bool assertion_holds_smt_wt_lattice(const assertion_infot& assertion,

@@ -59,9 +59,9 @@ protected:
   // Union find node
   struct nodet {
     
-    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }
+    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }   // C'tor initializes ID without summary
 
-    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, repr_id{_repr_id}  { }
+    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, repr_id{_repr_id}  { }  //C'tor initializes ID with Summary
 
     nodet() : summary(nullptr), repr_id(0) {}
     

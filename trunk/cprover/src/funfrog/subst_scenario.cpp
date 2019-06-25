@@ -34,16 +34,16 @@ void subst_scenariot::initialize_summary_info(
       inst!=code.instructions.end(); ++inst)
   {
     global_loc++;
-    if (inst->type == GOTO)
+    if (inst->type == GOTO)   //@ goto instruction=dst_location
     {
       unsigned dst_location = inst->location_number;
 
       // we only do deterministic gotos for now
       if(inst->targets.size()!=1)
-        throw "no support for non-deterministic gotos";
+        throw "no support for non-deterministic goto (jump) instructions";
 
       unsigned tgt_location = (*inst->targets.begin())->location_number;
-      if(tgt_location < dst_location){
+      if(tgt_location < dst_location){    //means backwards goto : so loops still in continue
         goto_ranges.push_back(std::make_pair(
              global_loc - (dst_location - tgt_location),
              global_loc));
@@ -54,7 +54,7 @@ void subst_scenariot::initialize_summary_info(
              if ((it->first)->location_number < dst_location &&
                  (it->first)->location_number > tgt_location)
                {
-                  (it->second).set_in_loop(true);
+                  (it->second).set_in_loop(true);   //"it" is inside the loop
                   // TODO: also, all nested function calls
                }
           }
