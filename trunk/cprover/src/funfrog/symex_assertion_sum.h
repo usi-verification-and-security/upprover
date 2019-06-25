@@ -47,6 +47,10 @@ public:
   // Generate SSA statements for the program starting from the root 
   // stored in goto_program.
   bool prepare_SSA();
+  
+  //usage in upgrade check; Generate SSA statements for the subtree of a specific function and
+  // compare to its summary
+  bool prepare_subtree_SSA();
 
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
@@ -353,8 +357,8 @@ protected:
 
 private:
 
-    std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;
-    std::unordered_map<irep_idt, globalst, irep_id_hash> modified_globals;
+    std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;  //SA?: Globals accessed (read, modified? or both) in the function
+    std::unordered_map<irep_idt, globalst, irep_id_hash> modified_globals;  // Globals modified in the function
 
     // Intended to let the state know about symbols that are not declared anywhere, like extern variables
     void add_globals_to_state(statet & state);

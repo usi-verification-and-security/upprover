@@ -97,6 +97,9 @@ public:
   std::vector<exprt> get_exprs_to_refine();
 
   const summary_storet & get_summary_store() const { return summary_store; }
+  
+  void fill_inverted_summary_partition(partition_idt partition_id,
+                                         const summary_idst& summaries, const summary_ids_sett& used_summaries);
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}

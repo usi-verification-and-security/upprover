@@ -98,6 +98,10 @@ public:
       representation = (representation | partition_representation ::STUB);
   }
   void add_ssa_representation() {representation = (representation | partition_representation ::SSA);}
+    
+//    void remove_partition(){
+//        representation = representation & (partition_representation::NONE );  //SA: check it later if needed
+//    }
 
  // =========== PARTITION FLAGS ==============================
 

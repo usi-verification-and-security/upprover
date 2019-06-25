@@ -114,6 +114,85 @@ bool symex_assertion_sumt::prepare_SSA()
   loc = 0;
   return process_planned(state);
 }
+/*******************************************************************
+
+ Function: symex_assertion_sumt::prepare_subtree_SSA
+
+ Purpose:[usage in upgrade check] Generate SSA statements for the subtree of a specific function and
+ compare to its summary; Prepare an artificial partition for the negated SUMMARY
+    F /\ !SUM
+\*******************************************************************/
+
+bool symex_assertion_sumt::prepare_subtree_SSA()
+{
+  
+  // Clear the state
+  state = goto_symext::statet();
+  
+  // Prepare a partition for the ROOT function and defer
+  partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
+  
+  call_tree_root.set_inline();
+  defer_function(deferred_functiont(call_tree_root, partition_iface));
+  
+  // Make all the interface symbols shared between
+  // the inverted summary and the function.
+  prepare_fresh_arg_symbols(state, partition_iface);
+  
+  // Prepare a partition for the inverted SUMMARY
+  fill_inverted_summary(call_tree_root, state, partition_iface);
+  
+  // Old: ??? state.value_set = value_sets;
+  state.source.pc = get_function(partition_iface.function_id).body.instructions.begin();
+  
+  // Plan the function for processing
+  dequeue_deferred_function(state);
+  
+  return process_planned(state);
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::fill_inverted_summary
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Prepares a partition with an negated summary. This is used
+ to verify that a function still implies its summary (in upgrade check).
+
+\*******************************************************************/
+void symex_assertion_sumt::fill_inverted_summary(
+        call_tree_nodet& summary_info,
+        statet& state,
+        partition_ifacet& inlined_iface)
+{
+    // We should use an already computed summary as an abstraction
+    // of the function body
+    const irep_idt& function_id = summary_info.get_function_id();
+    
+    log.status() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
+    
+    partition_ifacet &partition_iface = new_partition_iface(summary_info, NO_PARTITION_ID, 0);
+    
+    partition_iface.share_symbols(inlined_iface);
+    
+    partition_idt partition_id = equation.reserve_partition(partition_iface);
+    
+    log.status() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
+
+//# ifdef DEBUG_PARTITIONING
+    const auto & function_name = id2string(function_id);    //SA
+    log.status() << "   summaries available: " << equation.get_summary_store().get_summaries(function_name).size() << log.eom;
+    log.status() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
+//# endif
+    
+    equation.fill_inverted_summary_partition(partition_id,
+                                             equation.get_summary_store().get_summaries(function_name),
+                                             summary_info.get_used_summaries());
+}
+
 
 /*******************************************************************
 
@@ -143,7 +222,12 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
                     assert(partition.has_abstract_representation()); (void)(partition);
                     log.status() << "Refining partition: " << partition_iface->partition_id << messaget::eom;
-                    //equation.invalidate_partition(partition_iface->partition_id);
+                 
+                  // Marks the given partition as invalid. This is used in incremental SSA
+                  // generation to replace previously summarized partitions
+                  //TODO
+                  //  equation.invalidate_partition(partition_iface->partition_id);//SA:was commented in Hifrog,
+                                                                                 //should be uncomented in upgrade check
                     equation.refine_partition(partition_iface->partition_id);
                 }
                 auto const & partition = equation.get_partitions()[partition_iface->partition_id];
@@ -1614,7 +1698,7 @@ namespace{
         std::string name {fun_name.c_str()};
         return is_cprover_initialize_method(name) || is_main(name);
     }
-
+    // Helper struct with lexicographical ordering for dstring
     struct dstring_lex_ordering
     {
         bool operator()(const dstringt& s1, const dstringt& s2) const

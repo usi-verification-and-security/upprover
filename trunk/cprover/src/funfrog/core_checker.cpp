@@ -1063,7 +1063,14 @@ void core_checkert::slice_target(partitioning_target_equationt & equation) {
  Purpose:
 \*******************************************************************/
 bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
-    auto verified = symex.prepare_SSA();
+    bool verified;
+    
+    if(is_option_set("do-upgrade-check")) {        // upgrade check needs to negate the summary
+        verified = symex.prepare_subtree_SSA();
+    }
+    else {
+        verified = symex.prepare_SSA();
+    }
     if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
         slice_target(symex.get_target_equation());
     }

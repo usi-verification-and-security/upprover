@@ -77,24 +77,23 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
 /*******************************************************************
  Function: partitioning_target_equationt::invalidate_partition
 
- Inputs:
-
- Outputs:
-
- Purpose:
-
+ usage: upgrade check
+ Purpose: Marks the given partition as invalid. This is used in incremental SSA
+  // generation to replace previously summarized partitions
+  //SA
  \*******************************************************************/
-//void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
-//{
-//    partitiont& partition = partitions[partition_id];
-//
-//    partition.invalid = true;
-//    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-//
-//    if (partition.parent_id != partitiont::NO_PARTITION) {
-//        partitions[partition.parent_id].remove_child_partition(partition_id);
-//    }
-//}
+void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
+{
+    partitiont& partition = partitions[partition_id];
+
+    //partition.invalid = true;
+    //partition.remove_partition();  //SA: check if is implemented correct; check with old evolcheck
+    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
+
+    if (partition.parent_id != NO_PARTITION_ID) {
+        partitions[partition.parent_id].remove_child_partition(partition_id);
+    }
+}
 
 void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
@@ -303,23 +302,7 @@ void partitioning_target_equationt::select_partition(partition_idt partition_id)
     new_partition.start_idx = SSA_steps.size();
 }
 
-//void partitioning_target_equationt::fill_inverted_summary_partition(
-//  partition_idt partition_id, const summary_idst * summaries, const summary_ids_sett & used_summaries) {
-//    partitiont & sum_partition = partitions.at(partition_id);
-//    assert(!sum_partition.filled);
-//
-//    sum_partition.filled = true;
-//    sum_partition.summary = true;
-//    sum_partition.inverted_summary = true;
-//    sum_partition.summaries = summaries;
-//    sum_partition.used_summaries = used_summaries;
-//    sum_partition.applicable_summaries = used_summaries;
-//
-////    Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
-////    std::cerr << "  --- (" << partition_id <<
-////              ") sums: " << sum_partition.summaries->size() <<
-////              " used: " << sum_partition.used_summaries.size() << std::endl;
-//}
+
 
 unsigned partitioning_target_equationt::count_partition_assertions(const partitiont & partition) const {
     unsigned i = 0;
@@ -868,8 +851,9 @@ void partitioning_target_equationt::convert(convertort &convertor,
 
  Outputs:
 
- Purpose:
-
+ Purpose: Extract interpolants corresponding to the created partitions
+SA: inner method- called by extract_interpolants from core_checker;
+ this method covers the required functionality for upgrade check
  \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(interpolating_solvert &interpolator) {
 #ifdef PRODUCE_PROOF
@@ -959,7 +943,8 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         }
         // Store the interpolant
         summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
-        // Update the precision information for omega deserialization
+        // Update the precision information for omega deserialization; which partition
+        //is now summarized?
         partition.get_iface().call_tree_node.set_summary();
     }
 #else
@@ -1036,4 +1021,35 @@ void partitioning_target_equationt::convert_partition_assignments(convertort &co
         }
     }
 # endif
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::fill_inverted_summary
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Fill the (reserved) partition with the given summaries.
+TODO: SA: find a corresponding methods def , then uncomment the code
+\*******************************************************************/
+void partitioning_target_equationt::fill_inverted_summary_partition(
+  partition_idt partition_id, const summary_idst & summaries, const summary_ids_sett & used_summaries) {
+    partitiont & sum_partition = partitions.at(partition_id);
+   // assert(!sum_partition.filled);
+ 
+    //SA sum_partition.filled = true;
+    //SA sum_partition.summary = true;
+    sum_partition.add_summary_representation();
+    //SA sum_partition.inverted_summary = true;
+    sum_partition.summaries = summaries;
+   //SA sum_partition.used_summaries = used_summaries;
+    sum_partition.applicable_summaries = used_summaries;
+
+  //  Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
+    std::cerr << "  --- (" << partition_id <<
+              ") sums: " << sum_partition.summaries.size() <<
+             " used: " //SA<< sum_partition.used_summaries.
+             << std::endl;
 }
