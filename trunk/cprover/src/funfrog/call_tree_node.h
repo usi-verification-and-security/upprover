@@ -6,8 +6,8 @@
 
 \*******************************************************************/
 
-#ifndef CPROVER_SUMMARY_INFO_H
-#define CPROVER_SUMMARY_INFO_H
+#ifndef HIFROG_CALL_TREE_NODE_H
+#define HIFROG_CALL_TREE_NODE_H
 
 #include <map>
 #include <goto-programs/goto_program.h>

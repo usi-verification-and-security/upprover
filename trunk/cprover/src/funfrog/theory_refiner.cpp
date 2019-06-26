@@ -34,8 +34,8 @@ void theory_refinert::initialize()
         solver_options.m_random_seed = options.get_unsigned_int_option("random-seed");
   
   decider = new smtcheck_opensmt2t_cuf(solver_options, "theory refiner");
-
-  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
+    
+    omega.initialize_call_info(omega.get_call_tree_root(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
 }
 
@@ -88,10 +88,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   }
 #endif
 
-  call_tree_nodet& summary_info = omega.get_call_tree_root();
+  call_tree_nodet& call_info = omega.get_call_tree_root();
   std::unique_ptr<path_storaget> worklist;
   symex_assertion_sumt symex{
-          omega.get_goto_functions(), summary_info, options, *worklist, ns.get_symbol_table(),
+          omega.get_goto_functions(), call_info, options, *worklist, ns.get_symbol_table(),
           equation, message_handler, goto_program, last_assertion_loc,
           single_assertion_check, true, unwind_bound, false};
   symex.set_assertion_info_to_verify(&assertion);

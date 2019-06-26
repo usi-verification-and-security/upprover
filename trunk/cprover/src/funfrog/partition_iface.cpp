@@ -4,15 +4,15 @@
 
 #include "partition_iface.h"
 
-#include "summary_info.h"
+#include "call_tree_node.h"
 
-partition_ifacet::partition_ifacet(call_tree_nodet & _summary_info, partition_idt _parent_id, unsigned _call_loc) :
-        function_id(_summary_info.get_function_id()),
-        call_tree_node(_summary_info),
+partition_ifacet::partition_ifacet(call_tree_nodet & _call_info, partition_idt _parent_id, unsigned _call_loc) :
+        function_id(_call_info.get_function_id()),
+        call_tree_node(_call_info),
         callstart_symbol(ID_nil, typet(ID_bool)),
         callend_symbol(ID_nil, typet(ID_bool)),
         error_symbol(ID_nil, typet(ID_bool)),
-        assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
+        assertion_in_subtree(_call_info.has_assertion_in_subtree()),
         returns_value(false),
         partition_id(NO_PARTITION_ID),
         parent_id(_parent_id),

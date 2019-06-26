@@ -15,7 +15,7 @@
 #include <goto-instrument/accelerate/acceleration_utils.h>
 
 #include "partition_iface.h"
-#include "summary_info.h"
+#include "call_tree_node.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
 #include "assertion_info.h"
@@ -37,7 +37,7 @@
  Constructor
 
 \*******************************************************************/
-symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root,
+symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _call_info,
                                            const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
                                            partitioning_target_equationt & _target,
                                            message_handlert & _message_handler, const goto_programt & _goto_program,
@@ -45,8 +45,8 @@ symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functio
                                            bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
   goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
   goto_functions(_goto_functions),
-  call_tree_root(_root),
-  current_call_tree_node(&_root),
+  call_tree_root(_call_info),
+  current_call_tree_node(&_call_info),
   equation(_target),
   goto_program(_goto_program),
   last_assertion_loc(_last_assertion_loc),

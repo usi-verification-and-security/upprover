@@ -6,7 +6,7 @@
 
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
-#include "summary_info.h"
+#include "call_tree_node.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
 #include "conversion_utils.h"

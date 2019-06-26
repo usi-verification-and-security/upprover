@@ -30,7 +30,7 @@ using partition_iface_ptrst = std::list<partition_ifacet*>;
 class symex_assertion_sumt : public goto_symext
 {
 public:
-  symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _summary_info,
+  symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _call_info,
                        const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
                        partitioning_target_equationt & _target,
                        message_handlert & _message_handler, const goto_programt & _goto_program,

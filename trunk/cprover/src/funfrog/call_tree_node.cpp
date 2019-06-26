@@ -7,7 +7,7 @@ Basically in each function call it assigns a level of abstraction(summary, inlin
 
 \*******************************************************************/
 
-#include "summary_info.h"
+#include "call_tree_node.h"
 #include "assertion_info.h"
 #include <util/std_expr.h>
 /*******************************************************************

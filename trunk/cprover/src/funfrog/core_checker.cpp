@@ -376,7 +376,7 @@ void core_checkert::initialize()
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
   if(!is_option_set("do-upgrade-check")){
-      omega.initialize_summary_info (omega.get_call_tree_root(), get_main_function());   //SA:TODO do u need this  in evolcheck? this 3 lines was not in the second phase of evolcheck.
+      omega.initialize_call_info (omega.get_call_tree_root(), get_main_function());   //SA:TODO do u need this  in evolcheck? this 3 lines was not in the second phase of evolcheck.
                                                                                         // it is only in init phase of evolcheck- second phase has its own initializer.
       //omega.process_goto_locations();
       init = get_init_mode(options.get_option("init-mode"));

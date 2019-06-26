@@ -47,7 +47,7 @@ void UserDefinedSummaryt::dump_list_templates(
     smt_summary_storet summary_store(decider);
     subst_scenariot omega {goto_functions, unwind};
     // initialize the omega
-    omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
+    omega.initialize_call_info(omega.get_call_tree_root(), goto_program);
     omega.setup_default_precision(get_init_mode(options.get_option("init-mode")));
     // set all functions to inline, no summaries
     auto has_summary = [](const std::string & function_name){
