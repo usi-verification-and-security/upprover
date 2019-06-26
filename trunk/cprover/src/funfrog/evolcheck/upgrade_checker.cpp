@@ -167,17 +167,17 @@ bool upgrade_checkert::check_upgrade()
     //backward search, from the summary with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         bool is_verified = true;
-        
-        const irep_idt& name = (*calls[i]).get_function_id();
-
+        call_tree_nodet& current_node = *calls[i];
+        std::string function_name = current_node.get_function_id().c_str();
+        bool has_summary = summary_store->has_summaries(function_name);
 //#ifdef DEBUG_UPGR
-        std::cout << "checking summary #"<< i << ": " << name <<"\n";
+        std::cout << "checking summary #"<< i << ": " << function_name <<"\n";
 //#endif
-        const summary_ids_sett& used = (*calls[i]).get_used_summaries();
+        const summary_ids_sett& used = (current_node).get_used_summaries();
         //if no summary used & not-preserved node -->upward
-        if (used.size() == 0 && !(*calls[i]).is_preserved_node()){
+        if (!has_summary && !current_node.is_preserved_node()){
             is_verified = false;
-            upward_traverse_call_tree((*calls[i]).get_parent(), is_verified);
+            upward_traverse_call_tree((current_node).get_parent(), is_verified);
         }
         
         for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
@@ -185,11 +185,11 @@ bool upgrade_checkert::check_upgrade()
             if (checked_summs.find(*it) == checked_summs.end()){
                 summary_ids_sett summary_to_check;
                 summary_to_check.insert(*it);
-                (*calls[i]).set_used_summaries(summary_to_check);
-                upward_traverse_call_tree((*calls[i]), is_verified);
+                (current_node).set_used_summaries(summary_to_check);
+                upward_traverse_call_tree((current_node), is_verified);
             }
             else {
-                status() << "function " << name << " is already checked" << eom;
+                status() << "function " << function_name << " is already checked" << eom;
             }
         }
         if (!is_verified) {
