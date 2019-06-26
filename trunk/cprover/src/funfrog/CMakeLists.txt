@@ -40,8 +40,8 @@ set(HIFROG_SOURCE_FILES
         subst_scenario.h
         core_checker.cpp
         core_checker.h
-        summary_info.cpp
-        summary_info.h
+        call_tree_node.cpp
+        call_tree_node.h
         summary_store.cpp
         summary_store.h
         symex_assertion_sum.cpp

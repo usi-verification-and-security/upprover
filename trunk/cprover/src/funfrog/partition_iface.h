@@ -22,7 +22,7 @@ class call_tree_nodet;
 class partition_ifacet {
 public:
 
-  partition_ifacet(call_tree_nodet& _summary_info, partition_idt _parent_id, unsigned _call_loc);
+  partition_ifacet(call_tree_nodet& _call_info, partition_idt _parent_id, unsigned _call_loc);
 
   // Represented function
   irep_idt function_id;

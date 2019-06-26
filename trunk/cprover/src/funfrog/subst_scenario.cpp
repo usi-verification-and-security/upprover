@@ -25,11 +25,11 @@ void subst_scenariot::setup_default_precision(init_modet init)
    }
 }
 
-void subst_scenariot::initialize_summary_info(
-    call_tree_nodet& summary_info, const goto_programt& code)
+void subst_scenariot::initialize_call_info(
+        call_tree_nodet &call_info, const goto_programt &code)
 {
   bool skip_asserts = false;
-  summary_info.get_assertions().clear();
+  call_info.get_assertions().clear();
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
   {
@@ -48,8 +48,8 @@ void subst_scenariot::initialize_summary_info(
              global_loc - (dst_location - tgt_location),
              global_loc));
         //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
-        for (call_sitest::iterator it = summary_info.get_call_sites().begin();
-            it != summary_info.get_call_sites().end(); ++it)
+        for (call_sitest::iterator it = call_info.get_call_sites().begin();
+            it != call_info.get_call_sites().end(); ++it)
           {
              if ((it->first)->location_number < dst_location &&
                  (it->first)->location_number > tgt_location)
@@ -69,9 +69,9 @@ void subst_scenariot::initialize_summary_info(
       const irep_idt &target_function = to_symbol_expr(
         function_call.function()).get_identifier();
       // Mark the call site
-      call_tree_nodet& call_site = summary_info.get_call_sites().insert(
+      call_tree_nodet& call_site = call_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, call_tree_nodet>(inst,
-              call_tree_nodet(&summary_info, global_loc)
+              call_tree_nodet(&call_info, global_loc)
               )).first->second;
 
       functions.push_back(&call_site);
@@ -83,8 +83,8 @@ void subst_scenariot::initialize_summary_info(
         call_site.set_recursion_nondet(true);
       } else if(!is_unwinding_exceeded(target_function)){
         increment_unwinding_counter(target_function);
-        initialize_summary_info(call_site,
-          this->get_goto_function(target_function).body);
+        initialize_call_info(call_site,
+                             this->get_goto_function(target_function).body);
       } else {
         call_site.set_unwind_exceeded(true);
         call_site.set_recursion_nondet(true);
@@ -101,7 +101,7 @@ void subst_scenariot::initialize_summary_info(
       }
     }
     else if (inst->type == ASSERT && !skip_asserts){
-      summary_info.get_assertions()[inst] = global_loc;
+      call_info.get_assertions()[inst] = global_loc;
       assertions_visited[inst][global_loc] = false;
     }
   }
@@ -413,13 +413,13 @@ void subst_scenariot::deserialize(
   functions.clear();
   assertions_visited.clear();
   assert(tmp.size() % 7 == 0);
-  restore_summary_info(functions_root, code, tmp);
+  restore_call_info(functions_root, code, tmp);
 }
 
-void subst_scenariot::restore_summary_info(
-    call_tree_nodet& summary_info, const goto_programt& code, std::vector<std::string>& data)
+void subst_scenariot::restore_call_info(
+        call_tree_nodet &call_info, const goto_programt &code, std::vector<std::string> &data)
 {
-  summary_info.get_assertions().clear();
+  call_info.get_assertions().clear();
 
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
@@ -428,9 +428,9 @@ void subst_scenariot::restore_summary_info(
 
     if (inst->type == FUNCTION_CALL)
     {
-      call_tree_nodet& call_site = summary_info.get_call_sites().insert(
+      call_tree_nodet& call_site = call_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, call_tree_nodet>(inst,
-              call_tree_nodet(&summary_info, global_loc)
+              call_tree_nodet(&call_info, global_loc)
               )).first->second;
 
       functions.push_back(&call_site);
@@ -455,10 +455,10 @@ void subst_scenariot::restore_summary_info(
 
       const goto_programt &function_body =
           this->get_goto_function(target_function).body;
-      restore_summary_info(call_site, function_body, data);
+      restore_call_info(call_site, function_body, data);
     }
     else if (inst->type == ASSERT){
-      summary_info.get_assertions()[inst] = global_loc;
+      call_info.get_assertions()[inst] = global_loc;
       assertions_visited[inst][global_loc] = false;
     }
   }

@@ -16,7 +16,7 @@
 #include <goto-programs/goto_functions.h>
 #include <util/xml.h>
 
-#include "summary_info.h"
+#include "call_tree_node.h"
 #include "unwind.h"
 
 class call_tree_nodet;
@@ -53,8 +53,8 @@ public:
   unsigned get_summaries_count(call_tree_nodet& summary) { return get_precision_count(summary, SUMMARY); }
   unsigned get_nondets_count(call_tree_nodet& summary) { return get_precision_count(summary, HAVOC); }
 
-  void initialize_summary_info
-      (call_tree_nodet& summary_info, const goto_programt& code);
+  void initialize_call_info
+          (call_tree_nodet &call_info, const goto_programt &code);
 
   void set_initial_precision
           (const assertion_infot & assertion, const std::function<bool(const std::string &)> & has_summary)
@@ -67,8 +67,8 @@ public:
   void serialize(const std::string& file);
   void deserialize(const std::string& file, const goto_programt& code);
 
-  void restore_summary_info(
-      call_tree_nodet& summary_info, const goto_programt& code, std::vector<std::string>& data);
+  void restore_call_info(
+          call_tree_nodet &call_info, const goto_programt &code, std::vector<std::string> &data);
 
   unsigned get_assertion_location(goto_programt::const_targett ass)
                         { return (assertions_visited[ass]).begin()->first; }
