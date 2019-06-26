@@ -122,7 +122,7 @@ protected:
   // Artificial identifiers for which we do not need Phi function
   std::set<irep_idt> dead_identifiers;
 
-  // Current assertion
+  // refers to Current assertion in process //In symex when there are multiple assertins(all-claims) only one claim at a time is processed
   const assertion_infot* current_assertion {nullptr};
 
   const goto_programt &goto_program;

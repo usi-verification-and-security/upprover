@@ -59,11 +59,11 @@ void prop_summary_storet::deserialize(std::istream& in)
     in >> repr_id >> is_repr;
     
     if (is_repr) {
-      summary->deserialize(in);
-      store.emplace_back(repr_id, summary);
+      summary->deserialize(in);     //SA:reads raw data(in prop just numbers) one by one
+      store.emplace_back(repr_id, summary);   //2-args C'tor of nodet gets called
       repr_count++;
     } else {
-      store.emplace_back(repr_id);
+      store.emplace_back(repr_id);          //one-arg constructor of nodet gets called (without summary)
     }
   }
 
@@ -96,7 +96,7 @@ void prop_summary_storet::deserialize(const std::string& fileName)
         return;
     }
 
-    this->deserialize(in);
+    this->deserialize(in);    //reads all the content of the __summary file and fills up corresponding data structures
 
     if (in.fail()) {
         std::cerr << "Error occured during deserializing function summaries\n";

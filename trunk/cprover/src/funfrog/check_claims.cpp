@@ -171,7 +171,7 @@ void check_claims(
   }
 
   core_checkert core_checker(goto_model, options, _message_handler, res.max_mem_used);
-
+  //trigers to deserlize the summaries, and all funcs are initialized to use summaries if any (ALL_SUBSTITUTING)
   core_checker.initialize();
   
 /****** upgrade checking - bootstrapping mode ******/

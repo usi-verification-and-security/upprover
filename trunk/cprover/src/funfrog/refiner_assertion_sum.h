@@ -74,4 +74,24 @@ protected:
   void set_inline_sum(call_tree_nodet& summary);
 };
 
+/*******************************************************************\
+ Function: get_refine_mode
+
+ Purpose: Determining the refinement mode from a string.
+\*******************************************************************/
+
+inline refinement_modet get_refine_mode(const std::string& str)
+{
+    if (str == "force-inlining" || str == "0"){
+        return refinement_modet::FORCE_INLINING;
+    } else if (str == "random-substitution" || str == "1"){
+        return refinement_modet::RANDOM_SUBSTITUTION;
+    } else if (str == "slicing-result" || str == "2"){
+        return refinement_modet::SLICING_RESULT;
+    } else {
+        // by default
+        return refinement_modet::SLICING_RESULT;
+    }
+}
+
 #endif

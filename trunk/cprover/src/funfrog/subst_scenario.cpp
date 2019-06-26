@@ -40,7 +40,7 @@ void subst_scenariot::initialize_summary_info(
       inst!=code.instructions.end(); ++inst)
   {
     global_loc++;
-    if (inst->type == GOTO)
+    if (inst->type == GOTO)   //@ goto instruction=dst_location
     {
       unsigned dst_location = inst->location_number;
 
@@ -49,7 +49,7 @@ void subst_scenariot::initialize_summary_info(
         throw "no support for non-deterministic goto (jump) instructions";
 
       unsigned tgt_location = (*inst->targets.begin())->location_number;
-      if(tgt_location < dst_location){    //if so means backwards goto :the loop still in continue
+      if(tgt_location < dst_location){    //means backwards goto : so loops still in continue
         goto_ranges.push_back(std::make_pair(
              global_loc - (dst_location - tgt_location),
              global_loc));
@@ -60,7 +60,7 @@ void subst_scenariot::initialize_summary_info(
              if ((it->first)->location_number < dst_location &&
                  (it->first)->location_number > tgt_location)
                {
-                  (it->second).set_in_loop(true);     //"it" is inside the loop
+                  (it->second).set_in_loop(true);   //"it" is inside the loop
                   // TODO: also, all nested function calls
                }
           }
@@ -523,7 +523,7 @@ void subst_scenariot::get_unwinding_depth()
       call_tree_nodet* parent = functions[i];
 
       do{
-        parent = const_cast< call_tree_nodet * >(&parent->get_parent());
+        parent = &parent->get_parent();
         count_tmp++;
       } while
         (parent->is_recursion_nondet());

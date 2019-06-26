@@ -495,16 +495,13 @@ Function: smtcheck_opensmt2t::mkFun
 
  Outputs: PTRef of it (with the concrete args)
 
- Purpose: General mechanism to call uninturpruted functions
+ Purpose: General mechanism to call uninterpreted functions
           Mainly for a new custom function to smt from summaries
 
 \*******************************************************************/
 PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 {
-    char *msg = nullptr;
-    PTRef ret = logic->mkFun(decl, args, &msg);
-    if (msg != nullptr) free(msg);
-    
+    PTRef ret = logic->mkUninterpFun(decl, args);
     return ret;
 }
 
@@ -767,4 +764,12 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
 
         return tmp;
     }
+}
+
+itpt * smtcheck_opensmt2t::create_stub_summary(const std::string & function_name) {
+    auto ret = new smt_itpt();
+    ret->setDecider(this);
+    ret->getTempl().setName(function_name);
+    ret->setInterpolant(logic->getTerm_true());
+    return ret;
 }

@@ -273,7 +273,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
             ptref = lalogic->mkNumGeq(args);
         } else if(_id == ID_le) {
             assert(args.size() == 2); // KE: get errors before opensmt
-            ptref = lalogic->mkNumLeq(args);
+            ptref = lalogic->mkNumLeq(args[0], args[1]);
         } else if(_id == ID_gt) {
             assert(args.size() == 2); // KE: get errors before opensmt
             ptref = lalogic->mkNumGt(args);
@@ -432,11 +432,8 @@ PTRef smtcheck_opensmt2t_la::create_constraints2type(
         std::string lower_b,
         std::string upper_b)
 {
-    vec<PTRef> args;
-    vec<PTRef> args1; args1.push(lalogic->mkConst(lower_b.c_str())); args1.push(var);
-    vec<PTRef> args2; args2.push(var); args2.push(lalogic->mkConst(upper_b.c_str()));
-    PTRef ptl1 = lalogic->mkNumLeq(args1);
-    PTRef ptl2 = lalogic->mkNumLeq(args2);
+    PTRef ptl1 = lalogic->mkNumLeq(lalogic->mkConst(lower_b.c_str()), var);
+    PTRef ptl2 = lalogic->mkNumLeq(var, lalogic->mkConst(upper_b.c_str()));
 
     return logic->mkAnd(ptl1, ptl2);
 }

@@ -1,16 +1,20 @@
 /*******************************************************************
 
- Module: Keeps current state of the assertion checking in progress,
- i.e., to each function call it assigns a level of summarization 
- used in the symex analysis.
+Module: Keeps current state of the assertion checking in progress,
+(one assertion at a time, even in the case of all-claims)
+Basically in each function call it assigns a level of abstraction(summary, inline,..)
+, that will be needed in the symex analysis.
 
 \*******************************************************************/
 
 #include "summary_info.h"
 #include "assertion_info.h"
 #include <util/std_expr.h>
-
-
+/*******************************************************************
+//Purpose: Takes the location of assertion into consideration, to set
+// the precision of function calls; for instance if the function call
+// is after the last assertion we can safely ignore the function
+\*******************************************************************/
 void call_tree_nodet::set_initial_precision(
         const summary_precisiont default_precision,
         const std::function<bool(const std::string &)> & has_summary,
@@ -19,30 +23,30 @@ void call_tree_nodet::set_initial_precision(
   for (auto & call_site : call_sites)
   {
     call_tree_nodet& function = call_site.second;
-    std::string function_id = id2string(function.get_function_id());
+    //std::string function_id = id2string(function.get_function_id());
+    std::string function_name = function.get_function_id().c_str();  //equivalent to the above line
 
     if (function.is_recursion_nondet()){
       function.set_nondet();
-    } else if (function.has_assertion_in_subtree()) {
+    }
+    else if (function.has_assertion_in_subtree()) {
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
     } 
     else if (function.get_call_location() > last_assertion_loc
-        || function.is_unwind_exceeded())
-    {
-      // If the call is after the last assertion (including also backward gotos)
-      // we can safely ignore it
+        || function.is_unwind_exceeded()) {
+      // If the function call is after the last assertion (including also backward gotos)
+      // we can safely ignore the function
       function.set_nondet();
     }
-    else 
-    {
-      if (has_summary(function_id)) {
+    else {
+      if (has_summary(function_name)) {
         // If summaries are present, we use them
         function.set_summary();
       }
       else {
         // Otherwise, we use the initial substitution scenario
-        function.set_precision(default_precision);
+        function.set_precision(default_precision);  //usually inline or nondet
       }
     }
     
@@ -90,6 +94,10 @@ bool call_tree_nodet::mark_enabled_assertions(
   return assertion_in_subtree;
 }
 
+/*******************************************************************
+//Purpose:
+
+\*******************************************************************/
 const goto_programt::const_targett* call_tree_nodet::get_target()
 {
   call_sitest& parent_call_sites = get_parent().get_call_sites();

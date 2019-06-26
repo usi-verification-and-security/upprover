@@ -126,4 +126,22 @@ private:
 
 };
 
+/*******************************************************************\
+    Function: get_initial_mode
+
+    Purpose: Determining the initial mode from a string.
+\*******************************************************************/
+
+inline init_modet get_init_mode(const std::string& str)
+{
+    if (str == "havoc-all" || str == "0"){
+        return init_modet::ALL_HAVOCING;
+    } else if (str == "use-summaries" || str == "1"){
+        return init_modet::ALL_SUBSTITUTING;
+    } else {
+        // by default
+        return init_modet::ALL_SUBSTITUTING;
+    }
+}
+
 #endif

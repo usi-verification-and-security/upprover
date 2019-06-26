@@ -5,7 +5,8 @@
 #include <goto-programs/goto_functions.h>
 #include "prepare_formula.h"
 
-class check_opensmt2t;
+class smtcheck_opensmt2t;
+class optionst;
 
 class UserDefinedSummaryt {
 public:
@@ -18,12 +19,13 @@ public:
             namespacet &ns, 
             const goto_programt &goto_program, 
             const goto_functionst &goto_functions,
+            const optionst & options,
             unsigned int unwind,
             std::string logic,    
             const std::string& summary_file);
     
 private:    
-    //check_opensmt2t* decider;
+    smtcheck_opensmt2t* decider;
 };
 
 #endif /* USER_DEFINED_SUMMARYT_H */

@@ -22,6 +22,7 @@
 #include "smt_summary_store.h"      // OpenSMT smt store
 #include "prop_summary_store.h"     // OpenSMT prop store
 #include "partitioning_slice.h"
+#include "refiner_assertion_sum.h"
 //#include "utils/unsupported_operations.h"
 
 #ifdef Z3_AVAILABLE
@@ -35,7 +36,6 @@
 //#include <goto-symex/path_storage.h>
 #include <stdio.h>
 #include <memory>
-
 
 
 /*******************************************************************
@@ -661,7 +661,7 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   status() << "INTERPOLATION TIME: " << time_gap(after,before) << eom;
   
   // Store the summaries
-  const std::string& summary_file = options.get_option("save-summaries");
+  const std::string& summary_file = options.get_option(HiFrogOptions::SAVE_FILE);
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());

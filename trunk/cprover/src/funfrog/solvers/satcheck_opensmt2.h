@@ -123,6 +123,11 @@ public:
 
     virtual bool can_interpolate() const override;
 
+    virtual itpt * create_stub_summary(const std::string & function_name) override{
+        // NOT supported in propositional version
+        return nullptr;
+    };
+
     // Extract interpolant form OpenSMT Egraph
     void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
 

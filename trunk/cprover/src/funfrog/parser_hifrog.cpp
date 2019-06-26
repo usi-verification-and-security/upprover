@@ -154,7 +154,7 @@ int parser_hifrogt::doit()
     if (cmdline.isset("show-symbol-table"))
     {
         show_symbol_table(goto_model, ui_message_handler.get_ui());
-        return true;
+        return 0;
     }
 
     if(cmdline.isset("show-goto-functions"))
@@ -165,7 +165,24 @@ int parser_hifrogt::doit()
                 get_message_handler(),
                 ui_message_handler.get_ui(),
                 false);
-        return true;
+        return 0;
+    }
+
+    if(cmdline.isset("list-templates")) {
+        if (options.get_option("logic") != "prop") {
+            cbmc_status_interface("Listing templates\n");
+
+            UserDefinedSummaryt uds;
+            namespacet ns(goto_model.get_symbol_table());
+            auto& goto_functions = goto_model.get_goto_functions();
+            auto& main = goto_functions.function_map.at(goto_functions.entry_point()).body;
+            uds.dump_list_templates(ns, main, goto_functions, options, options.get_unsigned_int_option(HiFrogOptions::UNWIND),
+                                    options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE));
+        }
+        else{
+            cbmc_error_interface("Error: invalid request for listing the template; it is supported only in LRA and EUF");
+        }
+        return 0;
     }
 
     calculate_show_claims(goto_model, claim_numbers, claim_checkmap);
@@ -217,6 +234,7 @@ void parser_hifrogt::set_default_options(optionst &options)
     // Other default
     options.set_option("arrays-uf", "auto");
 }
+
 /*******************************************************************
 
  Function:
@@ -454,31 +472,6 @@ bool parser_hifrogt::validate_input_options(const claim_numberst &claim_numbers,
     // For now till create a proper solution in OpenSMT
     if (options.get_option("logic") == "qflia") {
         options.set_option("no-itp", true);
-    }
-    
-    // FIXME: complete the code inside dump_list_templates
-    if(cmdline.isset("list-templates")) {
-        if (options.get_option("logic") != "prop") {
-            cbmc_error_interface("At present listing summary templates is not functioning.");
-            cbmc_status_interface("Listing templates\n");
-
-            // Create the basic formula
-            UserDefinedSummaryt user_defined_summary;
-            std::string logic = std::string(options.get_option("logic"));
-
-            // dump the summary into a file
-            // MB: does not compile in this form, fix later
-//        user_defined_summary.dump_list_templates(ns,
-//                goto_functions.function_map[goto_functionst::entry_point()].body,
-//                goto_functions,
-//                options.get_unsigned_int_option("unwind"),
-//                logic,
-//                options.get_option("save-summaries"));
-        }
-        else{
-            cbmc_error_interface("Error: invalid request for listing the template; it is supported only in LRA and EUF");
-        }
-        return false;
     }
 
     return true;

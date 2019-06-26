@@ -47,6 +47,7 @@ struct HiFrogOptions {
     static const std::string UNWIND;
     static const std::string LOGIC;
     static const std::string SOLVER;
+    static const std::string SAVE_FILE;
 };
 
 inline std::string add_counter_to_fun_name(const std::string & name, size_t counter) {

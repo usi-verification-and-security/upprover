@@ -77,7 +77,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
-  smt_summary_storet dummy;
+  smt_summary_storet dummy(nullptr);
   partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 

@@ -7,6 +7,9 @@
 #include "partition_iface.h"
 #include "smt_summary_store.h"
 #include "subst_scenario.h"
+#include "partitioning_target_equation.h"
+#include "solvers/smt_itp.h"
+#include "assertion_info.h"
  
 
 /*******************************************************************\
@@ -23,56 +26,64 @@
 void UserDefinedSummaryt::dump_list_templates(
     namespacet &ns, 
     const goto_programt &goto_program, 
-    const goto_functionst &goto_functions, 
+    const goto_functionst &goto_functions,
+    const optionst & options,
     unsigned int unwind,     
     std::string logic,    
     const std::string& summary_file)
 {
-    throw std::logic_error{"Not implemented after reactoring"};
-    // Create the basic formula 
-//    smt_summary_storet summary_store;
-//    subst_scenariot omega {goto_functions, unwind};
-//
-//    // FIXME: remove pointer after SSA_Reportert class takes the code from
-//    // partitioning_target_equationt into the reportert code
-//    smt_partitioning_target_equationt* equation =
-//            new smt_partitioning_target_equationt(ns, summary_store, true);
-//
-//    /* TODO:
-//    symex_assertion_sumt symex = symex_assertion_sumt(
-//            summarization_context, summary_info, ns, symbol_table,
-//            equation, message_handler, goto_program, last_assertion_loc,
-//            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
-//            options.get_bool_option("partial-loops"));
-//
-//    symex.prepare_SSA(assertion);
-//     *
-//     */
-//
-//    // Created decider - basic only
-//    if(logic == "qfuf")
-//        decider = new smtcheck_opensmt2t_uf("uf checker");
-//
-//    else if(logic == "qfcuf")
-//        decider = new smtcheck_opensmt2t_cuf(8, 0, "cuf checker");
-//
-//    else //if(logic == "qflra")
-//        decider = new smtcheck_opensmt2t_lra(0, "lra checker");
-//
-//    std::vector<summaryt*> templates;
-//    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-//    equation->fill_function_templates(*decider_smt, templates);
-//    decider_smt = nullptr;
-//    for(unsigned int i = 0; i < templates.size(); ++i) {
-//        smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(templates[i]);
-//        if(smt_summary){
-//            summary_store.insert_summary(smt_summary,smt_summary->getTterm());
-//
-//        }
-//    }
-//    // Store the summaries
-//    if (!summary_file.empty()) {
-//        ofstream out{summary_file};
-//        summary_store.serialize(out);
-//    }
+
+    // Created decider - basic only
+    solver_optionst so;
+    if(logic == "qfuf")
+        decider = new smtcheck_opensmt2t_uf(so, "uf checker");
+
+    else if(logic == "qfcuf")
+        decider = new smtcheck_opensmt2t_cuf(so, "cuf checker");
+
+    else //if(logic == "qflra")
+        decider = new smtcheck_opensmt2t_lra(so, "lra checker");
+
+    smt_summary_storet summary_store(decider);
+    subst_scenariot omega {goto_functions, unwind};
+    // initialize the omega
+    omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
+    omega.setup_default_precision(get_init_mode(options.get_option("init-mode")));
+    // set all functions to inline, no summaries
+    auto has_summary = [](const std::string & function_name){
+        return false;
+    };
+    assertion_infot ass_info;
+    omega.set_initial_precision(ass_info, has_summary);
+
+    partitioning_target_equationt equation (ns, summary_store, true);
+
+    std::unique_ptr<path_storaget> worklist;
+    ui_message_handlert message_handler;
+    message_handler.set_verbosity(messaget::M_STATISTICS);
+
+    symex_assertion_sumt symex(
+            goto_functions, omega.get_call_tree_root(), options, *worklist, ns.get_symbol_table(),
+            equation, message_handler, goto_program, INT_MAX,
+            true, true, unwind,
+            options.get_bool_option("partial-loops"));
+
+    symex.set_assertion_info_to_verify(&ass_info);
+
+    symex.prepare_SSA();
+
+    std::vector<summaryt*> templates;
+    equation.fill_function_templates(*decider, templates);
+    for(unsigned int i = 0; i < templates.size(); ++i) {
+        smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(templates[i]);
+        if(smt_summary){
+            summary_store.insert_summary(smt_summary,smt_summary->getTempl().getName());
+
+        }
+    }
+    // Store the summaries
+    if (!summary_file.empty()) {
+        ofstream out{summary_file};
+        summary_store.serialize(out);
+    }
 }

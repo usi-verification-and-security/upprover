@@ -67,8 +67,8 @@ const std::string optionst::get_option(const std::string &option) const
   option_mapt::const_iterator it=
     option_map.find(option);
 
-  if(it==option_map.end())
-    return std::string();
+  if(it==option_map.end())    //not found
+    return std::string();     //Constructs an empty string, with a length of zero characters
   else if(it->second.empty())
     return std::string();
   else

@@ -6,7 +6,9 @@ protected:
   unwindt(unsigned int max_unwind) : max_unwind{max_unwind} {}
 
   void increment_unwinding_counter(irep_idt target_function){
-    rec_unwind[target_function]++;
+    rec_unwind[target_function]++;     //if the key is not found in rec_unwind,  it inserts a new pair with that key
+                                       // and a default value 0 and returns a reference to it. Then we increment its value.
+  
   }
 
   void decrement_unwinding_counter(irep_idt target_function){
