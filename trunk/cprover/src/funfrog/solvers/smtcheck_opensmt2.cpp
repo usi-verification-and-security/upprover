@@ -628,46 +628,65 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
 }
 #endif // PRODUCE_PROOF
 
+PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vector<symbol_exprt> & symbols) {
+    const Tterm & tterm = smt_itp.getTempl();
+    const vec<PTRef>& args = tterm.getArgs();
+
+    // summary is defined as a function over arguments to Bool
+    // we need to match the arguments with the symbols and insert_substituted
+    // the assumption is that arguments' names correspond to the base names of the symbols
+    // and they are in the same order
+    // one exception is if global variable is both on input and output, then the out argument was distinguished
+
+    Map<PTRef, PtAsgn, PTRefHash> subst;
+    assert(symbols.size() == static_cast<std::size_t>(args.size()));
+    for(std::size_t i = 0; i < symbols.size(); ++i){
+        std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
+        PTRef argument = args[i];
+        std::string argument_name { logic->getSymName(argument) };
+        if(isGlobalName(argument_name)){
+            argument_name = stripGlobalSuffix(argument_name);
+        }
+        if(symbol_name != argument_name){
+            std::stringstream ss;
+            ss << "Argument name read from summary do not match expected symbol name!\n"
+               << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
+
+            throw std::logic_error(ss.str());
+        }
+        PTRef symbol_ptref = expression_to_ptref(symbols[i]);
+        subst.insert(argument, PtAsgn(symbol_ptref, l_True));
+    }
+
+    // do the actual substitution
+    PTRef old_root = tterm.getBody();
+    PTRef new_root;
+    logic->varsubstitute(old_root, subst, new_root);
+    return new_root;
+}
+
 void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
     assert(!itp.is_trivial());
     assert(logic);
     auto const & smt_itp = static_cast<smt_itpt const &> (itp);
-    const Tterm & tterm = smt_itp.getTempl();
+    PTRef new_root = instantiate(smt_itp, symbols);
+    // the actual insertion
+    this->set_to_true(new_root);
 
-  const vec<PTRef>& args = tterm.getArgs();
+    PTRef old_root = smt_itp.getTempl().getBody();
+    ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
+}
 
-  // summary is defined as a function over arguments to Bool
-  // we need to match the arguments with the symbols and insert_substituted
-  // the assumption is that arguments' names correspond to the base names of the symbols
-  // and they are in the same order
-  // one exception is if global variable is both on input and output, then the out argument was distinguished
+void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
+    assert(!itp.is_trivial());
+    assert(logic);
+    auto const & smt_itp = static_cast<smt_itpt const &> (itp);
+    PTRef new_root = instantiate(smt_itp, symbols);
+    // the actual insertion
+    this->set_to_true(logic->mkNot(new_root));
 
-  Map<PTRef, PtAsgn, PTRefHash> subst;
-  assert(symbols.size() == static_cast<std::size_t>(args.size()));
-  for(std::size_t i = 0; i < symbols.size(); ++i){
-    std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
-    PTRef argument = args[i];
-    std::string argument_name { logic->getSymName(argument) };
-    if(isGlobalName(argument_name)){
-      argument_name = stripGlobalSuffix(argument_name);
-    }
-    if(symbol_name != argument_name){
-      std::stringstream ss;
-      ss << "Argument name read from summary do not match expected symbol name!\n"
-         << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
-
-      throw std::logic_error(ss.str());
-    }
-    PTRef symbol_ptref = expression_to_ptref(symbols[i]);
-    subst.insert(argument, PtAsgn(symbol_ptref, l_True));
-  }
-
-  // do the actual substitution
-  PTRef old_root = tterm.getBody();
-  PTRef new_root;
-  logic->varsubstitute(old_root, subst, new_root);
-  this->set_to_true(new_root);
-  ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
+    PTRef old_root = smt_itp.getTempl().getBody();
+    ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
 }
 
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {

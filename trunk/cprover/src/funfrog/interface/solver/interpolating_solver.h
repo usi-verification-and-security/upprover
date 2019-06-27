@@ -46,6 +46,7 @@ public:
   virtual void close_partition() = 0;
 
   virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
+  virtual void substitute_negate_insert(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
 };
 
 #endif

@@ -18,6 +18,7 @@
 #include "diff.h"
 #include "funfrog/utils/time_utils.h"
 #include <langapi/language_util.h>
+#include "funfrog/partition_iface.h"
 
 /*******************************************************************\
 
@@ -367,7 +368,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
                                      call_tree_nodet& summary_info, ui_message_handlert &message_handler)
 {
     auto before = timestamp();
-    
+
     // Trivial case
     if(assertion.is_trivially_true())
     {
@@ -376,11 +377,11 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         return true;
     }
     //const bool no_slicing_option = options.get_bool_option("no-slicing");
-    
+
     std::vector<unsigned> ints;
     
     // so far, partial interpolation is disabled in the upgrade checking scenario
-    
+
     partitioning_target_equationt equation(ns, *summary_store,
                                            true);
     //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false
@@ -552,6 +553,114 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     return false;
 }
 
-bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary) {
-    return false;
+bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
+
+    partitioning_target_equationt equation(ns, *summary_store, true);
+    //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false
+
+    std::unique_ptr<path_storaget> worklist;
+    symex_assertion_sumt symex{get_goto_functions(),
+                               node,
+                               options, *worklist,
+                               ns.get_symbol_table(),
+                               equation,
+                               message_handler,
+                               get_goto_functions().function_map.at(node.get_function_id()).body,
+                               omega.get_last_assertion_loc(),
+                               omega.is_single_assertion_check(),
+                               !options.get_bool_option("no-error-trace"),
+                               options.get_unsigned_int_option("unwind"),
+                               options.get_bool_option("partial-loops"),
+    };
+    assertion_infot assertion_info;
+    symex.set_assertion_info_to_verify(&assertion_info);
+
+    refiner_assertion_sumt refiner {
+            *summary_store, omega,
+            get_refine_mode(options.get_option("refine-mode")),
+            message_handler, omega.get_last_assertion_loc()};//  //there was last flag for upgrade check as false
+
+    bool assertion_holds = prepareSSA(symex);
+
+    if (assertion_holds){
+        report_success();
+        return true;
+    }
+
+    // the checker main loop:
+    unsigned summaries_used = 0;
+    unsigned iteration_counter = 0;
+    prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+
+    auto solver = decider->get_solver();
+    // first partition for the summary to check
+    auto interpolator = decider->get_interpolating_solver();
+    auto& entry_partition = equation.get_partitions()[0];
+    fle_part_idt summary_partition_id = interpolator->new_partition();
+    (void)(summary_partition_id);
+    // TOOD split, we need to negate first!
+    auto& summary = summary_store->find_summary(summary_id);
+    interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
+
+    while (!assertion_holds)
+    {
+        iteration_counter++;
+
+        //Converts SSA to SMT formula
+        ssa_to_formula.convert_to_formula( *(decider->get_convertor()), *(decider->get_interpolating_solver()));
+
+        // Decides the equation
+        bool is_sat = ssa_to_formula.is_satisfiable(*solver);
+        summaries_used = omega.get_summaries_count();
+
+        assertion_holds = !is_sat;
+
+        if (is_sat) {
+            // this refiner can refine if we have summary or havoc representation of a function
+            // Else quit the loop! (shall move into a function)
+            if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0)
+                // nothing left to refine, cex is real -> break out of the refinement loop
+                break;
+
+            // Else, report and try to refine!
+
+            // REPORT part
+            if (summaries_used > 0){
+                status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+            }
+
+            const unsigned int nondet_used = omega.get_nondets_count();
+            if (nondet_used > 0){
+                status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+            }
+            // END of REPORT
+
+            // figure out functions that can be refined
+            refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
+            bool refined = !refiner.get_refined_functions().empty();
+            if (!refined) {
+                // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
+                break;
+            } else {
+                // REPORT
+                status() << ("Go to next iteration\n") << eom;
+                // do the actual refinement of ssa
+                refineSSA(symex, refiner.get_refined_functions());
+            }
+        }
+    } // end of refinement loop
+
+    // the assertion has been successfully verified if we have (end == true)
+    const bool is_verified = assertion_holds;
+    if (is_verified) {
+        // produce and store the summaries
+        assert(decider->get_interpolating_solver()->can_interpolate());
+        extract_interpolants(equation);
+    } // End of UNSAT section
+    else // assertion was falsified
+    {
+        assertion_violated(ssa_to_formula, symex.guard_expln);
+    }
+
+    return is_verified;
 }

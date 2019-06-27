@@ -77,6 +77,7 @@ public:
 #endif
 
     void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+    void substitute_negate_insert(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
   
     // Common to all
   
@@ -133,6 +134,7 @@ protected:
     
   /* ***************************************************************************************************************/
 
+    PTRef instantiate(smt_itpt const & summary, const std::vector<symbol_exprt> & symbols);
 
     vec<SymRef> function_formulas;
 

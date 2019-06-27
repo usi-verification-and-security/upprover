@@ -109,6 +109,10 @@ public:
 
     void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
 
+    void substitute_negate_insert(const itpt & itp, const std::vector<symbol_exprt> & symbols) override {
+        throw std::logic_error("Not implemented yet!\n");
+    }
+
     const boolbvt & get_bv_converter() const {return *boolbv_convert;}
     boolbvt & get_bv_converter() {return *boolbv_convert;}
 

@@ -127,7 +127,8 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
 {
   
   // Clear the state
-  state = goto_symext::statet();
+  reset_state();
+  add_globals_to_state(state);
   
   // Prepare a partition for the ROOT function and defer
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
@@ -140,13 +141,13 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
   prepare_fresh_arg_symbols(state, partition_iface);
   
   // Prepare a partition for the inverted SUMMARY
-  fill_inverted_summary(call_tree_root, state, partition_iface);
+//  fill_inverted_summary(call_tree_root, state, partition_iface);
   
   // Old: ??? state.value_set = value_sets;
-  state.source.pc = get_function(partition_iface.function_id).body.instructions.begin();
+  state.source.pc = goto_program.instructions.begin();
   
   // Plan the function for processing
-  dequeue_deferred_function(state);
+  dequeue_deferred_function(state); // This does all the necessary things, such as setting loc and selecting partition
   
   return process_planned(state);
 }
