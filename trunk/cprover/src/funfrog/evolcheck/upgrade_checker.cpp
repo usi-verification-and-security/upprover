@@ -548,10 +548,53 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
     
     return is_verified;
 }
+/*******************************************************************\
 
+Function:
+
+Purpose: it starts bottom up, checking nodes validity one by one in the new
+upgraded version; we assume each node potentially has at most one summary.
+\*******************************************************************/
 bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
-    return false;
+    
+    const std::string function_name = node.get_function_id().c_str();
+    bool has_summary = summary_store->has_summaries(function_name);
+    
+    //if (node.is_preserved_node()) return true;  //sometimes we need to continue, despite being preserved
+    
+    //in what follows, assume function was changed, or we force to be  re-checked .
+    bool node_validity = false;
+    
+    if (has_summary){
+        //we only take one summary per node
+        const summary_idt &single_sum = summary_store->get_summaries(function_name)[0];
+        node_validity = validate_summary(node , single_sum);
+    }
+    else if (!has_summary | force_check){
+        if (node.is_root()) {  //The base case for recursion
+            status() <<"The end of function validation! A real bug found. " <<eom;
+            return false;
+        }
+        node_validity =  validate_node(node.get_parent(), true);
+    }
+    
+    if(!node_validity) {
+        validate_node (node.get_parent(), true);
+    }
+    else{
+        status() <<"node " << function_name << "has been validated"<<eom;
+        return true;
+        //some methods should update_subtree_summaries
+    }
+    
+    return node_validity;
 }
+/*******************************************************************\
+
+Function:
+
+Purpose:
+\*******************************************************************/
 
 bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
 
@@ -664,3 +707,16 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
 
     return is_verified;
 }
+
+/*******************************************************************\
+
+Function:
+
+Purpose:
+\*******************************************************************/
+void upgrade_checkert::update_subtree_summaries(call_tree_nodet &node) {
+    //if the child did not have summary, add newly generated sum
+    //if the child had sumary, remove its summary, and replace it with newly generated sum
+    status() << "Not implemented yet!" <<eom;
+}
+
