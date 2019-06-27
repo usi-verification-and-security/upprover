@@ -169,13 +169,17 @@ bool upgrade_checkert::check_upgrade()
         bool is_verified = true;
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
-        bool has_summary = summary_store->has_summaries(function_name);
+        
 //#ifdef DEBUG_UPGR
         std::cout << "checking summary #"<< i << ": " << function_name <<"\n";
 //#endif
+        if (current_node.is_preserved_node()) { continue; }
+        
+        bool has_summary = summary_store->has_summaries(function_name);
+        
         const summary_ids_sett& used = (current_node).get_used_summaries();
-        //if no summary used & not-preserved node -->upward
-        if (!has_summary && !current_node.is_preserved_node()){
+        //if no summary used but node changed -->upward
+        if (!has_summary){
             is_verified = false;
             upward_traverse_call_tree((current_node).get_parent(), is_verified);
         }
@@ -542,4 +546,12 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
 #endif
     
     return is_verified;
+}
+
+bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
+    return false;
+}
+
+bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary) {
+    return false;
 }

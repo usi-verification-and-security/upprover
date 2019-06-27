@@ -39,6 +39,10 @@ protected:
     summary_ids_sett checked_summs;
 	void upward_traverse_call_tree(call_tree_nodet& summary_info, bool &is_verified);
 	void downward_traverse_call_tree(call_tree_nodet& summary_info);
+	
+	bool validate_node(call_tree_nodet & node, bool force_check);
+	
+	bool validate_summary(call_tree_nodet & node, summary_idt summary);
 };
 
 //Declarations

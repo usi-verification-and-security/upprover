@@ -447,7 +447,6 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             in >> str;
             old_summs.push_back(str);   // contains all __omega as vec of string
         }
-        std::cout << "Size is : " << old_summs.size() <<std::endl;
         in.close();
     }
     
@@ -537,6 +536,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         goto_common.clear();
     }   // End of Forloop over functions_new.size
     
+    //after Make diff & Construct changed call_tree_node  -> write back to "__omega"
     // Writing new_summ's data into omega file
     if (do_write){
         std::ofstream out;
