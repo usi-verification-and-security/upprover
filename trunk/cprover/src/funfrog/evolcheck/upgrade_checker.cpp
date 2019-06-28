@@ -174,7 +174,16 @@ bool upgrade_checkert::check_upgrade()
         std::cout << "checking summary #"<< i << ": " << function_name <<"\n";
 //#endif
 
-        validate_node(current_node, false);
+        bool validated = validate_node(current_node, false);
+        if (validated) {
+            status() << "Node " << function_name << " has been validated" << eom;
+        }
+        else {
+            status() << "Validation failed! A real bug found. " << eom;
+            report_failure();
+            return false;
+        }
+
 //        if (current_node.is_preserved_node()) { continue; }
 //
 //        bool has_summary = summary_store->has_summaries(function_name);
@@ -559,41 +568,26 @@ upgraded version; we assume each node potentially has at most one summary.
 bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     
     const std::string function_name = node.get_function_id().c_str();
-    bool has_summary = summary_store->has_summaries(function_name);
 
     bool check_necessary = !node.is_preserved_node() || force_check;
-    if (!check_necessary) {
-        status() << "node " << function_name << "has been validated" << eom;
-        return true;
-    }
+    bool validated = !check_necessary;
 
-    bool node_validity = false;
-
-    if (has_summary){
-        //we only take one summary per node
-        const summary_idt &single_sum = summary_store->get_summaries(function_name)[0];
-        node_validity = validate_summary(node , single_sum);
-        if (node_validity) {
-            return true;
+    if (check_necessary) {
+        bool has_summary = summary_store->has_summaries(function_name);
+        if (has_summary){
+            //we only take one summary per node
+            const summary_idt &single_sum = summary_store->get_summaries(function_name)[0];
+            validated = validate_summary(node , single_sum);
+        }
+        if (!validated) {
+            bool has_parent = !node.is_root();
+            if (has_parent) {
+                validated = validate_node(node.get_parent(), true);
+            }
         }
     }
-    // Need to pass the check to the parent
-    if (node.is_root()) {  //The base case for recursion
-        status() <<"The end of function validation! A real bug found. " <<eom;
-        return false;
-    }
-    node_validity = validate_node(node.get_parent(), true);
 
-    if(!node_validity) {
-        return false;
-    }
-    else{
-        status() <<"node " << function_name << "has been validated"<<eom;
-        return true;
-        //some methods should update_subtree_summaries
-    }
-    
-    return node_validity;
+    return validated;
 }
 /*******************************************************************\
 
