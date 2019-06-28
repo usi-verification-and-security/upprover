@@ -167,41 +167,42 @@ bool upgrade_checkert::check_upgrade()
     
     //backward search, from the summary with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
-        bool is_verified = true;
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
         
 //#ifdef DEBUG_UPGR
         std::cout << "checking summary #"<< i << ": " << function_name <<"\n";
 //#endif
-        if (current_node.is_preserved_node()) { continue; }
-        
-        bool has_summary = summary_store->has_summaries(function_name);
-        
-        const summary_ids_sett& used = (current_node).get_used_summaries();
-        //if no summary used but node changed -->upward
-        if (!has_summary){
-            is_verified = false;
-            upward_traverse_call_tree((current_node).get_parent(), is_verified);
-        }
-        
-        for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
-            
-            if (checked_summs.find(*it) == checked_summs.end()){
-                summary_ids_sett summary_to_check;
-                summary_to_check.insert(*it);
-                (current_node).set_used_summaries(summary_to_check);
-                upward_traverse_call_tree((current_node), is_verified);
-            }
-            else {
-                status() << "function " << function_name << " is already checked" << eom;
-            }
-        }
-        if (!is_verified) {
-           //status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/" << (omega.get_call_summaries().size() - 1) << eom;
-            report_failure();
-            return false;
-        }
+
+        validate_node(current_node, false);
+//        if (current_node.is_preserved_node()) { continue; }
+//
+//        bool has_summary = summary_store->has_summaries(function_name);
+//
+//        const summary_ids_sett& used = (current_node).get_used_summaries();
+//        //if no summary used but node changed -->upward
+//        if (!has_summary){
+//            is_verified = false;
+//            upward_traverse_call_tree((current_node).get_parent(), is_verified);
+//        }
+//
+//        for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
+//
+//            if (checked_summs.find(*it) == checked_summs.end()){
+//                summary_ids_sett summary_to_check;
+//                summary_to_check.insert(*it);
+//                (current_node).set_used_summaries(summary_to_check);
+//                upward_traverse_call_tree((current_node), is_verified);
+//            }
+//            else {
+//                status() << "function " << function_name << " is already checked" << eom;
+//            }
+//        }
+//        if (!is_verified) {
+//           //status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/" << (omega.get_call_summaries().size() - 1) << eom;
+//            report_failure();
+//            return false;
+//        }
     } //End of forloop
     
     //status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/"  << (omega.get_call_summaries().size() - 1) << eom;
@@ -559,27 +560,32 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     
     const std::string function_name = node.get_function_id().c_str();
     bool has_summary = summary_store->has_summaries(function_name);
-    
-    //if (node.is_preserved_node()) return true;  //sometimes we need to continue, despite being preserved
-    
-    //in what follows, assume function was changed, or we force to be  re-checked .
+
+    bool check_necessary = !node.is_preserved_node() || force_check;
+    if (!check_necessary) {
+        status() << "node " << function_name << "has been validated" << eom;
+        return true;
+    }
+
     bool node_validity = false;
-    
+
     if (has_summary){
         //we only take one summary per node
         const summary_idt &single_sum = summary_store->get_summaries(function_name)[0];
         node_validity = validate_summary(node , single_sum);
-    }
-    else if (!has_summary | force_check){
-        if (node.is_root()) {  //The base case for recursion
-            status() <<"The end of function validation! A real bug found. " <<eom;
-            return false;
+        if (node_validity) {
+            return true;
         }
-        node_validity =  validate_node(node.get_parent(), true);
     }
-    
+    // Need to pass the check to the parent
+    if (node.is_root()) {  //The base case for recursion
+        status() <<"The end of function validation! A real bug found. " <<eom;
+        return false;
+    }
+    node_validity = validate_node(node.get_parent(), true);
+
     if(!node_validity) {
-        validate_node (node.get_parent(), true);
+        return false;
     }
     else{
         status() <<"node " << function_name << "has been validated"<<eom;

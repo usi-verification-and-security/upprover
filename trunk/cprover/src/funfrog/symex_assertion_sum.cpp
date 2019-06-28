@@ -290,11 +290,6 @@ bool symex_assertion_sumt::process_planned(statet & state)
     print_SSA_steps(equation.SSA_steps, ns, std::cout);
 #endif //DEBUG_SSA
 
-  if(remaining_vccs == 0)
-  {
-      log.statistics() << "Assertion(s) hold trivially." << log.eom;
-      return true;
-  }
   return false;
 }
 
