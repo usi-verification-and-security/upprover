@@ -73,11 +73,11 @@ Function: summary_storet::insert_summary
 
 \*******************************************************************/
 
-void smt_summary_storet::insert_summary(summaryt *summary, const std::string & function_name) {
+summary_idt smt_summary_storet::insert_summary(summaryt *summary, const std::string & function_name) {
     smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary);
     if(!smt_summary){
-        std::cerr << "Ignoring insertion of a summary into the summary store, not compatible type\n";
-        return;
+        std::string msg = "Error during an insertion of a summary into the summary store, not compatible type!\n";
+        throw std::logic_error(msg);
     }
     // Here gets the function names
     Tterm & tterm = smt_summary->getTempl();
@@ -90,5 +90,5 @@ void smt_summary_storet::insert_summary(summaryt *summary, const std::string & f
     tterm.setName(fixed_name);
 
     // call the base functionality
-    summary_storet::insert_summary(summary, function_name);
+    return summary_storet::insert_summary(summary, function_name);
 }

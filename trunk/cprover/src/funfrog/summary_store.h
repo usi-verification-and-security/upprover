@@ -37,7 +37,7 @@ public:
   // by the new one.
   void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
   // Inserts a new summary, the given summary is invalidated
-  virtual void insert_summary(summaryt *summary, const std::string & function_name);
+  virtual summary_idt insert_summary(summaryt *summary, const std::string & function_name);
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id) const;
   unsigned n_of_summaries() { return store.size(); }

@@ -92,7 +92,7 @@ Function: summary_storet::insert_summary
  Purpose: Inserts a new summary, summary store takes ownership of the pointer; the passed pointer cannot be used anymore!
 
 \*******************************************************************/
-void summary_storet::insert_summary(summaryt * summary, const std::string & function_name) {
+summary_idt summary_storet::insert_summary(summaryt * summary, const std::string & function_name) {
     // Do not add summary if the same is already there
     if(has_summaries(function_name)) {
         const auto & summaries = get_summaries(function_name);
@@ -100,10 +100,11 @@ void summary_storet::insert_summary(summaryt * summary, const std::string & func
             return find_summary(id).equals(summary);
         });
         if(it != summaries.end()){
+            summary_idt id = *it;
             // the same summary for this function is already present in the store
             // delete the summary;
             delete summary;
-            return;
+            return id;
         }
     }
     // TODO optimizations of summary store? Do we want to check for stronger summaries and replace the weaker ones?
@@ -112,4 +113,5 @@ void summary_storet::insert_summary(summaryt * summary, const std::string & func
     // this also creates the map entry if it is the first time we see this function_name
     function_to_summaries[function_name].push_back(id);
     repr_count++;
+    return id;
 }
