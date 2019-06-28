@@ -1765,6 +1765,7 @@ namespace{
 }
 
 
+// Declares the global variables to the symex state
 void symex_assertion_sumt::add_globals_to_state(statet & state) {
     // get globals
     std::unordered_set<irep_idt, irep_id_hash> globals;
@@ -1775,8 +1776,8 @@ void symex_assertion_sumt::add_globals_to_state(statet & state) {
     }
     for (auto const & global_id : globals) {
         auto const & symbol = this->ns.lookup(global_id);
-        // let's try adding only extern symbols, see if it is enough
-        if (symbol.is_extern) {
+//        if (symbol.is_extern) {
+//        MB: we declare ALL globals, since if symex is not run from top, their declaration would not be encountered -> problem
             // the following is taken from goto_symext::symex_decl
             ssa_exprt ssa(symbol.symbol_expr());
             state.rename(ssa, ns, goto_symex_statet::L1);
@@ -1786,7 +1787,7 @@ void symex_assertion_sumt::add_globals_to_state(statet & state) {
             // end of section taken from CPROVER
             assert(state.level2.current_names.find(l1_identifier) == state.level2.current_names.end());
             state.level2.current_names[l1_identifier] = std::make_pair(ssa, 0);
-        }
+//        }
     }
 }
 
