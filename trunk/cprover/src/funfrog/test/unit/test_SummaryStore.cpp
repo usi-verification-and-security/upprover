@@ -71,22 +71,24 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra) {
 //    smtcheck_opensmt2t_lra* lra_solver1 = new smtcheck_opensmt2t_lra(solver_options, "lra checker");  //raw
 //    auto & lra_solver = *lra_solver_ptr;
 
-    smt_itpt* itp1 = new smt_itpt;
-    itp1->setInterpolant(PTRef{1});
     std::string fun{"foo"};
-    store1->insert_summary(itp1, fun);
-//  auto sum_ID1 = store1->get_summaries(fun)[0];
-
-    itp1->setDecider(decider1);   //? Is it needed?
+    std::vector<symbol_exprt> iface_symbols;
+    summary_idt sum_ID1;
+    {
+        auto * stub = decider1->create_stub_summary(fun);
+        decider1->generalize_summary(stub, iface_symbols);
+        sum_ID1 = store1->insert_summary(stub, fun);
+        // Don't use stub after this point
+    }
+    itpt& itp1 = store1->find_summary(sum_ID1);
+    // insert_summary passes the ownership to summary_store, don't use the pointer anymore
     const std::string& summary_file = "__summaries";  //file goes to build/bin/
     if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
-    store1->serialize(out);    //hits assert in Alloc.h in OpenSMT
+    store1->serialize(out);
     out.close();
     }
-
-    delete store1;
     delete decider1;
 
 //create again(simulates 2nd run)
@@ -99,9 +101,9 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra) {
     if (!summary_files.empty()) {
         store2->deserialize(summary_files);
     }
-    auto sum_ID2 = store2->get_summaries(fun)[0];
+    itpt& itp2 = store2->find_summary(sum_ID1);
 //  check if  they are equal(sum_ID1, sum_ID2):
-    auto res = store2->find_summary(sum_ID2).equals(itp1);
+    auto res = itp2.equals(&itp1);
     ASSERT_TRUE(res);
 }
 
