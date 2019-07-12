@@ -20,12 +20,17 @@ add_executable(SolversTest)
 target_sources(SolversTest
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_Unsupported.cpp"
     )
+add_executable(SummaryIDTest)
+target_sources(SummaryIDTest
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_SummaryID.cpp"
+        )
 
 set_target_properties(
     SolversTest
     UtilsTest
     PropSummariesTest
     SummaryStoreTest
+    SummaryIDTest
     gtest
     gtest_main
     gmock
@@ -42,6 +47,8 @@ target_link_libraries(PropSummariesTest hifrog-lib gtest gtest_main)
 
 target_link_libraries(SummaryStoreTest hifrog-lib gtest gtest_main)
 
+target_link_libraries(SummaryIDTest hifrog-lib gtest gtest_main)
+
 target_link_libraries(SolversTest hifrog-lib gtest gtest_main)
 
 gtest_add_tests(TARGET UtilsTest
@@ -50,5 +57,7 @@ gtest_add_tests(TARGET UtilsTest
 gtest_add_tests(TARGET PropSummariesTest)
 
 gtest_add_tests(TARGET SummaryStoreTest)
+
+gtest_add_tests(TARGET SummaryIDTest)
 
 gtest_add_tests(TARGET SolversTest)
