@@ -14,12 +14,8 @@ Author:
 
 Function: smt_itpt::serialize
 
-  Inputs:
-
- Outputs:
-
- Purpose:
-
+Note: this method gets called by smt_summary_storet::serialize
+1
 \*******************************************************************/
 
 void smt_itpt::serialize(std::ostream& out) const

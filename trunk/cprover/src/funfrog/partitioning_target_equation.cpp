@@ -115,7 +115,7 @@ void partitioning_target_equationt::fill_summary_partition(partition_idt partiti
     if(!summary_store.has_summaries(function_id)){
         throw std::logic_error{"Trying to set non-existent summaries to a partition for " + function_id};
     }
-    auto const & summaries = summary_store.get_summaries(function_id);
+    auto const & summaries = summary_store.get_summariesID(function_id);
     assert(!summaries.empty());
 
     partitiont& sum_partition = partitions.at(partition_id);

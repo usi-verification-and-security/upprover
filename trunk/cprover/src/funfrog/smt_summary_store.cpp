@@ -21,6 +21,7 @@ void smt_summary_storet::serialize(std::ostream &out) const {
     }
 }
 
+
 // SMT logics deser
 void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
 
@@ -69,12 +70,12 @@ Function: summary_storet::insert_summary
 
  Outputs:
 
- Purpose: Inserts a new summary, summary store takes ownership of the pointer
+ Purpose: Inserts a new summary, summary store takes ownership of the pointer (itpt*)
 
 \*******************************************************************/
 
-summary_idt smt_summary_storet::insert_summary(summaryt *summary, const std::string & function_name) {
-    smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary);
+summary_idt smt_summary_storet::insert_summary(summaryt *summary_given, const std::string & function_name) {
+    smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary_given);
     if(!smt_summary){
         std::string msg = "Error during an insertion of a summary into the summary store, not compatible type!\n";
         throw std::logic_error(msg);
@@ -90,5 +91,5 @@ summary_idt smt_summary_storet::insert_summary(summaryt *summary, const std::str
     tterm.setName(fixed_name);
 
     // call the base functionality
-    return summary_storet::insert_summary(summary, function_name);
+    return summary_storet::insert_summary(summary_given, function_name);
 }

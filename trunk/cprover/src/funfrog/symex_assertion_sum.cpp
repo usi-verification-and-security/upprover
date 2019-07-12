@@ -185,12 +185,12 @@ void symex_assertion_sumt::fill_inverted_summary(
 
 //# ifdef DEBUG_PARTITIONING
     const auto & function_name = id2string(function_id);    //SA
-    log.status() << "   summaries available: " << equation.get_summary_store().get_summaries(function_name).size() << log.eom;
+    log.status() << "   summaries available: " << equation.get_summary_store().get_summariesID(function_name).size() << log.eom;
     log.status() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
 //# endif
     
     equation.fill_inverted_summary_partition(partition_id,
-                                             equation.get_summary_store().get_summaries(function_name),
+                                             equation.get_summary_store().get_summariesID(function_name),
                                              summary_info.get_used_summaries());
 }
 

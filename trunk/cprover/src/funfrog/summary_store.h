@@ -18,7 +18,6 @@ Author: Ondrej Sery
 #include <unordered_map>
 #include <map>
 #include <memory>
-
 class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
@@ -37,7 +36,7 @@ public:
   // by the new one.
   void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
   // Inserts a new summary, the given summary is invalidated
-  virtual summary_idt insert_summary(summaryt *summary, const std::string & function_name);
+  virtual summary_idt insert_summary(summaryt *summary_given, const std::string & function_name);
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id) const;
   unsigned n_of_summaries() { return store.size(); }
@@ -51,7 +50,7 @@ public:
       return function_to_summaries.find(function_name) != function_to_summaries.end();
   }
 
-  const summary_idst& get_summaries(const std::string & function_name) const{
+  const summary_idst& get_summariesID(const std::string &function_name) const{
       return function_to_summaries.at(function_name);
   }
   

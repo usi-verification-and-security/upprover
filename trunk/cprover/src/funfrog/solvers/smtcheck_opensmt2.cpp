@@ -188,12 +188,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
 
-#ifdef DEBUG_SMT_ITP
-    char *s = logic->printTerm(interpolants.back()->getInterpolant());
+//#ifdef DEBUG_SMT_ITP
+    char *s = logic->printTerm(new_itp->getInterpolant());
     std::cout << "Interpolant " << i << " = " << s << '\n';
     free(s);
     s=nullptr;
-#endif
+//#endif
   }
 }
 
@@ -577,6 +577,7 @@ std::set<PTRef> smtcheck_opensmt2t::get_non_linears() const
     return ret;
 }
 
+//Wrapper
 void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
     auto smt_itp = dynamic_cast<smt_itpt*>(interpolant);
     if(!smt_itp){
@@ -611,8 +612,8 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
         }
         // get new PTRef for the variable with new name
         PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name.c_str());
-//        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
-//        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
+        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
+        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
         subst.insert(original, PtAsgn{ new_var, l_True });
         tt.addArg(new_var);
     }
@@ -621,8 +622,8 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
     PTRef new_root;
     logic->varsubstitute(old_root, subst, new_root);
 
-//    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
-//    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
+    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
+    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
     interpolant.setInterpolant(new_root);
     tt.setBody(new_root);
 }
@@ -643,6 +644,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     for(std::size_t i = 0; i < symbols.size(); ++i){
         std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
         PTRef argument = args[i];
+        //Name read from summary
         std::string argument_name { logic->getSymName(argument) };
         if(isGlobalName(argument_name)){
             argument_name = stripGlobalSuffix(argument_name);

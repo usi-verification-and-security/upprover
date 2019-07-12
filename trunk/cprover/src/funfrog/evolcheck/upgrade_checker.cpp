@@ -576,7 +576,7 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
         bool has_summary = summary_store->has_summaries(function_name);
         if (has_summary){
             //we only take one summary per node
-            const summary_idt &single_sum = summary_store->get_summaries(function_name)[0];
+            const summary_idt &single_sum = summary_store->get_summariesID(function_name)[0];
             validated = validate_summary(node , single_sum);
         }
         if (!validated) {
