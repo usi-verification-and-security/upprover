@@ -19,7 +19,8 @@
 #include "funfrog/utils/time_utils.h"
 #include <langapi/language_util.h>
 #include "funfrog/partition_iface.h"
-
+#include <funfrog/solvers/smt_itp.h>
+#include <funfrog/utils/SummaryInvalidException.h>
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -568,7 +569,7 @@ upgraded version; we assume each node potentially has at most one summary.
 bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     
     const std::string function_name = node.get_function_id().c_str();
-
+    std::cout << function_name << std::endl;
     bool check_necessary = !node.is_preserved_node() || force_check;
     bool validated = !check_necessary;
 
@@ -583,6 +584,11 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
             bool has_parent = !node.is_root();
             if (has_parent) {
                 validated = validate_node(node.get_parent(), true);
+            }
+            else {
+                // TODO: DO a classic HiFrog check
+                // Check all the assertions  ; the last flag is true because of all-claims
+                validated = this->assertion_holds(assertion_infot(), true);
             }
         }
     }
@@ -642,9 +648,15 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
     fle_part_idt summary_partition_id = interpolator->new_partition();
     (void)(summary_partition_id);
     // TOOD split, we need to negate first!
-    auto& summary = summary_store->find_summary(summary_id);
-    interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
-
+    itpt& summary = summary_store->find_summary(summary_id);
+    // TODO: figure out a way to check beforehand if interface matches
+    try {
+        interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
+    }
+    catch (SummaryInvalidException& ex) {
+        // Summary cannot be used for current body -> invalidated
+        return false;
+    }
     while (!assertion_holds)
     {
         iteration_counter++;

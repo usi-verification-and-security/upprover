@@ -10,6 +10,7 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include "smt_itp.h"
 #include "../utils/naming_helpers.h"
 #include <funfrog/utils/containers_utils.h>
+#include <funfrog/utils/SummaryInvalidException.h>
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -387,8 +388,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_IO = (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
     (void)(is_IO); // MB: to avoid compiler warning about unused variable in Release
-    assert("Error: using non-SSA symbol in the SMT encoding"
-         && (is_L2_SSA_symbol(expr) || is_IO)); // KE: can be new type that we don't take care of yet
+//    assert("Error: using non-SSA symbol in the SMT encoding"
+//         && (is_L2_SSA_symbol(expr) || is_IO)); // KE: can be new type that we don't take care of yet
     // If appears - please fix the code in partition_target_euqationt
     // DO NOT COMMNET OUT!!! 
     ////////////////////////////////////////////////////////////////////////////
@@ -640,7 +641,9 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     // one exception is if global variable is both on input and output, then the out argument was distinguished
 
     Map<PTRef, PtAsgn, PTRefHash> subst;
-    assert(symbols.size() == static_cast<std::size_t>(args.size()));
+    if (symbols.size() != static_cast<std::size_t>(args.size())) {
+        throw SummaryInvalidException("Number of interface symbols do not match the summary signature!\n");
+    }
     for(std::size_t i = 0; i < symbols.size(); ++i){
         std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
         PTRef argument = args[i];
@@ -654,7 +657,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
             ss << "Argument name read from summary do not match expected symbol name!\n"
                << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
 
-            throw std::logic_error(ss.str());
+            throw SummaryInvalidException(ss.str());
         }
         PTRef symbol_ptref = expression_to_ptref(symbols[i]);
         subst.insert(argument, PtAsgn(symbol_ptref, l_True));
@@ -687,7 +690,7 @@ void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::v
     // the actual insertion
     this->set_to_true(logic->mkNot(new_root));
 
-    PTRef old_root = smt_itp.getTempl().getBody();
+    PTRef old_root = smt_itp.getTempl().getBody();  //this is without numbered postfixes
     ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
 }
 

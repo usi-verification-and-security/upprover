@@ -91,6 +91,10 @@ symex_assertion_sumt::~symex_assertion_sumt() {
 
 bool symex_assertion_sumt::prepare_SSA()
 {
+  bool top_level = call_tree_root.is_root();
+  if(!top_level) {
+      return prepare_subtree_SSA();
+  }
   // these are quick...
   if(current_assertion == nullptr || current_assertion->is_trivially_true())
   {
@@ -684,6 +688,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
   const irep_idt &identifier = partition_iface.function_id;
 
   // find code in function map
+  //std::cout << identifier.c_str() << std::endl;
   const goto_functionst::goto_functiont &goto_function = get_function(identifier);
 
   // Callsite symbols
@@ -729,7 +734,6 @@ void symex_assertion_sumt::assign_function_arguments(
 {
   const irep_idt &identifier=
     to_symbol_expr(function_call.function()).get_identifier();
-
 
   // find code in function map
   const goto_functionst::goto_functiont &goto_function = get_function(identifier);
