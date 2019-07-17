@@ -42,7 +42,7 @@
  Function:
  Purpose:  C'tor
 \*******************************************************************/
-core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
+core_checkert::core_checkert(const goto_modelt & _goto_model, optionst & _options,
                              ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
         goto_model{_goto_model},
         ns{goto_model.get_symbol_table()},
@@ -61,6 +61,12 @@ core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _
 core_checkert::~core_checkert(){
     //delete decider;
 }
+
+void core_checkert::init_solver_and_summary_store() {
+    initialize_solver();
+    initialize_summary_store();
+}
+
 /*******************************************************************
  Function:
 
@@ -105,6 +111,37 @@ void core_checkert::initialize_solver()
         exit(0); //Unsupported 
     }
 }
+
+void core_checkert::initialize_summary_store() {
+    // TODO: unify this mechanism
+    if (options.get_option(HiFrogOptions::LOGIC) == "prop")
+        summary_store = std::unique_ptr<summary_storet>(new prop_summary_storet());
+    else {
+        std::string _solver = options.get_option(HiFrogOptions::SOLVER);
+        if (_solver == "osmt") {
+            auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider.get());
+            summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
+#ifdef Z3_AVAILABLE
+            } else if (_solver == "z3") {
+            auto smt_decider = dynamic_cast<smtcheck_z3t*>(decider);
+            summary_store = std::unique_ptr<summary_storet>(new smt_z3_summary_storet(smt_decider));
+#endif //Z3_AVAILABLE
+        } else {
+            summary_store = nullptr;
+            status() << ("Use no summary store for the solver+logic current settings.") << eom;
+        }
+    }
+
+    // Load older summaries
+    {
+        const std::string& filenames = options.get_option("load-summaries");
+        std::vector<std::string> summaries_files = splitString(filenames, ',');
+        assert(filenames.size()==0 || !summaries_files.empty()); // Test the splits function do work + avoid compilation issues
+        if (!summaries_files.empty()) {
+            summary_store->deserialize(summaries_files);
+        }
+    }
+}
 /*******************************************************************
  Function:
 
@@ -126,12 +163,12 @@ void core_checkert::initialize__euf_option_solver()
 
  Purpose:  Generic creation for any solver - euf
 \*******************************************************************/
-ssa_solvert * core_checkert::initialize__euf_solver()
+std::unique_ptr<ssa_solvert> core_checkert::initialize__euf_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return new smtcheck_opensmt2t_uf(solver_options, "uf checker");
+        return std::unique_ptr<ssa_solvert>(new smtcheck_opensmt2t_uf(solver_options, "uf checker"));
 #ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
@@ -163,12 +200,12 @@ void core_checkert::initialize__cuf_option_solver()
 
  Purpose: initialise - Only for OpenSMT solver - cuf
 \*******************************************************************/
-smtcheck_opensmt2t_cuf * core_checkert::initialize__cuf_solver()
+std::unique_ptr<ssa_solvert> core_checkert::initialize__cuf_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return new smtcheck_opensmt2t_cuf(solver_options, "cuf checker");
+        return std::unique_ptr<ssa_solvert>(new smtcheck_opensmt2t_cuf(solver_options, "cuf checker"));
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -201,12 +238,12 @@ void core_checkert::initialize__lra_option_solver()
 
  Purpose: Generic creation for any solver - lra
 \*******************************************************************/
-ssa_solvert * core_checkert::initialize__lra_solver()
+std::unique_ptr<ssa_solvert> core_checkert::initialize__lra_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return new smtcheck_opensmt2t_lra(solver_options, "lra checker");
+        return std::unique_ptr<ssa_solvert>(new smtcheck_opensmt2t_lra(solver_options, "lra checker"));
 #ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
@@ -235,12 +272,12 @@ void core_checkert::initialize__lia_option_solver()
 
  Purpose: Generic creation for any solver - lia
 \*******************************************************************/
-ssa_solvert * core_checkert::initialize__lia_solver()
+std::unique_ptr<ssa_solvert> core_checkert::initialize__lia_solver()
 {
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
          status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return new smtcheck_opensmt2t_lia(solver_options, "lia checker");
+        return std::unique_ptr<ssa_solvert>(new smtcheck_opensmt2t_lia(solver_options, "lia checker"));
 #ifdef Z3_AVAILABLE
     } else if (_solver == "z3") {
          status() << "\n*** SOLVER in use is Z3 ***\n" << eom;
@@ -272,7 +309,7 @@ void core_checkert::initialize__prop_option_solver()
 
  Purpose: Only for OpenSMT solver - prop
 \*******************************************************************/
-satcheck_opensmt2t * core_checkert::initialize__prop_solver()
+std::unique_ptr<ssa_solvert> core_checkert::initialize__prop_solver()
 {
     // TODO: re-write for prop once needed
     if (options.get_bool_option("no-partitions")) {
@@ -283,7 +320,7 @@ satcheck_opensmt2t * core_checkert::initialize__prop_solver()
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return new satcheck_opensmt2t(solver_options, "prop checker", ns);
+        return std::unique_ptr<ssa_solvert>(new satcheck_opensmt2t(solver_options, "prop checker", ns));
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -339,39 +376,6 @@ void core_checkert::initialize_solver_options()
 \*******************************************************************/
 void core_checkert::initialize()
 {
-    initialize_solver();
-  
-    // Init the summary storage
-    // Prop and SMT have different mechanism to load/store summaries
-    // TODO: unify this mechanism
-    if (options.get_option(HiFrogOptions::LOGIC) == "prop")
-        summary_store = std::unique_ptr<summary_storet>(new prop_summary_storet());
-    else {
-        std::string _solver = options.get_option(HiFrogOptions::SOLVER);
-        if (_solver == "osmt") {
-            auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
-            summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
-#ifdef Z3_AVAILABLE
-        } else if (_solver == "z3") {
-            auto smt_decider = dynamic_cast<smtcheck_z3t*>(decider);
-            summary_store = std::unique_ptr<summary_storet>(new smt_z3_summary_storet(smt_decider));
-#endif //Z3_AVAILABLE
-        } else {
-            summary_store = nullptr;
-            status() << ("Use no summary store for the solver+logic current settings.") << eom;
-        }
-    }
-
-    // Load older summaries
-    {
-        const std::string& filenames = options.get_option("load-summaries");
-        std::vector<std::string> summaries_files = splitString(filenames, ',');
-        assert(filenames.size()==0 || !summaries_files.empty()); // Test the splits function do work + avoid compilation issues
-        if (!summaries_files.empty()) {
-            summary_store->deserialize(summaries_files);
-        }
-    }
-
   // Prepare summary_info (encapsulated in omega), start with the lazy variant,
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
@@ -448,6 +452,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     auto before = timestamp();
  
     // Init the objects:
+    init_solver_and_summary_store();
     const bool no_ce_option = options.get_bool_option(HiFrogOptions::NO_ERROR_TRACE);
     const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
@@ -1025,17 +1030,19 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     //cal prop --------------------------------------------------------------------------
     status() << "\n---EUF and LRA were not enough; trying to use prop logic ---\n" <<eom;
     std::string prop_summary_filename {"__summaries_prop"};
+    this->options.set_option(HiFrogOptions::LOGIC, "prop");
+    this->options.set_option("load-summaries", prop_summary_filename);
 
-    this->summary_store.reset(new prop_summary_storet());
-    std::ifstream f(prop_summary_filename.c_str());
-    if (f.good()) {
-        status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
-        this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
-    }
+//    this->summary_store.reset(new prop_summary_storet());
+//    std::ifstream f(prop_summary_filename.c_str());
+//    if (f.good()) {
+//        status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
+//        this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
+//    }
     // MB: workaround around assertion_holds_ expecting to have a decider set already
-    delete decider;
-    initialize__prop_option_solver();
-    decider = initialize__prop_solver();
+//    delete decider;
+//    initialize__prop_option_solver();
+//    decider = initialize__prop_solver();
     auto res = this->assertion_holds_smt(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;

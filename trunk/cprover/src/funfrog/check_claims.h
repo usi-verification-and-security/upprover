@@ -64,11 +64,11 @@ void store_claims(const claim_checkmapt &claim_checkmap,
     const claim_numberst &claim_numbers);
 
 void check_claims(
-  const goto_modelt & goto_model,
-  claim_checkmapt &claim_checkmap,
-  claim_numberst &claim_numbers,
-  const optionst& options,
-  ui_message_handlert &_message_handler,
-  unsigned claim_user_nr = 0);
+        const goto_modelt & goto_model,
+        claim_checkmapt & claim_checkmap,
+        claim_numberst & claim_numbers,
+        optionst & options,
+        ui_message_handlert & _message_handler,
+        unsigned claim_user_nr = 0);
 
 #endif /*_CPROVER_LOOPFROG_CHECK_CLAIMS_H_*/

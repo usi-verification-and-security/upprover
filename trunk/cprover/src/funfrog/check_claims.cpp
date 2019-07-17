@@ -99,12 +99,12 @@ Function: check_claims
 \*******************************************************************/
 
 void check_claims(
-  const goto_modelt & goto_model,
-  claim_checkmapt &claim_checkmap,
-  claim_numberst &claim_numbers,
-  const optionst& options,
-  ui_message_handlert &_message_handler,
-  unsigned claim_user_nr)
+        const goto_modelt & goto_model,
+        claim_checkmapt & claim_checkmap,
+        claim_numberst & claim_numbers,
+        optionst & options,
+        ui_message_handlert & _message_handler,
+        unsigned claim_user_nr)
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res {options.get_unsigned_int_option("unwind")};

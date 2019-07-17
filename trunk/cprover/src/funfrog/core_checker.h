@@ -36,8 +36,8 @@ class ssa_solvert;
 class core_checkert : public messaget
 {
 public:
-  core_checkert(const goto_modelt & _goto_model, const optionst & _options,
-                  ui_message_handlert & _message_handler, unsigned long & _max_memory_used);
+  core_checkert(const goto_modelt & _goto_model, optionst & _options,
+                ui_message_handlert & _message_handler, unsigned long & _max_memory_used);
 
   ~core_checkert() override;
 
@@ -62,21 +62,23 @@ protected:
     //symbol_tablet symex_symbol_table; MB: Symbol table needed only if we need information out of SYMEX about new symbols created there.
     // Currently, it seems we do not need this information
     const namespacet ns;
-  const optionst &options;
+  optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  ssa_solvert* decider;
+  std::unique_ptr<ssa_solvert> decider;
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
    solver_optionst solver_options; // Init once, use when ever create a new solver
 
   void initialize_solver();
-  ssa_solvert            * initialize__euf_solver();
-  smtcheck_opensmt2t_cuf * initialize__cuf_solver();
-  ssa_solvert            * initialize__lra_solver();
-  ssa_solvert            * initialize__lia_solver();
-  satcheck_opensmt2t     * initialize__prop_solver();
+  void initialize_summary_store();
+  void init_solver_and_summary_store();
+  std::unique_ptr<ssa_solvert> initialize__euf_solver();
+  std::unique_ptr<ssa_solvert> initialize__cuf_solver();
+  std::unique_ptr<ssa_solvert> initialize__lra_solver();
+  std::unique_ptr<ssa_solvert> initialize__lia_solver();
+  std::unique_ptr<ssa_solvert> initialize__prop_solver();
   
   void initialize_solver_options();
   void initialize_solver_debug_options();

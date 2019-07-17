@@ -22,6 +22,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
     const assertion_infot& assertion)
 {
   auto before=timestamp();
+  init_solver_and_summary_store();
 
   const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");

@@ -82,12 +82,12 @@ bool check_upgrade(
         // goto_program and goto_functions can be obtained from goto_model; so only get goto_model
         //const goto_programt &program_old,
         //const goto_functionst &goto_functions_old,
-        const goto_modelt &goto_model_old,
+        const goto_modelt & goto_model_old,
         //const goto_programt &program_new,
         // const goto_functionst &goto_functions_new,
-        const goto_modelt &goto_model_new,
-        const optionst &options,
-        ui_message_handlert &message_handler)
+        const goto_modelt & goto_model_new,
+        optionst & options,
+        ui_message_handlert & message_handler)
 {
     
     auto before = timestamp();
@@ -163,6 +163,8 @@ bool upgrade_checkert::check_upgrade()
             goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body); //double checke restore_call_info
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
+
+    init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
     
@@ -220,148 +222,6 @@ bool upgrade_checkert::check_upgrade()
     serialize();
     report_success();
     return true;
-}
-
-/*******************************************************************\
-
-Function: upgrade_checkert::upward_traverse_call_tree
-
-
- Purpose: Traverses the function call stack to check the change,
-          if the down-more attempt failed (pre == false)
-          or from scratch (pre == true)
-
-\*******************************************************************/
-void upgrade_checkert::upward_traverse_call_tree(call_tree_nodet& node, bool& is_verified)   //pre -->is_verified
-{
-    status() << "checking validity of old summary for function: " << node.get_function_id() << eom;
-    const summary_ids_sett& used = node.get_used_summaries();
-    assert(used.size() <= 1); // we can check only one summary at a time
-    if (used.empty()) { return; }
-    
-    //the accumulation of data from local node into global container
-    for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it){
-        checked_summs.insert(*it);
-    }
-    
-    //if the function has not changed, no need to check_summary;
-    // we assume the previous summaries are sound and valid
-    if (!node.is_preserved_node() || !is_verified) {
-#ifdef DEBUG_UPGR
-        if (!node.is_preserved_node()){
-            std::cout << "  -- the body is changed;";
-        }
-#endif
-        if (node.get_precision() == 1) { //Precision is "summary"
-#ifdef DEBUG_UPGR
-            if (node.get_precision() == 1){
-                std::cout << " and there was a summary.\n";
-            }
-            else {
-                std::cout << "   [parent check] do inlining.\n";
-            }
-#endif
-            // prepare subst. scenario for reverification
-            //TODO: then do the real check + refinement, if needed
-            //in case of refinement, subst scenario will be renewed
-            downward_traverse_call_tree (node);    // 1
-    
-            //real check; \phi_f => I_f.
-            is_verified = check_summary(assertion_infot(), node, message_handler);
-    
-            if (is_verified){
-                status() <<"  summary was verified. go to the next check." << eom; // here is the actual exit of the method
-                node.set_summary();
-            }
-            else {
-                summary_store->remove_summary(*used.begin());
-                status() << "invalidating summary: " << node.get_function_id() << eom;
-                node.clear_used_summaries();
-                if (node.get_parent().is_root()){
-                    status() <<"summary cannot be renewed. A real bug found. " <<eom;
-                }
-                else {
-                    status() <<"check the parent." <<eom;
-                    node.set_inline();
-                    upward_traverse_call_tree(node.get_parent(), is_verified);
-                }
-            }
-        }
-        else {
-            // no summary, but the code was changed. try checking the parent
-            summary_store->remove_summary(*used.begin());
-            node.set_inline();
-            is_verified = false;
-            upward_traverse_call_tree(node.get_parent(), is_verified);
-        }
-    }
-    else {  //node is preserved
-        status() <<"  preserved. go to the next check." <<eom;
-    }
-}
-
-/*******************************************************************\
-
-Function: upgrade_checkert::downward_traverse_call_tree
-
-Purpose: Traverses the function call tree in order to re-configure
-          subst. scenario for re-verifying a summary
-\*******************************************************************/
-void upgrade_checkert::downward_traverse_call_tree(call_tree_nodet& summary_info)
-{
-    call_sitest call_sites = summary_info.get_call_sites();
-    for (call_sitest::iterator it = call_sites.begin();
-         it != call_sites.end(); ++it)
-    {
-#ifdef DEBUG_UPGR
-        status() << "\n    -- the function call of " << (it->second).get_function_id();
-#endif
-        if (it->second.is_preserved_edge()) {
-#ifdef DEBUG_UPGR
-            status() << " is preserved;";
-#endif
-            // FIXME: a summary that was being verified (both, valid or not) is INL now
-            if ((it->second).get_precision() == 1){   //do nothing//will remain inlined
-#ifdef DEBUG_UPGR
-                status() << " has summary => will remain summarized ";
-#endif
-            }
-            else if ((it->second).get_precision() == 0){  //do nothing//will remain inlined
-#ifdef DEBUG_UPGR
-                status() << " was havoced (probably, out of las_assertion_loc) => will remain havoced";
-#endif
-            }
-            else { //means precision() == 2 --> inline     //traverse childs if any
-                if ((it->second).has_assertion_in_subtree()){
-#ifdef DEBUG_UPGR
-                    status()<< " was inlined (since has assertion) => will remain inlined" ;
-#endif
-                    // if inline, then do recursive traverse downward
-                    downward_traverse_call_tree(it->second);
-                }
-                else if ((it->second).is_preserved_node()){      //is preserved
-#ifdef DEBUG_UPGR
-                    status() << " was inlined (irrelevant for proof) => can be havoced";
-#endif
-                    (it->second).set_nondet();         //The only action of the method downward!    //WHY set_nondet() when preserved
-                }
-                else {      //has been changed and NO_assertion_in_subtree //will be inlined
-#ifdef DEBUG_UPGR
-                    status() << " was modified => should be inlined";
-#endif
-                }
-            }
-            
-        }
-        else {   //not preserved edge
-#ifdef DEBUG_UPGR
-            status() << " not preserved => do inlining";
-#endif
-        }
-#ifdef DEBUG_UPGR
-         << eom;
-#endif
-    }
 }
 
 /*******************************************************************\
