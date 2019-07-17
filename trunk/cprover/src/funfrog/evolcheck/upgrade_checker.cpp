@@ -429,7 +429,6 @@ upgraded version; we assume each node potentially has at most one summary.
 bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     
     const std::string function_name = node.get_function_id().c_str();
-    std::cout << function_name << std::endl;
     bool check_necessary = !node.is_preserved_node() || force_check;
     bool validated = !check_necessary;
 

@@ -189,12 +189,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
 
-//#ifdef DEBUG_SMT_ITP
+#ifdef DEBUG_SMT_ITP
     char *s = logic->printTerm(new_itp->getInterpolant());
     std::cout << "Interpolant " << i << " = " << s << '\n';
     free(s);
     s=nullptr;
-//#endif
+#endif
   }
 }
 
@@ -613,8 +613,8 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
         }
         // get new PTRef for the variable with new name
         PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name.c_str());
-        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
-        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
+//        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
+//        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
         subst.insert(original, PtAsgn{ new_var, l_True });
         tt.addArg(new_var);
     }
@@ -623,8 +623,8 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
     PTRef new_root;
     logic->varsubstitute(old_root, subst, new_root);
 
-    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
-    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
+//    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
+//    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
     interpolant.setInterpolant(new_root);
     tt.setBody(new_root);
 }
