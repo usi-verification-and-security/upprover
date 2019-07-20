@@ -30,6 +30,10 @@
 #include "utils/ssa_helpers.h"
 #endif // DEBUG_SSA
 
+#ifdef DEBUG_PARTITIONING
+#include <util/format_expr.h>
+#endif
+
 /*******************************************************************
 
  Function: symex_assertion_sumt::symex_assertion_sumt
