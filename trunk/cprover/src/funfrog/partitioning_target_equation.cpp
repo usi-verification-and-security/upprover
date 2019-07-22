@@ -74,27 +74,6 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     return new_id;
 }
 
-/*******************************************************************
- Function: partitioning_target_equationt::invalidate_partition
-
- usage: upgrade check
- Purpose: Marks the given partition as invalid. This is used in incremental SSA
-  // generation to replace previously summarized partitions
-  //SA
- \*******************************************************************/
-void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
-{
-    partitiont& partition = partitions[partition_id];
-
-    //partition.invalid = true;
-    //partition.remove_partition();  //SA: check if is implemented correct; check with old evolcheck
-    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-
-    if (partition.parent_id != NO_PARTITION_ID) {
-        partitions[partition.parent_id].remove_child_partition(partition_id);
-    }
-}
-
 void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];

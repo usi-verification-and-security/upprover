@@ -12,7 +12,6 @@ interpolation.
 #include <funfrog/solvers/interpolating_solver_fwd.h>
 
 class symbol_exprt;
-class itp;
 
 class interpolating_solvert
 {

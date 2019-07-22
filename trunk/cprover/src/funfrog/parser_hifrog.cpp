@@ -142,8 +142,8 @@ int parser_hifrogt::doit()
     auto before=timestamp();
 
 
-    goto_modelt goto_model;  //1st goto program associated with the original inputfile for normal use of hifrog & init_upgrade.
-    if(get_goto_program(goto_model, cmdline, options)) {    //optained 1st goto-program
+    goto_modelt goto_model;  //1st goto program associated with the original inputFile for normal use of hifrog & bootstraping.
+    if(get_goto_program(goto_model, cmdline)) {    //obtains 1st goto-program
 		return 6;
 	}
 
@@ -242,7 +242,7 @@ void parser_hifrogt::set_default_options(optionst &options)
  Purpose:  Get a Goto Program; initialize_goto_model does the whole job
 
 \*******************************************************************/
-bool parser_hifrogt::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline, optionst &options)
+bool parser_hifrogt::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline)
 {
 
   try
@@ -357,17 +357,17 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model_old) {
         cmdline.args = {new_filepath};
         goto_modelt goto_model_new;     // 2nd goto model associated with upgraded_file
     
-        if (get_goto_program(goto_model_new, cmdline, options)) {
+        if (get_goto_program(goto_model_new, cmdline)) {
             return;
         }
     
-    check_upgrade(
-		  // OLD!
-		  goto_model_old,
-		  // NEW!
-		  goto_model_new,
-		  options,
-		  ui_message_handler);
+        do_upgrade_check(
+                // OLD!
+                goto_model_old,
+                // NEW!
+                goto_model_new,
+                options,
+                ui_message_handler);
     
   }
 }

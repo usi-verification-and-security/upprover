@@ -32,8 +32,6 @@ public:
 	{};
     
     bool check_upgrade();
-    bool check_summary(const assertion_infot& assertion,
-                       call_tree_nodet& summary_info, ui_message_handlert &message_handler);
 
 protected:
     summary_ids_sett checked_summs;
@@ -45,12 +43,12 @@ protected:
 };
 
 //Declarations
-bool check_initial(core_checkert &core_checker, messaget &msg);
-bool check_upgrade(
-        const goto_modelt & goto_model_old,
-        const goto_modelt & goto_model_new,
-        optionst & options,
-        ui_message_handlert & message_handler);
+void check_initial(core_checkert &core_checker, messaget &msg);
+bool do_upgrade_check(
+        const goto_modelt &goto_model_old,
+        const goto_modelt &goto_model_new,
+        optionst &options,
+        ui_message_handlert &message_handler);
 
 
 #endif //PROJECT_UPGRADE_CHECKER_H

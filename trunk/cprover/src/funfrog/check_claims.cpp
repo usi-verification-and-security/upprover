@@ -22,10 +22,6 @@
 
  Function: find_assertion
 
- Inputs:
-
- Outputs:
-
  Purpose: Starting from `start' we search for an assertion.
           `stack' keeps the call path to that assertion.
 
@@ -171,14 +167,13 @@ void check_claims(
   }
 
   core_checkert core_checker(goto_model, options, _message_handler, res.max_mem_used);
-  //trigers to deserlize the summaries, and all funcs are initialized to use summaries if any (ALL_SUBSTITUTING)
-  core_checker.initialize();
+//init function nodes from nil to an ID, all funcs are initialized to use summaries if any (ALL_SUBSTITUTING)
+    core_checker.initialize_call_info();
   
 /****** upgrade checking - bootstrapping mode ******/
-  bool init_ready = true;
   if (options.get_bool_option("init-upgrade-check")){
     messaget msg{_message_handler};
-    init_ready = check_initial(core_checker, msg);
+    check_initial(core_checker, msg);
     return;
   }
 
@@ -195,17 +190,19 @@ void check_claims(
           }
           if(claim_checkmap[ass_ptr].first) {
               // this claim has already been checked;
-              // with assert_grouping all occurrences of the same claim are checked together so we can skip all other occurences
+              // with assert_grouping all occurrences of the same claim are checked together
+              // so we can skip all other occurences
               assert(assert_grouping);
               continue;
           }
           assert(claim_checkmap.find(ass_ptr) != claim_checkmap.end());
-          res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
+          res.status() << "\n ---checking claim # "<<std::to_string(claim_numbers[ass_ptr])<<" ---\n"<< res.eom;
           auto before=timestamp();
           bool single_res = core_checker.check_sum_theoref_single(assertion_infot{ass_ptr});
           claim_checkmap[ass_ptr] = std::make_pair(true, single_res);
           auto after = timestamp();
-          res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << time_gap(after,before) << res.eom;
+          res.status() << "---Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr])
+                                                <<" was: " << time_gap(after,before) << res.eom;
       }
       // REPORT the results
       res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;
@@ -235,7 +232,7 @@ void check_claims(
           }
           res.status() <<res.eom;
       }
-      res.status()<< "Finally w.r.t all assertions, the program is " << (finally_safe ? "SAFE\n" : "UNSAFE\n") <<res.eom;
+      res.status()<<"Finally w.r.t all assertions, the program is "<<(finally_safe ? "SAFE\n" : "UNSAFE\n")<<res.eom;
       return;
   }
 #endif
@@ -262,9 +259,9 @@ void check_claims(
     if(!multi_assert)
     {
       seen_claims++;
-      res.status() << (std::string("\r    Checking Claim #") + std::to_string(claim_numbers[ass_ptr]) + std::string(" (") +
-    		    std::to_string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
-    		    std::string("%) ...")) << res.eom;
+      res.status() <<(std::string("\r  Checking Claim #") + std::to_string(claim_numbers[ass_ptr]) + std::string(" (") +
+    		  std::to_string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
+    		  std::string("%) ...")) << res.eom;
     }
 
     bool pass = false;
@@ -315,11 +312,7 @@ void check_claims(
 
 Function: get_claims
 
-  Inputs:
-
- Outputs:
-
- Purpose: Calculates the number of claims
+Purpose: Calculates the number of claims
 
 \*******************************************************************/
 
@@ -344,13 +337,9 @@ void get_claims(
 
 /*******************************************************************\
 
-Function: get_claims
+Function: get_claims does not exist anymore;became property
 
-  Inputs:
-
- Outputs:
-
- Purpose: Not in use
+Purpose: Not in use
 
 \*******************************************************************/
 
@@ -374,12 +363,13 @@ void show_claims(const namespacet &ns,
       it++)
   {
     assert(it->second->type==ASSERT);
-
-    const source_locationt &location=it->second->source_location; // KE: locationt is now source_locationt (in CBMC 5.5)
+    // KE: locationt is now source_locationt (in CBMC 5.5)
+    const source_locationt &location=it->second->source_location;
       
     const irep_idt &comment=location.get_comment();
     const irep_idt &function=location.get_function();
-    const irep_idt &property=location.get_property_id(); // KE: was just get_property(), can be either get_property_id or get_property_class
+    const irep_idt &property=location.get_property_id(); // KE: was just get_property(),can be
+                                                //either get_property_id or get_property_class
     const irep_idt &line=location.get_line();
     const irep_idt &file=location.get_file();
     const irep_idt description=
@@ -436,7 +426,13 @@ void show_claims(const namespacet &ns,
   }
 }
 */
+/*******************************************************************\
 
+Function:
+
+Purpose:
+
+\*******************************************************************/
 void store_claims(const claim_checkmapt &claim_checkmap,
                  const claim_numberst &claim_numbers)
 {
@@ -459,6 +455,6 @@ void store_claims(const claim_checkmapt &claim_checkmap,
     assert(it->second->type==ASSERT);
 
     mapping << std::to_string(claim_numbers.find(it->second)->second) << " "
-        << (it->second->source_location).get_property_id().c_str() << std::endl; // KE: get_claim doesn't exist anymore - I think all just becomes a property
+        << (it->second->source_location).get_property_id().c_str() << std::endl;
   }
 }

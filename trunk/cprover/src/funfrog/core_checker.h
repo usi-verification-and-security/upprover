@@ -41,7 +41,7 @@ public:
 
   ~core_checkert() override;
 
-  void initialize();
+  void initialize_call_info();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
 
 #ifdef PRODUCE_PROOF

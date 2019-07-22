@@ -52,7 +52,7 @@ public:
 
   // Marks the given partition as invalid. This is used in incremental SSA
   // generation to replace previously summarized partitions
-  void invalidate_partition(partition_idt partition_id);
+  //void invalidate_partition(partition_idt partition_id);
 
     void refine_partition(partition_idt partition_id);
 

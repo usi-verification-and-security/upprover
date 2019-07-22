@@ -93,7 +93,7 @@ protected:
 //move it outside of this class to be a standalone function for processing several goto-model in a single run
 //bool process_goto_program(const optionst &);
 
-  bool get_goto_program(goto_modelt &, cmdlinet &, optionst &);
+  bool get_goto_program(goto_modelt &, cmdlinet &);
   void calculate_show_claims(goto_modelt &, claim_numberst &, claim_checkmapt &);
   bool validate_input_options (const claim_numberst &, unsigned &);
   void trigger_upgrade_check(const goto_modelt &);

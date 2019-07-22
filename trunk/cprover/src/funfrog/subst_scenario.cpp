@@ -83,7 +83,8 @@ void subst_scenariot::initialize_call_info(
       functions.push_back(&call_site);
       call_site.set_preserved_node();
 
-      call_site.set_function_id(target_function);
+      call_site.set_function_id(target_function); //initializes function_name that was nill in the beginning
+
 //      call_site.set_order(functions.size());
       if (is_recursion_unwinding(target_function)){
         call_site.set_recursion_nondet(true);

@@ -148,6 +148,8 @@ and recursively collects functions calls into vector called "functions"
 It also relates function IDs to number of childeren;
 fills two member fileds of difft class, namely functions_old, functions_new
 by populating &functions
+//This method builds some kind of call-tree with just numbers,
+ it does not contain complete info as call_tree_nodet does  !
 \*******************************************************************/
 void collect_functions(const goto_functionst &goto_functions, const goto_programt &program,
                        std::vector<std::pair<const irep_idt*, bool> > &functions,

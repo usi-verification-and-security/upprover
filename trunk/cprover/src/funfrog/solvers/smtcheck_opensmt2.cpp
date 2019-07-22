@@ -669,7 +669,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     logic->varsubstitute(old_root, subst, new_root);
     return new_root;
 }
-
+//replaces the function with the summary body(new root)
 void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
     assert(!itp.is_trivial());
     assert(logic);
