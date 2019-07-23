@@ -700,8 +700,8 @@ PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     assert(expr.is_not_nil()); // MB: this assert should be stronger then the string one, the string one can probably go away
     assert(!(str.compare(CProverStringConstants::NIL) == 0 || str.compare(CProverStringConstants::QUOTE_NIL) == 0));
     if (expr.type().is_nil()) return constant_bool(true); // TODO: MB: check if this can happen
-    
-    str = quote_if_necessary(str);
+//    MB: it looks like the quoting is unnecessary
+//    str = quote_if_necessary(str);
     PTRef symbol_ptref;
     if(is_number(expr.type()))
         symbol_ptref = new_num_var(str);
