@@ -14,7 +14,6 @@
 #include <funfrog/partition_iface.h>
 #include <funfrog/call_tree_node.h>
 
-
 /********************************************************************
  This test checks when a given summary is serialized to a FILE,
  and then in the second run gets deserialized from the same FILE,
@@ -158,7 +157,7 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_uf_twoSum) {
         //create cprover expression
         symbol_exprt a("a", typet(ID_integer));
         constant_exprt zero(ID_0, typet(ID_integer));
-        // a >= 0
+        // a == 0
         binary_relation_exprt comp1(a, ID_equal, zero);
         PTRef summary_temp1 = decider1->expression_to_ptref(comp1);
         //manually set the PTRef
@@ -169,16 +168,14 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_uf_twoSum) {
         
         sum_ID1 = store1->insert_summary(newitp1, fun);
         // insert_summary passes the ownership to summary_store, don't use *new_itp1 anymore
-        
-        char *s1 = decider1->getLogic()->printTerm(newitp1->getInterpolant());
-        std::cout << "Interpolant1 " << s1 << '\n';
-        
-    
+//        char *s1 = decider1->getLogic()->printTerm(newitp1->getInterpolant());
+//        std::cout << "Interpolant1 " << s1 << '\n';
+
         smt_itpt *newitp2 = new smt_itpt();
         //create another cprover expression
         //symbol_exprt b("b", typet(ID_integer));
         constant_exprt one(ID_1, typet(ID_integer));
-        // a >= 1
+        // a == 1
         binary_relation_exprt comp2(a, ID_equal, one);
         PTRef summary_temp2 = decider1->expression_to_ptref(comp2);
         //manually set the PTRef
@@ -189,10 +186,10 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_uf_twoSum) {
         
         sum_ID2 = store1->insert_summary(newitp2, fun);
         // insert_summary passes the ownership to summary_store, don't use *new_itp2 anymore
-        
-        char *s2 = decider1->getLogic()->printTerm(newitp2->getInterpolant());
-        std::cout << "Interpolant2  " << s2 << '\n';
+//        char *s2 = decider1->getLogic()->printTerm(newitp2->getInterpolant());
+//        std::cout << "Interpolant2  " << s2 << '\n';
     }
+
 
 //serialization
     const std::string& summary_file = "__summaries";
@@ -200,36 +197,49 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_uf_twoSum) {
     out.open(summary_file.c_str());
     store1->serialize(out);
     out.close();
-    delete decider1;
 
 //create resources again (simulates the 2nd run)
     smtcheck_opensmt2t* decider2 = new smtcheck_opensmt2t_uf(sop, "uf checker");
     smt_summary_storet * store2 = new smt_summary_storet(decider2);
     
-    std::vector <std::string> summary_files;
-    summary_files.push_back(summary_file);
-    
-    if (!summary_files.empty()) {
-        store2->deserialize(summary_files);
+    std::vector <std::string> summary_files {summary_file};
+    store2->deserialize(summary_files);
+
+
+    std::string original_sum1;
+    std::string original_sum2;
+    {
+        std::stringstream ss1;
+        store1->find_summary(sum_ID1).serialize(ss1);
+        original_sum1 = ss1.str();
+        std::stringstream ss2;
+        store1->find_summary(sum_ID2).serialize(ss2);
+        original_sum2 = ss2.str();
     }
-    
-    itpt& itpOld1 = store1->find_summary(sum_ID1);
-    itpt& itpOld2 = store1->find_summary(sum_ID2);
-    
-    itpt& itpNew1 = store2->find_summary(sum_ID1);
-    itpt& itpNew2 = store2->find_summary(sum_ID2);
-    
-    auto res2 = itpNew2.equals(&itpOld2);
-    ASSERT_TRUE(res2);
-    
-    auto res1 = itpNew1.equals(&itpOld1);
-    ASSERT_TRUE(res1);   //why they have different PTRef?
-    
-    if(res1 && res2 ){
-        std::cout << "3rd test successfully passed!\n" <<'\n';
+
+    std::string deserialized_sum1;
+    std::string deserialized_sum2;
+    {
+        std::stringstream ss1;
+        store2->find_summary(sum_ID1).serialize(ss1);
+        deserialized_sum1 = ss1.str();
+        std::stringstream ss2;
+        store2->find_summary(sum_ID2).serialize(ss2);
+        deserialized_sum2 = ss2.str();
     }
-    std::remove("__summaries");
+
+    // MB: weaker, but sufficient check: The first summary contains 0 (and not 1), as it is a == 0
+    //     The second summary contains 1 (and not 0), as it is a == 1
+    ASSERT_TRUE(original_sum1.find('0') != std::string::npos && deserialized_sum1.find('0') != std::string::npos
+    && original_sum2.find('0') == std::string::npos && deserialized_sum2.find('0') == std::string::npos);
+    ASSERT_TRUE(original_sum2.find('1') != std::string::npos && deserialized_sum2.find('1') != std::string::npos
+                && original_sum1.find('1') == std::string::npos && deserialized_sum1.find('1') == std::string::npos);
+
+    std::remove(summary_file.c_str());
+    delete decider1;
     delete decider2;
+    delete store1;
+    delete store2;
 }
 
 /********************************************************************
@@ -248,9 +258,10 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra_twoSum) {
     
     {
         smt_itpt *newitp1 = new smt_itpt();
+        unsignedbv_typet bvtype(32);
         //create cprover expression
-        symbol_exprt a("a", typet(ID_real));
-        constant_exprt zero(ID_0, typet(ID_real));
+        symbol_exprt a("a", bvtype);
+        constant_exprt zero(ID_0, bvtype);
         // a >= 0
         binary_relation_exprt comp1(a, ID_ge, zero);
         PTRef summary_temp1 = decider1->expression_to_ptref(comp1);
@@ -262,14 +273,14 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra_twoSum) {
         
         sum_ID1 = store1->insert_summary(newitp1, fun);
         // insert_summary passes the ownership to summary_store, don't use *new_itp anymore
-        
-        char *s1 = decider1->getLogic()->printTerm(newitp1->getInterpolant());
-        std::cout << "Interpolant1 " << s1 << '\n';
+//        auto& summary1 = static_cast<smt_itpt&>(store1->find_summary(sum_ID1));
+//        char *s1 = decider1->getLogic()->printTerm(summary1.getInterpolant());
+//        std::cout << "Interpolant1 " << s1 << '\n';
         
         
         smt_itpt *newitp2 = new smt_itpt();
         //create another cprover const expression
-        constant_exprt one(ID_1, typet(ID_real));
+        constant_exprt one(ID_1, bvtype);
         // a >= 1
         binary_relation_exprt comp2(a, ID_ge, one);
         PTRef summary_temp2 = decider1->expression_to_ptref(comp2);
@@ -280,9 +291,9 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra_twoSum) {
         newitp2->getTempl().setBody(summary_temp2);
         
         sum_ID2 = store1->insert_summary(newitp2, fun);
-        
-        char *s2 = decider1->getLogic()->printTerm(newitp2->getInterpolant());
-        std::cout << "Interpolant2  " << s2 << '\n';
+//        auto& summary2 = static_cast<smt_itpt&>(store1->find_summary(sum_ID2));
+//        char *s2 = decider1->getLogic()->printTerm(summary2.getInterpolant());
+//        std::cout << "Interpolant2  " << s2 << '\n';
     }
 
 //serialization
@@ -291,34 +302,47 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra_twoSum) {
     out.open(summary_file.c_str());
     store1->serialize(out);
     out.close();
-    delete decider1;
 
 //create resources again (simulates the 2nd run)
     smtcheck_opensmt2t* decider2 = new smtcheck_opensmt2t_lra(sop, "lra checker");
     smt_summary_storet * store2 = new smt_summary_storet(decider2);
     
-    std::vector <std::string> summary_files;
-    summary_files.push_back(summary_file);
-    
-    if (!summary_files.empty()) {
-        store2->deserialize(summary_files);
+    std::vector <std::string> summary_files {summary_file};
+    store2->deserialize(summary_files);
+
+    std::string original_sum1;
+    std::string original_sum2;
+    {
+        std::stringstream ss1;
+        store1->find_summary(sum_ID1).serialize(ss1);
+        original_sum1 = ss1.str();
+        std::stringstream ss2;
+        store1->find_summary(sum_ID2).serialize(ss2);
+        original_sum2 = ss2.str();
     }
-    
-    itpt& itpOld1 = store1->find_summary(sum_ID1);
-    itpt& itpOld2 = store1->find_summary(sum_ID2);
-    
-    itpt& itpNew1 = store2->find_summary(sum_ID1);
-    itpt& itpNew2 = store2->find_summary(sum_ID2);
-//check if the associated itp to tehe ID are equal
-    
-    auto res2 = itpNew2.equals(&itpOld2);
-    ASSERT_TRUE(res2);
-    
-    auto res1 = itpNew1.equals(&itpOld1);
-    ASSERT_TRUE(res1);
-    
-    if(res1 && res2 ){
-        std::cout << "4th test successfully passed!\n" <<'\n';
+
+    std::string deserialized_sum1;
+    std::string deserialized_sum2;
+    {
+        std::stringstream ss1;
+        store2->find_summary(sum_ID1).serialize(ss1);
+        deserialized_sum1 = ss1.str();
+        std::stringstream ss2;
+        store2->find_summary(sum_ID2).serialize(ss2);
+        deserialized_sum2 = ss2.str();
     }
-    std::remove("__summaries");
+
+    // MB: weaker, but sufficient check: The first summary contains 0 (and not 1), as it is a >= 0
+    //     The second summary contains 1 (and not 0), as it is a >= 1
+    ASSERT_TRUE(original_sum1.find('0') != std::string::npos && deserialized_sum1.find('0') != std::string::npos
+                && original_sum1.find('1') == std::string::npos && deserialized_sum1.find('1') == std::string::npos);
+    ASSERT_TRUE(original_sum2.find('1') != std::string::npos && deserialized_sum2.find('1') != std::string::npos
+                && original_sum2.find('0') == std::string::npos && deserialized_sum2.find('0') == std::string::npos);
+
+    std::remove(summary_file.c_str());
+    delete decider1;
+    delete decider2;
+    delete store1;
+    delete store2;
+
 }
