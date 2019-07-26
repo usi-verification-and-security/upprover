@@ -90,12 +90,12 @@ symex_assertion_sumt::~symex_assertion_sumt() {
 
  Purpose: Generate SSA statements for the program starting from the root 
  stored in goto_program.
-
+//In normal hifrog (standalone verification) this method is called once, only for top_level nill
 \*******************************************************************/
 
 bool symex_assertion_sumt::prepare_SSA()
 {
-  bool top_level = call_tree_root.is_root();
+  bool top_level = call_tree_root.is_root();  //top_level = nil or main
   if(!top_level) {
       return prepare_subtree_SSA();
   }

@@ -185,7 +185,7 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
             validated = validate_summary(node , single_sum);
         }
         if (!validated) {
-            bool has_parent = !node.is_root();
+            bool has_parent = (!node.is_root()) && (node.get_function_id()!=ID_main);
             if (has_parent) {
                 validated = validate_node(node.get_parent(), true);
             }
