@@ -99,8 +99,8 @@ public:
   const summary_storet & get_summary_store() const { return summary_store; }
   
  //for upgrade check; TODO: needs investigation
-  void fill_inverted_summary_partition(partition_idt partition_id,
-                                         const summary_idst& summaries, const summary_ids_sett& used_summaries);
+//  void fill_inverted_summary_partition(partition_idt partition_id,
+//                                         const summary_idst& summaries, const summary_ids_sett& used_summaries);
 
   void fill_function_templates(interpolating_solvert &interpolator, std::vector<summaryt*>& templates);
  

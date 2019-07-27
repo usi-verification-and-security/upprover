@@ -34,18 +34,23 @@ public:
     
     bool check_upgrade();
     
-    const summary_idst& get_vec_SummaryIds(call_tree_nodet * node) const{
-        return callNode_to_summaryIds.at(node);
-    }
-    
-    void update_SummaryIds(call_tree_nodet * node, summary_idt& new_id){
-        callNode_to_summaryIds.at(node).push_back(new_id);
-    }
+//    // Removes summary from the summary store
+//    void remove_summary(call_tree_nodet * node, summary_idt to_delete){
+//        callNode_to_summaryIds.at(node).erase(to_delete);
+//    }
+//
+//    const summary_ids_sett& get_set_SummaryIds(call_tree_nodet * node) const{
+//        return callNode_to_summaryIds.at(node);
+//    }
+//
+//    void update_SummaryIds(call_tree_nodet * node, summary_idt& new_id){
+//        callNode_to_summaryIds.at(node).insert(new_id);
+//    }
     
 protected:
-    std::unordered_map<call_tree_nodet*, summary_idst> callNode_to_summaryIds;
-    
-    summary_ids_sett checked_summs;
+//    std::unordered_map<call_tree_nodet*, summary_ids_sett> callNode_to_summaryIds;
+//
+//    summary_ids_sett checked_summs;
 	
 	bool validate_node(call_tree_nodet & node, bool force_check = false);
 	

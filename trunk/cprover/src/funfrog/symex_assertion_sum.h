@@ -172,8 +172,8 @@ protected:
     
   // Prepares a partition with an inverted summary. This is used
   // to verify that a function still implies its summary (in upgrade check).
-  void fill_inverted_summary(call_tree_nodet& summary_info,
-                             statet& state, partition_ifacet& inlined_iface);
+//  void fill_inverted_summary(call_tree_nodet& summary_info,
+//                             statet& state, partition_ifacet& inlined_iface);
 
   // Inlines the given function call
   void inline_function_call(

@@ -1001,36 +1001,6 @@ void partitioning_target_equationt::convert_partition_assignments(convertort &co
     }
 # endif
 }
-/*******************************************************************
-
- Function: symex_assertion_sumt::fill_inverted_summary
-
- Inputs:
-
- Outputs:
-
- Purpose: Fill the (reserved) partition with the given summaries.
-TODO: SA: find a corresponding methods def , then uncomment the code
-\*******************************************************************/
-void partitioning_target_equationt::fill_inverted_summary_partition(
-  partition_idt partition_id, const summary_idst & summaries, const summary_ids_sett & used_summaries) {
-    partitiont & sum_partition = partitions.at(partition_id);
-   // assert(!sum_partition.filled);
- 
-    //SA sum_partition.filled = true;
-    //SA sum_partition.summary = true;
-    sum_partition.add_summary_representation();
-    //SA sum_partition.inverted_summary = true;
-    sum_partition.summaries = summaries;
-   //SA sum_partition.used_summaries = used_summaries;
-    sum_partition.applicable_summaries = used_summaries;
-
-  //  Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
-    std::cerr << "  --- (" << partition_id <<
-              ") sums: " << sum_partition.summaries.size() <<
-             " used: " //SA<< sum_partition.used_summaries.
-             << std::endl;
-}
 
 void partitioning_target_equationt::fill_function_templates(interpolating_solvert & interpolator,
                                                             std::vector<summaryt *> & templates) {

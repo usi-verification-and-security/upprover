@@ -159,50 +159,6 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
   
   return process_planned(state);
 }
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::fill_inverted_summary
-
- Inputs:
-
- Outputs:
-
- Purpose: Prepares a partition with an negated summary. This is used
- to verify that a function still implies its summary (in upgrade check).
-
-\*******************************************************************/
-void symex_assertion_sumt::fill_inverted_summary(
-        call_tree_nodet& summary_info,
-        statet& state,
-        partition_ifacet& inlined_iface)
-{
-    // We should use an already computed summary as an abstraction
-    // of the function body
-    const irep_idt& function_id = summary_info.get_function_id();
-    
-    log.status() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
-    
-    partition_ifacet &partition_iface = new_partition_iface(summary_info, NO_PARTITION_ID, 0);
-    
-    partition_iface.share_symbols(inlined_iface);
-    
-    partition_idt partition_id = equation.reserve_partition(partition_iface);
-    
-    log.status() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
-
-//# ifdef DEBUG_PARTITIONING
-    const auto & function_name = id2string(function_id);    //SA
-    log.status() << "   summaries available: " << equation.get_summary_store().get_summariesID(function_name).size() << log.eom;
-    log.status() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
-//# endif
-    
-    equation.fill_inverted_summary_partition(partition_id,
-                                             equation.get_summary_store().get_summariesID(function_name),
-                                             summary_info.get_used_summaries());
-}
-
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::refine_SSA

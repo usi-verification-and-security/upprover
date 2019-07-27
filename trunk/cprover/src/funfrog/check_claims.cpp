@@ -276,7 +276,7 @@ void check_claims(
       if (ok){
         multi_assert_loc.push_back(ass_ptr);
       }
-    } else {
+    } else { //normal hifrog
       pass = core_checker.assertion_holds(assert_grouping ?
               assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
     }
