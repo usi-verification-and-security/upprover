@@ -921,7 +921,8 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
             continue;
         }
         // Store the interpolant
-        summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
+        auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
+        partition.get_iface().call_tree_node.add_used_summary(new_id);
         // Update the precision information for omega deserialization; which partition
         //is now summarized?
         partition.get_iface().call_tree_node.set_summary();

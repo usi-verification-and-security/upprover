@@ -14,10 +14,8 @@ Module: Storage class for function summaries (union-find).
 void smt_summary_storet::serialize(std::ostream &out) const {
     decider->getLogic()->dumpHeaderToFile(out);
     for (const auto & summary_node : store){
-        if(summary_node.is_repr()){
+    //assert(summary_node.is_repr();
             summary_node.summary->serialize(out);
-          //  out << summary_node.summary->is_valid() << std::endl;   //UPG needed
-        }
     }
 }
 

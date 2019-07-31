@@ -55,8 +55,21 @@ public:
   }
   
   // Removes summary from the summary store
-  void remove_summary(const summary_idt){
-  //TODO
+  void remove_summary(const summary_idt id){
+      auto it = std::remove_if(store.begin(), store.end(), [id](nodet const & node){return node.id == id; });
+      if (it != store.end()) {
+          store.erase(it);
+      }
+      bool found = false;
+      for (auto & entry : function_to_summaries) {
+          auto& summs = entry.second;
+          auto it2 = std::remove_if(summs.begin(), summs.end(), [id](summary_idt other){return other == id; });
+          if (it2 != summs.end()) {
+              found = true;
+              summs.erase(it2);
+          }
+          if (found) { break; }
+      }
   }
   
 protected:
@@ -64,11 +77,11 @@ protected:
   // Union find node
   struct nodet {
     
-    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }   // C'tor initializes ID without summary
+//    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }   // C'tor initializes ID without summary
 
-    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, repr_id{_repr_id}  { }  //C'tor initializes ID with Summary
+    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, id{_repr_id}  { }  //C'tor initializes ID with Summary
 
-    nodet() : summary(nullptr), repr_id(0) {}
+    nodet() = delete;
     
     ~nodet() = default;
 
@@ -79,20 +92,11 @@ protected:
     nodet(nodet&& other) = default;
     nodet& operator=(nodet&& other) = default;
     
-    bool is_repr() const { return summary != nullptr; }
-    
-    void update_repr(summary_idt _repr_id) {
-      if (is_repr()) {
-        summary.reset(nullptr);
-      }
-      repr_id = _repr_id;
-    }
-    
     // The summary itself
     std::unique_ptr<summaryt> summary;
     // Keeps id of the representative (if the node is representative, than this
     // means its own id)
-    summary_idt repr_id;
+    summary_idt id;
   };
   
   std::map<std::string, std::size_t> next_ids;

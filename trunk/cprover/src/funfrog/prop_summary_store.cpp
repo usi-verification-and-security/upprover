@@ -18,11 +18,9 @@ void prop_summary_storet::serialize(std::ostream& out) const
     // serializing the summaries
   for (const auto & summary_node : store) {
 
-    out << summary_node.repr_id << " " << summary_node.is_repr() << std::endl;
+    out << summary_node.id << " " << true << std::endl;
     
-    if (summary_node.is_repr()) {
-        summary_node.summary->serialize(out);
-    }
+    summary_node.summary->serialize(out);
   }
 
   // serializing mapping of function names to summary ids
@@ -38,7 +36,7 @@ void prop_summary_storet::serialize(std::ostream& out) const
   }
 }
 
-// Prop-logic deser   //SA: in evolcheck we need add validity as well
+// Prop-logic deser
 void prop_summary_storet::deserialize(std::istream& in)
 {
   this->clear();
@@ -58,12 +56,11 @@ void prop_summary_storet::deserialize(std::istream& in)
     
     in >> repr_id >> is_repr;
     
+    assert(is_repr);
     if (is_repr) {
-      summary->deserialize(in);     //SA:reads raw data(in prop just numbers) one by one
+      summary->deserialize(in);     //reads raw data(in prop just numbers) one by one
       store.emplace_back(repr_id, summary);   //2-args C'tor of nodet gets called
       repr_count++;
-    } else {
-      store.emplace_back(repr_id);          //one-arg constructor of nodet gets called (without summary)
     }
   }
 

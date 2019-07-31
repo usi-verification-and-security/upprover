@@ -10,18 +10,14 @@ Module: Storage class for function summaries (union-find).
 
 const summary_storet::nodet& summary_storet::find_repr(summary_idt id) const
 {
-  const nodet& node = store[id];
-  
-  if (node.is_repr()) {
+    const nodet& node = store[id];
     return node;
-  }
 
-  assert(node.repr_id != id);
-  
-  const summary_storet::nodet& repr_node = find_repr(node.repr_id);
-//  node.update_repr(repr_node.repr_id);
-  
-  return repr_node;
+//  assert(node.id != id);
+//
+//  const summary_storet::nodet& repr_node = find_repr(node.id);
+////  node.update_repr(repr_node.repr_id);
+//  return repr_node;
 }
 
 /*******************************************************************\
@@ -38,19 +34,19 @@ Function: summary_storet::replace_summary
 
 \*******************************************************************/
 
-void summary_storet::replace_summary(summary_idt old_summary_id, 
-        summary_idt replacement_id)
-{
-  nodet& node = store[old_summary_id];
-  
-  assert(old_summary_id != replacement_id);
-  assert(node.is_repr());
-  assert(find_repr(replacement_id).repr_id != old_summary_id);
-  
-  node.update_repr(replacement_id);
-
-  repr_count--;
-}
+//void summary_storet::replace_summary(summary_idt old_summary_id,
+//        summary_idt replacement_id)
+//{
+//  nodet& node = store[old_summary_id];
+//
+//  assert(old_summary_id != replacement_id);
+//  assert(node.is_repr());
+//  assert(find_repr(replacement_id).repr_id != old_summary_id);
+//
+//  node.update_repr(replacement_id);
+//
+//  repr_count--;
+//}
 
 /*
  * Returns the next free id for a given function name.

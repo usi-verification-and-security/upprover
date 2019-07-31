@@ -145,12 +145,13 @@ bool upgrade_checkert::check_upgrade()
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
-
+//        status() << "!lets validate node : " << function_name << eom;
         bool validated = validate_node(current_node, false);
         if (validated) {
-            status() << "Node " << function_name << " has been validated" << eom;
+            status() << "!Node " << function_name << " has been validated" << eom;
         }
         else {
+//            status() << "!Node " << function_name << " NOT validated" << eom;
             status() << "Validation failed! A real bug found. " << eom;
             report_failure();
             return false;
@@ -178,18 +179,20 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
     bool validated = !check_necessary;
 
     if (check_necessary) {
+//        std::cout << "!validating " << function_name << " ..." << '\n';
         bool has_summary;
         has_summary = summary_store->has_summaries(function_name);
         //TODO get summaries based on call-nodes, not function name(as different nodes can have different summary)
         if (has_summary){
             //we only take one summary per node
-            const summary_idt &single_sum = summary_store->get_summariesID(function_name)[0];
-            validated = validate_summary(node , single_sum);
+            const summary_idt &single_sumID = summary_store->get_summariesID(function_name)[0];
+            validated = validate_summary(node , single_sumID);
             if (!validated) {
                 // TODO: invalidate summary for call tree node -> remove summary_id and set precision
                 //                                             -> delete summary from summary store
-                //node.remove_summary(single_sum);
-                //summary_store->remove_summary(single_sum);
+                node.remove_summaryID(single_sumID);
+                node.set_precision(INLINE);
+                summary_store->remove_summary(single_sumID);
                 
             }
         }
@@ -202,6 +205,7 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
                 // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
                 // it reaches the top-level main and fails --> report immediately
                 // Check all the assertions  ; the last flag is true because of all-claims
+//                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
                 validated = this->assertion_holds(assertion_infot(), true);
             }
             if(validated) {

@@ -51,6 +51,11 @@ public:
   }
   void add_used_summary(summary_idt id) { used_summaries.insert(id); }
   void clear_used_summaries() { used_summaries.clear(); }
+  
+// remove ID of summary from summary_ids_sett
+    void remove_summaryID(summary_idt id_to_delete){
+    used_summaries.erase(used_summaries.find(id_to_delete));
+ }
 
   const irep_idt& get_function_id() const { return function_id; }
 
