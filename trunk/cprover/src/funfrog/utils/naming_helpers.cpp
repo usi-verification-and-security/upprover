@@ -108,3 +108,4 @@ const std::string HiFrogOptions::NO_ERROR_TRACE{"no-error-trace"};
 const std::string HiFrogOptions::LOGIC{"logic"};
 const std::string HiFrogOptions::SOLVER{"solver"};
 const std::string HiFrogOptions::SAVE_FILE{"save-summaries"};
+const std::string HiFrogOptions::LOAD_FILE{"load-summaries"};

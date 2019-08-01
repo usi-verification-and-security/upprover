@@ -111,3 +111,13 @@ summary_idt summary_storet::insert_summary(summaryt * summary_given, const std::
     repr_count++;
     return new_id;
 }
+/*******************************************************************
+ Purpose: store summaries into a given file
+\*******************************************************************/
+
+void summary_storet::serialize(std::string file_name) {
+    std::ofstream out;
+    out.open(file_name);
+    this->serialize(out);
+    out.close();
+}

@@ -188,12 +188,15 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
             const summary_idt &single_sumID = summary_store->get_summariesID(function_name)[0];
             validated = validate_summary(node , single_sumID);
             if (!validated) {
-                // TODO: invalidate summary for call tree node -> remove summary_id and set precision
+                //invalidates summary for call tree node -> remove summary_id and set precision
                 //                                             -> delete summary from summary store
                 node.remove_summaryID(single_sumID);
                 node.set_precision(INLINE);
                 summary_store->remove_summary(single_sumID);
-                
+                // hack to update the summary file for the next occasion(for e.g, we will need th updated summaries
+                // for the next decider which will deser the summary file by default to update its summary_store)
+                // TODO: later make decider and summary store independent
+                summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
             }
         }
         if (!validated) {

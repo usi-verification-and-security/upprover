@@ -18,6 +18,8 @@ Author: Ondrej Sery
 #include <unordered_map>
 #include <map>
 #include <memory>
+#include <fstream>
+
 class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
@@ -25,20 +27,20 @@ class summary_storet
 {
 public:
   summary_storet() : max_id (0), repr_count(0) {}
- virtual ~summary_storet() { store.clear(); } // Virtual for sub-class
-
-  // Serialization
+  virtual ~summary_storet() { store.clear(); } // Virtual for sub-class
+ 
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(std::vector<std::string> fileNames) = 0;
-  
-  // An already stored summary is implied by the new one - it is released
-  // and represented by the stronger one, the id is still valid but represented
-  // by the new one.
-  void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
+    
+  //store summaries into a given file
+  void serialize(std::string file_name);
+    
   // Inserts a new summary, the given summary is invalidated
   virtual summary_idt insert_summary(summaryt *summary_given, const std::string & function_name);
+  
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id) const;
+  
   unsigned n_of_summaries() { return store.size(); }
   std::size_t get_next_id(const std::string &fname);
   
@@ -47,7 +49,8 @@ public:
 
 
   bool has_summaries(const std::string & function_name) const {
-      return function_to_summaries.find(function_name) != function_to_summaries.end();
+      auto it = function_to_summaries.find(function_name);
+      return it != function_to_summaries.end() && !it->second.empty();
   }
 
   const summary_idst& get_summariesID(const std::string &function_name) const{
@@ -94,18 +97,13 @@ protected:
     
     // The summary itself
     std::unique_ptr<summaryt> summary;
-    // Keeps id of the representative (if the node is representative, than this
-    // means its own id)
+    // Keeps id of the representative (every id is (should be) representative!)
     summary_idt id;
   };
   
   std::map<std::string, std::size_t> next_ids;
 
   const nodet& find_repr(summary_idt id) const;
-  
-  //for upgrade check
-//  void mark_used_summaries(call_tree_nodet& summary_info, bool *used_mask);
-//  void remap_used_summaries(call_tree_nodet& summary_info, summary_idt *remap);
 
   // Maximal used id
   summary_idt max_id;
@@ -118,3 +116,11 @@ protected:
 };
 
 #endif
+
+//for upgrade check
+//  void mark_used_summaries(call_tree_nodet& summary_info, bool *used_mask);
+//  void remap_used_summaries(call_tree_nodet& summary_info, summary_idt *remap);
+// An already stored summary is implied by the new one - it is released
+// and represented by the stronger one, the id is still valid but represented
+// by the new one.
+//void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
