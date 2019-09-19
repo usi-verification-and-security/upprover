@@ -747,8 +747,9 @@ Purpose: extracts summaries after successful verification; and dumps the summari
         if (!summary_file_name.empty()) {
             std::ofstream out;
             out.open(summary_file_name.c_str());
-            //dumps define-fun()  into summary file
+            //dumps a few declrataions: declare-const, declare-fun
             out << decider.getSimpleHeader();
+            //dumps the remaining declrations as declare-fun, and also dumps summary body as define-fun()
             store.serialize(out);
             out.close();
         }

@@ -1058,11 +1058,7 @@ void symex_assertion_sumt::handle_function_call(
       havoc_function_call(deferred_function, state, function_id);
       break;
     case SUMMARY:
-      if (call_tree_node.is_preserved_node()){
         summarize_function_call(deferred_function, state, function_id);
-      } else {
-        inline_function_call(deferred_function, state, function_id);
-      }
       break;
     case INLINE:
       inline_function_call(deferred_function, state, function_id);

@@ -50,6 +50,7 @@ public:
 
   bool has_summaries(const std::string & function_name) const {
       auto it = function_to_summaries.find(function_name);
+      //return if found & if the entry is not empty
       return it != function_to_summaries.end() && !it->second.empty();
   }
 

@@ -198,6 +198,9 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
                 // TODO: later make decider and summary store independent
                 summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
             }
+            else { //mark the node that has summery, otherwise parent would not know!
+                node.set_precision(SUMMARY);
+            }
         }
         if (!validated) {
             bool has_parent = (!node.is_root()) && (node.get_function_id()!=ID_main);
@@ -232,7 +235,8 @@ Function: upgrade_checkert::validate_summary
 \*******************************************************************/
 
 bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
-
+    //each time we need a cleaned solver, otherwise old solver will mess up with new check
+    init_solver_and_summary_store();
     partitioning_target_equationt equation(ns, *summary_store, true);
     //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false
 
@@ -270,7 +274,11 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
     unsigned iteration_counter = 0;
     prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
 
-    //local creation of solver; in every call a fresh raw pointer to solver is created.
+    //local creation of solver; in every call a fresh raw pointer "solver" pointing to decider is created.
+    //but be careful decider(which is member variable of core_checker) will be alive after validate_summary()
+    //is done. So raw pointer solver gets out-of-scope, but decider is still around and
+    // will mess up with the next check. At the moment opensmt does not have method for cleaning
+    //and temporarily we do init_solver_and_summary_store(); for this purpose in the beginning.
     auto solver = decider->get_solver();
     // first partition for the summary to check
     auto interpolator = decider->get_interpolating_solver();
