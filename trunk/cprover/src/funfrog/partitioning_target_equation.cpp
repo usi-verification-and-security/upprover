@@ -358,7 +358,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 
 void partitioning_target_equationt::getFirstCallExpr() 
 {
-    saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);
+//    saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);
 }
 
 void partitioning_target_equationt::saveFirstCallExpr(const exprt& expr) {
