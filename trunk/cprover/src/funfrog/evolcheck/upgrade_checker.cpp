@@ -185,7 +185,7 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
         //TODO get summaries based on call-nodes, not function name(as different nodes can have different summary)
         if (has_summary){
             //we only take one summary per node
-            const summary_idt &single_sumID = summary_store->get_summariesID(function_name)[0];
+            const summary_idt single_sumID = summary_store->get_summariesID(function_name)[0];
             validated = validate_summary(node , single_sumID);
             if (!validated) {
                 //invalidates summary for call tree node -> remove summary_id and set precision
@@ -235,7 +235,8 @@ Function: upgrade_checkert::validate_summary
 \*******************************************************************/
 
 bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
-    //each time we need a cleaned solver, otherwise old solver will mess up with new check
+    //each time we need a cleaned solver, otherwise old solver conflicts with new check; in the classical check also we init first.
+    //SA: did we add something to the summary store? make sure not!
     init_solver_and_summary_store();
     partitioning_target_equationt equation(ns, *summary_store, true);
     //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false
