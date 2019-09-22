@@ -153,7 +153,7 @@ bool upgrade_checkert::check_upgrade()
             validated = validate_node(current_node);
         }
         if (!validated) {
-            bool has_parent = (!current_node.is_root()) && (current_node.get_function_id()!=ID_main);
+            bool has_parent = current_node.get_function_id()!=ID_main;
             if (has_parent) {
                 marked_to_check.insert(&current_node.get_parent());
             }
