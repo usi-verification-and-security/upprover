@@ -21,6 +21,7 @@
 #include "funfrog/partition_iface.h"
 #include <funfrog/solvers/smt_itp.h>
 #include <funfrog/utils/SummaryInvalidException.h>
+#include <unordered_set>
 /*******************************************************************\
 
 Standalone Function: check_initial phase of upgrade check (bootstraping)
@@ -35,7 +36,7 @@ void check_initial(core_checkert &core_checker, messaget &msg) {
 	bool result = core_checker.assertion_holds(assertion_infot(), true);
 
   	if (result) {
-    	msg.status() << "\n Initial phase for Upgrade checking is successfully done, \n"
+    	msg.status() << "\n Initial phase of upgrade checking : VERIFICATION SUCCESSFUL, \n"
                     " Now proceed with \"do-upgrade-check\" for verifying the new version of your code! Enjoy Verifying!\n" << msg.eom;
  	}
   	else {
@@ -65,50 +66,35 @@ bool do_upgrade_check(
 {
     
     auto before = timestamp();
-    
     messaget msg(message_handler);
-    
     //load __omega if it's already generated from 1st phase check_initial
     std::ifstream in;
     in.open(options.get_option("load-omega").c_str());
-    
     if (in.fail()){
         std::cerr << "Failed to deserialize previous verification efforts (file: " <<
                   options.get_option("load-omega").c_str() <<
                   " cannot be read)" << std::endl;
         return 1;
     }
-    
     difft diff(msg, options.get_option("load-omega").c_str(), options.get_option("save-omega").c_str() );
-    
     bool res_diff = diff.do_diff(goto_model_old.goto_functions, goto_model_new.goto_functions);  //if result is false it mean at least one of the functions has changed
-    
     auto after = timestamp();
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){
         msg.status() << "The program models are identical" <<msg.eom;
         return 0;
     }
-    
     unsigned long max_mem_used;
-    
     upgrade_checkert upg_checker(goto_model_new, options, message_handler, max_mem_used);
-    
     res_diff = upg_checker.check_upgrade();
-    
     after = timestamp();
-    
     msg.status() << "TOTAL UPGRADE CHECKING TIME: " << time_gap(after,before) << msg.eom;
-
 //SA  upg_checker.save_change_impact();
     
     return res_diff;
 }
 
 /*******************************************************************\
-
-Function: upgrade_checkert::check_upgrade
-
  Purpose: Incremental check of the upgraded program.
 
  // 3. Mark summaries as
@@ -127,6 +113,17 @@ Function: upgrade_checkert::check_upgrade
   //summaryt& summary = summary_store->find_summary(*it);
   //summary.print(std::cout);
 \*******************************************************************/
+/*******************************************************************\
+ Function: do_upgrade_check
+
+ Purpose: controls on which order the nodes to be validated.
+ Iterates over the call-tree which was filled in DFS order,
+ childs will be checked first and parents will be marked
+ for later check, if all childs were processed then it's their turn.
+ if the individual node:
+ Not changed & Not force-check ==> do nothing, go to next node
+ changed||force-check ==> validite_node (if has summary->validate_summary)
+\*******************************************************************/
 bool upgrade_checkert::check_upgrade()
 {
 // Here we suppose that "__omega" already contains information about changes
@@ -136,28 +133,60 @@ bool upgrade_checkert::check_upgrade()
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
 
-    // init solver and Load older summaries in the same as hifrog
+    // init solver and Load older summaries in the same way as hifrog
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
-    
+    std::unordered_set<call_tree_nodet*> marked_to_check;
+    bool validated = false;
     //iterate over functions backward, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
-//        status() << "!lets validate node : " << function_name << eom;
-        bool validated = validate_node(current_node, false);
+        bool force_check = false;
+        if (marked_to_check.find(&current_node) != marked_to_check.end()) {
+            force_check = true;
+        }
+        bool check_necessary = !current_node.is_preserved_node() || force_check;
+        validated = !check_necessary;
+        if (check_necessary) {
+            validated = validate_node(current_node);
+        }
+        if (!validated) {
+            bool has_parent = (!current_node.is_root()) && (current_node.get_function_id()!=ID_main);
+            if (has_parent) {
+                marked_to_check.insert(&current_node.get_parent());
+            }
+/*        if(validated) {
+                // The subtrees in call_tree_nodes have the correct information about summaries
+                //summaries for subtrees are updated in extract_interpolaion
+                //TODO make sure the new summary was added, or replaced the old summaries correctly
+            }*/
+            if((current_node.is_root()) && (current_node.get_function_id()==ID_main))
+            { // Final check: we are in the main, and we dont have a summary form previous run
+                // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
+                // it reaches the top-level main and fails --> report immediately
+                // Check all the assertions  ; the last flag is true because of all-claims
+//                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
+                validated = this->assertion_holds(assertion_infot(), true);
+            }
+        }
         if (validated) {
             status() << "!Node " << function_name << " has been validated" << eom;
         }
         else {
-//            status() << "!Node " << function_name << " NOT validated" << eom;
-            status() << "Validation failed! A real bug found. " << eom;
-            report_failure();
-            return false;
+            status() << "!Node " << function_name << " was NOT validated" << eom;
         }
     } //End of forloop
-    
+    //Final conclusion
+    if (validated) {
+        status() << "The whole call tree has been validated" << eom;
+    }
+    else {
+        status() << "Validation failed! A real bug found. " << eom;
+        report_failure();
+        return false;
+    }
     //update __omega file
     serialize();
     
@@ -172,19 +201,20 @@ Function:
 Purpose: it starts bottom up, checking nodes validity one by one in the new
 upgraded version; we assume each node potentially has at most one summary.
 \*******************************************************************/
-bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
+bool upgrade_checkert::validate_node(call_tree_nodet &node) {
     
     const std::string function_name = node.get_function_id().c_str();
-    bool check_necessary = !node.is_preserved_node() || force_check;
-    bool validated = !check_necessary;
+   // bool check_necessary = !node.is_preserved_node() || force_check;
+    bool validated = false;
 
-    if (check_necessary) {
-//        std::cout << "!validating " << function_name << " ..." << '\n';
+//    if (check_necessary) {
+        std::cout << "\n------validating node " << function_name << " ..." << '\n';
         bool has_summary;
         has_summary = summary_store->has_summaries(function_name);
         //TODO get summaries based on call-nodes, not function name(as different nodes can have different summary)
         if (has_summary){
-            //we only take one summary per node
+            //for now we only consider one summary per node
+            //TODO consider several summaries per node
             const summary_idt single_sumID = summary_store->get_summariesID(function_name)[0];
             validated = validate_summary(node , single_sumID);
             if (!validated) {
@@ -193,8 +223,8 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
                 node.remove_summaryID(single_sumID);
                 node.set_precision(INLINE);
                 summary_store->remove_summary(single_sumID);
-                // hack to update the summary file for the next occasion(for e.g, we will need th updated summaries
-                // for the next decider which will deser the summary file by default to update its summary_store)
+                // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
+                // for the next decider which will read this summaryFile to update the summary_storet)
                 // TODO: later make decider and summary store independent
                 summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
             }
@@ -202,25 +232,8 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node, bool force_check) {
                 node.set_precision(SUMMARY);
             }
         }
-        if (!validated) {
-            bool has_parent = (!node.is_root()) && (node.get_function_id()!=ID_main);
-            if (has_parent) {
-                validated = validate_node(node.get_parent(), true);
-            }
-            else { // Final check: we are in the main, and we dont have a summary form previous run
-                // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
-                // it reaches the top-level main and fails --> report immediately
-                // Check all the assertions  ; the last flag is true because of all-claims
-//                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
-                validated = this->assertion_holds(assertion_infot(), true);
-            }
-            if(validated) {
-                // TODO: make sure that call_tree_nodes have the correct information about summaries
-                //update summaries for subtrees(add new summary, or replace their old summaries)
-            }
-        }
-    }
-
+     
+//    }
     return validated;
 }
 /*******************************************************************\

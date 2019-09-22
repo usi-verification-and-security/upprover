@@ -52,7 +52,7 @@ protected:
 //
 //    summary_ids_sett checked_summs;
 	
-	bool validate_node(call_tree_nodet & node, bool force_check = false);
+	bool validate_node(call_tree_nodet & node);
 	
 	bool validate_summary(call_tree_nodet & node, summary_idt summary);
     void update_subtree_summaries(call_tree_nodet & node);

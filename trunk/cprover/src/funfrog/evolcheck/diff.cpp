@@ -414,6 +414,7 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
 
  Purpose: it does 2 things: if the name is alreday there & it's already visited
         - matching between function calls in old and new binaries
+        the order of function calls matters here. DFS order
 \*******************************************************************/
 int difft :: get_call_loc(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& functions_old, unsigned old){
     //ToDo: create more sophisticated method
