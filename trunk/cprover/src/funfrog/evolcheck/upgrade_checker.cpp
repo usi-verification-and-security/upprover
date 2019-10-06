@@ -36,7 +36,7 @@ void check_initial(core_checkert &core_checker, messaget &msg) {
 	bool result = core_checker.assertion_holds(assertion_infot(), true);
 
   	if (result) {
-    	msg.status() << "\n Initial phase of upgrade checking : VERIFICATION SUCCESSFUL, \n"
+    	msg.status() << "\n Initial phase of upgrade checking : OK, \n"
                     " Now proceed with \"do-upgrade-check\" for verifying the new version of your code! Enjoy Verifying!\n" << msg.eom;
  	}
   	else {
@@ -162,7 +162,7 @@ bool upgrade_checkert::check_upgrade()
                 //summaries for subtrees are updated in extract_interpolaion
                 //TODO make sure the new summary was added, or replaced the old summaries correctly
             }*/
-            if((current_node.is_root()) && (current_node.get_function_id()==ID_main))
+            if(current_node.get_function_id()==ID_main)
             { // Final check: we are in the main, and we dont have a summary form previous run
                 // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
                 // it reaches the top-level main and fails --> report immediately
