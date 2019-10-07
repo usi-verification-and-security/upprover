@@ -1,22 +1,26 @@
 int a;
-int b;
+int b ;
 
 void C(){
   a = b + 1;
 }
 
 void B(){
+  b = a;
   C();
 }
 
 void A(){
   a = 0;
-  b = 0;
   B();
 }
 
-void main(void){
+void M(){
   A();
-  assert(a == b + 1);
 }
 
+void main(void){
+  M();
+
+  assert(a == b + 1);
+}

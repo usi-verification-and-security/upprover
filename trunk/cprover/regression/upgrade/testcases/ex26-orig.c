@@ -1,19 +1,17 @@
-//just rename
-
-unsigned int non();
+unsigned int minusTwo();
 
 int h(int m){
-    return 2 * m;
+    return m + m;
 }
 int g(int k){
-	return k + 3 ;
+	return k + 2 ;
 }
 
 int f ()
 {
     int w, s=0;
     
-    unsigned n = non();
+    unsigned n = nondetUInt();
     __CPROVER_assume(n>0);
     __CPROVER_assume(n<10);
 

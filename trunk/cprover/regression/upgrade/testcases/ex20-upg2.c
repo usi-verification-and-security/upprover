@@ -1,32 +1,32 @@
-unsigned int minusTwo();
+unsigned int nondetUInt();
 
-int h(int m){
-    return 2 * m;
+int H(int h){
+    return 2 * h;
 }
-int g(int k){
-	return k + 1 ;
+int G(int g){
+	return g + 1 ;
 }
 
-int f ()
+int F()
 {
-    int w, s=0;
+    int f, s=0;
     
     unsigned n = nondetUInt();
     __CPROVER_assume(n>0);
     __CPROVER_assume(n<10);
 
     s = s + n;
-    w = g(s);
-    return w;
+    f = G(s);
+    return f;
 }
 
 int main()
 {
     int a;
 
-    a=f();
+    a=F();
     
-    a = h (a);
+    a = H (a);
     
     assert( a>= 5);
 
