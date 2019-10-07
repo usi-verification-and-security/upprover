@@ -1,8 +1,7 @@
-#challenge: how to name files? How the script pick files in a correct order for bootstraping and upgrade?
-#I think we have to define config file for only original file,
 #!/usr/local/bin/python3
 #This script runs HiFrog twice(first for bootstraping phase and second with reusing the summary for upgrade cheking) and then
 # checks with the expected results. It also dumps the verification results into a collected*.txt file 
+#Note that we define config files for only original files.
 
 #usage: python3 run_tests.py <hifrog-executable-path>
 
@@ -45,17 +44,20 @@ def run_upgrade_check(newargs, shouldSuccess, folderpath, testname):
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
-        error('The upgrade checking did not return verification result!'+ testname)
+        resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION SUCCESSFUL" in line]
+        error('The upgrade checking did not return verification result!')
+        warning(resultLines)
         return False
     if len(resultLines) > 1:
         warning('The upgrade checking did not finish in one iteretion!')
         warning(resultLines)
-        return False
-    resultLine = resultLines[0]
+        #return False
+    #get the last element of list
+    resultLine = resultLines[-1]
     expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
     testPassed = (resultLine == expectedResult)
     if not testPassed:
-        error('Test result is different than the expected one! --> '+ testname)
+        error('Test result is different than the expected one!')
         return False
     else:
         success('As expected upgrade checking!')
@@ -82,10 +84,15 @@ def run_upgrade_check(newargs, shouldSuccess, folderpath, testname):
         return False
     success('successful upgrade checking with reusing summaries !')
     '''
-    os.remove(summaries_path)
-    os.remove(omega_path)
+    if os.path.exists(summaries_path):
+        os.remove(summaries_path)
+        print("removed old summary! ")
+    if os.path.exists(omega_path):
+        os.remove(omega_path)
+        print("removed old omega! ") 
 # 3 -------------------------------------------------------
 def run_bootstrapping(args, shouldSuccess, folderpath, testname):
+    #folderpath=testcases
     computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))
     summaries_name = '__summaries'
     omega_name = '__omega'
@@ -93,8 +100,19 @@ def run_bootstrapping(args, shouldSuccess, folderpath, testname):
     omega_path = os.path.join(folderpath, omega_name)
     if os.path.exists(summaries_path):
         os.remove(summaries_path)
+        print("removed old summary in testcases! ")
     if os.path.exists(omega_path):
-        os.remove(omega_path)    
+        os.remove(omega_path)
+        print("removed old omega in testcases! ")    
+    pathname = os.path.dirname(sys.argv[0])
+    scriptpath= os.path.abspath(pathname)
+    if os.path.exists(scriptpath+"/__summaries"):
+        os.remove(scriptpath+"/__summaries")
+        print("removed old summary in scriptpath! ")
+    if os.path.exists(scriptpath+"/__omega"):
+        os.remove(scriptpath+"/__omega")
+        print("removed old omega in scriptpath! ")   
+#     
     newargs = args + ['--save-summaries', summaries_path] + ['--save-omega', omega_path] 
     command = ' '.join(newargs)
     title('Bootstraping phase:'),
@@ -103,15 +121,18 @@ def run_bootstrapping(args, shouldSuccess, folderpath, testname):
     stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
+    #print(filteredOutput)
     # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
     collect_data(stdoutput , testname , command)
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
         error("No verification result! --> " + testname)
+        warning(resultLines)
         return False
     if len(resultLines) > 1:
-        error("Got multiple lines with verification result when only one was expected!")
+        warning("Got multiple lines with verification result when only one was expected!")
+        warning(resultLines)
         return False
     resultLine = resultLines[0]
     expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
@@ -147,15 +168,19 @@ def run_test_case(options, testdir, configfile):
     args_general= ''
     path_to_exec = options.executable
 #    z3_allowed = options.z3
+    flag = True
     for configuration in configurations:
         # ignore empty lines or lines starting wiht '#' -> comments
         if not configuration or configuration.startswith('#'):
             continue
+        # ignore lines or lines containing logic prop
+        if "logic prop" in configuration:
+            continue    
         fields = configuration.split(separator)
         if len(fields) < 2:
             error('Configuration not in correct format: ' + configuration)
             error('bad config file is: '+ configpath +' for -->  '+ testname)  
-            continue
+            continue    
         if configuration.startswith("--init-upgrade-check"):
             # global arguments for both bootstraping and upgrade_checking; the first starts with --init-upgrade-check
             args_general = fields[0].strip().split()
@@ -163,15 +188,16 @@ def run_test_case(options, testdir, configfile):
              # expected result
             exp_res = fields[1].strip()
             res = run_bootstrapping([path_to_exec] + args_general + [sourcepath], should_success(exp_res), testdir, testname)
-
+            flag = True
         elif configuration.startswith("--do-upgrade-check"):
-            args_general = args_general[1:]
-            args_upgrade = args_general + fields[0].strip().split()
-            #print(args_upgrade)
-            # expected result
-            exp_res = fields[1].strip()
-            res = run_upgrade_check([path_to_exec] + args_upgrade + [sourcepath], should_success(exp_res), testdir, testname)
-
+            if(flag == True):
+                args_general = args_general[1:]
+                args_upgrade = args_general + fields[0].strip().split()
+                #print(args_upgrade)
+                # expected result
+                exp_res = fields[1].strip()
+                res = run_upgrade_check([path_to_exec] + args_upgrade + [sourcepath], should_success(exp_res), testdir, testname)
+                flag = False
  #      if 'z3' in args and not z3_allowed:
  #          continue
         
@@ -232,14 +258,14 @@ def collect_data(flog , testname , strarg):  #flog is string!
         fi.write(res.rstrip())
         fi.write("  |  ")
     else:
-        fi.write(" NoResult")
+        fi.write(" NoResult ")
         fi.write("  |  ")
 
     if time!='':
         fi.write(time)
         fi.write("  |  ")
     else:
-        fi.write(" NoTime")     
+        fi.write(" NoTime ")     
 
     if strarg!='':
         tmplist=strarg.split(" ")[1:]
@@ -297,7 +323,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    args.executable = ' ulimit -Sv 12000000; ulimit -St ' + str(args.timeout) + '; /usr/bin/time -p ' + args.executable
-    #print(args.executable)
+    args.executable = ' ulimit -Sv 12000000; ulimit -St ' + str(args.timeout) + '; /usr/bin/time -p ' + args.executable    #print(args.executable)
     run(args)
 
