@@ -200,40 +200,41 @@ Function:
 
 Purpose: it starts bottom up, checking nodes validity one by one in the new
 upgraded version; we assume each node potentially has at most one summary.
+//get summaries based on call-nodes, not function name(as different nodes can have different summaries)
+
 \*******************************************************************/
 bool upgrade_checkert::validate_node(call_tree_nodet &node) {
     
     const std::string function_name = node.get_function_id().c_str();
-   // bool check_necessary = !node.is_preserved_node() || force_check;
     bool validated = false;
-
-//    if (check_necessary) {
-        std::cout << "\n------validating node " << function_name << " ..." << '\n';
-        bool has_summary;
-        has_summary = summary_store->has_summaries(function_name);
-        //TODO get summaries based on call-nodes, not function name(as different nodes can have different summary)
-        if (has_summary){
-            //for now we only consider one summary per node
-            //TODO consider several summaries per node
-            const summary_idt single_sumID = summary_store->get_summariesID(function_name)[0];
-            validated = validate_summary(node , single_sumID);
-            if (!validated) {
-                //invalidates summary for call tree node -> remove summary_id and set precision
-                //                                             -> delete summary from summary store
-                node.remove_summaryID(single_sumID);
-                node.set_precision(INLINE);
-                summary_store->remove_summary(single_sumID);
-                // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
-                // for the next decider which will read this summaryFile to update the summary_storet)
-                // TODO: later make decider and summary store independent
-                summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
-            }
-            else { //mark the node that has summery, otherwise parent would not know!
-                node.set_precision(SUMMARY);
-            }
+    status() << "\n------validating node " << function_name << " ..." << eom;
+    bool has_summary;
+    //has_summary = summary_store->has_summaries(function_name);
+    has_summary = !node.get_used_summaries().empty();
+    if (has_summary){
+        //for now we only consider one summary per node
+        //TODO consider several summaries per node
+        //const summary_idt single_sumID = summary_store->get_summariesID(function_name)[0];
+        const summary_idt single_sumID = *node.get_used_summaries().begin();
+//       print summary-in-use in the console
+//      summaryt& currentSum = summary_store->find_summary(single_sumID);
+//      currentSum.serialize(std::cout);
+        validated = validate_summary(node , single_sumID);
+        if (!validated) {
+            //invalidates summary for call tree node -> remove summary_id and set precision
+            //                                       -> delete summary from summary store
+            node.remove_summaryID(single_sumID);
+            node.set_precision(INLINE);
+            summary_store->remove_summary(single_sumID);
+            // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
+            // for the next decider which will read this summaryFile to update the summary_storet)
+            // TODO: later make decider and summary store independent
+            summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
         }
-     
-//    }
+        else { //mark the node that has summery, otherwise parent would not know!
+            node.set_precision(SUMMARY);
+        }
+    }
     return validated;
 }
 /*******************************************************************\

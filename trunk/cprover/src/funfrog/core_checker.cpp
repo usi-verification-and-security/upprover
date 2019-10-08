@@ -132,7 +132,7 @@ void core_checkert::initialize_summary_store() {
         }
     }
 
-    // Load older summaries
+    // fill summary store again by loading older summaries from file
     {
         const std::string& filenames = options.get_option("load-summaries");
         std::vector<std::string> summaries_files = splitString(filenames, ',');

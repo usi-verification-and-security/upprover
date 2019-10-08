@@ -334,6 +334,11 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   functions_root.mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
 }
 
+/*******************************************************************\
+ Function: Usage ONly in Upgrade Check
+
+ Purpose: Writes summary_IDs in omega file (the last field) if IDs are meaningful
+\*******************************************************************/
 void serialize_used_summaries(std::ofstream& out, 
         const summary_ids_sett& used_summaries) 
 {
@@ -341,19 +346,23 @@ void serialize_used_summaries(std::ofstream& out,
     out << "-" << std::endl;
     return;
   }
-  
+//writing summary_IDs in omega file (the last field)
   bool first = true;
   for (summary_ids_sett::const_iterator it = used_summaries.begin();
           it != used_summaries.end(); ++it) {
     if (first) first = false;
     else {
-      out << ",";
+      out << ","; //if there are more IDs, separate them by ,
     }
     out << *it;
   }
   out << std::endl;
 }
+/*******************************************************************\
+ Function: Usage ONly in Upgrade Check
 
+ Purpose: Reads summary_IDs from omega file (the last field) if IDs are meaningful
+\*******************************************************************/
 void deserialize_used_summaries(const std::string& line, 
         summary_ids_sett& used_summaries) 
 {
@@ -381,7 +390,6 @@ void deserialize_used_summaries(const std::string& line,
       break;
   }
 }
-
 /*******************************************************************\
  
  Function: Usage ONly in Upgrade Check
