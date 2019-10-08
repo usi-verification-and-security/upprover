@@ -2,7 +2,7 @@
 unsigned int nondetUInt();
 
 int plus2(int a){
- return a +2;    
+ return a +2;
 }
 
 int minus2(int b , int a){     //iface change

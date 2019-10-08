@@ -2,7 +2,7 @@
 unsigned int nondetUInt();
 
 int plus2(int a){
- return a +2;    //a=1..11
+ return a +2;
 }
 
 int minus2(int b){

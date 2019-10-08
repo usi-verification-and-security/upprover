@@ -19,7 +19,7 @@ int main()
     assert (u == 1);
   } else {
     stub();
-    assert (v == 1);
+    assert (v == 1);//fails
   }
 
   return(0);

@@ -226,7 +226,7 @@ def run(options):
     note('Result of this test suite:\n')
     if fails_in_tests > 0:
         error('There were some failed tests!')
-        error('Number of failed tests: ' + str(fails_in_tests))
+ #       error('Number of failed tests: ' + str(fails_in_tests))
     else:
         success('All tests ran successfully!')
 #-------------------------------------------------------
@@ -308,6 +308,9 @@ def error(text):
     sys.stdout.write(RED)
     print(text)
     sys.stdout.write(RESET)
+    error.counter += 1
+    print("ERROR! Total number of errors so far: ", error.counter)
+error.counter = 0
     
 
 def warning(text):

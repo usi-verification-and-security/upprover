@@ -11,7 +11,7 @@ return m+1;
 }
 
 int g(int n) {
-int k=f(n+1);
+int k=func(n+1);
 assert(k>0);
 return k+1;
 }
