@@ -24,14 +24,14 @@ def filtercomments(input_text):
     filtered = [ line for line in input_text.splitlines() if not line.startswith(comment_start) ]
     return '\n'.join(filtered)
 # 4 -------------------------------------------------------
-def run_upgrade_check(newargs, shouldSuccess, folderpath, testname):
+def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
         #rerun with the computed summaries
    # assert os.path.exists(summaries_path), 'Summaries for rerun not found!'
     summaries_name = '__summaries'
     omega_name = '__omega'
-    summaries_path = os.path.join(folderpath, summaries_name)
-    omega_path = os.path.join(folderpath, omega_name)
-    newargs = newargs + ['--load-summaries', summaries_path] + ['--load-omega', omega_path] 
+    summaries_path = os.path.join(scriptpath, summaries_name)
+    omega_path = os.path.join(scriptpath, omega_name)
+    newargs = newargs #+ ['--load-summaries', summaries_path] + ['--load-omega', omega_path] 
     command = ' '.join(newargs)
     title('Upgrade Checking Phase:'),
     note(command)
@@ -39,6 +39,7 @@ def run_upgrade_check(newargs, shouldSuccess, folderpath, testname):
     stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
+    #print(filteredOutput)
     collect_data(stdoutput, testname, command)  # collect rerun time and results;
     
     # get the line containing the verification result
@@ -86,24 +87,24 @@ def run_upgrade_check(newargs, shouldSuccess, folderpath, testname):
     '''
     if os.path.exists(summaries_path):
         os.remove(summaries_path)
-        print("removed old summary! ")
+        print("removed old summary after upg! ")
     if os.path.exists(omega_path):
         os.remove(omega_path)
-        print("removed old omega! ") 
+        print("removed old omega after upg! ") 
 # 3 -------------------------------------------------------
-def run_bootstrapping(args, shouldSuccess, folderpath, testname):
-    #folderpath=testcases
+def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
     computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))
     summaries_name = '__summaries'
     omega_name = '__omega'
-    summaries_path = os.path.join(folderpath, summaries_name)
-    omega_path = os.path.join(folderpath, omega_name)
+    summaries_path = os.path.join(scriptpath, summaries_name)
+    print("\n Hey suumary path", summaries_path)
+    omega_path = os.path.join(scriptpath, omega_name)
     if os.path.exists(summaries_path):
         os.remove(summaries_path)
-        print("removed old summary in testcases! ")
+        print("removed old summary before bootstrapping! ")
     if os.path.exists(omega_path):
         os.remove(omega_path)
-        print("removed old omega in testcases! ")    
+        print("removed old omega before bootstrapping! ")    
     pathname = os.path.dirname(sys.argv[0])
     scriptpath= os.path.abspath(pathname)
     if os.path.exists(scriptpath+"/__summaries"):
@@ -113,7 +114,7 @@ def run_bootstrapping(args, shouldSuccess, folderpath, testname):
         os.remove(scriptpath+"/__omega")
         print("removed old omega in scriptpath! ")   
 #     
-    newargs = args + ['--save-summaries', summaries_path] + ['--save-omega', omega_path] 
+    newargs = args #+ ['--save-summaries', scriptpath] + ['--save-omega', scriptpath] 
     command = ' '.join(newargs)
     title('Bootstraping phase:'),
     note(command)
@@ -121,7 +122,7 @@ def run_bootstrapping(args, shouldSuccess, folderpath, testname):
     stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    #print(filteredOutput)
+    print(filteredOutput)
     # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
     collect_data(stdoutput , testname , command)
     # get the line containing the verification result
@@ -168,6 +169,8 @@ def run_test_case(options, testdir, configfile):
     args_general= ''
     path_to_exec = options.executable
 #    z3_allowed = options.z3
+    pathname = os.path.dirname(sys.argv[0])
+    scriptpath= os.path.abspath(pathname)
     flag = True
     for configuration in configurations:
         # ignore empty lines or lines starting wiht '#' -> comments
@@ -187,7 +190,7 @@ def run_test_case(options, testdir, configfile):
             #print(args_general)
              # expected result
             exp_res = fields[1].strip()
-            res = run_bootstrapping([path_to_exec] + args_general + [sourcepath], should_success(exp_res), testdir, testname)
+            res = run_bootstrapping([path_to_exec] + args_general + [sourcepath], should_success(exp_res), scriptpath, testname)
             flag = True
         elif configuration.startswith("--do-upgrade-check"):
             if(flag == True):
@@ -196,7 +199,7 @@ def run_test_case(options, testdir, configfile):
                 #print(args_upgrade)
                 # expected result
                 exp_res = fields[1].strip()
-                res = run_upgrade_check([path_to_exec] + args_upgrade + [sourcepath], should_success(exp_res), testdir, testname)
+                res = run_upgrade_check([path_to_exec] + args_upgrade + [sourcepath], should_success(exp_res), scriptpath, testname)
                 flag = False
  #      if 'z3' in args and not z3_allowed:
  #          continue

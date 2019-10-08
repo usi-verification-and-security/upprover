@@ -53,9 +53,15 @@ public:
   void clear_used_summaries() { used_summaries.clear(); }
   
 // remove ID of summary from summary_ids_sett
-    void remove_summaryID(summary_idt id_to_delete){
-    used_summaries.erase(used_summaries.find(id_to_delete));
- }
+  void remove_summaryID(summary_idt id_to_delete) {
+    //used_summaries.erase(used_summaries.find(id_to_delete));
+    std::unordered_set<summary_idt>::iterator it = used_summaries.find(id_to_delete);
+    if(it != used_summaries.end())
+    {
+        used_summaries.erase(it);
+    }
+    
+  }
 
   const irep_idt& get_function_id() const { return function_id; }
 
@@ -68,10 +74,10 @@ public:
    * last_assertion_loc - position of last assertion
    *
    */
-    void set_initial_precision(
-            summary_precisiont default_precision,
-            const std::function<bool(const std::string &)> & has_summary,
-            unsigned last_assertion_loc);
+  void set_initial_precision(
+        summary_precisiont default_precision,
+        const std::function<bool(const std::string &)> & has_summary,
+        unsigned last_assertion_loc);
 
   bool mark_enabled_assertions(
         const assertion_infot& assertion, unsigned depth,
