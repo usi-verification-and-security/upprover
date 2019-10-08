@@ -497,6 +497,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
                          goto_functions_2.function_map.at(call_name).type, ns) && !locs_output){
             msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface") <<msg.eom;
             new_summs[i * 7 + 2] = "2";  //Set INLINE precision if the current function has changed.
+            new_summs[i * 7 + 3] = "0";
             continue;
         }
         
