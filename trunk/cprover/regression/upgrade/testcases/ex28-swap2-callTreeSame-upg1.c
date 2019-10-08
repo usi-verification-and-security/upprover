@@ -14,10 +14,9 @@ int main() {
     __CPROVER_assume(x<100);
     int y = 0;
     int a, b;
-
-    a = f(y);
-    b = f(x);
-
+    b = f(y);
+    a= f(x);
+    
     a = (2 * a ) - b;
     assert(a >=0 );
 }
