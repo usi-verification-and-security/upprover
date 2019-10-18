@@ -52,8 +52,8 @@ public:
          output(_output),
          do_write(true),     //output __omega
          locs_output(false),
-         old_summs(0),
-         new_summs(0)
+         callhistory_old(0),
+         callhistory_new(0)
     {};
     
     difft(
@@ -65,8 +65,8 @@ public:
           output("__omega"),
           do_write(false),   //output __omega
           locs_output(false),
-          old_summs(0),
-          new_summs(0)
+          callhistory_old(0),
+          callhistory_new(0)
     {};
     
     bool do_diff(const goto_functionst & , const goto_functionst &);
@@ -103,9 +103,9 @@ private:
     
     std::set<unsigned> locs_visited;
     
-    std::vector<std::string > old_summs;
+    std::vector<std::string > callhistory_old;
     
-    std::vector<std::string > new_summs;
+    std::vector<std::string > callhistory_new;
     
     std::map<unsigned,std::vector<unsigned> > calltree_old;
     
@@ -115,15 +115,16 @@ private:
     
     bool is_untouched(const irep_idt &name);
     
-    bool unroll_goto(const goto_functionst &goto_functions, const irep_idt &name,
-                     goto_sequencet &goto_unrolled,
-                     std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change);
+    bool add_loc_info(const goto_functionst &goto_functions, const irep_idt &name,
+                      goto_sequencet &goto_unrolled,
+                      std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change);
     
     void do_proper_diff(goto_sequencet &goto_unrolled_1,
                         goto_sequencet &goto_unrolled_2,
                         goto_sequencet &goto_common);
     
-    int get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions, unsigned old);
+    int get_call_tree_node_id(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& func_old, unsigned old);
+    
 };
 
 //Declarations:

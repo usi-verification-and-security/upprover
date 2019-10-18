@@ -129,13 +129,13 @@ std::string cmd_str (goto_programt::const_targett &it)
 \*******************************************************************/
 void difft :: stub_new_summs(unsigned loc){
     if (loc != 0){
-        new_summs.push_back("__CPROVER_initialize");  //later an actual function name is pushed
-        new_summs.push_back(integer2string(loc)); // wrong, but working
-        new_summs.push_back("2");   //INLINE
-        new_summs.push_back("0");   //Is_preserved_node?
-        new_summs.push_back("1");   //Is_preserved_edge?    SA: Where is it useful?
-        new_summs.push_back("0");   //has assertion in subtree
-        new_summs.push_back("-");  //later a proper used_summaries will be pushed
+        callhistory_new.push_back("__CPROVER_initialize");  //later an actual function name is pushed
+        callhistory_new.push_back(integer2string(loc)); // wrong, but working
+        callhistory_new.push_back("2");   //INLINE
+        callhistory_new.push_back("0");   //Is_preserved_node?
+        callhistory_new.push_back("1");   //Is_preserved_edge?    SA: Where is it useful?
+        callhistory_new.push_back("0");   //has assertion in subtree
+        callhistory_new.push_back("-");  //later a proper used_summaries will be pushed
     }
     std::vector <unsigned> calls = calltree_new[loc];
     for (unsigned i = 0; i < calls.size(); i++){
@@ -170,7 +170,7 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
             const irep_idt &name = call.function().get("identifier");
             
             current_children.push_back(global_loc);
-            functions.push_back(std::make_pair(&name, false));    //false as a default
+            functions.push_back(std::make_pair(&name, false));    //false as a default; is_touched?
             
             goto_functionst::function_mapt::const_iterator f_it =      //finds
                     goto_functions.function_map.find(name);
@@ -211,9 +211,9 @@ bool difft :: is_untouched(const irep_idt &name)
  Purpose: TODO:SA: find a better name; it seems this func does not have anything to do with unrolling
 
 \*******************************************************************/
-bool difft :: unroll_goto(const goto_functionst &goto_functions, const irep_idt &name,
-                          goto_sequencet &goto_unrolled,
-                          std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
+bool difft :: add_loc_info(const goto_functionst &goto_functions, const irep_idt &name,
+                           goto_sequencet &goto_unrolled,
+                           std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
 {
 //  if (!is_untouched (name)){
 //    return false;
@@ -227,22 +227,22 @@ bool difft :: unroll_goto(const goto_functionst &goto_functions, const irep_idt 
         unsigned tmp = 0;
         if(it->type == FUNCTION_CALL){
             tmp = (calltree[init + 1])[loc];
-            if(inherit_change){
+            if(inherit_change){ //for now it never enters inside the If stat
                 const code_function_callt &call =
                         to_code_function_call(to_code(it->code));
                 
                 const irep_idt &name_child = call.function().get("identifier");
                 
                 if (!is_untouched(name_child)){
-                    return false;   // the nested function was modified => this function is also modified
+                    return false;   // the nested function was modified => this function is also modified TODO refactor it.
                 }
-            }
+            } // end of if
             loc++;
         }
         //adding location info to diff
         goto_unrolled.push_back(triple<std::string, unsigned, const source_locationt*>(cmd_str(it), tmp, &(it->source_location)));
     }
-    return true;
+    return true; // it seems always returns true //TODO refactor it.
 }
 /*******************************************************************\
  Purpose:
@@ -341,7 +341,7 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
                 std::cout << " --- function call UNpreserved.\n";
 #     endif
                 if (do_write){
-                    new_summs[(goto_unrolled_2[i_2].second-1) * 7 + 4] = "0";
+                    callhistory_new[(goto_unrolled_2[i_2].second - 1) * 7 + 4] = "0";
                 }
             }
             i_2++;
@@ -409,28 +409,27 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
     }
 }
 /*******************************************************************\
-
  Function:
-
- Purpose: it does 2 things: if the name is alreday there & it's already visited
-        - matching between function calls in old and new binaries
-        the order of function calls matters here. DFS order
+ Purpose: If the new name is alreday present in the old version & if it's not already processed(visited),
+ It gives each time a new ID for the functions of new version that matches with the old version.
+ If the same function is called twice we give two different ID.
+ Otherwise, if a new function name(perhaps renaming) pops out in the new version that was not in the old version we return -1;
+Remark: the order of function calls matters here. DFS order.
 \*******************************************************************/
-int difft :: get_call_loc(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& functions_old, unsigned old){
+int difft::get_call_tree_node_id(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& func_old, unsigned old){
     //ToDo: create more sophisticated method
-//  if ((*functions[old].first) == name){
+//  if ((*functions[old].first) == new_call_name){
 //    locs_visited.insert(old_loc);
-//    return old;
-//  }
-    
-    for (unsigned i = 0; i < functions_old.size(); i++){
-        if ((*functions_old[i].first) == new_call_name && locs_visited.find(i) == locs_visited.end()){  //locs_visted keeps i to ensure
+//    return old;}
+    for (unsigned i = 0; i < func_old.size(); i++){
+        //checks if the new name is alreday present in the old version & if it's not already processed(visited)
+        if ((*func_old[i].first) == new_call_name && locs_visited.find(i) == locs_visited.end()){  //locs_visted keeps i to ensure
                                                                                                         //the next time to give a new i
             locs_visited.insert(i);
             return i;
         }
     }
-    return -1;
+    return -1; //means there is a new function name(perhaps renaming) that was not in the old version.
 }
 /*******************************************************************\
  
@@ -441,6 +440,16 @@ int difft :: get_call_loc(const irep_idt& new_call_name, std::vector<std::pair<c
 \*******************************************************************/
 bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_functionst &goto_functions_2)
 {
+    //naming helpers for omega file enteries
+    const int ENTRIES_PER_NODE = 7; //ENTRIES_PER_FUNCTION in omega file
+    const int FUNCTION_NAME = 0;
+    const int CALL_LOCATION = 1;
+    const int NODE_REPRESENTATION = 2; //function precision
+    const int PRESERVED_NODE = 3;
+    const int PRESERVED_EDGE = 4;
+    const int ASSERT_IN_SUBTREE = 5;
+    const int USED_SUMMARIES = 6;
+    
     if (do_write){   // will write on __omega file later on
         // Load substituting scenario
         std::ifstream in;
@@ -448,7 +457,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         while (!in.eof()){
             std::string str;
             in >> str;
-            old_summs.push_back(str);   // contains all __omega as vec of string
+            callhistory_old.push_back(str);   // contains all __omega as vec of string
         }
         in.close();
     }
@@ -477,42 +486,51 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     {
         bool pre_comp_res = false;
         
-        const irep_idt& call_name = (*functions_new[i].first);
+        const irep_idt& new_call_name = (*functions_new[i].first);
+        std::string call_newname = new_call_name.c_str();
         
-        unsigned call_loc = get_call_loc(call_name, functions_old, i);
-        
+        unsigned old_call_tree_node_id = get_call_tree_node_id(new_call_name, functions_old, i);
+        bool is_new_node = (old_call_tree_node_id == -1);
         if (do_write){
-            if (call_loc != -1){     //if locs already has been visited it is -1
-                for (unsigned j = 0; j < 7; j++){
-                    if (j != 4)
-                        new_summs[i * 7 + j] = old_summs[call_loc * 7 + j];   //when j=6 used_summaries are copied
+            if (!is_new_node){     //if locs already has been visited it is -1
+                for (unsigned j = 0; j < ENTRIES_PER_NODE; j++){
+                    if (j != PRESERVED_EDGE)
+                        //when j=6 used_summaries are copied
+                        callhistory_new[i * ENTRIES_PER_NODE + j] = callhistory_old[old_call_tree_node_id * ENTRIES_PER_NODE + j];
                 }  // End of Forloop j
             } else {
-                new_summs[i * 7] = call_name.c_str();        // new function, so add the new function name
+                callhistory_new[i * ENTRIES_PER_NODE + FUNCTION_NAME] = new_call_name.c_str(); // new function name, so add it manually
             }
         }
         //interface change support: if the signature of a function was changed, we mark it as changed,
         // and invalidate all summaries(mark as Inline); so the upgrade checking algorithm starts with the parent)
-        if(!base_type_eq(goto_functions_1.function_map.at(call_name).type,
-                         goto_functions_2.function_map.at(call_name).type, ns) && !locs_output){
-            msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface") <<msg.eom;
-            new_summs[i * 7 + 2] = "2";  //Set INLINE precision if the current function has changed.
-            new_summs[i * 7 + 3] = "0";
-            continue;
+        if(is_new_node || (!base_type_eq(goto_functions_1.function_map.at(new_call_name).type,
+                                         goto_functions_2.function_map.at(new_call_name).type, ns) && !locs_output)){
+            msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" has changed interface") << msg.eom;
+            //manually add omega entries for new name that were not in old goto-function (goto_functions_1)
+            callhistory_new[i * ENTRIES_PER_NODE + CALL_LOCATION] = "-1"; // TODO: What to put here for new function not present in old version
+            callhistory_new[i * ENTRIES_PER_NODE + NODE_REPRESENTATION] = "2";  //Set INLINE for the interface change or new name
+            callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_NODE] = "0";
+            callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_EDGE] = "0";
+            callhistory_new[i * ENTRIES_PER_NODE + ASSERT_IN_SUBTREE] = "0"; // TODO: FIGURE out if this we need to find out the right value
+            callhistory_new[i * ENTRIES_PER_NODE + USED_SUMMARIES] = "-";
+            continue;// in this case we stop processing this node here! Dont check goto_functions_1 as does not exist in the old version-->Crash
         }
         
-         if (i == 0){ //SA: it is on __CPROVER_initialize
+        if (i == 0){// it is on __CPROVER_initialize
              pre_comp_res = true;
-         }
-       else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
-            bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
-                                         calltree_old, call_loc, false);
+        }
+       else {
+            bool pre_res_1 = add_loc_info(goto_functions_1, new_call_name, goto_unrolled_1,
+                                          calltree_old, old_call_tree_node_id, false);
             
-            bool pre_res_2 = unroll_goto(goto_functions_2, call_name, goto_unrolled_2,
-                                         calltree_new, i, false);
+            bool pre_res_2 = add_loc_info(goto_functions_2, new_call_name, goto_unrolled_2,
+                                          calltree_new, i, false);
+            //TODO currentlyadd_loc_info is always return true; it just updates call-locations. Simplify it!
             
             if (pre_res_1 && pre_res_2){
-                pre_comp_res = compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common);    //when f changed, it should return false
+                //when node has changed, it should return false
+                pre_comp_res = compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common);
             }
       }
         functions_new[i].second = pre_comp_res;
@@ -520,33 +538,32 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         if (pre_comp_res == false){
             do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
             if (do_write) {
-                new_summs[i*7 + 3] = "0";   //function has changed
+                callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_NODE] = "0";   //function has changed
             }
         }
         else {
             if (do_write) {
-                new_summs[i*7 + 3] = "1";   //it is a preserved_node
+                callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_NODE] = "1";   //it is a preserved_node
             }
         }
         //report
         if (!locs_output)
-            msg.status() << std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
-                    (functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
-                    (functions_new[i].second ? std::string("") : std::string(" (") +
-                                                                 std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())  //all-assert cmdline param
+            msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" is ") +
+                            (functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
+                            (functions_new[i].second ? std::string("") : std::string(" (") +
+                             std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())//all-assert cmdline
                                                                  + std::string(")")) <<msg.eom;
         goto_unrolled_1.clear();
         goto_unrolled_2.clear();
         goto_common.clear();
     }   // End of Forloop over functions_new.size
     
-    //after Make diff & Construct changed call_tree_node  -> write back to "__omega"
-    // Writing new_summ's data into omega file
+    //after Make diff & Construct changed call_tree_node  -> writes back to "__omega"
     if (do_write){
         std::ofstream out;
         out.open(output);    //if you don't provide a new file it will overwrite the old __omega file.
-        for (unsigned i = 0; i < new_summs.size(); i++){
-            out << new_summs[i] << std::endl;
+        for (unsigned i = 0; i < callhistory_new.size(); i++){
+            out << callhistory_new[i] << std::endl;
         }
         out.close();
     }
@@ -561,4 +578,3 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     }                                       //if false, at least one function has changed
     return res;
 }
-
