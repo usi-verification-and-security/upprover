@@ -6,7 +6,7 @@ int h(int m){
     return 2 * m;
 }
 int g(int k){
-	return k + 3 ;
+    return k + 3 ;
 }
 
 int f ()

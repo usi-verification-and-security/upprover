@@ -167,7 +167,7 @@ bool upgrade_checkert::check_upgrade()
                 // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
                 // it reaches the top-level main and fails --> report immediately
                 // Check all the assertions  ; the last flag is true because of all-claims
-//                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
+                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
                 validated = this->assertion_holds(assertion_infot(), true);
             }
         }
@@ -269,7 +269,7 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
                                options.get_unsigned_int_option("unwind"),
                                options.get_bool_option("partial-loops"),
     };
-    assertion_infot assertion_info;
+    assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
     symex.set_assertion_info_to_verify(&assertion_info);
 
     refiner_assertion_sumt refiner {
