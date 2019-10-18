@@ -589,8 +589,10 @@ void partitioning_target_equationt::convert_partition_assertions(
         }
     }
 
-    if (partition.has_parent()) {
-        assert(number_of_assumptions > 0);
+//    if (partition.has_parent()) {
+        // MB: This relation, that if the function ends then all its assumptions have been satisfied should always be
+        //      captured. We need it in upgrade checking when we are doing symex on subtrees of the program.
+        assert(!partition.has_parent() || number_of_assumptions > 0);
         // Encode callend propagation formula for the partition:
         //
         // callend_f =>
@@ -626,7 +628,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         else
             out_terms << "\n" << out_temp.str() << "    )\n";
 #   endif
-    }
+//    }
 }
 
 /*******************************************************************
