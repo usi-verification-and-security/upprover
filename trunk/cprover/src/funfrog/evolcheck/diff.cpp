@@ -448,7 +448,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     const int PRESERVED_NODE = 3;
     const int PRESERVED_EDGE = 4;
     const int ASSERT_IN_SUBTREE = 5;
-    const int USED_SUMMARIES = 6;
+  //  const int USED_SUMMARIES = 6; //fo r e.g,in ex21-*.c summary in minus2 should be removed later
     
     if (do_write){   // will write on __omega file later on
         // Load substituting scenario
@@ -513,7 +513,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_NODE] = "0";
             callhistory_new[i * ENTRIES_PER_NODE + PRESERVED_EDGE] = "0";
             callhistory_new[i * ENTRIES_PER_NODE + ASSERT_IN_SUBTREE] = "0"; // TODO: FIGURE out if this we need to find out the right value
-            callhistory_new[i * ENTRIES_PER_NODE + USED_SUMMARIES] = "-";
+            //callhistory_new[i * ENTRIES_PER_NODE + USED_SUMMARIES] = "-";
             continue;// in this case we stop processing this node here! Dont check goto_functions_1 as does not exist in the old version-->Crash
         }
         
