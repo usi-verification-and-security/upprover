@@ -269,7 +269,8 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
                                options.get_unsigned_int_option("unwind"),
                                options.get_bool_option("partial-loops"),
     };
-    assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
+//    assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
+    assertion_infot assertion_info; // MB: It turns out we need to consider the assertions, in case the summary contains the err symbol.
     symex.set_assertion_info_to_verify(&assertion_info);
 
     refiner_assertion_sumt refiner {
