@@ -22,16 +22,9 @@ bool core_checkert::assertion_holds_smt_no_partition(
     const assertion_infot& assertion)
 {
   auto before=timestamp();
-  init_solver_and_summary_store();
 
   const bool no_slicing_option = options.get_bool_option(HiFrogOptions::NO_SLICING);
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
-
-  const auto & const_summary_store = *summary_store;
-  auto has_summary = [&const_summary_store](const std::string & function_name){
-      return const_summary_store.has_summaries(function_name);
-  };
-  omega.set_initial_precision(assertion, has_summary);
 //  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 

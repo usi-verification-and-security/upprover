@@ -10,6 +10,7 @@ Module: Storage class for function summaries (union-find).
 
 const summary_storet::nodet& summary_storet::find_repr(summary_idt id) const
 {
+    assert(id >= 0 && id < store.size());
     const nodet& node = store[id];
     return node;
 

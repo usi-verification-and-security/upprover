@@ -431,8 +431,14 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
     
     return true;
   }
-  
-  if (options.get_bool_option("no-partitions")) // BMC alike version
+    init_solver_and_summary_store();
+    const auto & const_summary_store = *summary_store;
+    bool nopartitions = options.get_bool_option("no-partitions");
+    auto has_summary = [&const_summary_store, nopartitions](const std::string & function_name){
+        return nopartitions ? false : const_summary_store.has_summaries(function_name);
+    };
+    omega.set_initial_precision(assertion, has_summary);
+  if (nopartitions) // BMC alike version
     return assertion_holds_smt_no_partition(assertion);
   else
     return assertion_holds_smt(assertion, store_summaries_with_assertion);
@@ -446,19 +452,11 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                                         bool store_summaries_with_assertion)
 {
+    // MB: now assumes the decider, summary store and omega are prepared beforehand!
     auto before = timestamp();
- 
-    // Init the objects:
-    init_solver_and_summary_store();
+
     const bool no_ce_option = options.get_bool_option(HiFrogOptions::NO_ERROR_TRACE);
     const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
-
-    // prepare omega
-    const auto & const_summary_store = *summary_store;
-    auto has_summary = [&const_summary_store](const std::string & function_name){
-        return const_summary_store.has_summaries(function_name);
-    };
-    omega.set_initial_precision(assertion, has_summary);
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
@@ -1031,16 +1029,12 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     this->options.set_option(HiFrogOptions::LOGIC, "prop");
     this->options.set_option("load-summaries", prop_summary_filename);
 
-//    this->summary_store.reset(new prop_summary_storet());
-//    std::ifstream f(prop_summary_filename.c_str());
-//    if (f.good()) {
-//        status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
-//        this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
-//    }
-    // MB: workaround around assertion_holds_ expecting to have a decider set already
-//    delete decider;
-//    initialize__prop_option_solver();
-//    decider = initialize__prop_solver();
+    init_solver_and_summary_store();
+    const auto & const_summary_store_prop = *(this->summary_store);
+    auto has_summary_prop = [&const_summary_store_prop](const std::string & function_name){
+        return const_summary_store_prop.has_summaries(function_name);
+    };
+    omega.set_initial_precision(assertion, has_summary_prop);
     auto res = this->assertion_holds_smt(assertion, false);
     if (res) {
         status() << ("\n---Go to next assertion; claim verified by PROP---\n") << eom;

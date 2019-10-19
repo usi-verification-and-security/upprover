@@ -168,7 +168,8 @@ bool upgrade_checkert::check_upgrade()
                 // it reaches the top-level main and fails --> report immediately
                 // Check all the assertions  ; the last flag is true because of all-claims
                 std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
-                validated = this->assertion_holds(assertion_infot(), true);
+                init_solver_and_summary_store();
+                validated = this->assertion_holds_smt(assertion_infot(), true);
             }
         }
         if (validated) {
@@ -224,12 +225,12 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node) {
             //invalidates summary for call tree node -> remove summary_id and set precision
             //                                       -> delete summary from summary store
             node.remove_summaryID(single_sumID);
-            node.set_precision(INLINE);
-            summary_store->remove_summary(single_sumID);
+            node.set_inline();
+//            summary_store->remove_summary(single_sumID);
             // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
             // for the next decider which will read this summaryFile to update the summary_storet)
             // TODO: later make decider and summary store independent
-            summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
+//            summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
         }
         else { //mark the node that has summery, otherwise parent would not know!
             node.set_precision(SUMMARY);
