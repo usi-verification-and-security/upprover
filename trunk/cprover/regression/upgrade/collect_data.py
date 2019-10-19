@@ -1,5 +1,5 @@
 #First manually generate the logfile of upgrade checking run $ bash testcases_perf.sh > testcases_perf.txt 2>&1
-# Then run this script  python 3 run_tests_upg_perf.py
+# Then run this script  python3 collect_data.py
 # it collects time and error message from the logfile that has been already generated in testcases_perf.txt and 
 #reports in upg_time.txt
 
@@ -41,7 +41,6 @@ if __name__ == '__main__':
 
 				elif line.find( "Command terminated")!=-1:
 					errormsg=' terminated_abnormally!'
-					print(errormsg)
 
 				elif line.find("Assertion(s) hold trivially.")!=-1:
 					errormsg=' trivially_Holds'
@@ -52,7 +51,6 @@ if __name__ == '__main__':
 					if line.find("user ")!=-1:
 						time=line[5:]
 						fout.write(time)
-						print(time.strip('\n'))
 				else:
 					fout.write(errormsg)
 					res=''
@@ -61,16 +59,13 @@ if __name__ == '__main__':
 					time=''
 				if line.find("VERIFICATION SUCCESSFUL")!=-1:
 					res='UNSAT'
-					print(res.strip('\n'))
 				if line.find("VERIFICATION FAILED")!=-1:
 					res='SAT' 
-					print(res.strip('\n'))
 				if line.find("Done")!=-1:	
 					res=''
 					bench_sets=''
 					errormsg=''	
 					time=''
-					print("Done!"),
 		flog.close()
-		print("closed!")
+		print("check this file to see the collected time: upg_time.txt !")
 		fout.close()
