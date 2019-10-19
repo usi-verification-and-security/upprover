@@ -39,7 +39,7 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
     stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    #print(filteredOutput)
+ #   print(filteredOutput)
     collect_data(stdoutput, testname, command)  # collect rerun time and results;
     
     # get the line containing the verification result
@@ -97,7 +97,6 @@ def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
     summaries_name = '__summaries'
     omega_name = '__omega'
     summaries_path = os.path.join(scriptpath, summaries_name)
-    print("\n Hey suumary path", summaries_path)
     omega_path = os.path.join(scriptpath, omega_name)
     if os.path.exists(summaries_path):
         os.remove(summaries_path)
@@ -122,7 +121,7 @@ def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
     stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    print(filteredOutput)
+    #print(filteredOutput)
     # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
     collect_data(stdoutput , testname , command)
     # get the line containing the verification result
@@ -309,7 +308,7 @@ def error(text):
     print(text)
     sys.stdout.write(RESET)
     error.counter += 1
-    print("ERROR! Total number of errors so far: ", error.counter)
+    print("ERROR! Total number of errors so far: ", error.counter-1)
 error.counter = 0
     
 

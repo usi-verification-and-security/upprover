@@ -1,17 +1,14 @@
-#First manually generate the logfile of upgrade checking run $ bash testcases_perf.sh > testcases_perf.txt 2>&1
-# Then run this script  python3 collect_data.py
-# it collects time and error message from the logfile that has been already generated in testcases_perf.txt and 
-#reports in upg_time.txt
+#First run $ bash testcases_perf.sh > testcases_perf.txt 2>&1
+# Then run this script python3 collect_data.py
+# This script collects time and error message from the logfile that has been already generated in testcases_perf.txt and 
+#reports the colected data in upg_time.txt
 
 import os
 import sys
 
 if __name__ == '__main__':
-		#input_dir=sys.argv[1]
 		pathname = os.path.dirname(sys.argv[0])
-		mypath= os.path.abspath(pathname)#+"/"+pathname+input_dir
-		#from os import listdir
-		#from os.path import isfile, join
+		mypath= os.path.abspath(pathname)
 		fout = open(mypath+"/upg_time.txt", 'w')
 		logfile = mypath+"/testcases_perf.txt"
 		flog = open(logfile, 'r')
@@ -19,7 +16,6 @@ if __name__ == '__main__':
 		res=''
 		bench_sets=''
 		errormsg=''
-		#flogLines=flog.readlines()
 		with open(logfile) as flog:
 			for line in flog:
 				if line.find("CHECKING TWO VERSIONS")!=-1:
@@ -57,15 +53,18 @@ if __name__ == '__main__':
 					bench_sets=''
 					errormsg=''	
 					time=''
-				if line.find("VERIFICATION SUCCESSFUL")!=-1:
-					res='UNSAT'
-				if line.find("VERIFICATION FAILED")!=-1:
-					res='SAT' 
+				if errormsg =='':
+					if line.find("VERIFICATION SUCCESSFUL")!=-1:
+						res=' UNSAT'
+						fout.write(res)
+					if line.find("VERIFICATION FAILED")!=-1:
+						res=' SAT' 
+						fout.write(res)
 				if line.find("Done")!=-1:	
 					res=''
 					bench_sets=''
 					errormsg=''	
 					time=''
 		flog.close()
-		print("check this file to see the collected time: upg_time.txt !")
+		print("Check this file to see the collected data: upg_time.txt")
 		fout.close()
