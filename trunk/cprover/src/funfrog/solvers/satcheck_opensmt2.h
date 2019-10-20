@@ -107,10 +107,12 @@ public:
 
     virtual bool has_is_in_conflict() const override { return true; }
 
-    void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+    void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override {
+        insert_substituted_core(itp, symbols, false);
+    }
 
     void substitute_negate_insert(const itpt & itp, const std::vector<symbol_exprt> & symbols) override {
-        throw std::logic_error("Not implemented yet!\n");
+        insert_substituted_core(itp, symbols, true);
     }
 
     const boolbvt & get_bv_converter() const {return *boolbv_convert;}
@@ -190,6 +192,8 @@ protected:
 
 private:
     std::unique_ptr<boolbvt> boolbv_convert;
+
+    void insert_substituted_core(const itpt & itp, const std::vector<symbol_exprt> & symbols, bool negate = false);
 };
 
 #endif

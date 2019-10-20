@@ -591,7 +591,7 @@ unsigned satcheck_opensmt2t::decode_id(const char* id) const
 //  return i-1;
 }
 
-void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
+void satcheck_opensmt2t::insert_substituted_core(const itpt & itp, const std::vector<symbol_exprt> & symbols, bool negate) {
     assert(!itp.is_trivial());
     const prop_itpt & prop_itp = dynamic_cast<const prop_itpt &>(itp);
     auto & bv_converter = this->get_bv_converter();
@@ -635,8 +635,12 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
     bool sign = root_literal.sign();
     literalt new_root_literal = renaming[root_literal.var_no()];
     assert(literalt::unused_var_no() != new_root_literal.var_no());
-    if (sign)
+    if (sign) {
         new_root_literal.invert();
+    }
+    if (negate) {
+        new_root_literal.invert();
+    }
 
     this->l_set_to_true(new_root_literal);
 }
