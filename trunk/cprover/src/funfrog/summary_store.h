@@ -19,7 +19,7 @@ Author: Ondrej Sery
 #include <map>
 #include <memory>
 #include <fstream>
-
+#include <algorithm>
 class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */

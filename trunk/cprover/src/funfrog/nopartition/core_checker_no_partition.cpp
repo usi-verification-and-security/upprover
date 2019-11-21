@@ -6,8 +6,8 @@
 
  \*******************************************************************/
 
-#include "../core_checker.h"
-#include <funfrog/dependency_checker.h>
+#include "funfrog/core_checker.h"
+#include "funfrog/dependency_checker.h"
 #include "funfrog/nopartition/prepare_formula_no_partition.h"
 #include "funfrog/nopartition/symex_no_partition.h"
 #include <langapi/language_util.h>

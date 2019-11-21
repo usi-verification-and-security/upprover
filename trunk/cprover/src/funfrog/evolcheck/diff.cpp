@@ -489,7 +489,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         const irep_idt& new_call_name = (*functions_new[i].first);
         std::string call_newname = new_call_name.c_str();
         
-        unsigned old_call_tree_node_id = get_call_tree_node_id(new_call_name, functions_old, i);
+        int old_call_tree_node_id = get_call_tree_node_id(new_call_name, functions_old, i);
         bool is_new_node = (old_call_tree_node_id == -1);
         if (do_write){
             if (!is_new_node){     //if locs already has been visited it is -1
