@@ -60,7 +60,8 @@ Module: Command Line Parsing
   "(no-sum-refine)" \
   "(refine-mode):(init-mode):(logic):(list-templates)"\
   "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
-  "(partial-loops)"
+  "(partial-loops)" \
+  "(function):"
 
 class parser_hifrogt:
   public parse_options_baset,
