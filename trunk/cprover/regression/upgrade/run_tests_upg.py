@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
-#This script runs HiFrog twice(first for bootstraping phase and second with reusing the summary for upgrade cheking) and then
-# checks with the expected results. It also dumps the verification results into a collected*.txt file 
-#Note that we define config files for only original files.
+#This script runs HiFrog twice (first bootstraping phase, and second upgrade cheking) and then
+# checks the expected results. It also dumps the verification results into a collected*.txt file 
+#Note that we define config files for only original files and we specify what is their next revisions.
 
 #usage: python3 run_tests.py <hifrog-executable-path>
 
@@ -23,15 +23,28 @@ def filtercomments(input_text):
     comment_start = ';'
     filtered = [ line for line in input_text.splitlines() if not line.startswith(comment_start) ]
     return '\n'.join(filtered)
-# 4 -------------------------------------------------------
-def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
-        #rerun with the computed summaries
-   # assert os.path.exists(summaries_path), 'Summaries for rerun not found!'
+
+def cleaning():
     summaries_name = '__summaries'
     omega_name = '__omega'
     summaries_path = os.path.join(scriptpath, summaries_name)
     omega_path = os.path.join(scriptpath, omega_name)
-    newargs = newargs #+ ['--load-summaries', summaries_path] + ['--load-omega', omega_path] 
+    if os.path.exists(summaries_path):
+        os.remove(summaries_path)
+        print("removed old summary! ")
+    if os.path.exists(omega_path):
+        os.remove(omega_path)
+        print("removed old omega! ")    
+    if os.path.exists(scriptpath+"/__summaries"):
+        os.remove(scriptpath+"/__summaries")
+        print("removed old summary in scriptpath! ")
+    if os.path.exists(scriptpath+"/__omega"):
+        os.remove(scriptpath+"/__omega")
+        print("removed old omega in scriptpath! ") 
+
+# 4 -------------------------------------------------------
+def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
+    #rerun with the computed summaries
     command = ' '.join(newargs)
     title('Upgrade Checking Phase:'),
     note(command)
@@ -39,8 +52,9 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
     stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
- #   print(filteredOutput)
-    collect_data(stdoutput, testname, command)  # collect rerun time and results;
+    print(filteredOutput)
+    print(stderror)
+    collect_data(stdoutput, stderror, testname, command)  # collect rerun time and results;
     
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
@@ -62,6 +76,8 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
         return False
     else:
         success('As expected upgrade checking!')
+
+    cleaning()
     '''
     if resultLine != expectedResult:
         error('The upgrade checking verification was not successful')
@@ -85,35 +101,11 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
         return False
     success('successful upgrade checking with reusing summaries !')
     '''
-    if os.path.exists(summaries_path):
-        os.remove(summaries_path)
-        print("removed old summary after upg! ")
-    if os.path.exists(omega_path):
-        os.remove(omega_path)
-        print("removed old omega after upg! ") 
 # 3 -------------------------------------------------------
 def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
-    computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))
-    summaries_name = '__summaries'
-    omega_name = '__omega'
-    summaries_path = os.path.join(scriptpath, summaries_name)
-    omega_path = os.path.join(scriptpath, omega_name)
-    if os.path.exists(summaries_path):
-        os.remove(summaries_path)
-        print("removed old summary before bootstrapping! ")
-    if os.path.exists(omega_path):
-        os.remove(omega_path)
-        print("removed old omega before bootstrapping! ")    
-    pathname = os.path.dirname(sys.argv[0])
-    scriptpath= os.path.abspath(pathname)
-    if os.path.exists(scriptpath+"/__summaries"):
-        os.remove(scriptpath+"/__summaries")
-        print("removed old summary in scriptpath! ")
-    if os.path.exists(scriptpath+"/__omega"):
-        os.remove(scriptpath+"/__omega")
-        print("removed old omega in scriptpath! ")   
-#     
-    newargs = args #+ ['--save-summaries', scriptpath] + ['--save-omega', scriptpath] 
+    computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))  
+    cleaning()
+    newargs = args
     command = ' '.join(newargs)
     title('Bootstraping phase:'),
     note(command)
@@ -121,9 +113,10 @@ def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
     stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    #print(filteredOutput)
-    # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
-    collect_data(stdoutput , testname , command)
+    print(filteredOutput) #log
+    print(stderror) #time appears here
+    # collect verification time and results; dump the results in collected*.txt
+    collect_data(stdoutput, stderror, testname , command)
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
@@ -168,8 +161,6 @@ def run_test_case(options, testdir, configfile):
     args_general= ''
     path_to_exec = options.executable
 #    z3_allowed = options.z3
-    pathname = os.path.dirname(sys.argv[0])
-    scriptpath= os.path.abspath(pathname)
     flag = True
     for configuration in configurations:
         # ignore empty lines or lines starting wiht '#' -> comments
@@ -186,7 +177,6 @@ def run_test_case(options, testdir, configfile):
         if configuration.startswith("--init-upgrade-check"):
             # global arguments for both bootstraping and upgrade_checking; the first starts with --init-upgrade-check
             args_general = fields[0].strip().split()
-            #print(args_general)
              # expected result
             exp_res = fields[1].strip()
             res = run_bootstrapping([path_to_exec] + args_general + [sourcepath], should_success(exp_res), scriptpath, testname)
@@ -195,7 +185,6 @@ def run_test_case(options, testdir, configfile):
             if(flag == True):
                 args_general = args_general[1:]
                 args_upgrade = args_general + fields[0].strip().split()
-                #print(args_upgrade)
                 # expected result
                 exp_res = fields[1].strip()
                 res = run_upgrade_check([path_to_exec] + args_upgrade + [sourcepath], should_success(exp_res), scriptpath, testname)
@@ -239,47 +228,60 @@ def should_success(expected):
     assert False, 'Unknown expect status'
 #-------------------------------------------------------
 #collects and dumps the verification results into a collected*.txt file 
-def collect_data(flog , testname , strarg):  #flog is string!
-    fi = open(mypath+"/collected_" +datestring + ".txt", 'a')
-    fi.write( testname + '.c')
-    fi.write("   |  ")
+def collect_data(fullLog, timeLog, testname, strarg):  #fullLog is string!
+    fout = open(scriptpath+"/collected_" + datestring + ".txt", 'a')
+    fout.write( testname)
     time=''
     res=''
-    
-    for line in flog.split('\n'):
-        if "TOTAL TIME FOR CHECKING THIS CLAIM" in line:
-            time=line.split(":")[1:][0] 
-        if line.find("real")!=-1:
+    errormsg=''
+
+    for line in timeLog.split('\n'):
+        if line.find("user ")!=-1:
             time=line[5:]
-        if  "VERIFICATION SUCCESSFUL" in line:
-            res='UNSAT'
-        if  "VERIFICATION FAILED" in line:
-            res='SAT' 
-         
-    if res!='':
-        fi.write(res.rstrip())
-        fi.write("  |  ")
-    else:
-        fi.write(" NoResult ")
-        fi.write("  |  ")
+            fout.write(time)
 
-    if time!='':
-        fi.write(time)
-        fi.write("  |  ")
-    else:
-        fi.write(" NoTime ")     
+    for line in fullLog.split('\n'):
+        if line.find("VERIFICATION SUCCESSFUL")!=-1:
+            res=' UNSAT '
+            fout.write(res)
+        if line.find("VERIFICATION FAILED")!=-1:
+            res=' SAT ' 
+            fout.write(res)
 
-    if strarg!='':
-        tmplist=strarg.split(" ")[1:]
-        strarg=' '.join(tmplist)
-        fi.write(strarg)
-        fi.write('\n')
-    else:
-        fi.write(strarg)
-        fi.write("no args")
-        fi.write('\n')
+    for line in timeLog.split('\n'):
+        if line.find("CPU time limit exceeded")!=-1:
+            errormsg=' Timeout!'
+        if line.find("OutOfMemoryException")!=-1 or line.find( "MEMORY LIMIT EXCEEDED")!=-1 or line.find("Out of memory")!=-1:
+            errormsg=' Memory-out!'
+        if line.find("Command terminated by signal 6")!=-1:
+            errormsg=' terminated_by_signal_6!'
 
-    fi.close()
+        elif line.find("Command terminated by signal 24")!=-1:
+            errormsg=' terminated_by_signal_24!'
+
+        elif line.find("terminated by signal 2")!=-1:
+            errormsg=' terminated by signal 2!'
+
+        elif line.find( "Command terminated")!=-1:
+            errormsg=' terminated_abnormally!'
+
+        elif line.find("Assertion(s) hold trivially.")!=-1:
+            errormsg=' trivially_Holds '
+
+        elif line.find("Assertion is not reachable")!=-1:
+            errormsg=' not_reachable_Assertion '
+        elif line.find("Failed to deserialize previous verification efforts")!=-1:
+            errormsg= ' no __omega! '
+        if errormsg !='':
+            fout.write(errormsg)
+            res=''
+            errormsg=''   
+        #if line.find("Done")!=-1:   
+        #    res=''
+        #    errormsg='' 
+        #    time=''
+    fout.write('\n')
+    fout.close()
     return True 
 #-------------------------------------------------------
 def note(text):
@@ -325,8 +327,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     #print(args.executable)
     #print(args.z3)
+
     pathname = os.path.dirname(sys.argv[0])
-    mypath= os.path.abspath(pathname)
+    scriptpath= os.path.abspath(pathname)
+
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
     args.executable = ' ulimit -Sv 12000000; ulimit -St ' + str(args.timeout) + '; /usr/bin/time -p ' + args.executable    #print(args.executable)
     run(args)
