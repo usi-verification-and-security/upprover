@@ -47,7 +47,9 @@ void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const 
     this->reduction_graph = solver_options.m_reduction_graph;
 #endif
 #ifdef DISABLE_OPTIMIZATIONS
-    // TODO: add when Debug options works for Proporsitional logic
+    set_dump_query(solver_options.m_dump_query);
+    dump_pre_queries = solver_options.m_dump_pre_query;
+    set_dump_query_name(solver_options.m_dump_query_name);
 #endif // DISABLE_OPTIMIZATIONS    
 }
 
@@ -431,7 +433,6 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
     mainSolver->writeSolverState_smtlib2("__SAT_query", &msg);
     if (msg != NULL) free(msg); // If there is an error consider printing the msg
   }
-  
   // Print Pre-query to file
   if (dump_pre_queries) {
       ofstream out_sat_pre_query;
