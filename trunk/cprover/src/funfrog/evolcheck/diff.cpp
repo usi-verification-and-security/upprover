@@ -551,14 +551,14 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             }
         }
         //report
-        if (!locs_output)
+        if (!locs_output) {
             msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" is ") +
                             (functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
                             (functions_new[i].second ? std::string("") : std::string(" (") +
                              std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())//all-assert cmdline
                                                                  + std::string(")")) <<msg.eom;
             functions_new[i].second ? count_preserved++ : count_UNpreserved++;
-    
+        }
         goto_unrolled_1.clear();
         goto_unrolled_2.clear();
         goto_common.clear();
