@@ -450,6 +450,9 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     const int ASSERT_IN_SUBTREE = 5;
   //  const int USED_SUMMARIES = 6; //fo r e.g,in ex21-*.c summary in minus2 should be removed later
     
+    int count_interface_change = 0;
+    int count_preserved = 0;
+    int count_UNpreserved = 0;
     if (do_write){   // will write on __omega file later on
         // Load substituting scenario
         std::ifstream in;
@@ -507,6 +510,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         if(is_new_node || (!base_type_eq(goto_functions_1.function_map.at(new_call_name).type,
                                          goto_functions_2.function_map.at(new_call_name).type, ns) && !locs_output)){
             msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" has changed interface") << msg.eom;
+            count_interface_change++;
             //manually add omega entries for new name that were not in old goto-function (goto_functions_1)
             callhistory_new[i * ENTRIES_PER_NODE + CALL_LOCATION] = "-1"; // TODO: What to put here for new function not present in old version
             callhistory_new[i * ENTRIES_PER_NODE + NODE_REPRESENTATION] = "2";  //Set INLINE for the interface change or new name
@@ -553,6 +557,8 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
                             (functions_new[i].second ? std::string("") : std::string(" (") +
                              std::to_string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())//all-assert cmdline
                                                                  + std::string(")")) <<msg.eom;
+            functions_new[i].second ? count_preserved++ : count_UNpreserved++;
+    
         goto_unrolled_1.clear();
         goto_unrolled_2.clear();
         goto_common.clear();
@@ -571,6 +577,10 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     if (locs_output){
         std::cout << "</cprover>" << std::endl;
     }
+    //report
+    msg.status() << "\nnumber of Preserved nodes: " << count_preserved -1 << msg.eom; //deduct Cprover_initialize
+    msg.status() << "number of UNpreserved nodes: " << count_UNpreserved << msg.eom;
+    msg.status() << "number of interface changes: " << count_interface_change <<"\n"<< msg.eom;
     
     bool res = true;
     for (unsigned i = 1; i < functions_old.size(); i++){

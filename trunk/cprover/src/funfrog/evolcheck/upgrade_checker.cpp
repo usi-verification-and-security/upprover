@@ -132,13 +132,13 @@ bool upgrade_checkert::check_upgrade()
             goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body); //double checke restore_call_info
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
-
     // init solver and Load older summaries in the same way as hifrog
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
     std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
+    auto before_iteration_over_functions = timestamp();
     //iterate over functions backward, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
@@ -148,6 +148,7 @@ bool upgrade_checkert::check_upgrade()
             force_check = true;
         }
         bool check_necessary = !current_node.is_preserved_node() || force_check;
+        if(!check_necessary) continue;
         validated = !check_necessary;
         if (check_necessary) {
             validated = validate_node(current_node);
@@ -167,21 +168,23 @@ bool upgrade_checkert::check_upgrade()
                 // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
                 // it reaches the top-level main and fails --> report immediately
                 // Check all the assertions  ; the last flag is true because of all-claims
-                std::cout << "!!Expensive! validating " << function_name << " ..." << '\n';
+                status() << "\nFinal validation node " << function_name << " ..." << eom;
                 init_solver_and_summary_store();
                 validated = this->assertion_holds_smt(assertion_infot(), true);
             }
         }
         if (validated) {
-            status() << "!Node " << function_name << " has been validated" << eom;
+            status() << "------Node " << function_name << " has been validated!" << eom;
         }
         else {
-            status() << "!Node " << function_name << " was NOT validated" << eom;
+            status() << "------Node " << function_name << " was NOT validated!" << eom;
         }
     } //End of forloop
+    auto after_iteration_over_functions  = timestamp();
+    status() << "\nTotal iteration TIME over ALL functions for node validation (includes sub-SYMEX+CONVERSION+SOLVING times): " << time_gap(after_iteration_over_functions,before_iteration_over_functions) << eom;
     //Final conclusion
     if (validated) {
-        status() << "The whole call tree has been validated" << eom;
+        status() << "\nThe whole call tree has been validated!" << eom;
     }
     else {
         status() << "Validation failed! A real bug found. " << eom;
@@ -252,6 +255,7 @@ Function: upgrade_checkert::validate_summary
 bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
     //each time we need a cleaned solver, otherwise old solver conflicts with new check; in the classical check also we init first.
     //SA: did we add something to the summary store? make sure not!
+    status() << "------validating summary " << node.get_function_id().c_str() << " ..." << eom;
     init_solver_and_summary_store();
     partitioning_target_equationt equation(ns, *summary_store, true);
     //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false

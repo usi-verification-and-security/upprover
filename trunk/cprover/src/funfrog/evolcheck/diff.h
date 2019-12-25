@@ -85,7 +85,7 @@ protected:
     messaget &msg;
     
 private:
-    std::vector<std::pair<const irep_idt*, bool> > functions_old;    //mapping if a founction is touched or not
+    std::vector<std::pair<const irep_idt*, bool> > functions_old;    //mapping if a function is preserved or not
     
     std::vector<std::pair<const irep_idt*, bool> > functions_new;
     
