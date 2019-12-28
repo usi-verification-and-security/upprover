@@ -144,7 +144,7 @@ endif(USE_Z3)
 add_subdirectory(solvers)
 add_subdirectory(utils)
 
-target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
+target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE}/opensmt)
 target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
