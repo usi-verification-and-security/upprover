@@ -33,7 +33,9 @@ public:
 	{};
     
     bool check_upgrade();
-    
+    void sanity_check(vector<call_tree_nodet*>& calls);
+
+
 //    // Removes summary from the summary store
 //    void remove_summary(call_tree_nodet * node, summary_idt to_delete){
 //        callNode_to_summaryIds.at(node).erase(to_delete);

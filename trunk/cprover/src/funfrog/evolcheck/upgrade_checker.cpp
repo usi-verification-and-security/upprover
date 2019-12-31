@@ -5,6 +5,7 @@
 
 
 \*******************************************************************/
+#define SANITY_CHECK
 
 #include <funfrog/partitioning_target_equation.h>
 #include <goto-symex/path_storage.h>
@@ -82,7 +83,9 @@ bool do_upgrade_check(
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){
         msg.status() << "The program models are identical" <<msg.eom;
+#ifndef SANITY_CHECK
         return 0;
+#endif
     }
     unsigned long max_mem_used;
     upgrade_checkert upg_checker(goto_model_new, options, message_handler, max_mem_used);
@@ -136,6 +139,9 @@ bool upgrade_checkert::check_upgrade()
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
+#ifdef SANITY_CHECK
+    sanity_check(calls);
+#endif
     std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
     auto before_iteration_over_functions = timestamp();
@@ -379,16 +385,137 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
 
     return is_verified;
 }
-
 /*******************************************************************\
+Function: sanity_check for tree interpolation property
 
-Function:
-
-Purpose:
+Purpose: Given a call graph, first it extracts the direct chirden of each parent
+ then checks the tree interpolation property for each subtree
+For e.g., in the following call graph:
+parent---> direct child
+main  ---> phi1
+phi1  ---> phi2 phi3
+phi3  ---> phi4 phi5
+ The sanity check would be:
+ I2 /\ I3 /| Phi1 --> I1
+ I4 /\ I5 /| Phi3 --> I3
 \*******************************************************************/
-/*void upgrade_checkert::update_subtree_summaries(call_tree_nodet &node) {
-    //if the child did not have summary, add newly generated sum
-    //if the child had sumary, remove its summary, and replace it with newly generated sum
-    status() << "Not implemented yet!" <<eom;
-}*/
-
+void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
+    
+    //associates each parent to its direct children in each subtree
+    std::unordered_map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;
+    bool has_parent;
+    bool has_summary;
+    call_tree_nodet *parent;
+    for (unsigned i = calls.size() - 1; i > 0; i--) {
+        call_tree_nodet *current_node = calls[i];
+        has_parent = current_node->get_function_id() != ID_main;
+        if (has_parent) {
+            parent = &current_node->get_parent();
+            map_parent_childs[parent].push_back(current_node);
+        }
+    }
+    std::unordered_map<call_tree_nodet *, vector<call_tree_nodet *>>::iterator iter_parent;
+    //Debug: prints parents and their direct children
+    for (iter_parent = map_parent_childs.begin(); iter_parent != map_parent_childs.end(); iter_parent++) {
+        std::cout << "key: " << iter_parent->first->get_function_id().c_str() << '\n';
+        std::cout <<"values: " ;
+        for(auto elelment : iter_parent->second)
+            std::cout << elelment->get_function_id().c_str() << " ";
+        std::cout <<'\n';
+    }
+    //iterate over parents and
+    for (iter_parent = map_parent_childs.begin(); iter_parent != map_parent_childs.end(); iter_parent++) {
+        call_tree_nodet* current_parent =  iter_parent->first;
+        status() << "------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
+        
+        //in each insert do cleaning
+        init_solver_and_summary_store();
+        auto solver = decider->get_solver();
+        auto interpolator = decider->get_interpolating_solver();
+        
+        partitioning_target_equationt equation(ns, *summary_store, true);//true:all-claims
+    
+        std::unique_ptr<path_storaget> worklist;
+        symex_assertion_sumt symex{get_goto_functions(),
+                                   *current_parent,
+                                   options, *worklist,
+                                   ns.get_symbol_table(),
+                                   equation,
+                                   message_handler,
+                                   get_goto_functions().function_map.at(
+                                           (*current_parent).get_function_id()).body,
+                                   omega.get_last_assertion_loc(),
+                                   omega.is_single_assertion_check(),
+                                   !options.get_bool_option("no-error-trace"),
+                                   options.get_unsigned_int_option("unwind"),
+                                   options.get_bool_option("partial-loops"),
+        };
+//          assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
+        assertion_infot assertion_info; //It turns out we need to consider the assertions, in case the summary contains the err symbol.
+        symex.set_assertion_info_to_verify(&assertion_info);
+    
+        bool implication_holds = prepareSSA(symex);
+    
+        if (implication_holds) {
+            status() << "trivial success " << eom;
+        }
+        prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+    
+        // first partition for the summary to check
+        //refers to entry partition including its subtree
+        auto &entry_partition = equation.get_partitions()[0];
+        fle_part_idt summary_partition_id = interpolator->new_partition();
+        (void) (summary_partition_id);
+    
+        has_summary = !current_parent->get_used_summaries().empty();
+        if (has_summary) {
+            const summary_idt parent_sumID = *current_parent->get_used_summaries().begin();
+            itpt &parent_summary = summary_store->find_summary(parent_sumID);
+            try {
+                interpolator->substitute_negate_insert(parent_summary,
+                                                       entry_partition.get_iface().get_iface_symbols());
+            }
+            catch (SummaryInvalidException &ex) {
+                // Summary cannot be used for current body -> invalidated
+            }
+//           Debug: print the summary-in-use
+//           parent_summary.serialize(std::cout);
+        }
+        else {
+            continue; //This parent did not have summary. So goto next parent
+        }
+        //Let's process the children one by one
+        int size_child = iter_parent->second.size();
+        for (int j = 0; j < size_child; j++) {
+            //in each insert what should be cleaned?
+            init_solver_and_summary_store();
+            status() << "------adding summary formula of child " << iter_parent->second[j]->get_function_id().c_str() << " ..." << eom;
+            has_summary = !iter_parent->second[j]->get_used_summaries().empty();
+            if (has_summary) {
+                const summary_idt child_sumID = *iter_parent->second[j]->get_used_summaries().begin();
+                auto &child_partition = equation.get_partitions()[j];
+                fle_part_idt summary_partition_child_id = interpolator->new_partition();
+                (void) (summary_partition_child_id);
+                itpt &child_summary = summary_store->find_summary(child_sumID);
+                interpolator->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
+//              Debug: print summary-in-use in the console
+//              child_summary.serialize(std::cout);
+            }
+        }
+        if (!implication_holds) {
+            ssa_to_formula.convert_to_formula(*(decider->get_convertor()),
+                                              *(decider->get_interpolating_solver()));
+            // Decides the equation
+            bool is_sat = ssa_to_formula.is_satisfiable(*solver);
+            implication_holds = !is_sat;
+        }
+    
+        if (implication_holds) {
+            status() << "------Implication holds! " << eom;
+        }
+        else {
+            status() << "------Implication does not hold! " << eom;
+        }
+    }
+    exit(0);
+}
