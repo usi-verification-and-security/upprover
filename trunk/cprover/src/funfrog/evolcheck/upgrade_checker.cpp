@@ -388,7 +388,7 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
 /*******************************************************************\
 Function: sanity_check for tree interpolation property
 
-Purpose: Given a call graph, first it extracts the direct chirden of each parent
+Purpose: Given a call graph, first it extracts the direct children of each parent
  then checks the tree interpolation property for each subtree
 For e.g., in the following call graph:
 parent---> direct child
@@ -423,15 +423,15 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
             std::cout << elelment->get_function_id().c_str() << " ";
         std::cout <<'\n';
     }
-    //iterate over parents and
+    //iterate over parents and insert each parent and negation of its summary to solve + summary of childs
     for (iter_parent = map_parent_childs.begin(); iter_parent != map_parent_childs.end(); iter_parent++) {
         call_tree_nodet* current_parent =  iter_parent->first;
         status() << "------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
         
-        //in each insert do cleaning
+        //in each insert do the cleaning
         init_solver_and_summary_store();
         auto solver = decider->get_solver();
-        auto interpolator = decider->get_interpolating_solver();
+        auto interpolator1 = decider->get_interpolating_solver();
         
         partitioning_target_equationt equation(ns, *summary_store, true);//true:all-claims
     
@@ -462,9 +462,10 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
         prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
     
         // first partition for the summary to check
-        //refers to entry partition including its subtree
+        // refers to entry partition including its subtree
         auto &entry_partition = equation.get_partitions()[0];
-        fle_part_idt summary_partition_id = interpolator->new_partition();
+        status() << "------ entry_partition is : " << entry_partition.get_iface().function_id.c_str() << eom;
+        fle_part_idt summary_partition_id = interpolator1->new_partition();
         (void) (summary_partition_id);
     
         has_summary = !current_parent->get_used_summaries().empty();
@@ -472,35 +473,44 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
             const summary_idt parent_sumID = *current_parent->get_used_summaries().begin();
             itpt &parent_summary = summary_store->find_summary(parent_sumID);
             try {
-                interpolator->substitute_negate_insert(parent_summary,
+                status() << "------adding negation of summary of node  : " << entry_partition.get_iface().function_id.c_str() << eom;
+                interpolator1->substitute_negate_insert(parent_summary,
                                                        entry_partition.get_iface().get_iface_symbols());
             }
             catch (SummaryInvalidException &ex) {
                 // Summary cannot be used for current body -> invalidated
             }
-//           Debug: print the summary-in-use
-//           parent_summary.serialize(std::cout);
         }
         else {
             continue; //This parent did not have summary. So goto next parent
         }
         //Let's process the children one by one
         int size_child = iter_parent->second.size();
-        for (int j = 0; j < size_child; j++) {
-            //in each insert what should be cleaned?
-            init_solver_and_summary_store();
-            status() << "------adding summary formula of child " << iter_parent->second[j]->get_function_id().c_str() << " ..." << eom;
-            has_summary = !iter_parent->second[j]->get_used_summaries().empty();
-            if (has_summary) {
-                const summary_idt child_sumID = *iter_parent->second[j]->get_used_summaries().begin();
-                auto &child_partition = equation.get_partitions()[j];
-                fle_part_idt summary_partition_child_id = interpolator->new_partition();
-                (void) (summary_partition_child_id);
-                itpt &child_summary = summary_store->find_summary(child_sumID);
-                interpolator->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
-//              Debug: print summary-in-use in the console
-//              child_summary.serialize(std::cout);
+        for (int j = size_child; j > 0; j--) {
+//          in each insert what should be cleaned?
+//         init_solver_and_summary_store();
+//          auto interpolator2 = decider->get_interpolating_solver();
+            
+            auto &child_partition = equation.get_partitions()[j];
+            status() << "------adding summary formula of child : " << child_partition.get_iface().function_id.c_str() << eom;
+            //child_partition.
+            has_summary = child_partition.has_summary_representation();
+            if(has_summary){
+                const summary_idt child_sumID = child_partition.summaries[0];
+                const itpt& child_summary = summary_store->find_summary(child_sumID);
+                interpolator1->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
             }
+//            has_summary = !iter_parent->second[j]->get_used_summaries().empty();
+//            if (has_summary) {
+//                const summary_idt child_sumID = *iter_parent->second[j]->get_used_summaries().begin();
+//                auto &child_partition = equation.get_partitions()[j];
+//                fle_part_idt summary_partition_child_id = interpolator2->new_partition();
+//                (void) (summary_partition_child_id);
+//                itpt &child_summary = summary_store->find_summary(child_sumID);
+//                interpolator2->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
+//                Debug: print summary-in-use in the console
+//                child_summary.serialize(std::cout);
+//            }
         }
         if (!implication_holds) {
             ssa_to_formula.convert_to_formula(*(decider->get_convertor()),
@@ -509,7 +519,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
             bool is_sat = ssa_to_formula.is_satisfiable(*solver);
             implication_holds = !is_sat;
         }
-    
+
         if (implication_holds) {
             status() << "------Implication holds! " << eom;
         }

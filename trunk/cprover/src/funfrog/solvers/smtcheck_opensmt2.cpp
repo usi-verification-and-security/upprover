@@ -674,7 +674,7 @@ void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
     assert(!itp.is_trivial());
     assert(logic);
     auto const & smt_itp = static_cast<smt_itpt const &> (itp);
-    PTRef new_root = instantiate(smt_itp, symbols);
+    PTRef new_root = instantiate(smt_itp, symbols); //new root is the summary
     // the actual insertion
     this->set_to_true(new_root);
 
@@ -686,10 +686,10 @@ void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::v
     assert(!itp.is_trivial());
     assert(logic);
     auto const & smt_itp = static_cast<smt_itpt const &> (itp);
-    PTRef new_root = instantiate(smt_itp, symbols);
+    PTRef new_root = instantiate(smt_itp, symbols); //new root is summary body
     // the actual insertion
     this->set_to_true(logic->mkNot(new_root));
-
+    
     PTRef old_root = smt_itp.getTempl().getBody();  //this is without numbered postfixes
     ptrefs.push_back(old_root); // MB: needed in sumtheoref to spot non-linear expressions in the summaries
 }
