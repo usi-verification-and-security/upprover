@@ -400,34 +400,31 @@ phi3  ---> phi4 phi5
  I4 /\ I5 /| Phi3 --> I3
 \*******************************************************************/
 void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
-    
+
     //associates each parent to its direct children in each subtree
     std::unordered_map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;
-    bool has_parent;
-    bool has_summary;
-    call_tree_nodet *parent;
+
     for (unsigned i = calls.size() - 1; i > 0; i--) {
         call_tree_nodet *current_node = calls[i];
-        has_parent = current_node->get_function_id() != ID_main;
+        bool has_parent = current_node->get_function_id() != ID_main;
         if (has_parent) {
-            parent = &current_node->get_parent();
+            call_tree_nodet * parent = &current_node->get_parent();
             map_parent_childs[parent].push_back(current_node);
         }
     }
-    std::unordered_map<call_tree_nodet *, vector<call_tree_nodet *>>::iterator iter_parent;
     //Debug: prints parents and their direct children
-    for (iter_parent = map_parent_childs.begin(); iter_parent != map_parent_childs.end(); iter_parent++) {
-        std::cout << "key: " << iter_parent->first->get_function_id().c_str() << '\n';
+    for (auto & map_parent_child : map_parent_childs) {
+        std::cout << "key: " << map_parent_child.first->get_function_id().c_str() << '\n';
         std::cout <<"values: " ;
-        for(auto elelment : iter_parent->second)
-            std::cout << elelment->get_function_id().c_str() << " ";
+        for(auto element : map_parent_child.second)
+            std::cout << element->get_function_id().c_str() << " ";
         std::cout <<'\n';
     }
     //iterate over parents and insert each parent and negation of its summary to solve + summary of childs
-    for (iter_parent = map_parent_childs.begin(); iter_parent != map_parent_childs.end(); iter_parent++) {
-        call_tree_nodet* current_parent =  iter_parent->first;
+    for (auto & map_parent_child : map_parent_childs) {
+        call_tree_nodet* current_parent =  map_parent_child.first;
         status() << "------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
-        
+
         //in each insert do the cleaning
         init_solver_and_summary_store();
         auto solver = decider->get_solver();
@@ -468,7 +465,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
         fle_part_idt summary_partition_id = interpolator1->new_partition();
         (void) (summary_partition_id);
     
-        has_summary = !current_parent->get_used_summaries().empty();
+        bool has_summary = !current_parent->get_used_summaries().empty();
         if (has_summary) {
             const summary_idt parent_sumID = *current_parent->get_used_summaries().begin();
             itpt &parent_summary = summary_store->find_summary(parent_sumID);
@@ -485,7 +482,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
             continue; //This parent did not have summary. So goto next parent
         }
         //Let's process the children one by one
-        int size_child = iter_parent->second.size();
+        int size_child = map_parent_child.second.size();
         for (int j = size_child; j > 0; j--) {
 //          in each insert what should be cleaned?
 //         init_solver_and_summary_store();
