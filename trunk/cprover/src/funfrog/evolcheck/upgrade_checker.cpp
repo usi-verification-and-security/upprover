@@ -411,7 +411,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
     for (unsigned i = 2 ; i < calls.size() ; i++) { //cprover_initialize(i=0) and main(i=1) are skipped
         call_tree_nodet *current_node = calls[i];
         //std::cout << "call is : " <<current_node->get_function_id().c_str() << std::endl;
-        bool has_parent = current_node->get_function_id() !=  ID_nil & current_node->get_function_id() !=  ID_main;
+        bool has_parent = current_node->get_function_id() !=  ID_nil && current_node->get_function_id() !=  ID_main;
         if (has_parent) {
             call_tree_nodet * parent = &current_node->get_parent();
             if(map_parent_childs.find(parent) == map_parent_childs.end()){
@@ -423,7 +423,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
         }
     }
     //Debug: prints parents and their direct children based on the order were added
-    for (int j = 0; j < insertOrder.size(); j++) {
+    for (unsigned j = 0; j < insertOrder.size(); j++) {
         std::cout << "Parent: " << insertOrder[j]->get_function_id().c_str();
         std::cout <<" --> Children: " ;
         if(map_parent_childs.find(insertOrder[j])  != map_parent_childs.end()){
@@ -442,7 +442,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
 //  }
 ////iterate over parents and insert each parent and negation of its summary to solve + summary of childs
 //  for (auto & map_parent_child : map_parent_childs) {
-    for (int j = 0; j < insertOrder.size(); j++) {
+    for (unsigned j = 0; j < insertOrder.size(); j++) {
         call_tree_nodet* current_parent =  insertOrder[j];
         status() << "\n------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
 
