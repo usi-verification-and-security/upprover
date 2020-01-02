@@ -5,7 +5,7 @@
 
 
 \*******************************************************************/
-#define SANITY_CHECK
+//#define SANITY_CHECK
 
 #include <funfrog/partitioning_target_equation.h>
 #include <goto-symex/path_storage.h>

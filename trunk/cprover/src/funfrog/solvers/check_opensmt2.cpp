@@ -84,7 +84,7 @@ void check_opensmt2t::close_partition() {
     if (!last_partition_closed) {
         // opensmt can handle special cases like 0 or 1 argument properly
         const PTRef pand = logic->mkAnd(current_partition);
-        std::cout << "\nInsert in top_level_formulas ready to solve:\n" <<logic->pp(pand) <<std::endl;;
+//        std::cout << "\nInsert in top_level_formulas ready to solve:\n" <<logic->pp(pand) <<std::endl;;
         top_level_formulas.push(pand);
         assert((unsigned)top_level_formulas.size() == partition_count);
         current_partition.clear();
