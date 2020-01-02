@@ -39,14 +39,15 @@ void check_initial(core_checkert &core_checker, messaget &msg) {
   	if (result) {
     	msg.status() << "\n Initial phase of upgrade checking : OK, \n"
                     " Now proceed with \"do-upgrade-check\" for verifying the new version of your code! Enjoy Verifying!\n" << msg.eom;
+        //to write the substitution scenario of 1st phase into a given file or __omega file
+        msg.status() << "Writing the substitution scenarios into a given file or __omega file" << msg.eom;
+        core_checker.serialize();
  	}
   	else {
     	msg.status() << "\n Upgrade checking is not possible!" << msg.eom;
     	msg.status() << "Try standalone verification" << msg.eom;
   	}
-    //to write the substitution scenario of 1st phase into a given file or __omega file
-    msg.status() << "Writing the substitution scenarios into a given file or __omega file" << msg.eom;
-  	core_checker.serialize();
+
 }
 
 /*******************************************************************\
