@@ -75,19 +75,16 @@ void check_opensmt2t::set_dump_query_name(const string& n)
 
 Function: check_opensmt2t::close_partition
 
-  Inputs:
-
- Outputs:
-
  Purpose: Closes the interpolation partition by passing its CNF form
  (collected in current_partition) to the solver.
-
+This method gathers what has been accumulated in current_partition.
 \*******************************************************************/
 void check_opensmt2t::close_partition() {
     assert(!last_partition_closed);
     if (!last_partition_closed) {
         // opensmt can handle special cases like 0 or 1 argument properly
         const PTRef pand = logic->mkAnd(current_partition);
+        std::cout << "\nInsert in top_level_formulas ready to solve:\n" <<logic->pp(pand) <<std::endl;;
         top_level_formulas.push(pand);
         assert((unsigned)top_level_formulas.size() == partition_count);
         current_partition.clear();

@@ -59,6 +59,7 @@ bool smtcheck_opensmt2t::is_assignment_true(FlaRef fr) const
   return ((*a_p.val == *true_str) ^ (fr.sign()));
 }
 
+//debug: print the formula being inserted:  logic->pp(ptr)
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 {
     assert(ptr != PTRef_Undef);

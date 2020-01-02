@@ -402,33 +402,55 @@ phi3  ---> phi4 phi5
 void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
 
     //associates each parent to its direct children in each subtree
-    std::unordered_map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;
-
-    for (unsigned i = calls.size() - 1; i > 0; i--) {
+    std::map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;
+    //A container to keep track of insertion order
+    std::vector<call_tree_nodet *> insertOrder;
+//  for (unsigned i = calls.size() - 1; i > 0; i--) {
+//  since calls<> were stored in DFS order, we need reverse order
+//  to put the parents in he begining
+    for (unsigned i = 2 ; i < calls.size() ; i++) { //cprover_initialize(i=0) and main(i=1) are skipped
         call_tree_nodet *current_node = calls[i];
-        bool has_parent = current_node->get_function_id() != ID_main;
+        //std::cout << "call is : " <<current_node->get_function_id().c_str() << std::endl;
+        bool has_parent = current_node->get_function_id() !=  ID_nil & current_node->get_function_id() !=  ID_main;
         if (has_parent) {
             call_tree_nodet * parent = &current_node->get_parent();
+            if(map_parent_childs.find(parent) == map_parent_childs.end()){
+                //we only add unique parents and skip the repetitive ones
+                insertOrder.push_back(parent);
+            }
+            //don't worry if parent already exists, the current_node will be pushed at the end of vector
             map_parent_childs[parent].push_back(current_node);
         }
     }
-    //Debug: prints parents and their direct children
-    for (auto & map_parent_child : map_parent_childs) {
-        std::cout << "key: " << map_parent_child.first->get_function_id().c_str() << '\n';
-        std::cout <<"values: " ;
-        for(auto element : map_parent_child.second)
-            std::cout << element->get_function_id().c_str() << " ";
-        std::cout <<'\n';
+    //Debug: prints parents and their direct children based on the order were added
+    for (int j = 0; j < insertOrder.size(); j++) {
+        std::cout << "Parent: " << insertOrder[j]->get_function_id().c_str();
+        std::cout <<" --> Children: " ;
+        if(map_parent_childs.find(insertOrder[j])  != map_parent_childs.end()){
+            for (auto & child : map_parent_childs[insertOrder[j]]){
+                std::cout << child->get_function_id().c_str() << " ";
+            }
+            std::cout <<'\n';
+        }
     }
-    //iterate over parents and insert each parent and negation of its summary to solve + summary of childs
-    for (auto & map_parent_child : map_parent_childs) {
-        call_tree_nodet* current_parent =  map_parent_child.first;
-        status() << "------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
+//  for (auto & map_parent_child : map_parent_childs) {
+//      std::cout << "key: " << map_parent_child.first->get_function_id().c_str() << '\n';
+//      std::cout <<"values: " ;
+//      for(auto element : map_parent_child.second)
+//          std::cout << element->get_function_id().c_str() << " ";
+//      std::cout <<'\n';
+//  }
+////iterate over parents and insert each parent and negation of its summary to solve + summary of childs
+//  for (auto & map_parent_child : map_parent_childs) {
+    for (int j = 0; j < insertOrder.size(); j++) {
+        call_tree_nodet* current_parent =  insertOrder[j];
+        status() << "\n------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
 
         //in each insert do the cleaning
         init_solver_and_summary_store();
         auto solver = decider->get_solver();
         auto interpolator1 = decider->get_interpolating_solver();
+        auto convertor1 = decider->get_convertor();
         
         partitioning_target_equationt equation(ns, *summary_store, true);//true:all-claims
     
@@ -447,10 +469,10 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
                                    options.get_unsigned_int_option("unwind"),
                                    options.get_bool_option("partial-loops"),
         };
-//          assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
+//      assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
         assertion_infot assertion_info; //It turns out we need to consider the assertions, in case the summary contains the err symbol.
         symex.set_assertion_info_to_verify(&assertion_info);
-    
+        status() << "------Using symex the summary of children and root will be added by default" << eom;
         bool implication_holds = prepareSSA(symex);
     
         if (implication_holds) {
@@ -461,7 +483,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
         // first partition for the summary to check
         // refers to entry partition including its subtree
         auto &entry_partition = equation.get_partitions()[0];
-        status() << "------ entry_partition is : " << entry_partition.get_iface().function_id.c_str() << eom;
+        status() << "------ entry_partition : " << entry_partition.get_iface().function_id.c_str() << eom;
         fle_part_idt summary_partition_id = interpolator1->new_partition();
         (void) (summary_partition_id);
     
@@ -481,37 +503,28 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
         else {
             continue; //This parent did not have summary. So goto next parent
         }
-        //Let's process the children one by one
-        int size_child = map_parent_child.second.size();
-        for (int j = size_child; j > 0; j--) {
-//          in each insert what should be cleaned?
-//         init_solver_and_summary_store();
-//          auto interpolator2 = decider->get_interpolating_solver();
-            
-            auto &child_partition = equation.get_partitions()[j];
-            status() << "------adding summary formula of child : " << child_partition.get_iface().function_id.c_str() << eom;
-            //child_partition.
-            has_summary = child_partition.has_summary_representation();
-            if(has_summary){
-                const summary_idt child_sumID = child_partition.summaries[0];
-                const itpt& child_summary = summary_store->find_summary(child_sumID);
-                interpolator1->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
-            }
-//            has_summary = !iter_parent->second[j]->get_used_summaries().empty();
+//        //No need to process the children one by one; it is already covered in symex
+//        int size_child = map_parent_child.second.size();
+//        for (int j = size_child; j > 0; j--) {
+////          in each insert what should be cleaned?
+////         init_solver_and_summary_store();
+////          auto interpolator2 = decider->get_interpolating_solver();
+//
+//            auto &child_partition = equation.get_partitions()[j];
+//            status() << "------adding summary formula of child : " << child_partition.get_iface().function_id.c_str()
+//                     << eom;
+//            //child_partition.
+//            has_summary = child_partition.has_summary_representation();
 //            if (has_summary) {
-//                const summary_idt child_sumID = *iter_parent->second[j]->get_used_summaries().begin();
-//                auto &child_partition = equation.get_partitions()[j];
-//                fle_part_idt summary_partition_child_id = interpolator2->new_partition();
-//                (void) (summary_partition_child_id);
-//                itpt &child_summary = summary_store->find_summary(child_sumID);
-//                interpolator2->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
-//                Debug: print summary-in-use in the console
-//                child_summary.serialize(std::cout);
+//                const summary_idt child_sumID = child_partition.summaries[0];
+//                const itpt &child_summary = summary_store->find_summary(child_sumID);
+//                interpolator1->insert_substituted(child_summary, child_partition.get_iface().get_iface_symbols());
 //            }
-        }
+//        }
+
         if (!implication_holds) {
-            ssa_to_formula.convert_to_formula(*(decider->get_convertor()),
-                                              *(decider->get_interpolating_solver()));
+            ssa_to_formula.convert_to_formula(*(convertor1),
+                                              *(interpolator1));
             // Decides the equation
             bool is_sat = ssa_to_formula.is_satisfiable(*solver);
             implication_holds = !is_sat;
