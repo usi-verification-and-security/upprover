@@ -7,10 +7,11 @@
 
 #include <stdexcept>
 
-class SummaryInvalidException : std::logic_error {
+class SummaryInvalidException : public std::logic_error {
 public:
-    SummaryInvalidException(std::string what) : std::logic_error(what)
-    {}
+    SummaryInvalidException(std::string what) : std::logic_error("An exception thrown: " + what)
+    {
+    }
 };
 
 #endif //PROJECT_SUMMARYINVALIDEXCEPTION_H

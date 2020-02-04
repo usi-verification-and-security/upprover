@@ -189,7 +189,7 @@ int parser_hifrogt::doit()
 
     if(validate_input_options(claim_numbers, claim_user_nr)) {
       	//preparation for Upgrade check
-    	if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check")){
+    	if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check")){
 			trigger_upgrade_check(goto_model);
 			cbmc_status_interface("#X: Done.");
         	return 0;
@@ -349,10 +349,16 @@ void parser_hifrogt::trigger_upgrade_check(const goto_modelt &goto_model_old) {
     }
   
 //2nd phase
-    if (cmdline.isset("do-upgrade-check")) {
-        status() << std::string("Loading an upgrade: `") + cmdline.get_value("do-upgrade-check") + "' ...";
+    if (cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check")) {
+        std::string new_filepath;
+        if (cmdline.isset("sanity-check")) {
+            new_filepath = cmdline.get_value("sanity-check");
+        }
+        else {
+            new_filepath = cmdline.get_value("do-upgrade-check");
+        }
+        status() << std::string("Loading an upgrade: `") + new_filepath + "' ...\n";
     
-        auto new_filepath = cmdline.get_value("do-upgrade-check");
         auto old_args = cmdline.args;  //old file path
         cmdline.args = {new_filepath};
         goto_modelt goto_model_new;     // 2nd goto model associated with upgraded_file
@@ -551,6 +557,17 @@ void parser_hifrogt::set_options(const cmdlinet &cmdline)
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   if (cmdline.isset("do-upgrade-check")) {
     options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
+  }
+  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
+  
+  //"sanity-check" behaves as if doing upgrade checking of 2 same programs, so we trigger do-upgrade-check internally
+  if (cmdline.isset("sanity-check")) {
+    options.set_option("sanity-check", cmdline.isset("sanity-check"));
+    options.set_option("do-upgrade-check", true);
+    options.set_option("do-upgrade-check", cmdline.get_value("sanity-check"));
+//N.B. if(options.is_set("do-upgrade-check")) At this point returns true
+// but
+//     if(cmdline.isset("do-upgrade-check") still returns false!
   }
 #endif
   
@@ -812,7 +829,9 @@ void parser_hifrogt::help()
       "\nUpgrade Checking options:\n"
       "--init-upgrade-check           prepare for upgrade checking\n"
       "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
-      "                               upgraded version (goto-binary)\n"
+      "                               updated version of the program\n"
+      "--sanity-check <file1>         sanity checking after bootstrapping for TI property\n"
+      "                               usage: <hifrog> <logic> <file1> --sanity-check <file1> \n"
       "--save-omega <filename>        save the last used substitution scenario\n"
       "                               to the given file\n"
       "--load-omega <filename>        load substitution scenario\n"

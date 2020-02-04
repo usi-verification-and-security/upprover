@@ -84,9 +84,11 @@ bool do_upgrade_check(
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){
         msg.status() << "The program models are identical" <<msg.eom;
-#ifndef SANITY_CHECK
-        return 0;
-#endif
+//#ifndef SANITY_CHECK
+        if(!options.is_set("sanity-check")){
+            return 0;
+        }
+//#endif
     }
     unsigned long max_mem_used;
     upgrade_checkert upg_checker(goto_model_new, options, message_handler, max_mem_used);
@@ -140,9 +142,11 @@ bool upgrade_checkert::check_upgrade()
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
-#ifdef SANITY_CHECK
-    sanity_check(calls);
-#endif
+//#ifdef SANITY_CHECK
+    if(options.is_set("sanity-check")) {
+       sanity_check(calls);
+    }
+//#endif
     std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
     auto before_iteration_over_functions = timestamp();
@@ -499,6 +503,7 @@ void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
             }
             catch (SummaryInvalidException &ex) {
                 // Summary cannot be used for current body -> invalidated
+                status() << "------An exception thrown: because Summary cannot be used for the current body" <<eom;
             }
         }
         else {
