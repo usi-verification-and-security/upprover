@@ -68,6 +68,7 @@
 #include <funfrog/utils/naming_helpers.h>
 
 #include <funfrog/utils/time_utils.h>
+#include <goto-instrument/unwind.h>
 #include "funfrog/evolcheck/upgrade_checker.h"
 
 /*******************************************************************
@@ -903,90 +904,102 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
                           messaget &msg) {
   try
   {
-    // Only to prop logic
-    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-    {
-      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")  //TODO extend it to other logics as well
+      // Only to prop logic
+      if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
       {
-        // add the library
-        link_to_library(
-            goto_model, msg.get_message_handler(), cprover_cpp_library_factory);
-        link_to_library(
-            goto_model, msg.get_message_handler(), cprover_c_library_factory);
+          if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")  //TODO extend it to other logics as well
+          {
+              // add the library
+              link_to_library(
+                      goto_model, msg.get_message_handler(), cprover_cpp_library_factory);
+              link_to_library(
+                      goto_model, msg.get_message_handler(), cprover_c_library_factory);
+          }
+          else
+          {
+              // use message for printing instead of cbmc_status_interface
+//      cbmc_status_interface("Ignoring CPROVER library");
+              msg.status() << "Ignoring CPROVER library" << msg.eom;
+          }
       }
       else
       {
-        // use message for printing instead of cbmc_status_interface
-//      cbmc_status_interface("Ignoring CPROVER library");
-        msg.status() << "Ignoring CPROVER library" << msg.eom;
+          msg.status() << "Ignoring CPROVER library" << msg.eom;
       }
-    }
-    else
-    {
-      msg.status() << "Ignoring CPROVER library" <<  msg.eom;
-    }
-
-    if(cmdline.isset("string-abstraction"))
-      string_instrumentation(
-          goto_model, msg.get_message_handler());
-
-    msg.status() << "Removal of function pointers and virtual functions" << msg.eom;
-    remove_function_pointers(
-        msg.get_message_handler(),
-        goto_model,
-        false); // HiFrog doesn't have pointer check, set the flag to false always
-    // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(goto_model);
-
-    mm_io(goto_model);
-
-    // instrument library preconditions
-    instrument_preconditions(goto_model);
-
-    // remove returns, gcc vectors, complex
-    // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
-    remove_vector(goto_model);
-    remove_complex(goto_model);
-    rewrite_union(goto_model);
-
-    // add generic checks
-    msg.status() << "Generic Property Instrumentation" << msg.eom;
-    goto_check(options, goto_model);
-
-    // HIFROG: We remove built-ins from smt logics
-    if(cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-    {
-      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
+    
+      if (cmdline.isset("string-abstraction"))
+          string_instrumentation(
+                  goto_model, msg.get_message_handler());
+    
+      msg.status() << "Removal of function pointers and virtual functions" << msg.eom;
+      remove_function_pointers(
+              msg.get_message_handler(),
+              goto_model,
+              false); // HiFrog doesn't have pointer check, set the flag to false always
+      // Java virtual functions -> explicit dispatch tables:
+      remove_virtual_functions(goto_model);
+    
+      mm_io(goto_model);
+    
+      // instrument library preconditions
+      instrument_preconditions(goto_model);
+    
+      // remove returns, gcc vectors, complex
+      // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
+      remove_vector(goto_model);
+      remove_complex(goto_model);
+      rewrite_union(goto_model);
+    
+      // add generic checks
+      msg.status() << "Generic Property Instrumentation" << msg.eom;
+      goto_check(options, goto_model);
+    
+      // HIFROG: We remove built-ins from smt logics
+      if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
       {
-        // checks don't know about adjusted float expressions
-        adjust_float_expressions(goto_model);
+          if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
+          {
+              // checks don't know about adjusted float expressions
+              adjust_float_expressions(goto_model);
+          }
       }
-    }
-
-    if(cmdline.isset("string-abstraction"))
-    {
-      msg.status() << "String Abstraction" << msg.eom;
-      string_abstraction(
-          goto_model,
-          msg.get_message_handler());
-    }
-
-    // add failed symbols
-    // needs to be done before pointer analysis
-    add_failed_symbols(goto_model.symbol_table);
-
-    // recalculate numbers, etc.
-    goto_model.goto_functions.update();
-
-    // add loop ids
-    goto_model.goto_functions.compute_loop_numbers();
-
-
-    // remove skips
-    remove_skip(goto_model);
-    goto_model.goto_functions.update();
-
-    label_properties(goto_model);
+    
+      if (cmdline.isset("string-abstraction"))
+      {
+          msg.status() << "String Abstraction" << msg.eom;
+          string_abstraction(
+                  goto_model,
+                  msg.get_message_handler());
+      }
+    
+      // add failed symbols
+      // needs to be done before pointer analysis
+      add_failed_symbols(goto_model.symbol_table);
+    
+      //use CPROVER goto-instrument style to unwind the loops in the pre-processing before performing symbolic execution in symex
+      //The reason is we want to differentiate each function call inside a loop so that later each of which would have a single function summary.
+      if (cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check"))
+      {
+          unwindsett unwindset;
+          unwindset.parse_unwind(cmdline.get_value(HiFrogOptions::UNWIND.c_str()));
+          goto_unwindt goto_unwind;
+          //call unwind function
+          goto_unwind(goto_model, unwindset, goto_unwindt::unwind_strategyt::ASSUME);
+      }
+      
+      // recalculate numbers, etc.
+      goto_model.goto_functions.update();
+    
+      // add loop ids
+      goto_model.goto_functions.compute_loop_numbers();
+    
+    
+      // remove skips
+      remove_skip(goto_model);
+      goto_model.goto_functions.update();
+      
+      //here is not a good place to put the actual unwinding
+      label_properties(goto_model);
   }
 
   catch(const char *e)

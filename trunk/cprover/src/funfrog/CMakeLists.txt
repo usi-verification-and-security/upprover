@@ -148,7 +148,8 @@ target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE}/opensmt 
 target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog-lib hifrog-utils ansi-c cpp goto-symex pointer-analysis solvers util xml
+target_link_libraries(hifrog-lib hifrog-utils
+        ansi-c cpp goto-symex goto-instrument-lib pointer-analysis solvers util xml
 )
 
 target_link_libraries(hifrog hifrog-lib)
