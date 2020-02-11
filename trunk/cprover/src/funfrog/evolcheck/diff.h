@@ -119,9 +119,9 @@ private:
                       goto_sequencet &goto_unrolled,
                       std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change);
     
-    void do_proper_diff(goto_sequencet &goto_unrolled_1,
-                        goto_sequencet &goto_unrolled_2,
-                        goto_sequencet &goto_common);
+    void do_proper_diff(goto_sequencet const &goto_unrolled_1,
+                        goto_sequencet const &goto_unrolled_2,
+                        goto_sequencet const &goto_common);
     
     int get_call_tree_node_id(const irep_idt& new_call_name, std::vector<std::pair<const irep_idt*, bool> >& func_old, unsigned old);
     
@@ -132,8 +132,8 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
                        std::vector<std::pair<const irep_idt*, bool> > &functions,
                        std::map<unsigned, std::vector<unsigned> > &calltree, unsigned& global_loc);
 
-bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
-                      goto_sequencet &goto_unrolled_2,
+bool compare_str_vecs(goto_sequencet const &goto_unrolled_1,
+                      goto_sequencet const &goto_unrolled_2,
                       goto_sequencet &goto_common);
 
 std::string cmd_str (goto_programt::const_targett &it);

@@ -245,10 +245,10 @@ bool difft :: add_loc_info(const goto_functionst &goto_functions, const irep_idt
     return true; // it seems always returns true //TODO refactor it.
 }
 /*******************************************************************\
- Purpose:
+ Purpose: //copies the second one into 1st one
 \*******************************************************************/
 void copy(goto_sequencet &goto_1,
-          goto_sequencet &goto_2){
+          goto_sequencet const &goto_2){
     for (unsigned i = 0; i < goto_2.size(); i++){
         goto_1.push_back(goto_2[i]);
     }
@@ -256,10 +256,9 @@ void copy(goto_sequencet &goto_1,
 /*******************************************************************\
  Purpose: if the new and old functions are the same returns true, size_1 == size_2 == size_c
  Note:SA: TODO: needs a major improvement/change.
-          TODO: release the alocated memory 2-D array
 \*******************************************************************/
-bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
-                      goto_sequencet &goto_unrolled_2,
+bool compare_str_vecs(goto_sequencet const &goto_unrolled_1,
+                      goto_sequencet const &goto_unrolled_2,
                       goto_sequencet &goto_common){
     unsigned size_1 = goto_unrolled_1.size();
     unsigned size_2 = goto_unrolled_2.size();
@@ -267,10 +266,10 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
     if (size_1 == 0 && size_2 == 0){
         return true;                //nondet it holds
     }
-    
+    // TODO: consider vectors instead of C arrays
+    //constructing goto_common_s which is a 2-D C array  size2 * size1
     if (size_1 != 0 && size_2 != 0){
-        goto_sequencet **goto_common_s =                //SA: here the pointer to pointer provides 2-D array
-                new goto_sequencet*[size_1 + 1];
+        goto_sequencet **goto_common_s = new goto_sequencet*[size_1 + 1];
         for (unsigned i = 0; i <= size_1; ++i){
             goto_common_s[i] = new goto_sequencet[size_2 + 1];
         }
@@ -279,6 +278,7 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
                 goto_sequencet& tmp_i_j = goto_common_s[i][j];
                 if (goto_unrolled_1[i-1].first == goto_unrolled_2[j-1].first){
                     tmp_i_j.push_back(goto_unrolled_1[i-1]);
+                    //copies the second one into 1st one
                     copy(tmp_i_j, goto_common_s[i-1][j-1]);
                 } else {
                     goto_sequencet& tmp_i_1_j = goto_common_s[i-1][j];
@@ -293,6 +293,11 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
             }
         }
         goto_common = goto_common_s[size_1][size_2];
+        //release the allocated memory of 2-D array in the reverse order that was 'new'ed
+        for (unsigned i = 0; i <= size_1; ++i){
+            delete[] goto_common_s[i];
+        }
+        delete[] goto_common_s;
     }
     unsigned size_c = goto_common.size();
     
@@ -307,9 +312,9 @@ bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
  Purpose:
 
 \*******************************************************************/
-void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
-                             goto_sequencet &goto_unrolled_2,
-                             goto_sequencet &goto_common)
+void difft :: do_proper_diff(goto_sequencet const &goto_unrolled_1,
+                             goto_sequencet const &goto_unrolled_2,
+                             goto_sequencet const &goto_common)
 {
     // sizes
     unsigned size_1 = goto_unrolled_1.size();
