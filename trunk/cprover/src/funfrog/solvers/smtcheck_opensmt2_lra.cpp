@@ -23,6 +23,8 @@ void smtcheck_opensmt2t_lra::initializeSolver(solver_optionst solver_options, co
     osmt = new Opensmt(opensmt_logic::qf_lra, name);
     lalogic = &(osmt->getLRALogic());
     logic = &(osmt->getLRALogic());
+    // hack to produce more compact summary.
+    osmt->getConfig().simplify_interpolant = 4;
     mainSolver = &(osmt->getMainSolver());
     
     const char* msg = nullptr;
