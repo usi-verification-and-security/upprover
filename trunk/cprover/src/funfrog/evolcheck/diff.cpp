@@ -266,38 +266,37 @@ bool compare_str_vecs(goto_sequencet const &goto_unrolled_1,
     if (size_1 == 0 && size_2 == 0){
         return true;                //nondet it holds
     }
-    // TODO: consider vectors instead of C arrays
-    //constructing goto_common_s which is a 2-D C array  size2 * size1
+
     if (size_1 != 0 && size_2 != 0){
-        goto_sequencet **goto_common_s = new goto_sequencet*[size_1 + 1];
-        for (unsigned i = 0; i <= size_1; ++i){
-            goto_common_s[i] = new goto_sequencet[size_2 + 1];
-        }
-        for (unsigned i = 1; i <= size_1; i++){
+        std::vector<std::vector<unsigned int>> indices_of_common_in_first[2];
+        indices_of_common_in_first[0].resize(size_2 + 1);
+        indices_of_common_in_first[1].resize(size_2 + 1);
+        unsigned char flag = 0;
+        for (unsigned i = 1; i <= size_1; ++i) {
+            flag = i & 1;
+            assert(flag == 0 || flag == 1);
             for (unsigned j = 1; j <= size_2; j++){
-                goto_sequencet& tmp_i_j = goto_common_s[i][j];
+                auto & current = indices_of_common_in_first[flag][j];
                 if (goto_unrolled_1[i-1].first == goto_unrolled_2[j-1].first){
-                    tmp_i_j.push_back(goto_unrolled_1[i-1]);
-                    //copies the second one into 1st one
-                    copy(tmp_i_j, goto_common_s[i-1][j-1]);
+                    auto const & previous = indices_of_common_in_first[1 - flag][j-1];
+                    current = previous;
+                    current.push_back(i-1);
                 } else {
-                    goto_sequencet& tmp_i_1_j = goto_common_s[i-1][j];
-                    goto_sequencet& tmp_i_j_1 = goto_common_s[i][j-1];
-                    
-                    if (tmp_i_j_1.size() > tmp_i_1_j.size()){
-                        copy(tmp_i_j, tmp_i_j_1);
+                    auto const & previous1 = indices_of_common_in_first[1 - flag][j];
+                    auto const & previous2 = indices_of_common_in_first[flag][j-1];
+                    if (previous1.size() > previous2.size()){
+                        current = previous1;
                     } else {
-                        copy(tmp_i_j, tmp_i_1_j);
+                        current = previous2;
                     }
                 }
             }
         }
-        goto_common = goto_common_s[size_1][size_2];
-        //release the allocated memory of 2-D array in the reverse order that was 'new'ed
-        for (unsigned i = 0; i <= size_1; ++i){
-            delete[] goto_common_s[i];
+        auto & result = indices_of_common_in_first[flag][size_2];
+        std::reverse(result.begin(), result.end()); // for some reason the result is expected in reverse order
+        for (unsigned int index : result) {
+            goto_common.push_back(goto_unrolled_1[index]);
         }
-        delete[] goto_common_s;
     }
     unsigned size_c = goto_common.size();
     
