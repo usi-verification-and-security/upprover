@@ -399,6 +399,8 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
         ptref = unsupported_to_var(expr);
         // TODO: write a better suport to this case
 #endif
+    } else if (_id == ID_struct) {
+        ptref = unsupported_to_var(expr);
     } else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR " << _id.c_str() << endl;
@@ -556,6 +558,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_unsupported_uf_call(expr);
+            assert(var_eq != PTRef_Undef);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
