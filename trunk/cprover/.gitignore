@@ -1,5 +1,7 @@
+.gitignore
 *.d
 *.o
 *.smt2
 #*.c
 *.log
+z3-build/

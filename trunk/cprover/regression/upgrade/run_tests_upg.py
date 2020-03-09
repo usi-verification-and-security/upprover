@@ -56,15 +56,24 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
     print(stderror)
     collect_data(stdoutput, stderror, testname, command)  # collect rerun time and results;
     
+    omegaNotFound = [line for line in stderror.splitlines() if "__omega cannot be read" in line]
+    if len(omegaNotFound) >=1:
+        warning('__omega cannot be read --> '+ testname)
+        return False
+
+    identical = [line for line in filteredOutput.splitlines() if "The program models are identical" in line]
+    if len(identical) >=1:
+        success('Identical models --> '+ testname)
+        return False    
+
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
-    if not resultLines:
-        resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION SUCCESSFUL" in line]
-        error('The upgrade checking did not return verification result!')
+    if not resultLines: #=empty list
+        error("The upgrade checking did not return verification result! --> " + testname)
         warning(resultLines)
         return False
     if len(resultLines) > 1:
-        warning('The upgrade checking did not finish in one iteretion!')
+        warning('The upgrade checking did not finish in one iteretion! --> ' + testname)
         warning(resultLines)
         #return False
     #get the last element of list
@@ -72,7 +81,7 @@ def run_upgrade_check(newargs, shouldSuccess, scriptpath, testname):
     expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
     testPassed = (resultLine == expectedResult)
     if not testPassed:
-        error('Test result is different than the expected one!')
+        error('Test result is different than the expected one! --> '+ testname)
         return False
     else:
         success('As expected upgrade checking!')

@@ -165,3 +165,60 @@ ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --no-slicing   --
 
 
 
+echo lets check VTT_A
+
+echo CHECKING TWO VERSIONS P2P_Joints_TG3_e_nh2.c P2P_Joints_TG3_e_nh3.c
+rm __summaries __omega
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing ./testcases_perf/P2P_Joints_TG3_e_nh2.c
+echo CHECKING TWO VERSIONS P2P_Joints_TG3_e_nh2.c P2P_Joints_TG3_e_nh3.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG3_e_nh3.c   --no-slicing  ./testcases_perf/P2P_Joints_TG3_e_nh2.c
+
+
+rm __summaries __omega
+echo CHECKING TWO VERSIONS P2P_Joints_TG3_e_nh3.c P2P_Joints_TG3_e_nh4.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing    ./testcases_perf/P2P_Joints_TG3_e_nh3.c
+echo CHECKING TWO VERSIONS P2P_Joints_TG3_e_nh3.c P2P_Joints_TG3_e_nh4.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG3_e_nh4.c   --no-slicing  ./testcases_perf/P2P_Joints_TG3_e_nh3.c
+
+
+
+
+
+
+
+echo lets check VTT_C
+
+echo CHECKING TWO VERSIONS  P2P_Joints_TG4_1.c P2P_Joints_TG4_2.c
+rm __summaries __omega
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing  ./testcases_perf/P2P_Joints_TG4_1.c
+echo CHECKING TWO VERSIONS  P2P_Joints_TG4_1.c P2P_Joints_TG4_2.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG4_2.c --no-slicing  ./testcases_perf/P2P_Joints_TG4_1.c
+
+echo CHECKING TWO VERSIONS P2P_Joints_TG4_2.c P2P_Joints_TG4_3.c 
+rm __summaries __omega
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing   ./testcases_perf/P2P_Joints_TG4_2.c
+echo CHECKING TWO VERSIONS P2P_Joints_TG4_2.c P2P_Joints_TG4_3.c 
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG4_3.c --no-slicing  ./testcases_perf/P2P_Joints_TG4_2.c
+
+
+
+
+
+echo lets check VTT_D
+
+echo CHECKING TWO VERSIONS P2P_Joints_TG4_long_1.c P2P_Joints_TG4_long_2.c
+rm __summaries __omega
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing  ./testcases_perf/P2P_Joints_TG4_long_1.c
+echo CHECKING TWO VERSIONS P2P_Joints_TG4_long_1.c P2P_Joints_TG4_long_2.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG4_long_2.c  --no-slicing  ./testcases_perf/P2P_Joints_TG4_long_1.c
+
+echo CHECKING TWO VERSIONS  P2P_Joints_TG4_long_2.c P2P_Joints_TG4_long_3.c
+rm __summaries __omega
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --init-upgrade-check --no-slicing  ./testcases_perf/P2P_Joints_TG4_long_2.c
+echo CHECKING TWO VERSIONS  P2P_Joints_TG4_long_2.c P2P_Joints_TG4_long_3.c
+ulimit -Sv 12000000; ulimit -St 120; /usr/bin/time -p ./hifrog --logic prop  --do-upgrade-check  ./testcases_perf/P2P_Joints_TG4_long_3.c --no-slicing  ./testcases_perf/P2P_Joints_TG4_long_2.c
+
+
+
+
+

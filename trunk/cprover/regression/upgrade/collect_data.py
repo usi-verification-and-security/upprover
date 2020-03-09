@@ -9,9 +9,10 @@ import sys
 if __name__ == '__main__':
 		pathname = os.path.dirname(sys.argv[0])
 		mypath= os.path.abspath(pathname)
-		fout = open(mypath+"/upg_time.txt", 'w')
-		logfile = mypath+"/testcases_perf.txt"
+		logfile = sys.argv[1]
+		logfile = mypath+"/"+logfile
 		flog = open(logfile, 'r')
+		fout = open(logfile+"upg_time", 'w')
 		time=''
 		res=''
 		bench_sets=''
@@ -66,5 +67,5 @@ if __name__ == '__main__':
 					errormsg=''	
 					time=''
 		flog.close()
-		print("Check this file to see the collected data: upg_time.txt")
+		print("Check the result in:" , logfile+"upg_time")
 		fout.close()
