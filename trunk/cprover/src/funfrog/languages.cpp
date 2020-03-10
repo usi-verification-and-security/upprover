@@ -32,7 +32,7 @@ Function: parser_hifrogt::register_languages
 
 \*******************************************************************/
 
-void parsert::register_languages()
+void parser_baset::register_languages()
 {
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);

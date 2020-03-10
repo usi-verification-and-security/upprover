@@ -75,19 +75,17 @@
 
 
 
-class parsert : public parse_options_baset, public xml_interfacet, public messaget
+class parser_baset : public parse_options_baset, public xml_interfacet, public messaget
     {
 public:
-    parsert(const std::string &_optstring, const std::string &program, int argc, const char **argv ):
+    parser_baset(const std::string &_optstring, const std::string &program, int argc, const char **argv ):
             parse_options_baset(_optstring, argc, argv),
             xml_interfacet(cmdline),
             messaget(ui_message_handler),
             ui_message_handler(cmdline, program)
     {
     }
-    virtual int doit()= 0;
-    virtual void help() = 0;
-    
+
 protected:
     bool validate_input_options ();
     
@@ -110,7 +108,7 @@ protected:
 //bool process_goto_program(const optionst &);
     
     bool get_goto_program(goto_modelt &, cmdlinet &);
-    void calculate_show_claims(goto_modelt &, claim_numberst &, claim_checkmapt &);
+    void calculate_show_claims(goto_modelt &);
     void set_options(const cmdlinet &cmdline);
     void eval_verbosity();
     

@@ -162,9 +162,8 @@ target_link_libraries(hifrog-lib hifrog-utils
 
 target_link_libraries(hifrog hifrog-lib)
 target_link_libraries(upprover hifrog-lib)
-target_include_directories(upprover PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-set_target_properties(hifrog hifrog-lib hifrog-utils
+set_target_properties(upprover hifrog hifrog-lib hifrog-utils
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11

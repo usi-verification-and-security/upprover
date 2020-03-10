@@ -20,7 +20,7 @@ void parser_hifrogt::help()
       "Usage:                         Purpose:\n"
       "\n"
       " hifrog [-?] [-h] [--help]     show help\n"
-      " hifrog [options] <file>       run on goto-binary `file'\n"
+      " hifrog [options] <file>       run on C `file'\n"
       "\nGeneral Purpose options:\n"
       "--version                      show version information\n"
       "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
@@ -80,7 +80,7 @@ void parser_hifrogt::help()
       "                                 6 - forward with multiple refinement & dependencies\n"
       "                                 7 - backward with multiple refinement & dependencies\n"
       "--bitwidth <n>                 bitwidth for the CUF BV mode and CEX Validator\n\n"
-      "--no-cex-model                 skips the cex validator is model cannot be extracted \n"
+      "--no-cex-model                 skips the cex validator if model cannot be extracted \n"
       #ifdef PRODUCE_PROOF
       "--save-omega <filename>        save the last used substitution scenario\n"
       "                               to the given file\n"
@@ -230,7 +230,7 @@ int parser_hifrogt::doit()
         return 0;
     }
     
-    calculate_show_claims(goto_model, claim_numbers, claim_checkmap);
+    calculate_show_claims(goto_model);
     
     if(validate_input_options()) {
         //perform standalone check for stream of assertions in a specific source file

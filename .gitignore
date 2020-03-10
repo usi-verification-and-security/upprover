@@ -52,7 +52,6 @@ cmake-build-relwithdebinfo
 /trunk/cprover/src/funfrog/CVS
 /trunk/cprover/src/funfrog/.cvsignore
 /trunk/cprover/src/funfrog/sumo
-/trunk/cprover/src/funfrog/evolcheck
 /trunk/cprover/src/funfrog/hifrog
 /trunk/cprover/src/funfrog/local
 /trunk/cprover/src/funfrog/hifrog-prop

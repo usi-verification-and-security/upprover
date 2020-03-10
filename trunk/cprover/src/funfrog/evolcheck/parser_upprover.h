@@ -1,0 +1,45 @@
+#ifndef PARSER_UPPROVER_H
+#define PARSER_UPPROVER_H
+
+#include "funfrog/parser.h"
+#include "funfrog/version.h"
+
+#define UPPROVER_OPTIONS \
+  "D:I:(16)(32)(64)(v):(version)" \
+  "(i386-linux)(i386-macos)(ppc-macos)" \
+  "(show-goto-functions)(show-fpfreed-program)(show-dereferenced-program)" \
+  "(save-omega):(load-omega):" \
+  "(show-symbol-table)(show-value-sets)" \
+  "(save-claims)" \
+  "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
+  "(init-upgrade-check)(do-upgrade-check):(sanity-check):" \
+  "(save-queries)(save-change-impact):" \
+  "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
+  "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
+  "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm):(itp-lra-factor): (check-itp): (part-itp):" \
+  "(unwind):(unwindset):" \
+  "(type-constraints):(type-byte-constraints):" \
+  "(inlining-limit):(testclaim):" \
+  "(no-error-trace)" \
+  "(no-cex-model)" \
+  "(refine-mode):(init-mode):(logic):(list-templates)"\
+  "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
+  "(function):"
+  
+  
+class parser_upprovert : public parser_baset {
+
+public:
+    parser_upprovert(int argc, const char **argv) :
+            parser_baset(UPPROVER_OPTIONS, std::string("UPPROVER ") + UPPROVER_VERSION,  argc, argv)
+    {
+    }
+
+    int doit() override;
+    void help() override;
+    
+protected:
+    void trigger_upgrade_check(const goto_modelt &);
+};
+
+#endif //PARSER_UPPROVER_H

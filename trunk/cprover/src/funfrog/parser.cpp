@@ -13,7 +13,7 @@
 \*******************************************************************/
 
 // ns is changed to goto_model, if using ns check how to change it to goto_model
-bool parsert::validate_input_options()
+bool parser_baset::validate_input_options()
 {
     // perform standalone check (all the functionality remains the same)
     if(cmdline.isset("claim") &&
@@ -96,7 +96,7 @@ bool parsert::validate_input_options()
  especially simplify must be set to true
 
 \*******************************************************************/
-void parsert::set_default_options(optionst &options)
+void parser_baset::set_default_options(optionst &options)
 {
     // Default true
     options.set_option("assertions", true);   // always check assertions
@@ -119,7 +119,7 @@ void parsert::set_default_options(optionst &options)
  Purpose:  Get a Goto Program; initialize_goto_model does the whole job
 
 \*******************************************************************/
-bool parsert::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline)
+bool parser_baset::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline)
 {
     
     try
@@ -167,7 +167,7 @@ bool parsert::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline)
 
 \*******************************************************************/
 
-unsigned parsert::count(const goto_functionst &goto_functions) const
+unsigned parser_baset::count(const goto_functionst &goto_functions) const
 {
     unsigned long c=0;
     for(goto_functionst::function_mapt::const_iterator it =
@@ -191,7 +191,7 @@ unsigned parsert::count(const goto_functionst &goto_functions) const
 
 \*******************************************************************/
 
-unsigned parsert::count(const goto_programt &goto_program) const
+unsigned parser_baset::count(const goto_programt &goto_program) const
 {
     std::cout << "    Instruction count: " << goto_program.instructions.size()
               << std::endl;
@@ -206,7 +206,7 @@ unsigned parsert::count(const goto_programt &goto_program) const
  Purpose: Calculate claim numbers, and print them on demand
 
 \*******************************************************************/
-void parsert::calculate_show_claims(goto_modelt & goto_model, claim_numberst &claim_numbers, claim_checkmapt &claim_checkmap) {
+void parser_baset::calculate_show_claims(goto_modelt & goto_model) {
     
     get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
     cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")");
@@ -227,7 +227,7 @@ void parsert::calculate_show_claims(goto_modelt & goto_model, claim_numberst &cl
  Purpose:
 
 \*******************************************************************/
-void parsert::set_options(const cmdlinet &cmdline)
+void parser_baset::set_options(const cmdlinet &cmdline)
 {
     set_default_options(options);
     
@@ -467,7 +467,7 @@ void parsert::set_options(const cmdlinet &cmdline)
        Update if needed (once upgrade cprover)
 
 \*******************************************************************/
-void parsert::eval_verbosity()
+void parser_baset::eval_verbosity()
 {
     // this is our default verbosity
     unsigned int v=messaget::M_STATISTICS;
