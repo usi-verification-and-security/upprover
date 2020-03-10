@@ -256,6 +256,7 @@ void copy(goto_sequencet &goto_1,
 /*******************************************************************\
  Purpose: if the new and old functions are the same returns true, size_1 == size_2 == size_c
  Note:SA: TODO: needs a major improvement/change.
+  uses the longest common sub-sequence algorithm --> removable. optimization: Try also considering use of HAsh of funcctions
 \*******************************************************************/
 bool compare_str_vecs(goto_sequencet const &goto_unrolled_1,
                       goto_sequencet const &goto_unrolled_2,

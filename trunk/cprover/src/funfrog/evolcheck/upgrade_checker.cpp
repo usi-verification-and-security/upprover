@@ -228,10 +228,11 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node) {
     has_summary = !node.get_used_summaries().empty();
     if (has_summary){
         //for now we only consider one summary per node
-        //TODO consider several summaries per node
-        //const summary_idt single_sumID = summary_store->get_summariesID(function_name)[0];
-        const summary_idt single_sumID = *node.get_used_summaries().begin();
-//       print summary-in-use in the console
+        //there is only one summary per node due to full unrolling using goto-instrument
+//      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//always take the same ID for all, obviously wrong
+        const summary_idt single_sumID = *(node.get_used_summaries().begin());
+//      status() << "size of set of ids: " <<node.get_used_summaries().size() << "   single_sumID: " << single_sumID <<eom;
+//      print summary-in-use in the console
 //      summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
         validated = validate_summary(node , single_sumID);
@@ -240,7 +241,7 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node) {
             //                                       -> delete summary from summary store
             node.remove_summaryID(single_sumID);
             node.set_inline();
-//            summary_store->remove_summary(single_sumID);
+//          summary_store->remove_summary(single_sumID);
             // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
             // for the next decider which will read this summaryFile to update the summary_storet)
             // TODO: later make decider and summary store independent
