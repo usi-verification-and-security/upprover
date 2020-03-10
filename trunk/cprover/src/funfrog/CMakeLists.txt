@@ -19,8 +19,6 @@ set(HIFROG_SOURCE_FILES
         expr_pretty_print.cpp
         expr_pretty_print.h
         languages.cpp
-        parser_hifrog.cpp
-        parser_hifrog.h
         partition.h
         partition_iface.h
         partition_iface.cpp
@@ -62,8 +60,16 @@ set(HIFROG_SOURCE_FILES
         interface/solver/solver.h
         interface/solver/interpolating_solver.h
         interface/convertor.h
-        evolcheck/upgrade_checker.cpp evolcheck/upgrade_checker.h
-        evolcheck/diff.cpp evolcheck/diff.h)
+        parser.h
+        parser.cpp
+        parser_hifrog.cpp
+        parser_hifrog.h
+        evolcheck/upgrade_checker.cpp
+        evolcheck/upgrade_checker.h
+        evolcheck/diff.cpp evolcheck/diff.h
+        evolcheck/parser_upprover.h
+        evolcheck/parser_upprover.cpp
+        )
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
@@ -88,6 +94,8 @@ find_package(GMP REQUIRED)
 add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
 
 add_executable(hifrog main.cpp
+)
+add_executable(upprover evolcheck/main_upprover.cpp
 )
 
 target_include_directories(hifrog-lib PUBLIC ${PROJECT_SOURCE_DIR})
@@ -153,6 +161,8 @@ target_link_libraries(hifrog-lib hifrog-utils
 )
 
 target_link_libraries(hifrog hifrog-lib)
+target_link_libraries(upprover hifrog-lib)
+target_include_directories(upprover PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 set_target_properties(hifrog hifrog-lib hifrog-utils
 PROPERTIES

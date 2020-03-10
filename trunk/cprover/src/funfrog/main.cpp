@@ -15,10 +15,6 @@ Contributors: Daniel Kroening, CM Wintersteiger, Ondrej Sery,
 
 Function: main
 
-  Inputs:
-
- Outputs:
-
  Purpose:
 
 \*******************************************************************/

@@ -18,7 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <java_bytecode/java_bytecode_language.h>
 #endif
 
-#include "parser_hifrog.h"
+#include "parser.h"
 
 /*******************************************************************\
 
@@ -32,7 +32,7 @@ Function: parser_hifrogt::register_languages
 
 \*******************************************************************/
 
-void parser_hifrogt::register_languages()
+void parsert::register_languages()
 {
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);
