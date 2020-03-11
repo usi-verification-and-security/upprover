@@ -486,7 +486,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 
 //    if (partition.has_parent()) {
         // MB: This relation, that if the function ends then all its assumptions have been satisfied should always be
-        //      captured. We need it in upgrade checking when we are doing symex on subtrees of the program.
+        //      captured. We need it in UpProver when we are doing symex on subtrees of the program.
         assert(!partition.has_parent() || number_of_assumptions > 0);
         // Encode callend propagation formula for the partition:
         //
@@ -729,7 +729,7 @@ void partitioning_target_equationt::convert(convertort &convertor,
 
  Purpose: Extract interpolants corresponding to the created partitions
 SA: inner method- called by extract_interpolants from core_checker;
- this method covers the required functionality for upgrade check
+ this method covers the required functionality for UpProver
  \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(interpolating_solvert &interpolator) {
 #ifdef PRODUCE_PROOF

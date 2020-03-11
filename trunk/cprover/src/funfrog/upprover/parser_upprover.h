@@ -12,7 +12,7 @@
   "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \
   "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
-  "(init-upgrade-check)(do-upgrade-check):(sanity-check):" \
+  "(bootstrapping)(summary-validation):(sanity-check):" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
@@ -39,7 +39,7 @@ public:
     void help() override;
     
 protected:
-    void trigger_upgrade_check(const goto_modelt &);
+    void trigger_upprover(const goto_modelt &goto_model_old);
 };
 
 #endif //PARSER_UPPROVER_H

@@ -484,7 +484,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     refiner_assertion_sumt refiner {
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc};//, true};  //the last flag for upgrade check needs to be false
+              message_handler, last_assertion_loc};//, true};
 
     bool end = prepareSSA(symex);
     if(!end && options.get_bool_option("claims-opt")){
@@ -966,7 +966,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     refiner_assertion_sumt localRefine{summary_store, omega,
                                            refinement_modet::SLICING_RESULT,
                                            this->get_message_handler(),
-                                           omega.get_last_assertion_loc()};//, true};  //the last flag for upgrade check needs to be false
+                                           omega.get_last_assertion_loc()};//, true};
 
 
     localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
@@ -1064,7 +1064,7 @@ void core_checkert::slice_target(partitioning_target_equationt & equation) {
 bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
     bool verified;
     verified = symex.prepare_SSA();
-//    if(is_option_set("do-upgrade-check")) {        // upgrade check needs to negate the summary
+//    if(is_option_set("summary-validation")) {        // UpProver needs to negate the summary
 //        verified = symex.prepare_subtree_SSA();
 //    }
 //    else {

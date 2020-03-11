@@ -1,8 +1,6 @@
 /*******************************************************************
 
- Module: Diff utility for 2 goto-binaries
-
- This class was adapted from old SAT-based evolcheck developed by G. Fedyukovich
+ Module: Diff utility for syntactically comparing two C programs
 
 \*******************************************************************/
 #ifndef PROJECT_DIFF_H

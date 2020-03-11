@@ -1,19 +1,14 @@
 /*******************************************************************
 
- Module: Upgrade checking using function summaries.
-
-
+ Module: UpProver: Incremental verification of changes using function summaries.
 
 \*******************************************************************/
-//#define SANITY_CHECK
-
 #include <funfrog/partitioning_target_equation.h>
 #include <goto-symex/path_storage.h>
 #include <funfrog/symex_assertion_sum.h>
 #include <funfrog/refiner_assertion_sum.h>
-#include <funfrog/dependency_checker.h>
 #include <funfrog/prepare_formula.h>
-#include "upgrade_checker.h"
+#include "summary_validation.h"
 #include "funfrog/check_claims.h"
 #include "funfrog/assertion_info.h"
 #include "diff.h"
@@ -25,11 +20,9 @@
 #include <unordered_set>
 /*******************************************************************\
 
-Standalone Function: check_initial phase of upgrade check (bootstraping)
+Standalone Function: check_initial
 
-
- Purpose: Check the whole system and prepare for incremental
- check of upgrades via check_upgrade.
+Purpose: initial phase of upprover (bootstraping)
 \*******************************************************************/
 void check_initial(core_checkert &core_checker, messaget &msg) {
 
@@ -37,36 +30,31 @@ void check_initial(core_checkert &core_checker, messaget &msg) {
 	bool result = core_checker.assertion_holds(assertion_infot(), true);
 
   	if (result) {
-    	msg.status() << "\n Initial phase of upgrade checking : OK, \n"
-                    " Now proceed with \"do-upgrade-check\" for verifying the new version of your code! Enjoy Verifying!\n" << msg.eom;
-        //to write the substitution scenario of 1st phase into a given file or __omega file
-        msg.status() << "Writing the substitution scenarios into a given file or __omega file" << msg.eom;
+        msg.status() << "\n Bootstrapping phase is successful, \n"
+        " Now proceed with option \"--summary-validation\" for verifying the new version of your code!\n" << msg.eom;
+        
+    	msg.status() << "Writing the substitution scenarios into a given file or __omega file" << msg.eom;
         core_checker.serialize();
  	}
   	else {
-    	msg.status() << "\n Upgrade checking is not possible!" << msg.eom;
+    	msg.status() << "\n Incremental verification is not possible due to absence of summaries!" << msg.eom;
     	msg.status() << "Try standalone verification" << msg.eom;
   	}
 
 }
-
 /*******************************************************************\
- Function: do_upgrade_check
+ Function: launch_upprover
 
- Purpose: 2nd phase of upgrade checking; triggers upgrade checking
+ Purpose: 2nd phase of UpProver
+ Note: goto_program and goto_functions can be obtained from goto_model; so only get goto_model
+ no need for goto_programt and const goto_functionst
 \*******************************************************************/
-bool do_upgrade_check(
-        // goto_program and goto_functions can be obtained from goto_model; so only get goto_model
-        //const goto_programt &program_old,
-        //const goto_functionst &goto_functions_old,
+bool launch_upprover(
         const goto_modelt &goto_model_old,
-        //const goto_programt &program_new,
-        // const goto_functionst &goto_functions_new,
         const goto_modelt &goto_model_new,
         optionst &options,
         ui_message_handlert &message_handler)
 {
-    
     auto before = timestamp();
     messaget msg(message_handler);
     //load __omega if it's already generated from 1st phase check_initial
@@ -79,29 +67,27 @@ bool do_upgrade_check(
         return 1;
     }
     difft diff(msg, options.get_option("load-omega").c_str(), options.get_option("save-omega").c_str() );
-    bool res_diff = diff.do_diff(goto_model_old.goto_functions, goto_model_new.goto_functions);  //if result is false it mean at least one of the functions has changed
+    bool res_diff = diff.do_diff(goto_model_old.goto_functions, goto_model_new.goto_functions); //false means at least one function has changed
     auto after = timestamp();
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){
         msg.status() << "The program models are identical" <<msg.eom;
-//#ifndef SANITY_CHECK
         if(!options.is_set("sanity-check")){
             return 0;
         }
-//#endif
     }
     unsigned long max_mem_used;
-    upgrade_checkert upg_checker(goto_model_new, options, message_handler, max_mem_used);
-    res_diff = upg_checker.check_upgrade();
+    summary_validationt upg_checker(goto_model_new, options, message_handler, max_mem_used);
+    res_diff = upg_checker.call_graph_traversal();
     after = timestamp();
-    msg.status() << "TOTAL UPGRADE CHECKING TIME: " << time_gap(after,before) << msg.eom;
+    msg.status() << "TOTAL SUMMARY VALIDATION TIME: " << time_gap(after,before) << msg.eom;
 //SA  upg_checker.save_change_impact();
     
     return res_diff;
 }
 
 /*******************************************************************\
- Purpose: Incremental check of the upgraded program.
+ Purpose: Incremental check of the changed program.
 
  // 3. Mark summaries as
 //     - valid: the function was not changed                  => summary_info.preserved_node == true
@@ -120,48 +106,48 @@ bool do_upgrade_check(
   //summary.print(std::cout);
 \*******************************************************************/
 /*******************************************************************\
- Function: do_upgrade_check
+ Function: call_graph_traversal
 
- Purpose: controls on which order the nodes to be validated.
- Iterates over the call-tree which was filled in DFS order,
- childs will be checked first and parents will be marked
- for later check, if all childs were processed then it's their turn.
- if the individual node:
+ Purpose: It starts bottom up over the changed lists, invokes validation_node() if necessary;
+ we assume each node potentially has at most one summary.
+ Note:
+ Iterates over the function calls, bottom up, and propagates towards the parents.
+ First children (and their siblings) will be checked and parents will be marked
+ for later check.
+ If the individual node:
  Not changed & Not force-check ==> do nothing, go to next node
  changed||force-check ==> validite_node (if has summary->validate_summary)
 \*******************************************************************/
-bool upgrade_checkert::check_upgrade()
+bool summary_validationt::call_graph_traversal()
 {
 // Here we suppose that "__omega" already contains information about changes
 // TODO: Maybe omega should be passed internally, not as a file.
     omega.deserialize(options.get_option("save-omega"),
-            goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body); //double checke restore_call_info
+            goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body); //double check restore_call_info
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
-    // init solver and Load older summaries in the same way as hifrog
+    // init solver and load older summaries in the same way as hifrog
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
-//#ifdef SANITY_CHECK
-    if(options.is_set("sanity-check")) {
+    if(options.is_set("sanity-check")){
        sanity_check(calls);
     }
-//#endif
     std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
     auto before_iteration_over_functions = timestamp();
-    //iterate over functions backward, from node with the largest call location
+    //iterate over functions in reverse order of DFS, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
         bool force_check = false;
-        if (marked_to_check.find(&current_node) != marked_to_check.end()) {
+        if (marked_to_check.find(&current_node) != marked_to_check.end()){
             force_check = true;
         }
         bool check_necessary = !current_node.is_preserved_node() || force_check;
         if(!check_necessary) continue;
         validated = !check_necessary;
-        if (check_necessary) {
+        if (check_necessary){
             validated = validate_node(current_node);
         }
         if (!validated) {
@@ -169,22 +155,19 @@ bool upgrade_checkert::check_upgrade()
             if (has_parent) {
                 marked_to_check.insert(&current_node.get_parent());
             }
-/*        if(validated) {
-                // The subtrees in call_tree_nodes have the correct information about summaries
-                //summaries for subtrees are updated in extract_interpolaion
-                //TODO make sure the new summary was added, or replaced the old summaries correctly
-            }*/
-            if(current_node.get_function_id()==ID_main)
-            { // Final check: we are in the main, and we dont have a summary form previous run
-                // DO a classic HiFrog check and normal refinement (inline if summary not enough) if
+            // The subtrees in call_tree_nodes have the correct information about summaries
+            //if validated summaries for subtrees are updated in extract_interpolaion
+            // make sure the new summary was added, or replaced the old summaries correctly
+            if(current_node.get_function_id() == ID_main){
+                // Final check:  main function does not have a summary form previous run (i.e., false summary)
+                // perform a classic HiFrog check and normal refinement (inline if summary not enough) if
                 // it reaches the top-level main and fails --> report immediately
-                // Check all the assertions  ; the last flag is true because of all-claims
                 status() << "\nFinal validation node " << function_name << " ..." << eom;
                 init_solver_and_summary_store();
                 validated = this->assertion_holds_smt(assertion_infot(), true);
             }
         }
-        if (validated) {
+        if (validated){
             status() << "------Node " << function_name << " has been validated!" << eom;
         }
         else {
@@ -192,7 +175,8 @@ bool upgrade_checkert::check_upgrade()
         }
     } //End of forloop
     auto after_iteration_over_functions  = timestamp();
-    status() << "\nTotal iteration TIME over ALL functions for node validation (includes sub-SYMEX+CONVERSION+SOLVING times): " << time_gap(after_iteration_over_functions,before_iteration_over_functions) << eom;
+    status() << "\nTotal iteration TIME over ALL functions for node validation (includes sub-SYMEX+CONVERSION+SOLVING times): "
+             << time_gap(after_iteration_over_functions,before_iteration_over_functions) << eom;
     //Final conclusion
     if (validated) {
         status() << "\nThe whole call tree has been validated!" << eom;
@@ -210,15 +194,13 @@ bool upgrade_checkert::check_upgrade()
 }
 
 /*******************************************************************\
-
 Function:
 
-Purpose: it starts bottom up, checking nodes validity one by one in the new
-upgraded version; we assume each node potentially has at most one summary.
-//get summaries based on call-nodes, not function name(as different nodes can have different summaries)
+Purpose: Triggers validation of summary associated with the node
+Note: Obtain summaries based on call-nodes, not function name(as different nodes can have different summaries)
 
 \*******************************************************************/
-bool upgrade_checkert::validate_node(call_tree_nodet &node) {
+bool summary_validationt::validate_node(call_tree_nodet &node) {
     
     const std::string function_name = node.get_function_id().c_str();
     bool validated = false;
@@ -255,23 +237,21 @@ bool upgrade_checkert::validate_node(call_tree_nodet &node) {
 }
 /*******************************************************************\
 
-Function: upgrade_checkert::validate_summary
+Function:
 
 // NOTE: checks implication \phi_f => I_f.
 
- Purpose: Checks whether a new implementation of a function still implies
+ Purpose: Checks whether a new implementation of a node still implies
  its original summary?
 
 \*******************************************************************/
 
-bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
+bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
     //each time we need a cleaned solver, otherwise old solver conflicts with new check; in the classical check also we init first.
     //SA: did we add something to the summary store? make sure not!
     status() << "------validating summary " << node.get_function_id().c_str() << " ..." << eom;
     init_solver_and_summary_store();
     partitioning_target_equationt equation(ns, *summary_store, true);
-    //last flag store_summaries_with_assertion is initialized in all-claims/upgrade check with "true", otherwise normally false
-
     std::unique_ptr<path_storaget> worklist;
     symex_assertion_sumt symex{get_goto_functions(),
                                node,
@@ -293,7 +273,7 @@ bool upgrade_checkert::validate_summary(call_tree_nodet &node, summary_idt summa
     refiner_assertion_sumt refiner {
             *summary_store, omega,
             get_refine_mode(options.get_option("refine-mode")),
-            message_handler, omega.get_last_assertion_loc()};//  //there was last flag for upgrade check as false
+            message_handler, omega.get_last_assertion_loc()};
 
     bool assertion_holds = prepareSSA(symex);
 
@@ -405,7 +385,7 @@ phi3  ---> phi4 phi5
  I2 /\ I3 /| Phi1 --> I1
  I4 /\ I5 /| Phi3 --> I3
 \*******************************************************************/
-void upgrade_checkert::sanity_check(vector<call_tree_nodet*>& calls) {
+void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
 
     //associates each parent to its direct children in each subtree
     std::map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;

@@ -1,8 +1,6 @@
 /*******************************************************************
 
- Module: Diff utility for 2 goto-binaries
-
- This class was adapted from old SAT-based evolcheck developed by G. Fedyukovich
+ Module:  Diff utility for syntactically comparing two C programs
 
 \*******************************************************************/
 //#include <term_entry.h>
@@ -511,7 +509,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             }
         }
         //interface change support: if the signature of a function was changed, we mark it as changed,
-        // and invalidate all summaries(mark as Inline); so the upgrade checking algorithm starts with the parent)
+        // and invalidate all summaries(mark as Inline); so the upprover algorithm propagates to the parent)
         if(is_new_node || (!base_type_eq(goto_functions_1.function_map.at(new_call_name).type,
                                          goto_functions_2.function_map.at(new_call_name).type, ns) && !locs_output)){
             msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" has changed interface") << msg.eom;

@@ -17,7 +17,7 @@
 
 #include "utils/time_utils.h"
 #include <langapi/language_util.h>
-#include "evolcheck/upgrade_checker.h"
+#include "funfrog/upprover/summary_validation.h"
 /*******************************************************************
 
  Function: find_assertion
@@ -170,8 +170,8 @@ void check_claims(
 //init function nodes from nil to an ID, all funcs are initialized to use summaries if any (ALL_SUBSTITUTING)
     core_checker.initialize_call_info();
   
-/****** upgrade checking - bootstrapping mode ******/
-  if (options.get_bool_option("init-upgrade-check")){
+/****** upprover - bootstrapping mode ******/
+  if (options.get_bool_option("bootstrapping")){
     messaget msg{_message_handler};
     check_initial(core_checker, msg);
     return;

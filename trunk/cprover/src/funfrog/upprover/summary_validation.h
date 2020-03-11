@@ -1,7 +1,6 @@
 /*******************************************************************
 
- Module: Upgrade checker using function summaries
-
+ Module: UpProver
 
 
 \*******************************************************************/
@@ -13,10 +12,10 @@
 #include <ui_message.h>
 #include <unordered_map>
 
-class upgrade_checkert : public core_checkert
+class summary_validationt : public core_checkert
 {
 public:
-	upgrade_checkert(
+	summary_validationt(
             const goto_modelt & _goto_model,
             //const goto_functionst &_goto_functions,
             //const namespacet &_ns,
@@ -32,7 +31,7 @@ public:
 				_max_memory_used)
 	{};
     
-    bool check_upgrade();
+    bool call_graph_traversal();
     void sanity_check(vector<call_tree_nodet*>& calls);
 
 
@@ -62,7 +61,7 @@ protected:
 
 //Declarations
 void check_initial(core_checkert &core_checker, messaget &msg);
-bool do_upgrade_check(
+bool launch_upprover(
         const goto_modelt &goto_model_old,
         const goto_modelt &goto_model_new,
         optionst &options,

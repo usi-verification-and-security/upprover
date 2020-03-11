@@ -1,5 +1,5 @@
 #include "parser_upprover.h"
-#include "funfrog/evolcheck/upgrade_checker.h"
+#include "funfrog/upprover/summary_validation.h"
 
 /*******************************************************************\
 
@@ -15,28 +15,21 @@
 void parser_upprovert::help()
 {
     std::cout <<"\n"
-                "* * *                UpProver " << UPPROVER_VERSION
+    "* * *                          UpProver " << UPPROVER_VERSION
     "\n"
     "Usage:                         Purpose:\n"
     "\n"
-    " upprover [-?] [-h] [--help]     show help\n"
-    " upprover [options] <file>       run on C `file'\n"
+    " upprover [-?] [-h] [--help]   show help\n"
+    " upprover [options] <file>     run on C `file'\n"
     "\nGeneral Purpose options:\n"
     "--version                      show version information\n"
     "--logic <logic>                [qfuf, qflra, qflia, prop] The default is qfuf\n"
-    "--sum-theoref                  for all the claims, automatically selects the lightest possible theory\n"
-    "                               and gradually strengthen it\n"
     "--save-summaries <filename>    save collected function summaries\n"
     "                               to the given file\n"
     "--load-summaries <filename1,>  load function summaries\n"
     "                               from the given file(s)\n"
     "--show-claims                  output the claims list\n"
     "                               and prints the total number of claims\n"
-    //  "--bounds-check                 enable array bounds checks\n"
-    //  "--div-by-zero-check            enable division by zero checks\n"
-    //  "--pointer-check                enable pointer checks\n"
-    //  "--overflow-check               enable arithmetic over- and underflow checks\n"
-    //  "--nan-check                    check floating-point for NaN\n"
     "--claim <int>                  check a specific claim\n"
     "--all-claims                   check all claims in one run\n"
     "--claims-opt <steps>           remove weaker claims using the given treshold\n"
@@ -68,9 +61,9 @@ void parser_upprovert::help()
     "                                 z3   - use Z3 solver\n"
     "--no-cex-model                 skips the cex validator if model cannot be extracted \n"
     #ifdef PRODUCE_PROOF
-    "\nUpgrade Checking options:\n"
-    "--init-upgrade-check           prepare for upgrade checking\n"
-    "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
+    "\nUpProver options (Incremental verification of changes):\n"
+    "--bootstrapping                prepare for upgrade checking\n"
+    "--summary-validation<file>     incremental upgrade check with the specified\n"
     "                               updated version of the program\n"
     "--sanity-check <file1>         sanity checking after bootstrapping for TI property\n"
     "                               usage: <hifrog> <logic> <file1> --sanity-check <file1> \n"
@@ -113,24 +106,24 @@ void parser_upprovert::help()
 }
 
 /*******************************************************************\
- Function: trigger_upgrade_check
+ Function: trigger_upprover
 
- Purpose: making ready for upgrade checking
+ Purpose: making ready for upprover
 \*******************************************************************/
-void parser_upprovert::trigger_upgrade_check(const goto_modelt &goto_model_old) {
-    // a bit of hack; for now slicing does not work in upgrade
+void parser_upprovert::trigger_upprover(const goto_modelt &goto_model_old) {
+    // a bit of hack; for now slicing does not work in upprover
     options.set_option("no-slicing", true);
-    options.set_option("all-claims", true);  //for upgrade check this is always true
+    options.set_option("all-claims", true);  //for UpProver this is always true
     
     
-    // perform the upgrade check (or preparation for that)
+    // perform the UpProver (or preparation for that)
     if (cmdline.isset("testclaim") || cmdline.isset("claim") ||
         cmdline.isset("claimset") || cmdline.isset("no-itp")) {
-        cbmc_error_interface("Upgrade checking mode does not allow checking specific claims");
+        cbmc_error_interface("UpProver mode does not allow checking specific claims");
     }
     
     // bool init_ready = true; // the checks of existence of __omega and upg. version will be later
-    if (cmdline.isset("init-upgrade-check")) {
+    if (cmdline.isset("bootstrapping")) {
         check_claims(goto_model_old,
                      claim_checkmap,
                      claim_numbers,
@@ -141,25 +134,25 @@ void parser_upprovert::trigger_upgrade_check(const goto_modelt &goto_model_old) 
     }
 
 //2nd phase
-    if (cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check")) {
+    if (cmdline.isset("summary-validation") || cmdline.isset("sanity-check")) {
         std::string new_filepath;
         if (cmdline.isset("sanity-check")) {
             new_filepath = cmdline.get_value("sanity-check");
         }
         else {
-            new_filepath = cmdline.get_value("do-upgrade-check");
+            new_filepath = cmdline.get_value("summary-validation");
         }
-        status() << std::string("Loading an upgrade: `") + new_filepath + "' ...\n";
+        status() << std::string("Loading a changed version: `") + new_filepath + "' ...\n";
         
         auto old_args = cmdline.args;  //old file path
         cmdline.args = {new_filepath};
-        goto_modelt goto_model_new;     // 2nd goto model associated with upgraded_file
+        goto_modelt goto_model_new;     // 2nd goto model associated with changed version
         
         if (get_goto_program(goto_model_new, cmdline)) {
             return;
         }
-        
-        do_upgrade_check(
+    
+        launch_upprover(
                 // OLD!
                 goto_model_old,
                 // NEW!
@@ -248,9 +241,9 @@ int parser_upprovert::doit()
     calculate_show_claims(goto_model);
     
     if(validate_input_options()) {
-        //preparation for Upgrade check
-        if(cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check")){
-            trigger_upgrade_check(goto_model);
+        //preparation for UpProver
+        if(cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("sanity-check")){
+            trigger_upprover(goto_model);
             cbmc_status_interface("#X: Done.");
             return 0;
         }

@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include <iostream>
-//#include <util/string2int.h>
+#include <util/string2int.h>
 #include "xml_interface.h"
 #include "util/parse_options.h"
 #include "funfrog/utils/time_utils.h"

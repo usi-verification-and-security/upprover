@@ -290,21 +290,21 @@ void parser_baset::set_options(const cmdlinet &cmdline)
 //*********** Combination of Summary and Theory Refinement option***********
     options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
 
-//*********** Upgrade Checking options ***********
-    options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
-    if (cmdline.isset("do-upgrade-check")) {
-        options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
+//*********** UpProver options ***********
+    options.set_option("bootstrapping", cmdline.isset("bootstrapping"));
+    if (cmdline.isset("summary-validation")) {
+        options.set_option("summary-validation", cmdline.get_value("summary-validation"));
     }
-    options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
+    options.set_option("bootstrapping", cmdline.isset("bootstrapping"));
     
-    //"sanity-check" behaves as if doing upgrade checking of 2 same programs, so we trigger do-upgrade-check internally
+    //"sanity-check" behaves as if doing upgrade checking of 2 same programs, so we trigger summary-validation internally
     if (cmdline.isset("sanity-check")) {
         options.set_option("sanity-check", cmdline.isset("sanity-check"));
-        options.set_option("do-upgrade-check", true);
-        options.set_option("do-upgrade-check", cmdline.get_value("sanity-check"));
-//N.B. if(options.is_set("do-upgrade-check")) At this point returns true
+        options.set_option("summary-validation", true);
+        options.set_option("summary-validation", cmdline.get_value("sanity-check"));
+//N.B. if(options.is_set("summary-validation")) At this point returns true
 // but
-//     if(cmdline.isset("do-upgrade-check") still returns false!
+//     if(cmdline.isset("summary-validation") still returns false!
     }
 #endif
 
@@ -474,9 +474,9 @@ void parser_baset::eval_verbosity()
     
     if(cmdline.isset("verbosity"))
     {
-//        v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-//        if(v>10)
-//            v=10;
+        v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
+        if(v>10)
+            v=10;
     }
     
     ui_message_handler.set_verbosity(v);
@@ -570,7 +570,7 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
         
         //use CPROVER goto-instrument style to unwind the loops in the pre-processing before performing symbolic execution in symex
         //The reason is we want to differentiate each function call inside a loop so that later each of which would have a single function summary.
-        if (cmdline.isset("init-upgrade-check") || cmdline.isset("do-upgrade-check") || cmdline.isset("sanity-check"))
+        if (cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("sanity-check"))
         {
             unwindsett unwindset;
             unwindset.parse_unwind(cmdline.get_value(HiFrogOptions::UNWIND.c_str()));

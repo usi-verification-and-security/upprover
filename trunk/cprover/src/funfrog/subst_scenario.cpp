@@ -192,7 +192,7 @@ unsigned subst_scenariot::get_precision_count(call_tree_nodet& summary, summary_
   return res;
 }
 
-//usage only in upgrade check
+//usage only in UpProver
 void subst_scenariot::process_goto_locations()
 {
 /*  const unsigned goto_sz = goto_ranges.size();
@@ -335,7 +335,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
 }
 
 /*******************************************************************\
- Function: Usage ONly in Upgrade Check
+ Function: Usage ONly in UpProver
 
  Purpose: Writes summary_IDs in omega file (the last field) if IDs are meaningful
 \*******************************************************************/
@@ -359,7 +359,7 @@ void serialize_used_summaries(std::ofstream& out,
   out << std::endl;
 }
 /*******************************************************************\
- Function: Usage ONly in Upgrade Check
+ Function: Usage ONly in UpProver
 
  Purpose: Reads summary_IDs from omega file (the last field) if IDs are meaningful
 \*******************************************************************/
@@ -392,7 +392,7 @@ void deserialize_used_summaries(const std::string& line,
 }
 /*******************************************************************\
  
- Function: Usage ONly in Upgrade Check
+ Function: Usage ONly in UpProver
 
  Purpose: Writes substituting Scenario into a given file a default __omega or
 
@@ -433,7 +433,7 @@ void subst_scenariot::serialize(const std::string& file)
 }
 /*******************************************************************\
  
- Function: Usage ONly in Upgrade Check
+ Function: Usage ONly in UpProver
 
  Purpose:
 

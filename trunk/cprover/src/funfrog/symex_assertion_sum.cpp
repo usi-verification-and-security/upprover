@@ -126,7 +126,7 @@ bool symex_assertion_sumt::prepare_SSA()
 
  Function: symex_assertion_sumt::prepare_subtree_SSA
 
- Purpose:[usage in upgrade check] Generate SSA statements for the subtree of a specific function and
+ Purpose:[usage in UpProver] Generate SSA statements for the subtree of a specific function and
  compare to its summary; Prepare an artificial partition for the negated SUMMARY
     F /\ !SUM
 \*******************************************************************/
@@ -637,7 +637,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
  Outputs:
 
  Purpose: Creates fresh symbols for all the arguments, accessed globals 
- and return value. This is used in upgrade checking to unify symbols 
+ and return value. This is used in UpProver to unify symbols
  of the inverted summary and the function subtree.
 
 \*******************************************************************/

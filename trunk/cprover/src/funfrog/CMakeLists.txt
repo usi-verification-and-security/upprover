@@ -64,11 +64,11 @@ set(HIFROG_SOURCE_FILES
         parser.cpp
         parser_hifrog.cpp
         parser_hifrog.h
-        evolcheck/upgrade_checker.cpp
-        evolcheck/upgrade_checker.h
-        evolcheck/diff.cpp evolcheck/diff.h
-        evolcheck/parser_upprover.h
-        evolcheck/parser_upprover.cpp
+        upprover/summary_validation.cpp
+        upprover/summary_validation.h
+        upprover/diff.cpp upprover/diff.h
+        upprover/parser_upprover.h
+        upprover/parser_upprover.cpp
         )
 
 ################# TESTING #############################################
@@ -95,7 +95,7 @@ add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
 
 add_executable(hifrog main.cpp
 )
-add_executable(upprover evolcheck/main_upprover.cpp
+add_executable(upprover upprover/main_upprover.cpp
 )
 
 target_include_directories(hifrog-lib PUBLIC ${PROJECT_SOURCE_DIR})
