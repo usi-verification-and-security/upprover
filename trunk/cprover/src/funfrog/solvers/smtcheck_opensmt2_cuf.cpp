@@ -52,7 +52,6 @@ void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, co
     bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
 
     const char* msg2 = nullptr;
-    osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
     max_num.setPower2(bitwidth);
 

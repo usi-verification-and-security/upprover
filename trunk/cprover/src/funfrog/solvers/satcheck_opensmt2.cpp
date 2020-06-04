@@ -28,12 +28,14 @@ satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, con
 
 void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    osmt = new Opensmt(opensmt_logic::qf_bool, name);
+    auto config = std::unique_ptr<SMTConfig>(new SMTConfig());
+    const char* msg2 = nullptr;
+    config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
+    assert(strcmp(msg2, "ok") == 0);
+    osmt = new Opensmt(opensmt_logic::qf_bool, name, std::move(config));
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
-    const char* msg = nullptr;
-    osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
-    
+
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
     set_random_seed(solver_options.m_random_seed);

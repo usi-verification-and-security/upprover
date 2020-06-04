@@ -35,20 +35,22 @@ Function: smtcheck_opensmt2t_uf::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_uf::initializeSolver(const solver_optionst solver_options, const char* name)
 {
-  osmt = new Opensmt(opensmt_logic::qf_uf, name);
+  auto config = std::unique_ptr<SMTConfig>(new SMTConfig());
+  const char* msg2 = nullptr;
+  config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
+  assert(strcmp(msg2, "ok") == 0);
+  osmt = new Opensmt(opensmt_logic::qf_uf, name, std::move(config));
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
 
-  const char* msg2 = nullptr;
-  osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
-  assert(strcmp(msg2, "ok") == 0);
+
   
   // Initialize parameters
   this->verbosity = solver_options.m_verbosity;
   set_random_seed(solver_options.m_random_seed);
   
 #ifdef PRODUCE_PROOF  
-  this->itp_euf_algorithm.x = solver_options.m_uf_itp_algorithm;
+    this->itp_euf_algorithm.x = solver_options.m_uf_itp_algorithm;
   
     this->certify = solver_options.m_certify;
     this->reduction = solver_options.m_do_reduce;
