@@ -31,6 +31,6 @@ int main()
 }
 
 //after bootstraping function sum have two summaries sum0 and sum1, but 
-//in upgrade checking only sum0 is used for both function calls. 
+//in update checking only sum0 is used for both function calls. 
 //TODO fix this limitation.
 
