@@ -74,6 +74,7 @@ public:
     void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
 
     std::set<PTRef> get_non_linears() const;
+    int getAtoms( PTRef tr) const;
 #endif
 
     void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;

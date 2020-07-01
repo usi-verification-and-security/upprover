@@ -50,13 +50,13 @@ FlaRef smtcheck_opensmt2t::ptref_to_flaref(PTRef ptl) {
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
 bool smtcheck_opensmt2t::is_assignment_true(FlaRef fr) const
 {
-  if (fr.is_true())
-    return true;
-  else if (fr.is_false())
-    return false;
+    if (fr.is_true())
+        return true;
+    else if (fr.is_false())
+        return false;
 
-  ValPair a_p = mainSolver->getValue(flaref_to_ptref(fr));
-  return ((*a_p.val == *true_str) ^ (fr.sign()));
+    ValPair a_p = mainSolver->getValue(flaref_to_ptref(fr));
+    return ((*a_p.val == *true_str) ^ (fr.sign()));
 }
 
 //debug: print the formula being inserted:  logic->pp(ptr)
@@ -126,26 +126,23 @@ PTRef smtcheck_opensmt2t::constant_to_ptref(const exprt & expr){
 }
 
 #ifdef PRODUCE_PROOF
+/*******************************************************************\
+Function:
+Purpose:Total Summary for each function call
+\*******************************************************************/
 void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
 {
   // KE : interpolant adjustments/remove var indices shall come here
   itp.setInterpolant(ptref);
+//  std::cout <<";;Total Summary associated with the ptref " << ptref.x << " is: \n" << logic->printTerm(ptref) <<"\n";
 }
 
 /*******************************************************************\
-
 Function: smtcheck_opensmt2t::get_interpolant
 
-  Inputs:
-
- Outputs:
-
- Purpose: Extracts the symmetric interpolant of the specified set of
- partitions. This method can be called only after solving the
- the formula with an UNSAT result.
-
- * KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
- *      if the code is too long split to the method - extract_itp, which is now commented (its body).
+ Purpose: Core method for computing interpolants. Extracts the symmetric
+ interpolant of the specified set of partitions. This method can be called
+ only after solving the the formula with an UNSAT result.
 \*******************************************************************/
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants) const
 {   
@@ -178,16 +175,20 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   }
 
   std::vector<PTRef> itp_ptrefs;
+  
 
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);
 
   solver.deleteProofGraph();
-
+//    int atoms;
+//    std::cout <<"###summary size: " << itp_ptrefs.size() <<endl;
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
+//      atoms = getAtoms(itp_ptrefs[i]);
+//      std::cout <<"# theory atoms for this sub-summary: " << atoms <<endl;
       interpolants.push_back(new_itp);
 
 #ifdef DEBUG_SMT_ITP
@@ -200,16 +201,10 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 }
 
 /*******************************************************************\
-
 Function: smtcheck_opensmt2t::can_interpolate
 
-  Inputs:
-
- Outputs:
-
- Purpose: Is the solver ready for interpolation? I.e., the solver was used to 
+Purpose: Is the solver ready for interpolation? I.e., the solver was used to
  decide a problem and the result was UNSAT
-
 \*******************************************************************/
 bool smtcheck_opensmt2t::can_interpolate() const
 {
@@ -218,15 +213,8 @@ bool smtcheck_opensmt2t::can_interpolate() const
 #endif //PRODUCE PROOF
 
 /*******************************************************************\
-
 Function: smtcheck_opensmt2t::solve
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
+Purpose:
 \*******************************************************************/
 
 bool smtcheck_opensmt2t::solve() {
@@ -287,8 +275,6 @@ bool smtcheck_opensmt2t::solve() {
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::getSimpleHeader
-
-  Inputs: -
 
  Outputs: a set of all declarations without variables that used in the smt formula
 
@@ -384,7 +370,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     if (is_cprover_builtins_var(str))
         str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
     
-    //////////////////// TEST TO ASSURE THE NAME IS VALID! ///////////////////// 
+    // TEST TO ASSURE THE NAME IS VALID!
     assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_IO = (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
@@ -392,19 +378,13 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 //    assert("Error: using non-SSA symbol in the SMT encoding"
 //         && (is_L2_SSA_symbol(expr) || is_IO)); // KE: can be new type that we don't take care of yet
     // If appears - please fix the code in partition_target_euqationt
-    // DO NOT COMMNET OUT!!! 
-    ////////////////////////////////////////////////////////////////////////////
-
+    // DO NOT COMMENT OUT!!!
     return str;
 }
 
 /*******************************************************************\
  * 
 Function: smtcheck_opensmt2t::store_new_unsupported_var
-
- Inputs: 
-
- Outputs: 
 
  Purpose: Keep which expressions are not supported and abstracted from 
  * the smt encoding - for convert purpose only (local use)
@@ -418,10 +398,6 @@ void smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRe
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::create_unsupported_uf_call
-
-  Inputs:
-
- Outputs:
 
  Purpose:
 
@@ -448,10 +424,6 @@ PTRef smtcheck_opensmt2t::create_unsupported_uf_call(const exprt &expr)
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::get_function_args
-
-  Inputs:
-
- Outputs:
 
  Purpose:
 
@@ -512,10 +484,6 @@ PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 Function: smtcheck_opensmt2t::to_string_smtlib_datatype
  * getStringSMTlibDatatype -> to_string_smtlib_datatype
 
-  Inputs:
-
- Outputs:
-
  Purpose:
 
  * For exprt, use typet type = expr.type(); // Get the current type
@@ -538,10 +506,6 @@ std::string smtcheck_opensmt2t::to_string_smtlib_datatype(const typet & type)
 Function: smtcheck_opensmt2t::get_smtlib_datatype
  * getSMTlibDatatype --> get_smtlib_datatype
 
-  Inputs:
-
- Outputs:
-
  Purpose:
 
 \*******************************************************************/
@@ -559,7 +523,10 @@ SRef smtcheck_opensmt2t::get_smtlib_datatype(const typet & type)
 
 #ifdef PRODUCE_PROOF
 
-// Returns all literals that are non-linear expressions
+/*******************************************************************\
+Function:
+Purpose:  Returns all literals that are non-linear expressions
+\*******************************************************************/
 std::set<PTRef> smtcheck_opensmt2t::get_non_linears() const
 {
     std::set<PTRef> ret;
@@ -594,7 +561,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
     Tterm & tt = interpolant.getTempl();
     interpolant.setDecider(this);
 
-    // prepare the substituition map how OpenSMT expects it
+    // prepare the substitution map how OpenSMT expects it
     Map<PTRef,PtAsgn,PTRefHash> subst;
     std::unordered_set<std::string> globals;
     for(const auto& expr : common_symbols){
@@ -619,7 +586,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
         subst.insert(original, PtAsgn{ new_var, l_True });
         tt.addArg(new_var);
     }
-    //apply substituition to the interpolant
+    //apply substitution to the interpolant
     PTRef old_root = interpolant.getInterpolant();
     PTRef new_root;
     logic->varsubstitute(old_root, subst, new_root);
@@ -797,4 +764,54 @@ itpt * smtcheck_opensmt2t::create_stub_summary(const std::string & function_name
     ret->getTempl().setName(function_name);
     ret->setInterpolant(logic->getTerm_true());
     return ret;
+}
+
+/*******************************************************************\
+Function: getAtoms
+Purpose: counting theory atoms in function summaries
+\*******************************************************************/
+int smtcheck_opensmt2t::
+getAtoms(PTRef tr) const
+{
+    std::vector<PTRef> atoms;
+    //cache of already visited terms
+    std::unordered_set<PTRef, PTRefHash> seen;
+    std::vector<PTRef> queue;
+    queue.push_back(tr);
+    while (queue.size() != 0)
+    {
+        tr = queue.back();
+        if (seen.find(tr) != seen.end()) {
+            queue.pop_back();
+            continue;
+        }
+
+        if (logic->isBooleanOperator(tr)) { // is it OR/AND term?  I only need to consider children of connectives, no need for going further (or A B C )
+            bool unprocessed_children = false;
+//            if(logic->isAnd(tr)) {
+//                std::cout << ";;conjunct size is:  "<<  logic->getPterm(tr).size() << "\n" ;//<< logic->printTerm(tr) << "\n";
+//            }
+            for (int i = 0; i < logic->getPterm(tr).size(); i++)
+            {
+                PTRef c = logic->getPterm(tr)[i];
+                if (seen.find(c) != seen.end()) continue; //found
+                else { //if not found
+                    queue.push_back(c);
+                    unprocessed_children = true;
+                }
+            }
+            if (unprocessed_children == true) continue;
+        } // if not boolean operator => it is an atom! A | not A
+        queue.pop_back();
+        assert(logic->isBooleanOperator(tr) || logic->hasSortBool(tr)); // MB: we should not go past atoms!
+//        if (!logic->isBooleanOperator(tr) && logic->hasSortBool(tr)) {
+//            atoms.push_back(tr);
+//        }
+        if (!logic->isBoolAtom(tr) && !logic->isTrue(tr) &&  !logic->isBooleanOperator(tr) && logic->hasSortBool(tr)) {
+            atoms.push_back(tr);
+ //           std::cout << "tr atom is:  " <<logic->printTerm(tr)<<"\n";
+        }
+        seen.insert(tr);
+    }
+    return atoms.size();
 }
