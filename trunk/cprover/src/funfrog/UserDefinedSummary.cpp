@@ -72,10 +72,10 @@ void UserDefinedSummaryt::dump_list_templates(
 
     symex.prepare_SSA();
 
-    std::vector<summaryt*> templates;
+    std::vector<itpt_summaryt*> templates;
     equation.fill_function_templates(*decider, templates);
     for(unsigned int i = 0; i < templates.size(); ++i) {
-        smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(templates[i]);
+        smt_itpt_summaryt * smt_summary = dynamic_cast<smt_itpt_summaryt*>(templates[i]);
         if(smt_summary){
             summary_store.insert_summary(smt_summary,smt_summary->getTempl().getName());
 

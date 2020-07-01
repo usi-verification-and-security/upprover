@@ -71,7 +71,7 @@ Function: summary_storet::find_summary
 
 \*******************************************************************/
 
-summaryt& summary_storet::find_summary(summary_idt new_id) const
+itpt_summaryt& summary_storet::find_summary(summary_idt new_id) const
 {
   const nodet& node = find_repr(new_id);
   
@@ -86,10 +86,10 @@ Function: summary_storet::insert_summary
 
  Outputs:
 
- Purpose: Inserts a new summary, summary store takes ownership of the pointer; the passed pointer cannot be used anymore!
-
+ Purpose: Inserts a new summary and associates a new ID to that.
+ Note that summary store takes ownership of the pointer; the passed pointer cannot be used anymore!
 \*******************************************************************/
-summary_idt summary_storet::insert_summary(summaryt * summary_given, const std::string & function_name) {
+summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const std::string & function_name) {
     // Do not add summary if the same is already there
     if(has_summaries(function_name)) {
         const auto & summaries = get_summariesID(function_name);

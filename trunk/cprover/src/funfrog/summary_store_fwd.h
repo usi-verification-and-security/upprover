@@ -14,11 +14,11 @@ class smt_itpt;
 class smt_itp_z3t;
 
 typedef std::size_t summary_idt;
-typedef std::vector<summary_idt> summary_idst;
+typedef std::vector<summary_idt> summary_ids_vect;
 typedef std::unordered_set<summary_idt> summary_ids_sett;
-typedef itpt summaryt;
+typedef itpt itpt_summaryt;
 typedef prop_itpt prop_summaryt;
-typedef smt_itpt smt_summaryt;
+typedef smt_itpt smt_itpt_summaryt;
 typedef smt_itp_z3t smt_summary_z3t;
 
 class summary_storet;

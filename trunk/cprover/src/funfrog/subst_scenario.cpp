@@ -340,16 +340,16 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
  Purpose: Writes summary_IDs in omega file (the last field) if IDs are meaningful
 \*******************************************************************/
 void serialize_used_summaries(std::ofstream& out, 
-        const summary_ids_sett& used_summaries) 
+        const summary_ids_sett& used_summary_IDs)
 {
-  if (used_summaries.empty()) {
+  if (used_summary_IDs.empty()) {
     out << "-" << std::endl;
     return;
   }
 //writing summary_IDs in omega file (the last field)
   bool first = true;
-  for (summary_ids_sett::const_iterator it = used_summaries.begin();
-          it != used_summaries.end(); ++it) {
+  for (summary_ids_sett::const_iterator it = used_summary_IDs.begin();
+       it != used_summary_IDs.end(); ++it) {
     if (first) first = false;
     else {
       out << ","; //if there are more IDs, separate them by ,
@@ -364,9 +364,9 @@ void serialize_used_summaries(std::ofstream& out,
  Purpose: Reads summary_IDs from omega file (the last field) if IDs are meaningful
 \*******************************************************************/
 void deserialize_used_summaries(const std::string& line, 
-        summary_ids_sett& used_summaries) 
+        summary_ids_sett& used_summary_IDs)
 {
-  used_summaries.clear();
+  used_summary_IDs.clear();
   
   if (line.length() == 0)
     return;
@@ -384,7 +384,7 @@ void deserialize_used_summaries(const std::string& line,
     *end++ = 0;
     summary_idt sid = atoi(start);
     
-    used_summaries.insert(sid);
+    used_summary_IDs.insert(sid);
     
     if (last)
       break;
@@ -497,10 +497,10 @@ void subst_scenariot::restore_call_info(
       if (data[(functions.size()-1)*7+4] == "1") { call_site.set_preserved_edge(); }
       if (data[(functions.size()-1)*7+5] == "1") { call_site.set_assertion_in_subtree(); }
       
-      if (data[(functions.size()-1)*7+6] != "-") {   //meaningful used_summaries
-        summary_ids_sett used_summaries;
-        deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summaries);
-        call_site.set_used_summaries(used_summaries);
+      if (data[(functions.size()-1)*7+6] != "-") {   //meaningful summary_IDs
+        summary_ids_sett used_summary_IDs;
+        deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summary_IDs);
+        call_site.set_used_summaries(used_summary_IDs);
       }
 
       const goto_programt &function_body =

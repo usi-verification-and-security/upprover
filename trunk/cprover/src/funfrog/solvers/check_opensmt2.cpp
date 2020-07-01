@@ -78,13 +78,19 @@ Function: check_opensmt2t::close_partition
  Purpose: Closes the interpolation partition by passing its CNF form
  (collected in current_partition) to the solver.
 This method gathers what has been accumulated in current_partition.
+print
+std::cout << "\nInsert in top_level_formulas ready to solve:\n" <<logic->pp(pand) <<std::endl;
+std::ofstream outFormula ("out_formula.smt2", std::ios::out|std::ios::app);
+if(!outFormula.fail()){
+    outFormula<<logic->pp(pand) << endl;
+    outFormula.close();
+}
 \*******************************************************************/
 void check_opensmt2t::close_partition() {
     assert(!last_partition_closed);
     if (!last_partition_closed) {
         // opensmt can handle special cases like 0 or 1 argument properly
         const PTRef pand = logic->mkAnd(current_partition);
-//        std::cout << "\nInsert in top_level_formulas ready to solve:\n" <<logic->pp(pand) <<std::endl;;
         top_level_formulas.push(pand);
         assert((unsigned)top_level_formulas.size() == partition_count);
         current_partition.clear();
@@ -131,7 +137,7 @@ fle_part_idt check_opensmt2t::new_partition() {
 void check_opensmt2t::insert_top_level_formulas() {
     for(auto i = pushed_formulas; i < (unsigned)top_level_formulas.size(); ++i) {
         char *msg = nullptr;
-        mainSolver->insertFormula(top_level_formulas[i], &msg);
+        mainSolver->insertFormula(top_level_formulas[i], &msg); //in osmt a new partition gets generated
         if (msg != nullptr) {
             free(msg); // If there is an error, consider print msg
         }

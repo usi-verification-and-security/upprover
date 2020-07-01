@@ -79,11 +79,11 @@ void partitioning_target_equationt::refine_partition(partition_idt partition_id)
     partitiont& partition = partitions[partition_id];
 
     if(! partition.has_abstract_representation()){
-        throw std::logic_error{"Trying to refine a pertition that was not summarized or stubbed before!"};
+        throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
     }
     partition.remove_abstract_representation();
-    partition.summaries.clear();
-    partition.applicable_summaries.clear();
+    partition.summary_ID_vec.clear();
+    partition.summary_ID_set.clear();
 }
 
 
@@ -92,19 +92,20 @@ void partitioning_target_equationt::fill_summary_partition(partition_idt partiti
 {
     assert(summary_store.has_summaries(function_id));
     if(!summary_store.has_summaries(function_id)){
-        throw std::logic_error{"Trying to set non-existent summaries to a partition for " + function_id};
+        throw std::logic_error{"Trying to set non-existent summary_ids_vec to a partition for " + function_id};
     }
-    auto const & summaries = summary_store.get_summariesID(function_id);
-    assert(!summaries.empty());
+    auto const & summary_ids_vec = summary_store.get_summariesID(function_id);
+    assert(!summary_ids_vec.empty());
 
     partitiont& sum_partition = partitions.at(partition_id);
 
     sum_partition.add_summary_representation();
-    sum_partition.summaries = summaries;
+    sum_partition.summary_ID_vec = summary_ids_vec;
 
-    sum_partition.applicable_summaries.clear();
-    for (unsigned long summary_id : summaries) {
-        sum_partition.applicable_summaries.insert(summary_id);
+    sum_partition.summary_ID_set.clear();
+    //copy summary_ids_vec into summary_ID_set
+    for (unsigned long summary_id : summary_ids_vec) {
+        sum_partition.summary_ID_set.insert(summary_id);
     }
 }
 
@@ -235,8 +236,8 @@ const partitiont* partitioning_target_equationt::find_target_partition(
 
  Outputs:
 
- Purpose: Fill in ids of all the child partitions
-
+ Purpose: Fill in ids of all the child partitions in the subtree
+This is required to create the A-part of interpolation problem
  \*******************************************************************/
 void partitioning_target_equationt::fill_partition_ids(
 		partition_idt partition_id, fle_part_idst& part_ids) {
@@ -253,13 +254,13 @@ void partitioning_target_equationt::fill_partition_ids(
     assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
 
     // Current partition id
-    for(auto id : partition.get_fle_part_ids()){
-        part_ids.push_back(id);
+    for(auto curr_id : partition.get_fle_part_ids()){
+        part_ids.push_back(curr_id);
     }
 
     // Child partition ids
     for (auto child_id : partition.child_ids) {
-        fill_partition_ids(child_id, part_ids);
+        fill_partition_ids(child_id, part_ids); //recursive call
     }
 }
 
@@ -595,9 +596,9 @@ void partitioning_target_equationt::convert_partition_summary(
     unsigned i = 0;
 
     bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
-    unsigned last_summary = partition.applicable_summaries.size() - 1;
+    unsigned last_summary = partition.summary_ID_set.size() - 1;
 
-    for (auto summary_id : partition.applicable_summaries)
+    for (auto summary_id : partition.summary_ID_set)
     {
         auto & summary = summary_store.find_summary(summary_id);
         if ((!is_recursive || last_summary == i++)) {
@@ -610,7 +611,7 @@ void partitioning_target_equationt::convert_partition_summary(
 
 /*******************************************************************
  Function: partitioning_target_equationt::convert_partition
-
+ll
  Inputs:
 
  Outputs:
@@ -736,24 +737,25 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
     // Prepare the interpolation task. NOTE: ignore the root partition!
     unsigned valid_tasks = 0;
 
-    // Clear the used summaries
+    // Clear the summary_ID_set
     for (auto const & partition : partitions){
-        partition.get_iface().call_tree_node.clear_used_summaries();
+        partition.get_iface().call_tree_node.clear_summaries();
     }
 
     // Find partitions suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
-        partitiont& partition = partitions[i];
+        partitiont& current_partition = partitions[i];
 
         // Mark the used summaries
-        if (partition.has_summary_representation() && !(partition.ignore)) {
-            for (auto summary_id : partition.applicable_summaries) {
-                partition.get_iface().call_tree_node.add_used_summary(summary_id);
+        if (current_partition.has_summary_representation() && !(current_partition.ignore)) {
+            for (auto summary_id : current_partition.summary_ID_set) {
+                current_partition.get_iface().call_tree_node.add_summary_IDs(summary_id);
             }
         }
 
-        if (!skip_partition(partition, store_summaries_with_assertion)){
+        if (!skip_partition(current_partition, store_summaries_with_assertion)){
             valid_tasks++;
+            std::cout << ";;for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
         }
     }
 
@@ -762,12 +764,14 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         return;
 
     interpolation_taskt itp_task(valid_tasks);
-
+    //creates interpolation tasks that goes over the partitions and collects ids of partitions in subtree
+    //that forms the A-part in interpolation problem ( pid: partitionID , tid: taskID).
+    //for every partition you take the subtree of that partition as A-part and the rest is implicitly treated as B in opensmt
     for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
         partitiont& partition = partitions[pid];
-
+        // for every partition u take the subtree of that partition
         if (!skip_partition(partition, store_summaries_with_assertion)){
-            fill_partition_ids(pid, itp_task[tid++]);
+            fill_partition_ids(pid, itp_task[tid++]);   //recursively fills childs id
         }
     }
 
@@ -817,9 +821,9 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         if (itp->is_trivial()) {
             continue;
         }
-        // Store the interpolant
+        // Store the interpolant in summary_storet and asks a new ID for each summary
         auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
-        partition.get_iface().call_tree_node.add_used_summary(new_id);
+        partition.get_iface().call_tree_node.add_summary_IDs(new_id);
         // Update the precision information for omega deserialization; which partition
         //is now summarized?
         partition.get_iface().call_tree_node.set_summary();
@@ -901,14 +905,14 @@ void partitioning_target_equationt::convert_partition_assignments(convertort &co
 }
 
 void partitioning_target_equationt::fill_function_templates(interpolating_solvert & interpolator,
-                                                            std::vector<summaryt *> & templates) {
+                                                            std::vector<itpt_summaryt *> & templates) {
     for (partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it) {
         auto & partition_iface = it->get_iface();
         auto iface_symbols = partition_iface.get_iface_symbols();
         std::string function_name = partition_iface.function_id.c_str();
         if(skip_partition_with_name(function_name)) { continue; }
 
-        summaryt * sum = interpolator.create_stub_summary(function_name);
+        itpt_summaryt * sum = interpolator.create_stub_summary(function_name);
         if (sum) {
             interpolator.generalize_summary(sum, iface_symbols);
         }

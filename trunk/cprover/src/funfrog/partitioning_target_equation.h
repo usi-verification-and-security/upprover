@@ -100,9 +100,9 @@ public:
   
  //for upgrade check; TODO: needs investigation
 //  void fill_inverted_summary_partition(partition_idt partition_id,
-//                                         const summary_idst& summaries, const summary_ids_sett& used_summaries);
+//                                         const summary_idst& summaries, const summary_ids_sett& summary_IDs);
 
-  void fill_function_templates(interpolating_solvert &interpolator, std::vector<summaryt*>& templates);
+  void fill_function_templates(interpolating_solvert &interpolator, std::vector<itpt_summaryt*>& templates);
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}

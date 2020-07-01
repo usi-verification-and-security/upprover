@@ -45,20 +45,21 @@ public:
 
   const goto_programt::const_targett* get_target();
 
-  const summary_ids_sett& get_used_summaries() const { return used_summaries; }
+  const summary_ids_sett& get_used_summaries() const { return summary_ID_set; }
   void set_used_summaries(summary_ids_sett& other)  { 
-    used_summaries.swap(other); 
+    summary_ID_set.swap(other);
   }
-  void add_used_summary(summary_idt id) { used_summaries.insert(id); }
-  void clear_used_summaries() { used_summaries.clear(); }
+  void add_summary_IDs(summary_idt id) { summary_ID_set.insert(id); }
+  
+  void clear_summaries() { summary_ID_set.clear(); }
   
 // remove ID of summary from summary_ids_sett
   void remove_summaryID(summary_idt id_to_delete) {
-    //used_summaries.erase(used_summaries.find(id_to_delete));
-    std::unordered_set<summary_idt>::iterator it = used_summaries.find(id_to_delete);
-    if(it != used_summaries.end())
+    //summary_IDs.erase(summary_IDs.find(id_to_delete));
+    std::unordered_set<summary_idt>::iterator it = summary_ID_set.find(id_to_delete);
+    if(it != summary_ID_set.end())
     {
-        used_summaries.erase(it);
+        summary_ID_set.erase(it);
     }
     
   }
@@ -154,7 +155,7 @@ private:
   locationst enabled_assertions;
   irep_idt function_id;
   call_tree_nodet *parent;
-  summary_ids_sett used_summaries;
+  summary_ids_sett summary_ID_set;
   bool assertion_in_subtree;
   summary_precisiont precision;
   unsigned call_location;

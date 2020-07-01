@@ -133,7 +133,7 @@ void difft :: stub_new_summs(unsigned loc){
         callhistory_new.push_back("0");   //Is_preserved_node?
         callhistory_new.push_back("1");   //Is_preserved_edge?    SA: Where is it useful?
         callhistory_new.push_back("0");   //has assertion in subtree
-        callhistory_new.push_back("-");  //later a proper used_summaries will be pushed
+        callhistory_new.push_back("-");  //later a proper summary_IDs will be pushed
     }
     std::vector <unsigned> calls = calltree_new[loc];
     for (unsigned i = 0; i < calls.size(); i++){
@@ -501,7 +501,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
             if (!is_new_node){     //if locs already has been visited it is -1
                 for (unsigned j = 0; j < ENTRIES_PER_NODE; j++){
                     if (j != PRESERVED_EDGE)
-                        //when j=6 used_summaries are copied
+                        //when j=6 used summary_IDs are copied
                         callhistory_new[i * ENTRIES_PER_NODE + j] = callhistory_old[old_call_tree_node_id * ENTRIES_PER_NODE + j];
                 }  // End of Forloop j
             } else {

@@ -106,9 +106,9 @@ public:
  // =========== PARTITION FLAGS ==============================
 
   // All summaries for the associated function
-  summary_idst summaries;
+  summary_ids_vect summary_ID_vec;
   // Summaries that are applicable after slicing //MB: TODO investigate this
-  summary_ids_sett applicable_summaries;
+  summary_ids_sett summary_ID_set;
 
 //  fle_part_idt fle_part_id;
   partition_idt parent_id;
@@ -120,6 +120,7 @@ public:
 private:
     partition_representation representation;
     partition_ifacet * partition_iface;
+    //for remembering the index of partition
     std::vector<fle_part_idt> fle_part_indices;
 
 };

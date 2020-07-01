@@ -36,10 +36,10 @@ public:
   void serialize(std::string file_name);
     
   // Inserts a new summary, the given summary is invalidated
-  virtual summary_idt insert_summary(summaryt *summary_given, const std::string & function_name);
+  virtual summary_idt insert_summary(itpt_summaryt *summary_given, const std::string & function_name);
   
   // Finds the representative of the given summary
-  summaryt& find_summary(summary_idt new_id) const;
+  itpt_summaryt& find_summary(summary_idt new_id) const;
   
   unsigned n_of_summaries() { return store.size(); }
   std::size_t get_next_id(const std::string &fname);
@@ -54,7 +54,7 @@ public:
       return it != function_to_summaries.end() && !it->second.empty();
   }
 
-  const summary_idst& get_summariesID(const std::string &function_name) const{
+  const summary_ids_vect& get_summariesID(const std::string &function_name) const{
       return function_to_summaries.at(function_name);
   }
   
@@ -83,7 +83,7 @@ protected:
     
 //    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }   // C'tor initializes ID without summary
 
-    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, id{_repr_id}  { }  //C'tor initializes ID with Summary
+    nodet(summary_idt _repr_id, itpt_summaryt * summary) : summary{summary}, id{_repr_id}  { }  //C'tor initializes ID with Summary
 
     nodet() = delete;
     
@@ -97,7 +97,7 @@ protected:
     nodet& operator=(nodet&& other) = default;
     
     // The summary itself
-    std::unique_ptr<summaryt> summary;
+    std::unique_ptr<itpt_summaryt> summary;
     // Keeps id of the representative (every id is (should be) representative!)
     summary_idt id;
   };
@@ -113,7 +113,7 @@ protected:
   using storet = std::vector<nodet>;
   storet store;
 
-  std::unordered_map<std::string, summary_idst> function_to_summaries;
+  std::unordered_map<std::string, summary_ids_vect> function_to_summaries;
 };
 
 #endif

@@ -88,7 +88,7 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
   for (auto & partition : equation.get_partitions())
   {
     if (partition.has_summary_representation()) {
-      partition.applicable_summaries.clear();
+      partition.summary_ID_set.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
       if (partition.get_iface().assertion_in_subtree) {
@@ -127,8 +127,7 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       // FIXME: Too strict...the assumption might not be on path to any 
       // assertion
       for (assume_mapt::iterator it = ass_rng.first;
-              it != ass_rng.second;
-              ++it) {
+                                 it != ass_rng.second; ++it) {
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
@@ -141,29 +140,29 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
       assert(partition.has_summary_representation());
-      const summary_idst& itps = partition.summaries;
+      const summary_ids_vect& itps = partition.summary_ID_vec;
       //unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
       // (this may be optimized by precomputation)
       for (unsigned long summary_id : itps) {
-          // Already used summary
-        if (partition.applicable_summaries.find(summary_id) != 
-                partition.applicable_summaries.end())
+        // Already used summary
+        if (partition.summary_ID_set.find(summary_id) !=
+            partition.summary_ID_set.end())
           continue;
         
-        summaryt& summary = summary_store.find_summary(summary_id);
+        itpt_summaryt& summary = summary_store.find_summary(summary_id);
         // Does not restrict the given symbol
         //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
         //  continue;
         
         // Yes it is relevant, add only symbols constrained by the summary
-        partition.applicable_summaries.insert(summary_id);
+        partition.summary_ID_set.insert(summary_id);
         for (unsigned idx = 0; idx < partition_iface.argument_symbols.size(); ++idx) {
-            if(summary.usesVar(idx))
-            {
-                get_symbols(partition_iface.argument_symbols[idx], depends);
-            }
+          if(summary.usesVar(idx))
+          {
+            get_symbols(partition_iface.argument_symbols[idx], depends);
+          }
         }
       }
       partition.ignore = false;
@@ -178,8 +177,7 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       continue;
     
     bool ignore = true;
-    for(auto it = partition.start_it;
-          it != partition.end_it; ++it) {
+    for(auto it = partition.start_it; it != partition.end_it; ++it) {
       if (!it->ignore) {
         ignore = false;
         break;
@@ -390,20 +388,19 @@ void partitioning_slicet::mark_summary_symbols(const summary_storet & summary_st
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
   const partition_ifacet& partition_iface = partition.get_iface();
-  const summary_idst& itps = partition.summaries;
+  const summary_ids_vect& itps = partition.summary_ID_vec;
   auto iface_symbols = partition_iface.get_iface_symbols();
   // Mark all the used symbols in all summaries
   for (auto summary_id : itps) {
-    auto& summary = summary_store.find_summary(summary_id);
-
+//    auto& summary = summary_store.find_summary(summary_id);
     // Add only symbols constrained by the summary
-    partition.applicable_summaries.insert(summary_id);
+    partition.summary_ID_set.insert(summary_id);
 
-      for (unsigned idx = 0; idx < iface_symbols.size(); ++idx)
-      {
-          if(summary.usesVar(idx))
-              get_symbols(iface_symbols[idx], depends);
-      }
+    for (unsigned idx = 0; idx < iface_symbols.size(); ++idx)
+    {
+//    if(summary.usesVar(idx)) //always True remove the condition
+      get_symbols(iface_symbols[idx], depends);
+    }
   }
 }
 

@@ -39,7 +39,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                 // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
                 // we have added previously; Also note that this will work only if functions in files have different names!
                 for (int i = old_function_count; i < functions.size(); ++i) {
-                    auto itp = new smt_summaryt();
+                    auto itp = new smt_itpt_summaryt();
                     // only copy assignment work correctly, copy constructor do not at the moment
                     itp->getTempl() = functions[i];
                     Tterm & tterm = itp->getTempl();
@@ -69,11 +69,11 @@ Function: summary_storet::insert_summary
  Outputs:
 
  Purpose: Inserts a new summary, summary store takes ownership of the pointer (itpt*)
-
+            summary_given --> ID
 \*******************************************************************/
 
-summary_idt smt_summary_storet::insert_summary(summaryt *summary_given, const std::string & function_name) {
-    smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary_given);
+summary_idt smt_summary_storet::insert_summary(itpt_summaryt *summary_given, const std::string & function_name) {
+    smt_itpt_summaryt * smt_summary = dynamic_cast<smt_itpt_summaryt*>(summary_given);
     if(!smt_summary){
         std::string msg = "Error during an insertion of a summary into the summary store, not compatible type!\n";
         throw std::logic_error(msg);
