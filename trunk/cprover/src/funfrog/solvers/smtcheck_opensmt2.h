@@ -65,6 +65,8 @@ public:
     virtual bool can_interpolate() const override;
 
     virtual itpt * create_stub_summary(const std::string & function_name) override;
+    
+    smt_itpt * create_partial_summary(const std::string & function_name, PTRef ptr);
 
     // Extract interpolant form OpenSMT files/data
     void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
@@ -75,6 +77,7 @@ public:
 
     std::set<PTRef> get_non_linears() const;
     int getAtoms( PTRef tr) const;
+    bool isConjunctive(PTRef ptref) const;
 #endif
 
     void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;

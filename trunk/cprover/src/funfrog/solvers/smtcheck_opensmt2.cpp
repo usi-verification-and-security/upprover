@@ -765,6 +765,14 @@ itpt * smtcheck_opensmt2t::create_stub_summary(const std::string & function_name
     ret->setInterpolant(logic->getTerm_true());
     return ret;
 }
+/*******************************************************************\
+Function:
+Purpose:
+\*******************************************************************/
+bool smtcheck_opensmt2t::isConjunctive(PTRef ptr) const
+{
+    return logic->isAnd(ptr);
+}
 
 /*******************************************************************\
 Function: getAtoms
@@ -814,4 +822,16 @@ getAtoms(PTRef tr) const
         seen.insert(tr);
     }
     return atoms.size();
+}
+/*******************************************************************\
+Function:
+Purpose: create a summary after dropping conjuncts;
+ associate PTRef to function name
+\*******************************************************************/
+smt_itpt * smtcheck_opensmt2t::create_partial_summary(const std::string & function_name, PTRef ptr) {
+    auto partial_sum = new smt_itpt();
+    partial_sum->setDecider(this);
+    partial_sum->getTempl().setName(function_name);
+    partial_sum->setInterpolant(ptr);
+    return partial_sum;
 }
