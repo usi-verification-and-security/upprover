@@ -85,7 +85,7 @@ Function: summary_storet::insert_summary
   Inputs:
 
  Outputs:
-
+ base functionality
  Purpose: Inserts a new summary and associates a new ID to that.
  Note that summary store takes ownership of the pointer; the passed pointer cannot be used anymore!
 \*******************************************************************/

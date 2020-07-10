@@ -78,6 +78,7 @@ bool launch_upprover(
     }
     unsigned long max_mem_used;
     summary_validationt upg_checker(goto_model_new, options, message_handler, max_mem_used);
+    //main functionality
     res_diff = upg_checker.call_graph_traversal();
     after = timestamp();
     msg.status() << "TOTAL SUMMARY VALIDATION TIME: " << time_gap(after,before) << msg.eom;
@@ -102,7 +103,7 @@ bool launch_upprover(
 //    b. If the edge is changed, propagate check upwards (we don't know which summary
 //       to check).
 //
-  //summaryt& summary = summary_store->find_summary(*it);
+  //itpt_summaryt& summary = summary_store->find_summary(*it);
   //summary.print(std::cout);
 \*******************************************************************/
 /*******************************************************************\
@@ -136,7 +137,7 @@ bool summary_validationt::call_graph_traversal()
     std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
     auto before_iteration_over_functions = timestamp();
-    //iterate over functions in reverse order of DFS, from node with the largest call location
+    //iterate over functions in reverse order of Pre-order traversal, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
         std::string function_name = current_node.get_function_id().c_str();
@@ -215,12 +216,51 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
         const summary_idt single_sumID = *(node.get_used_summaries().begin());
 //      status() << "size of set of ids: " <<node.get_used_summaries().size() << "   single_sumID: " << single_sumID <<eom;
 //      print summary-in-use in the console
-//      summaryt& currentSum = summary_store->find_summary(single_sumID);
+//      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
         validated = validate_summary(node , single_sumID);
         if (!validated) {
             //invalidates summary for call tree node -> remove summary_id and set precision
             //                                       -> delete summary from summary store
+            itpt_summaryt& currentSum_total = summary_store->find_summary(single_sumID);
+            smt_itpt_summaryt* smt_sum_total = dynamic_cast<smt_itpt_summaryt*>(&currentSum_total);
+            PTRef currentSum_PTRef = smt_sum_total->getInterpolant();
+            //first we need to have access to the solver
+            smtcheck_opensmt2t* solver = dynamic_cast<smtcheck_opensmt2t*>(this->decider->get_solver());
+            assert(solver);
+            //if summary is conjunctive -- logic is not prop. Note: summary of each function has single ID and single PTref
+            //drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID;remove old summary
+          if(solver->isConjunctive(currentSum_PTRef)) {
+                std::cout <<"it's conjunctive!" <<"\n";
+                //iterate over conjuncts
+                for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
+                    PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
+                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->printTerm(c) <<"\n";
+                    smt_itpt_summaryt* sub_sum =  solver->create_partial_summary(node.get_function_id().c_str(), c);
+                    //copy with new body
+                    sub_sum->getTempl().setBody(c);
+                    //get the template of full summary and use it in the one
+                    auto const& args = smt_sum_total->getTempl().getArgs();
+                    //change the body of that template
+                    for (PTRef arg : args) {
+                        sub_sum->getTempl().addArg(arg);
+                    }
+                    
+//                    std::vector<symbol_exprt> iface_symbols;
+//                    //generalize ITP
+//                    solver->generalize_summary(sub_sum, iface_symbols); //not sure about this if needed??
+//                    get ID for new sub-summary
+                    auto sub_sumID  = summary_store->insert_summary(sub_sum,node.get_function_id().c_str());
+                    //store summary in the file
+                    std::string summary_file = options.get_option(HiFrogOptions::SAVE_FILE);
+                    //create empty summary file
+                    std::ofstream out{summary_file};
+                    //write whole summary from summary store
+                    summary_store->serialize(out);
+                    //validate new sub summary
+                    validate_summary(node, sub_sumID);
+                }
+          }
             node.remove_summaryID(single_sumID);
             node.set_inline();
 //          summary_store->remove_summary(single_sumID);
@@ -276,7 +316,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             message_handler, omega.get_last_assertion_loc()};
 
     bool assertion_holds = prepareSSA(symex);
-
+    //trivial case without actual solving
     if (assertion_holds){
         report_success();
         return true;

@@ -66,8 +66,8 @@ Function: summary_storet::insert_summary
 
   Inputs:
 
- Outputs:
-
+ Outputs: summary_idt
+derived class of summary_storet
  Purpose: Inserts a new summary, summary store takes ownership of the pointer (itpt*)
             summary_given --> ID
 \*******************************************************************/
