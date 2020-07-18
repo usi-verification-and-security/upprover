@@ -33,7 +33,7 @@ public:
 
 protected:
     // TODO: figure out better way how to store the interpolants
-    Tterm templ;
+    Tterm templ;  //Tterm has 3 main features:   char* name; vec<PTRef> args; PTRef body;
 
     smtcheck_opensmt2t *m_decider;
 

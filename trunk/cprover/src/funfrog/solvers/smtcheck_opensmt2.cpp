@@ -11,7 +11,6 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include "../utils/naming_helpers.h"
 #include <funfrog/utils/containers_utils.h>
 #include <funfrog/utils/SummaryInvalidException.h>
-
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 using namespace std;
@@ -584,6 +583,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
 //        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
 //        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
         subst.insert(original, PtAsgn{ new_var, l_True });
+        //fill argument of summaries
         tt.addArg(new_var);
     }
     //apply substitution to the interpolant
@@ -594,6 +594,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
 //    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
 //    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
     interpolant.setInterpolant(new_root);
+    //the only place to set the body of summary
     tt.setBody(new_root);
 }
 #endif // PRODUCE_PROOF
@@ -828,10 +829,20 @@ Function:
 Purpose: create a summary after dropping conjuncts;
  associate PTRef to function name
 \*******************************************************************/
-smt_itpt * smtcheck_opensmt2t::create_partial_summary(const std::string & function_name, PTRef ptr) {
-    auto partial_sum = new smt_itpt();
-    partial_sum->setDecider(this);
-    partial_sum->getTempl().setName(function_name);
-    partial_sum->setInterpolant(ptr);
-    return partial_sum;
+smt_itpt * smtcheck_opensmt2t::create_partial_summary(smt_itpt_summaryt* total_sum, const std::string & function_name, PTRef ptr) {
+    auto sub_sum = new smt_itpt();
+    sub_sum->setDecider(this);
+    sub_sum->setInterpolant(ptr);
+//need to fill Template with name, body, args
+    sub_sum->getTempl().setName(function_name);
+    //for sub_sum we can use the template of sum_total that was filled in generalize_summary(),
+    //copy with new body
+    sub_sum->getTempl().setBody(ptr);
+    //get the args of full summary and use it in the sub-summary
+    auto const& sum_tot_args = total_sum->getTempl().getArgs();
+    for(PTRef arg : sum_tot_args){
+        sub_sum->getTempl().addArg(arg);
+    }
+    sub_sum->serialize(std::cout);
+    return sub_sum;
 }

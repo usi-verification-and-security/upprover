@@ -223,8 +223,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
             //invalidates summary for call tree node -> remove summary_id and set precision
             //                                       -> delete summary from summary store
             itpt_summaryt& currentSum_total = summary_store->find_summary(single_sumID);
-            smt_itpt_summaryt* smt_sum_total = dynamic_cast<smt_itpt_summaryt*>(&currentSum_total);
-            PTRef currentSum_PTRef = smt_sum_total->getInterpolant();
+            smt_itpt_summaryt* sum_total = dynamic_cast<smt_itpt_summaryt*>(&currentSum_total);
+            PTRef currentSum_PTRef = sum_total->getInterpolant();
             //first we need to have access to the solver
             smtcheck_opensmt2t* solver = dynamic_cast<smtcheck_opensmt2t*>(this->decider->get_solver());
             assert(solver);
@@ -236,20 +236,9 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
                     PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
                     std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->printTerm(c) <<"\n";
-                    smt_itpt_summaryt* sub_sum =  solver->create_partial_summary(node.get_function_id().c_str(), c);
-                    //copy with new body
-                    sub_sum->getTempl().setBody(c);
-                    //get the template of full summary and use it in the one
-                    auto const& args = smt_sum_total->getTempl().getArgs();
-                    //change the body of that template
-                    for (PTRef arg : args) {
-                        sub_sum->getTempl().addArg(arg);
-                    }
-                    
-//                    std::vector<symbol_exprt> iface_symbols;
-//                    //generalize ITP
-//                    solver->generalize_summary(sub_sum, iface_symbols); //not sure about this if needed??
-//                    get ID for new sub-summary
+                    //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
+                    smt_itpt_summaryt* sub_sum =  solver->create_partial_summary(sum_total, node.get_function_id().c_str(), c);
+//                  get ID for new sub-summary
                     auto sub_sumID  = summary_store->insert_summary(sub_sum,node.get_function_id().c_str());
                     //store summary in the file
                     std::string summary_file = options.get_option(HiFrogOptions::SAVE_FILE);

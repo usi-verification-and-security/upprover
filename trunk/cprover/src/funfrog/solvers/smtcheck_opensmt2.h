@@ -15,6 +15,7 @@ Module: Wrapper for OpenSMT2
 #include <solvers/prop/literal.h>
 
 #include <map>
+#include <funfrog/summary_store_fwd.h>
 
 class smt_itpt;
 class symbol_exprt;
@@ -66,7 +67,7 @@ public:
 
     virtual itpt * create_stub_summary(const std::string & function_name) override;
     
-    smt_itpt * create_partial_summary(const std::string & function_name, PTRef ptr);
+    smt_itpt * create_partial_summary(smt_itpt_summaryt* sum_total, const std::string & function_name, PTRef ptr);
 
     // Extract interpolant form OpenSMT files/data
     void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
