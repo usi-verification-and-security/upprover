@@ -12,6 +12,9 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include <funfrog/utils/containers_utils.h>
 #include <funfrog/utils/SummaryInvalidException.h>
 
+#include <smt2newcontext.h>
+#include <Interpret.h>
+
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 using namespace std;
@@ -797,4 +800,313 @@ itpt * smtcheck_opensmt2t::create_stub_summary(const std::string & function_name
     ret->getTempl().setName(function_name);
     ret->setInterpolant(logic->getTerm_true());
     return ret;
+}
+
+bool smtcheck_opensmt2t::read_formula_from_file(const string & file_name) {
+    FILE *f;
+    if ((f = fopen(file_name.c_str(), "rt")) == NULL) {
+        return false;
+    }
+    simple_interpretert interpreter(*logic);
+    interpreter.interpretFile(f);
+    auto const & readTemplates = interpreter.getTemplates();
+    for (auto const& funTemplate : readTemplates) {
+        this->summary_templates.push(funTemplate);
+    }
+    return true;
+}
+
+void simple_interpretert::interpretFile(FILE * file) {
+    if (file == nullptr) { return; }
+    Smt2newContext context(file);
+    int rval = smt2newparse(&context);
+
+    if (rval != 0) { return; }
+    const ASTNode* r = context.getRoot();
+    for (auto i = r->children->begin(); i != r->children->end(); i++) {
+        interpretCommand(**i);
+        delete *i;
+        *i = nullptr;
+    }
+
+}
+
+void simple_interpretert::interpretCommand(ASTNode & node) {
+    assert(node.getType() == CMD_T);
+    const smt2token cmd = node.getToken();
+    switch (cmd.x) {
+        case t_declarefun:
+        {
+            declareFun(node);
+            break;
+        }
+        case t_definefun:
+        {
+            defineFun(node);
+            break;
+        }
+        case t_declaresort:
+        {
+            char* name = buildSortName(node);
+            if (not logic.containsSort(name)) {
+                char* msg;
+                logic.declareSort(name, &msg);
+            }
+            free(name);
+            break;
+        }
+        case t_declareconst:
+        {
+            declareConst(node);
+            break;
+        }
+        default: // do nothing for other commands
+            break;
+    }
+}
+
+void simple_interpretert::defineFun(ASTNode & node) {
+    auto it = node.children->begin();
+    ASTNode& name_node = **(it++);
+    ASTNode& args_node = **(it++);
+    ASTNode& ret_node  = **(it++);
+    ASTNode& term_node = **(it++);
+    assert(it == node.children->end());
+
+    const char* fname = name_node.getValue();
+
+    // Get the argument sorts
+    vec<SRef> arg_sorts;
+    vec<PTRef> arg_trs;
+    for (auto it2 = args_node.children->begin(); it2 != args_node.children->end(); it2++) {
+        string varName = (**it2).getValue();
+        auto varC = (**it2).children->begin();
+        auto varCC = (**varC).children->begin();
+        string sortName = (**varCC).getValue();
+
+        assert(logic.containsSort(sortName.c_str()));
+        if (logic.containsSort(sortName.c_str())) {
+            arg_sorts.push(logic.getSortRef(sortName.c_str()));
+            PTRef pvar = logic.mkVar(arg_sorts.last(), varName.c_str());
+            arg_trs.push(pvar);
+        }
+        else {
+            throw std::logic_error("Error in parsing summary file");
+        }
+    }
+
+    // The return sort
+    char* rsort_name = buildSortName(ret_node);
+    SRef ret_sort;
+    assert(logic.containsSort(rsort_name));
+    if (logic.containsSort(rsort_name)) {
+        ret_sort = logic.getSortRef(rsort_name);
+        free(rsort_name);
+    } else {
+        throw std::logic_error("Error in parsing summary file");
+    }
+
+    sstat status;
+    vec<LetFrame> let_branch;
+    PTRef tr = parseTerm(term_node, let_branch);
+    if (tr == PTRef_Undef) {
+        throw std::logic_error("Error in parsing summary file");
+    }
+    else if (logic.getSortRef(tr) != ret_sort) {
+        throw std::logic_error("Error in parsing summary file");
+    }
+    this->templates.push();
+    Tterm& t = templates.last();
+    t.setName(fname);
+    t.setBody(tr);
+    for (int i = 0; i < arg_trs.size(); i++) {
+        t.addArg(arg_trs[i]);
+    }
+}
+
+void simple_interpretert::declareFun(ASTNode & node) {
+    auto it = node.children->begin();
+    ASTNode& name_node = **(it++);
+    ASTNode& args_node = **(it++);
+    ASTNode& ret_node  = **(it++);
+    assert(it == node.children->end());
+
+    const char* fname = name_node.getValue();
+
+    vec<SRef> args;
+
+    char* name = buildSortName(ret_node);
+
+    if (logic.containsSort(name)) {
+        SRef sr = logic.getSortRef(name);
+        args.push(sr);
+        free(name);
+    } else {
+        throw std::logic_error("Error in parsing summary file");
+    }
+    for (auto it2 = args_node.children->begin(); it2 != args_node.children->end(); it2++) {
+        char* name = buildSortName(**it2);
+        if (logic.containsSort(name)) {
+            args.push(logic.getSortRef(name));
+            free(name);
+        }
+        else {
+            throw std::logic_error("Error in parsing summary file");
+        }
+    }
+    char* msg;
+    SRef rsort = args[0];
+    vec<SRef> args2;
+
+    for (int i = 1; i < args.size(); i++)
+        args2.push(args[i]);
+
+    SymRef rval = logic.declareFun(fname, rsort, args2, &msg);
+
+    if (rval == SymRef_Undef) {
+        throw std::logic_error("Error in parsing summary file");
+    }
+}
+
+PTRef simple_interpretert::parseTerm(const ASTNode & term, vec<LetFrame> & let_branch) {
+    ASTType t = term.getType();
+    if (t == TERM_T) {
+        const char* name = (**(term.children->begin())).getValue();
+        const char* msg;
+        vec<SymRef> params;
+        PTRef tr = logic.mkConst(name, &msg);
+        if (tr == PTRef_Undef) {
+            throw std::logic_error("Error in parsing summary file");
+        }
+        return tr;
+    }
+
+    else if (t == QID_T) {
+        const char* name = (**(term.children->begin())).getValue();
+        PTRef tr = letNameResolve(name, let_branch);
+        char* msg = NULL;
+        if (tr != PTRef_Undef) {
+            return tr;
+        }
+        vec<PTRef> empty;
+        tr = logic.resolveTerm(name, empty, &msg);
+        if (tr == PTRef_Undef) {
+            throw std::logic_error("Error in parsing summary file");
+        }
+        free(msg);
+        return tr;
+    }
+
+    else if ( t == LQID_T ) {
+        // Multi-argument term
+        auto node_iter = term.children->begin();
+        vec<PTRef> args;
+        const char* name = (**node_iter).getValue(); node_iter++;
+        // Parse the arguments
+        for (; node_iter != term.children->end(); node_iter++) {
+            PTRef arg_term = parseTerm(**node_iter, let_branch);
+            if (arg_term == PTRef_Undef)
+                return PTRef_Undef;
+            else
+                args.push(arg_term);
+        }
+        assert(args.size() > 0);
+        char* msg = NULL;
+        PTRef tr = PTRef_Undef;
+        tr = logic.resolveTerm(name, args, &msg);
+        if (tr == PTRef_Undef) {
+            throw std::logic_error("Error in parsing summary file");
+        }
+        return tr;
+    }
+
+    else if (t == LET_T) {
+        auto ch = term.children->begin();
+        auto vbl = (**ch).children->begin();
+        let_branch.push(); // The next scope, where my vars will be defined
+        vec<PTRef> tmp_args;
+        vec<char*> names;
+        // First read the term declarations in the let statement
+        while (vbl != (**ch).children->end()) {
+            PTRef let_tr = parseTerm(**((**vbl).children->begin()), let_branch);
+            if (let_tr == PTRef_Undef) return PTRef_Undef;
+            tmp_args.push(let_tr);
+            char* name = strdup((**vbl).getValue());
+            names.push(name);
+            vbl++;
+        }
+        // Only then insert them to the table
+        for (int i = 0; i < tmp_args.size(); i++) {
+            if (addLetName(names[i], tmp_args[i], let_branch[let_branch.size()-1]) == false) {
+                for (int j = 0; j < names.size(); j++) free(names[j]);
+                throw std::logic_error("Error in parsing summary file");
+            }
+            assert(let_branch[let_branch.size()-1].contains(names[i]));
+        }
+        ch++;
+        // This is now constructed with the let declarations context in let_branch
+        PTRef tr = parseTerm(**(ch), let_branch);
+        if (tr == PTRef_Undef) {
+            for (int i = 0; i < names.size(); i++) free(names[i]);
+            throw std::logic_error("Error in parsing summary file");
+        }
+        let_branch.pop(); // Now the scope is unavailable for us
+        for (int i = 0; i < names.size(); i++)
+            free(names[i]);
+        return tr;
+    }
+    else {
+        throw std::logic_error("Unsupported operation while reading summary file");
+    }
+    return PTRef_Undef;
+}
+
+bool simple_interpretert::addLetName(const char * s, const PTRef tr, LetFrame & frame) {
+    if (frame.contains(s)) {
+        return false;
+    }
+    if (logic.hasSym(s) && logic.getSym(logic.symNameToRef(s)[0]).noScoping()) {
+        return false;
+    }
+    frame.insert(s, tr);
+    return true;
+}
+
+PTRef simple_interpretert::letNameResolve(const char * s, const vec<LetFrame> & frame) const {
+    for (int i = frame.size()-1; i >= 0; i--) {
+        if (frame[i].contains(s)) {
+            PTRef tref = frame[i][s];
+            return tref;
+        }
+    }
+    return PTRef_Undef;
+}
+
+char * simple_interpretert::buildSortName(ASTNode & n) {
+    auto it = n.children->begin();
+    char* canon_name;
+    int written = asprintf(&canon_name, "%s", (**it).getValue());
+    assert(written >= 0); (void)written;
+    return canon_name;
+}
+
+void simple_interpretert::declareConst(ASTNode & n) {
+    auto it = n.children->begin();
+    ASTNode& name_node = **(it++);
+    it++; // args_node
+    ASTNode& ret_node = **(it++);
+    const char* fname = name_node.getValue();
+    char* name = buildSortName(ret_node);
+    SRef ret_sort;
+    if (logic.containsSort(name)) {
+        ret_sort = logic.getSortRef(name);
+        free(name);
+    } else {
+        free(name);
+        throw std::logic_error("Error in parsing summary file");
+    }
+    PTRef rval = logic.mkConst(ret_sort, fname);
+    if (rval == PTRef_Undef) {
+        throw std::logic_error("Error in parsing summary file");
+    }
 }

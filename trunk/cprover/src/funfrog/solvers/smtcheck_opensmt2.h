@@ -8,6 +8,7 @@ Module: Wrapper for OpenSMT2
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
 #include "check_opensmt2.h"
+#include <Interpret.h>
 
 #include "../utils/unsupported_operations_opensmt2.h" // KE: shall move all the code of unsupported here
 #include <funfrog/utils/expressions_utils.h>
@@ -22,6 +23,27 @@ class symbol_exprt;
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
+class simple_interpretert{
+    Logic & logic;
+    vec<Tterm> templates;
+public:
+    simple_interpretert(Logic & logic) : logic{logic} {}
+    void interpretFile(FILE * file);
+    void interpretCommand(ASTNode& node);
+    void defineFun(ASTNode& node);
+    void declareFun(ASTNode& node);
+    void declareConst(ASTNode& n);
+
+    vec<Tterm>& getTemplates() { return templates; }
+private:
+    PTRef parseTerm(const ASTNode& term, vec<LetFrame>& let_branch);
+    bool  addLetName(const char* s, const PTRef tr, LetFrame& frame);
+    PTRef letNameResolve(const char* s, const vec<LetFrame>& frame) const;
+    char* buildSortName(ASTNode& n);
+
+};
+
+
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
@@ -29,6 +51,10 @@ public:
     {}
 
     virtual ~smtcheck_opensmt2t(); // d'tor
+
+    bool read_formula_from_file(std::string const & file_name);
+
+    vec<Tterm> & get_functions() { return this->summary_templates; }
 
     bool solve() override;
 
@@ -136,7 +162,7 @@ protected:
 
     PTRef instantiate(smt_itpt const & summary, const std::vector<symbol_exprt> & symbols);
 
-    vec<SymRef> function_formulas;
+    vec<Tterm> summary_templates;
 
     using expr_hasht = irep_hash;
     //using expr_hasht = irep_full_hash;
