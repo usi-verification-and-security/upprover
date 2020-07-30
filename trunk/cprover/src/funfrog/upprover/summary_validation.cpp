@@ -199,7 +199,9 @@ Function:
 
 Purpose: Triggers validation of summary associated with the node
 Note: Obtain summaries based on call-nodes, not function name(as different nodes can have different summaries)
-
+// hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
+// for the next decider which will read this summaryFile to update the summary_storet)
+// TODO: later make decider and summary store independent
 \*******************************************************************/
 bool summary_validationt::validate_node(call_tree_nodet &node) {
     
@@ -213,50 +215,60 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
         //for now we only consider one summary per node
         //there is only one summary per node due to full unrolling using goto-instrument
 //      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//always take the same ID for all, obviously wrong
-        const summary_idt single_sumID = *(node.get_used_summaries().begin());
+        const summary_idt full_sumID = *(node.get_used_summaries().begin());
 //      status() << "size of set of ids: " <<node.get_used_summaries().size() << "   single_sumID: " << single_sumID <<eom;
 //      print summary-in-use in the console
 //      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
-        validated = validate_summary(node , single_sumID);
+        validated = validate_summary(node , full_sumID);
         if (!validated) {
             //invalidates summary for call tree node -> remove summary_id and set precision
-            //                                       -> delete summary from summary store
-            itpt_summaryt& currentSum_total = summary_store->find_summary(single_sumID);
+            //                                       -> delete summary itself from summary store
+            std::shared_ptr<summary_storet> summary_store_backup = this->summary_store;
+            itpt_summaryt& currentSum_total = summary_store_backup->find_summary(full_sumID);
             smt_itpt_summaryt* sum_total = dynamic_cast<smt_itpt_summaryt*>(&currentSum_total);
             PTRef currentSum_PTRef = sum_total->getInterpolant();
-            //first we need to have access to the solver
-            smtcheck_opensmt2t* solver = dynamic_cast<smtcheck_opensmt2t*>(this->decider->get_solver());
+            //get an access to the solver
+            //and make a backup as it is needed for next iteration
+            auto decider_backup = this->decider;  //shared_ptr
+            smtcheck_opensmt2t* solver = dynamic_cast<smtcheck_opensmt2t*>(decider_backup->get_solver());
+            //when initialize_solver() assign a new object to decider, solver and decider_backup were preserved alive.
             assert(solver);
             //if summary is conjunctive -- logic is not prop. Note: summary of each function has single ID and single PTref
             //drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID;remove old summary
-          if(solver->isConjunctive(currentSum_PTRef)) {
+            if(solver->isConjunctive(currentSum_PTRef)) {
                 std::cout <<"it's conjunctive!" <<"\n";
+                std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
                 //iterate over conjuncts
                 for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
                     PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
-                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->printTerm(c) <<"\n";
+                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                     //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
                     smt_itpt_summaryt* sub_sum =  solver->create_partial_summary(sum_total, node.get_function_id().c_str(), c);
 //                  get ID for new sub-summary
-                    auto sub_sumID  = summary_store->insert_summary(sub_sum,node.get_function_id().c_str());
+                    auto sub_sumID  = summary_store_backup->insert_summary(sub_sum,node.get_function_id().c_str());
+                    //node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
                     //store summary in the file
-                    std::string summary_file = options.get_option(HiFrogOptions::SAVE_FILE);
-                    //create empty summary file
-                    std::ofstream out{summary_file};
-                    //write whole summary from summary store
-                    summary_store->serialize(out);
+                    summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
                     //validate new sub summary
-                    validate_summary(node, sub_sumID);
+                    validated = validate_summary(node, sub_sumID);
+                    if(!validated) {
+                        //node.remove_summaryID(sub_sumID); //we didn't add ID
+                        //remove summary ID from summary store
+                        summary_store_backup->remove_summary(sub_sumID);
+                        summary_store_backup->decrease_max_id();
+                    }
+                    else {
+                        node.add_summary_IDs(sub_sumID);
+                        node.set_precision(SUMMARY);
+                        break; //if you find one good summary no need to continue other conjuncts.
+                    }
                 }
-          }
-            node.remove_summaryID(single_sumID);
+            }
+            node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
             node.set_inline();
-//          summary_store->remove_summary(single_sumID);
-            // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
-            // for the next decider which will read this summaryFile to update the summary_storet)
-            // TODO: later make decider and summary store independent
-//            summary_store->serialize(options.get_option(HiFrogOptions::LOAD_FILE));
+            summary_store_backup->remove_summary(full_sumID);
+            summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
         }
         else { //mark the node that has summery, otherwise parent would not know!
             node.set_precision(SUMMARY);

@@ -838,6 +838,11 @@ smt_itpt * smtcheck_opensmt2t::create_partial_summary(smt_itpt_summaryt* total_s
     //for sub_sum we can use the template of sum_total that was filled in generalize_summary(),
     //copy with new body
     sub_sum->getTempl().setBody(ptr);
+//    vec<PTRef> copy;
+//    total_sum->getTempl().getArgs().copyTo(copy);
+//    for(PTRef arg : copy){
+//        sub_sum->getTempl().addArg(arg);
+//    }
     //get the args of full summary and use it in the sub-summary
     auto const& sum_tot_args = total_sum->getTempl().getArgs();
     for(PTRef arg : sum_tot_args){

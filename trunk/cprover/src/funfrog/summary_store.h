@@ -66,7 +66,7 @@ public:
       }
       bool found = false;
       for (auto & entry : function_to_summaries) {
-          auto& summs = entry.second;
+          auto& summs = entry.second;  //vector of ids
           auto it2 = std::remove_if(summs.begin(), summs.end(), [id](summary_idt other){return other == id; });
           if (it2 != summs.end()) {
               found = true;
@@ -74,6 +74,9 @@ public:
           }
           if (found) { break; }
       }
+  }
+  void decrease_max_id(){
+      max_id--;
   }
   
 protected:
