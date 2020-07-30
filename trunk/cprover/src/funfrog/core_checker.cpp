@@ -228,6 +228,19 @@ void core_checkert::initialize__lra_option_solver()
     if (options.is_set("itp-lra-algorithm")) {
         solver_options.m_lra_itp_algorithm = options.get_unsigned_int_option("itp-lra-algorithm");
     }
+    status() << "\n*** LRA Interpolation Algorithm in OpenSMT2: ";
+    if(solver_options.m_lra_itp_algorithm == 0)
+        status() << "Farkas Algorithm";
+    else if (solver_options.m_lra_itp_algorithm == 2)
+        status() << "Dual Farkas Algorithm";
+    else if (solver_options.m_lra_itp_algorithm == 3)
+        status() << "Flexible Farkas Algorithm";
+    else if (solver_options.m_lra_itp_algorithm == 4)
+        status() << "Decomposing Farkas Algorithm";
+    else if (solver_options.m_lra_itp_algorithm == 5)
+        status() << "Dual Decomposing Farkas Algorithm";
+    status() << eom;
+    
     if (options.is_set("itp-lra-factor")) {
         solver_options.m_lra_factor = options.get_option("itp-lra-factor");
     }
