@@ -27,8 +27,6 @@ class solvert;
 class prop_conv_solvert;
 class symex_assertion_sumt;
 class smtcheck_opensmt2t_cuf;
-//class smtcheck_opensmt2t_uf; - till merge
-//class smtcheck_opensmt2t_lra;
 class smtcheck_opensmt2t_lia;
 class satcheck_opensmt2t;
 class ssa_solvert;
@@ -65,12 +63,12 @@ protected:
   optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  std::unique_ptr<ssa_solvert> decider;
+  std::shared_ptr<ssa_solvert> decider;  //summary_validation required the ownership
+  std::shared_ptr<summary_storet> summary_store; //summary_validation required the ownership
   subst_scenariot omega;
   init_modet init;
-  std::unique_ptr<summary_storet> summary_store;
-   solver_optionst solver_options; // Init once, use when ever create a new solver
-
+  solver_optionst solver_options; // Init once, use when ever create a new solver
+  
   void initialize_solver();
   void initialize_summary_store();
   void init_solver_and_summary_store();
