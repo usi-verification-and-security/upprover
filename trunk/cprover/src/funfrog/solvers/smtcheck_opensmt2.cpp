@@ -13,7 +13,6 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include <funfrog/utils/SummaryInvalidException.h>
 
 #include <smt2newcontext.h>
-#include <Interpret.h>
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -593,8 +592,8 @@ void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symb
 
 void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols)
 {
-    // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
-    Tterm & tt = interpolant.getTempl();
+    // initialization of new SummaryTemplate, TODO: the basic should really be set already when interpolant object is created
+    auto & tt = interpolant.getTempl();
     interpolant.setDecider(this);
 
     // prepare the substituition map how OpenSMT expects it
@@ -635,8 +634,8 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
 #endif // PRODUCE_PROOF
 
 PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vector<symbol_exprt> & symbols) {
-    const Tterm & tterm = smt_itp.getTempl();
-    const vec<PTRef>& args = tterm.getArgs();
+    const auto & sumTemplate = smt_itp.getTempl();
+    const auto& args = sumTemplate.getArgs();
 
     // summary is defined as a function over arguments to Bool
     // we need to match the arguments with the symbols and insert_substituted
@@ -668,7 +667,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     }
 
     // do the actual substitution
-    PTRef old_root = tterm.getBody();
+    PTRef old_root = sumTemplate.getBody();
     PTRef new_root;
     logic->varsubstitute(old_root, subst, new_root);
     return new_root;
@@ -811,9 +810,29 @@ bool smtcheck_opensmt2t::read_formula_from_file(const string & file_name) {
     interpreter.interpretFile(f);
     auto const & readTemplates = interpreter.getTemplates();
     for (auto const& funTemplate : readTemplates) {
-        this->summary_templates.push(funTemplate);
+        this->summary_templates.push_back(funTemplate);
     }
     return true;
+}
+
+void smtcheck_opensmt2t::dump_function(ostream & out, const SummaryTemplate & templ) {
+    Logic & logic = *this->logic;
+    auto name = templ.getName();
+    char *quoted_name = logic.protectName(name.c_str());
+    out << "(define-fun " << quoted_name << " ( ";
+    free(quoted_name);
+
+    const auto& args = templ.getArgs();
+    for (PTRef arg: args) {
+        char* arg_name = logic.printTerm(arg);
+        const char* sort_name = logic.getSortName(logic.getSortRef(arg));
+        out << '(' << arg_name << ' ' <<  sort_name << ") ";
+        free(arg_name);
+    }
+    const char* rsort = logic.getSortName(logic.getSortRef(templ.getBody()));
+    out << ") " << rsort;
+    logic.dumpFormulaToFile(out, templ.getBody(), false, false);
+    out << ')' << endl;
 }
 
 void simple_interpretert::interpretFile(FILE * file) {
@@ -915,8 +934,8 @@ void simple_interpretert::defineFun(ASTNode & node) {
     else if (logic.getSortRef(tr) != ret_sort) {
         throw std::logic_error("Error in parsing summary file");
     }
-    this->templates.push();
-    Tterm& t = templates.last();
+    this->templates.emplace_back();
+    auto& t = templates.back();
     t.setName(fname);
     t.setBody(tr);
     for (int i = 0; i < arg_trs.size(); i++) {

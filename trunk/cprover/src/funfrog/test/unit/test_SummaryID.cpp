@@ -382,23 +382,15 @@ TEST(test_IDequality, test_IDequality_serialize_deserialize_lra_twoSum2) {
 //manually fill the itp (interpolant, decider, Templ)
         newitp1->setInterpolant(summary_temp1);
         newitp1->setDecider(decider1);
-        Tterm t1;
+        SummaryTemplate & t1 = newitp1->getTempl();
         t1.setName(fun);
         t1.setBody(summary_temp1);
         t1.addArg(a_ptref);
-        newitp1->setTterm(t1);
 //insert itp in summary_store and get ID
         sum_ID1 = store1->insert_summary(newitp1, fun);
 //debug print
         char *s1 = decider1->getLogic()->printTerm(newitp1->getInterpolant());
         std::cout << "Interpolant1 " << s1 << '\n';
-        
-//        smt_itpt *newitp2 = new smt_itpt();
-//        newitp2->setInterpolant(decider1->getLogic()->getTerm_true());
-//        newitp2->setDecider(decider1);
-//        Tterm t2;
-//        t2.setName(fun);
-//        newitp1->setTterm(t2);
 
         //create 2nd ITP "true"
         auto * newitp2 = decider1->create_stub_summary(fun);

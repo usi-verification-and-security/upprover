@@ -34,7 +34,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
         try {
             if (decider->read_formula_from_file(fileName)) {
                 // std::cout << "\n----Read summary file: " << fileName << std::endl;
-                vec<Tterm> & functions = decider->get_functions();
+                auto & functions = decider->get_functions();
                 assert(old_function_count <= functions.size());
                 // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
                 // we have added previously; Also note that this will work only if functions in files have different names!
@@ -42,12 +42,12 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                     auto itp = new smt_summaryt();
                     // only copy assignment work correctly, copy constructor do not at the moment
                     itp->getTempl() = functions[i];
-                    Tterm & tterm = itp->getTempl();
-                    std::string fname = tterm.getName();
+                    SummaryTemplate & summaryTemplate = itp->getTempl();
+                    std::string fname = summaryTemplate.getName();
                     clean_name(fname);
-                    tterm.setName(fname);
+                    summaryTemplate.setName(fname);
                     itp->setDecider(decider);
-                    itp->setInterpolant(tterm.getBody());
+                    itp->setInterpolant(summaryTemplate.getBody());
                     this->insert_summary(itp, fname);
                 }
                 old_function_count = functions.size();
@@ -79,14 +79,14 @@ summary_idt smt_summary_storet::insert_summary(summaryt *summary_given, const st
         throw std::logic_error(msg);
     }
     // Here gets the function names
-    Tterm & tterm = smt_summary->getTempl();
+    SummaryTemplate & sumTemplate = smt_summary->getTempl();
     // at this point, there should be just the name of the original function
     assert(!is_quoted(function_name));
     assert(!fun_name_contains_counter(function_name));
     std::size_t next_idx = get_next_id(function_name);
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(function_name, next_idx));
-    tterm.setName(fixed_name);
+    sumTemplate.setName(fixed_name);
 
     // call the base functionality
     return summary_storet::insert_summary(summary_given, function_name);
