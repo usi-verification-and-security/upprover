@@ -755,7 +755,7 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
 
         if (!skip_partition(current_partition, store_summaries_with_assertion)){
             valid_tasks++;
-            std::cout << ";;for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
+//            std::cout << ";;for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
         }
     }
 

@@ -237,12 +237,12 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
             //if summary is conjunctive -- logic is not prop. Note: summary of each function has single ID and single PTref
             //drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID;remove old summary
             if(solver->isConjunctive(currentSum_PTRef)) {
-                std::cout <<"it's conjunctive!" <<"\n";
-                std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
+                status()  <<"\n" << "------ "<< function_name <<"'s summary is  conjunctive!" << eom;
+//                std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
                 //iterate over conjuncts
                 for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
                     PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
-                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
+//                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                     //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
                     smt_itpt_summaryt* sub_sum =  solver->create_partial_summary(sum_total, node.get_function_id().c_str(), c);
 //                  get ID for new sub-summary
@@ -261,13 +261,17 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     else {
                         node.add_summary_IDs(sub_sumID);
                         node.set_precision(SUMMARY);
+                        status()  <<"\n" << "------ " << i << "th summary conjunct was good enough to capture " << node.get_function_id().c_str() << eom;
+//                        sub_sum->serialize(std::cout);
                         break; //if you find one good summary no need to continue other conjuncts.
                     }
                 }
             }
-            node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
-            node.set_inline();
-            summary_store_backup->remove_summary(full_sumID);
+            else {
+                node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
+                node.set_inline();
+                summary_store_backup->remove_summary(full_sumID);
+            }
             summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
         }
         else { //mark the node that has summery, otherwise parent would not know!

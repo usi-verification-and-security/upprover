@@ -848,6 +848,6 @@ smt_itpt * smtcheck_opensmt2t::create_partial_summary(smt_itpt_summaryt* total_s
     for(PTRef arg : sum_tot_args){
         sub_sum->getTempl().addArg(arg);
     }
-    sub_sum->serialize(std::cout);
+//    sub_sum->serialize(std::cout);
     return sub_sum;
 }
