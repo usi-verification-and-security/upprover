@@ -8,7 +8,6 @@ Module: Wrapper for OpenSMT2
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
 #include "check_opensmt2.h"
-#include <Interpret.h>
 
 #include "../utils/unsupported_operations_opensmt2.h" // KE: shall move all the code of unsupported here
 #include "smt_itp.h"
@@ -25,6 +24,24 @@ class symbol_exprt;
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 class simple_interpretert{
+
+    class LetFrame {
+    private:
+        Map<const char*, PTRef, StringHash, Equal<const char*> > *frameMap;
+    public:
+        LetFrame() : frameMap(new Map<const char*, PTRef, StringHash, Equal<const char*>>()) {}
+        ~LetFrame() { delete frameMap; }
+        LetFrame(const LetFrame & other) = delete;
+        LetFrame& operator=(const LetFrame & other) = delete;
+        LetFrame(LetFrame && other) = delete;
+        LetFrame& operator=(LetFrame && other) = delete;
+        bool        contains(const char* s) const { return frameMap->has(s); }
+        void        insert  (const char* key, PTRef value) { frameMap->insert(key, value); }
+        PTRef       operator[] (const char* s) { return (*frameMap)[s]; }
+        PTRef       operator[] (const char* s) const { return (*frameMap)[s]; }
+    };
+
+
     Logic & logic;
     std::vector<SummaryTemplate> templates;
 public:
