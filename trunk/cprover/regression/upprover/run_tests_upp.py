@@ -117,7 +117,7 @@ def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
 		warning("Got multiple lines with verification result when only one was expected!")
 		warning(resultLines)
 		# return False Do NOT return error at this stage, it's because of several iterations
-	resultLine = resultLines[0]
+	resultLine = resultLines[-1] #take the last result
 	expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
 	testPassed = (resultLine == expectedResult)
 	if not testPassed:
