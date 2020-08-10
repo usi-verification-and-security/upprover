@@ -109,6 +109,7 @@ summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const 
     store.emplace_back(new_id, summary_given);
     // this also creates the map entry if it is the first time we see this function_name
     function_to_summaries[function_name].push_back(new_id);
+    id_to_summary[new_id] = summary_given;
     repr_count++;
     return new_id;
 }

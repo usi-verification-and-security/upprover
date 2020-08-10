@@ -117,6 +117,8 @@ protected:
   storet store;
 
   std::unordered_map<std::string, summary_ids_vect> function_to_summaries;
+  std::unordered_map<summary_idt, itpt_summaryt*> id_to_summary;
+  
 };
 
 #endif

@@ -46,7 +46,7 @@ public:
     
     // LRA
     //the default LRA interpolation algorithm
-    unsigned m_lra_itp_algorithm=0;
+    unsigned m_lra_itp_algorithm=4;
     std::string m_lra_factor="1/2";
     
     // UF
