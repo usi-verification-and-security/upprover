@@ -10,6 +10,7 @@ Module: Wrapper for OpenSMT2
 #include "check_opensmt2.h"
 
 #include "../utils/unsupported_operations_opensmt2.h" // KE: shall move all the code of unsupported here
+#include "smt_itp.h"
 #include <funfrog/utils/expressions_utils.h>
 #include <util/symbol.h>
 #include <solvers/prop/literal.h>
@@ -23,6 +24,45 @@ class symbol_exprt;
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
+class simple_interpretert{
+
+    class LetFrame {
+    private:
+        Map<const char*, PTRef, StringHash, Equal<const char*> > *frameMap;
+    public:
+        LetFrame() : frameMap(new Map<const char*, PTRef, StringHash, Equal<const char*>>()) {}
+        ~LetFrame() { delete frameMap; }
+        LetFrame(const LetFrame & other) = delete;
+        LetFrame& operator=(const LetFrame & other) = delete;
+        LetFrame(LetFrame && other) = delete;
+        LetFrame& operator=(LetFrame && other) = delete;
+        bool        contains(const char* s) const { return frameMap->has(s); }
+        void        insert  (const char* key, PTRef value) { frameMap->insert(key, value); }
+        PTRef       operator[] (const char* s) { return (*frameMap)[s]; }
+        PTRef       operator[] (const char* s) const { return (*frameMap)[s]; }
+    };
+
+
+    Logic & logic;
+    std::vector<SummaryTemplate> templates;
+public:
+    simple_interpretert(Logic & logic) : logic{logic} {}
+    void interpretFile(FILE * file);
+    void interpretCommand(ASTNode& node);
+    void defineFun(ASTNode& node);
+    void declareFun(ASTNode& node);
+    void declareConst(ASTNode& n);
+
+    std::vector<SummaryTemplate>& getTemplates() { return templates; }
+private:
+    PTRef parseTerm(const ASTNode& term, vec<LetFrame>& let_branch);
+    bool  addLetName(const char* s, const PTRef tr, LetFrame& frame);
+    PTRef letNameResolve(const char* s, const vec<LetFrame>& frame) const;
+    char* buildSortName(ASTNode& n);
+
+};
+
+
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
@@ -30,6 +70,10 @@ public:
     {}
 
     virtual ~smtcheck_opensmt2t(); // d'tor
+
+    bool read_formula_from_file(std::string const & file_name);
+
+    std::vector<SummaryTemplate> & get_functions() { return this->summary_templates; }
 
     bool solve() override;
 
@@ -90,9 +134,7 @@ public:
 
     exprt get_value(const exprt &expr) override;
 
-    void dump_function(std::ostream& out, const Tterm& templ) {
-        logic->dumpFunction(out, templ);
-    }
+    void dump_function(std::ostream& out, const SummaryTemplate & templ);
 
       virtual bool is_overapprox_encoding() const override
       { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping());}
@@ -141,7 +183,7 @@ protected:
 
     PTRef instantiate(smt_itpt const & summary, const std::vector<symbol_exprt> & symbols);
 
-    vec<SymRef> function_formulas;
+    std::vector<SummaryTemplate> summary_templates;
 
     using expr_hasht = irep_hash;
     //using expr_hasht = irep_full_hash;

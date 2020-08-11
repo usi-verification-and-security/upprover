@@ -47,7 +47,6 @@ void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, co
 
     SolverId id = { 0 };
     vec<PtAsgn> asgns;
-//    vec<DedElem> deds;
     vec<PTRef> foo;
     bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, foo);
 

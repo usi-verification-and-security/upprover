@@ -63,13 +63,8 @@ public:
     
     unsigned get_random_seed() override { return random_seed; }
     
-    bool read_formula_from_file(std::string fileName) // KE: Sepideh, this shall be renamed according to the new interface
-    { return mainSolver->readFormulaFromFile(fileName.c_str()); }
-  
     void dump_header_to_file(std::ostream& dump_out)
     { logic->dumpHeaderToFile(dump_out); }
-
-    vec<Tterm> & get_functions() { return getLogic()->getFunctions();}
 
 
     fle_part_idt new_partition() override;
