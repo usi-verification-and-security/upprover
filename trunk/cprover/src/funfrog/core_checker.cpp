@@ -49,8 +49,8 @@ core_checkert::core_checkert(const goto_modelt & _goto_model, optionst & _option
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
-        omega(_goto_model.goto_functions, options.get_unsigned_int_option("unwind")),
-        summary_store{nullptr}
+        summary_store{nullptr},
+        omega(_goto_model.goto_functions, options.get_unsigned_int_option("unwind"))
 {
     set_message_handler(_message_handler);
 }
