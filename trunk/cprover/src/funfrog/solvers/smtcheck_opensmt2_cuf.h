@@ -21,6 +21,9 @@ public:
           bitwidth(solver_options.m_bitwidth),
           type_constraints_level(solver_options.m_byte_type_constraints)      
     {
+        bvlogic = new BVLogic(bitwidth);
+        uflogic = bvlogic;
+        logic.reset(bvlogic);
         initializeSolver(solver_options, name);
     }
 
@@ -44,7 +47,7 @@ public:
     virtual SRef get_numeric_sort() const override {return uflogic->getSort_CUFNUM();}
 
 protected:
-    BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
+    BVLogic* bvlogic; // BV subclass of CUF; Extra var, inner use only - Helps to avoid dynamic cast!
     CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
     BitBlaster* bitblaster;

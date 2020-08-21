@@ -18,6 +18,7 @@ Author: Grigory Fedyukovich
 satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, const char * name, const namespacet & ns)
         : check_opensmt2t()
 {
+    logic.reset(new Logic());
     initializeSolver(solver_options, name);
     // TODO: move to separate method?
     auto bv_pointers = new naming_boolbv(ns, *this);
@@ -28,13 +29,10 @@ satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, con
 
 void satcheck_opensmt2t::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    auto config = std::unique_ptr<SMTConfig>(new SMTConfig());
     const char* msg2 = nullptr;
     config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     assert(strcmp(msg2, "ok") == 0);
-    osmt = new Opensmt(opensmt_logic::qf_bool, name, std::move(config));
-    logic = &(osmt->getLogic());
-    mainSolver = &(osmt->getMainSolver());
+    mainSolver.reset(new MainSolver(*logic, *config, name));
 
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
@@ -150,9 +148,9 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
     interpolantst& interpolants) const
 {
   assert(ready_to_interpolate);
-  osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
+  config->setBooleanInterpolationAlgorithm(itp_algorithm);
 
-  SimpSMTSolver& solver = osmt->getSolver();
+  SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
   // Create the proof graph
   solver.createProofGraph();

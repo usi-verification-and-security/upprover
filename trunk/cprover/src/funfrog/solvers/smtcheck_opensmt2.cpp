@@ -26,7 +26,6 @@ smtcheck_opensmt2t::~smtcheck_opensmt2t()
 {
     top_level_formulas.reset();
     assert(top_level_formulas.size() == 0);
-    freeSolver();
 }
 
 /*******************************************************************\
@@ -151,18 +150,18 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
   
   const char* msg2 = nullptr;
-  osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
+  config->setOption(SMTConfig::o_verbosity, verbosity, msg2);
   //if (msg2!=nullptr) { free((char *)msg2); msg2=nullptr; } // If there is an error consider printing the msg
-  osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
+  config->setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
   //if (msg2!=nullptr) free((char *)msg2); // If there is an error consider printing the msg
   
   // Set labeling functions
-  osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
-  osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
-  osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
-  if(!itp_lra_factor.empty()) osmt->getConfig().setLRAStrengthFactor(itp_lra_factor.c_str());
+  config->setBooleanInterpolationAlgorithm(itp_algorithm);
+  config->setEUFInterpolationAlgorithm(itp_euf_algorithm);
+  config->setLRAInterpolationAlgorithm(itp_lra_algorithm);
+  if(!itp_lra_factor.empty()) config->setLRAStrengthFactor(itp_lra_factor.c_str());
 
-  SimpSMTSolver& solver = osmt->getSolver();
+  SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
   // Create the proof graph
   solver.createProofGraph();
@@ -170,9 +169,9 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   // Reduce the proof graph
   if(reduction)
   {
-      osmt->getConfig().setReduction(1);
-      osmt->getConfig().setReductionGraph(reduction_graph);
-      osmt->getConfig().setReductionLoops(reduction_loops);
+      config->setReduction(1);
+      config->setReductionGraph(reduction_graph);
+      config->setReductionLoops(reduction_loops);
       solver.reduceProofGraph();
   }
 

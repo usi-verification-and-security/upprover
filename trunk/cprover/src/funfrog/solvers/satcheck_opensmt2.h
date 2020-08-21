@@ -31,7 +31,6 @@ public:
     satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
 
     virtual ~satcheck_opensmt2t() {
-      freeSolver();
     }
 
     bool is_overapprox_encoding() const override;

@@ -12,7 +12,10 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_lia : public smtcheck_opensmt2t_la {
 public:
     smtcheck_opensmt2t_lia(const solver_optionst solver_options, const char * name) :
-            smtcheck_opensmt2t_la(solver_options.m_type_constraints, name) {
+            smtcheck_opensmt2t_la(solver_options.m_type_constraints, name)
+    {
+        lalogic = new LIALogic();
+        logic.reset(lalogic);
         initializeSolver(solver_options, name);
         ptr_assert_var_constraints = logic->getTerm_true();
     }

@@ -15,6 +15,7 @@ public:
     smtcheck_opensmt2t_uf(const solver_optionst solver_options, const char* name) :
         smtcheck_opensmt2t()
     {
+        logic.reset(new Logic());
         initializeSolver(solver_options, name);
     }
 

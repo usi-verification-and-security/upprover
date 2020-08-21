@@ -19,7 +19,6 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 
 #include <vector>
 
-//class literalt;  //SA: Is not this declaration redundant?
 class exprt;
 
 // Cache of already visited interpolant ptrefs
@@ -59,7 +58,7 @@ public:
         assert_literal(!l); // assert the negation
     }
 
-    Logic* getLogic() const {return logic;}
+    Logic* getLogic() const {return &(*logic);}
     
     unsigned get_random_seed() override { return random_seed; }
     
@@ -78,11 +77,11 @@ public:
     static const char* true_str;
 
 protected:
-    // Common Data members
-    Opensmt* osmt;
-    Logic* logic;
-    MainSolver* mainSolver; 
-
+    // common Data members
+    std::unique_ptr<Logic> logic;
+    std::unique_ptr<MainSolver> mainSolver;
+    std::unique_ptr<SMTConfig> config;
+    
     // Count of the created partitions; This is used by HiFrog to id a partition; correspondence with OpenSMT partitions needs to be kept!
     unsigned partition_count;
 
@@ -144,9 +143,6 @@ protected:
 
     // Initialize the OpenSMT context
     virtual void initializeSolver(const solver_optionst, const char*)=0;
-
-    // Free context/data in OpenSMT
-    virtual void freeSolver() { delete osmt; osmt = nullptr; }
     
     virtual void set_random_seed(unsigned int i) override;
      

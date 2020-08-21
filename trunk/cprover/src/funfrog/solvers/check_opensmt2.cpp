@@ -6,9 +6,7 @@ const char* check_opensmt2t::false_str = "false";
 const char* check_opensmt2t::true_str = "true";
 
 check_opensmt2t::check_opensmt2t() :
-      osmt  (nullptr),
-      logic (nullptr),
-      mainSolver (nullptr),              
+      config(new SMTConfig()),
       partition_count(0),
       pushed_formulas(0),
 #ifdef PRODUCE_PROOF              
@@ -33,17 +31,15 @@ check_opensmt2t::check_opensmt2t() :
 // Not in use
 check_opensmt2t::~check_opensmt2t() 
 {
-    //if (osmt) delete osmt;
-    // KE: not created here, so don't free it here!
     // This is common to all logics: prop, lra, qfuf, qfcuf
 }
 
 void check_opensmt2t::set_random_seed(unsigned int i)
 {
   random_seed = i;
-  if (osmt != nullptr) {
+  if (mainSolver != nullptr) {
       const char* msg = nullptr;
-      osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+      config->setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
       assert(msg && std::strcmp(msg, "ok") == 0); // The message is set to "ok" if option is set successfully in OpenSMT
   }
 }
@@ -52,9 +48,9 @@ void check_opensmt2t::set_random_seed(unsigned int i)
 // Code for init these options
 void check_opensmt2t::set_dump_query(bool f)
 {
-  if (osmt != nullptr) {
+  if (mainSolver != nullptr) {
       const char* msg=nullptr;
-      osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
+      config.setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
   }
 
   dump_queries = f;
@@ -62,8 +58,8 @@ void check_opensmt2t::set_dump_query(bool f)
 
 void check_opensmt2t::set_dump_query_name(const string& n)
 {
-    if (osmt != nullptr) {
-        osmt->getConfig().set_dump_query_name(n.c_str());
+    if (mainSolver != nullptr) {
+        config->set_dump_query_name(n.c_str());
     }
 
     base_dump_query_name = n;
@@ -137,7 +133,7 @@ fle_part_idt check_opensmt2t::new_partition() {
 void check_opensmt2t::insert_top_level_formulas() {
     for(auto i = pushed_formulas; i < (unsigned)top_level_formulas.size(); ++i) {
         char *msg = nullptr;
-        mainSolver->insertFormula(top_level_formulas[i], &msg); //in osmt a new partition gets generated
+        mainSolver->insertFormula(top_level_formulas[i], &msg); //in opensmt a new partition gets generated
         if (msg != nullptr) {
             free(msg); // If there is an error, consider print msg
         }
@@ -150,7 +146,7 @@ void check_opensmt2t::insert_top_level_formulas() {
 
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
                                                       std::vector<PTRef> & interpolants) const {
-    SimpSMTSolver& solver = osmt->getSolver();
+    SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
     // First interpolant is true -> all partitions in B
     for ( unsigned i = 0; i < configs.size(); i++ )

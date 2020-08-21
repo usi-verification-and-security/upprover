@@ -20,17 +20,11 @@ Function: smtcheck_opensmt2t_lra::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_lra::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    auto config = std::unique_ptr<SMTConfig>(new SMTConfig());
     const char* msg2 = nullptr;
     config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     assert(strcmp(msg2, "ok") == 0);
-    osmt = new Opensmt(opensmt_logic::qf_lra, name, std::move(config));
-    lalogic = &(osmt->getLRALogic());
-    logic = &(osmt->getLRALogic());
-    // hack to produce more compact summary.
-    osmt->getConfig().simplify_interpolant = 4;
-    mainSolver = &(osmt->getMainSolver());
-    
+    config->simplify_interpolant = solver_options.simplify_interpolant;
+    mainSolver.reset(new MainSolver(*logic, *config, name));
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
     set_random_seed(solver_options.m_random_seed);

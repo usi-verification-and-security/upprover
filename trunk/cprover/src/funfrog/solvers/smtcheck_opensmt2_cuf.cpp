@@ -26,11 +26,7 @@ Function: smtcheck_opensmt2t_cuf::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
-    logic = &(osmt->getCUFLogic());
-    uflogic = &(osmt->getCUFLogic());
-    bvlogic = &((BVLogic&)osmt->getLogic());
-    mainSolver = &(osmt->getMainSolver());
+    mainSolver.reset(new MainSolver(*logic, * config, name));
  
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
@@ -48,10 +44,10 @@ void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, co
     SolverId id = { 0 };
     vec<PtAsgn> asgns;
     vec<PTRef> foo;
-    bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, foo);
-
+    bitblaster = new BitBlaster(id, *config, *mainSolver, *bvlogic, asgns, foo);
+    
     const char* msg2 = nullptr;
-    osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
+    config->setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
     max_num.setPower2(bitwidth);
 
     // how the check is implemented in malloc.c in the GNU C Library (glibc)

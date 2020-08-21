@@ -21,11 +21,7 @@ Function: smtcheck_opensmt2t_lia::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_lia::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    osmt = new Opensmt(opensmt_logic::qf_lia, name);
-    lalogic = &(osmt->getLIALogic());
-    logic = &(osmt->getLIALogic());
-    mainSolver = &(osmt->getMainSolver());
-
+    mainSolver.reset(new MainSolver(*logic, *config , name));
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
     set_random_seed(solver_options.m_random_seed);

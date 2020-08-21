@@ -35,15 +35,10 @@ Function: smtcheck_opensmt2t_uf::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_uf::initializeSolver(const solver_optionst solver_options, const char* name)
 {
-  auto config = std::unique_ptr<SMTConfig>(new SMTConfig());
   const char* msg2 = nullptr;
   config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
   assert(strcmp(msg2, "ok") == 0);
-  osmt = new Opensmt(opensmt_logic::qf_uf, name, std::move(config));
-  logic = &(osmt->getLogic());
-  mainSolver = &(osmt->getMainSolver());
-
-
+  mainSolver.reset(new MainSolver(*logic, *config, name));
   
   // Initialize parameters
   this->verbosity = solver_options.m_verbosity;
@@ -61,8 +56,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const solver_optionst solver_option
     set_dump_query(solver_options.m_dump_query);
     dump_pre_queries = solver_options.m_dump_pre_query;
     set_dump_query_name(solver_options.m_dump_query_name);
-#endif // DISABLE_OPTIMIZATIONS  
-
+#endif // DISABLE_OPTIMIZATIONS
 
   //Initialize the stuff to fake UF
   //Create new sort UReal
