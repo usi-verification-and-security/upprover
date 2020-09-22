@@ -61,7 +61,7 @@ public:
         assert_literal(!l); // assert the negation
     }
 
-    Logic* getLogic() const {return &(*logic);}
+    Logic* getLogic() const {return logic.get();}
     
     unsigned get_random_seed() override { return random_seed; }
     

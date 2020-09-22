@@ -36,32 +36,27 @@ check_opensmt2t::~check_opensmt2t()
 
 void check_opensmt2t::set_random_seed(unsigned int i)
 {
-  random_seed = i;
-  if (mainSolver != nullptr) {
-      const char* msg = nullptr;
-      config->setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
-      assert(msg && std::strcmp(msg, "ok") == 0); // The message is set to "ok" if option is set successfully in OpenSMT
-  }
+    assert(config);
+    random_seed = i;
+    const char* msg = nullptr;
+    config->setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+    assert(msg && std::strcmp(msg, "ok") == 0); // The message is set to "ok" if option is set successfully in OpenSMT
 }
 
 #ifdef DISABLE_OPTIMIZATIONS 
 // Code for init these options
 void check_opensmt2t::set_dump_query(bool f)
 {
-  if (mainSolver != nullptr) {
-      const char* msg=nullptr;
-      config.setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
-  }
-
-  dump_queries = f;
+    assert(config);
+    const char* msg=nullptr;
+    config->setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
+    dump_queries = f;
 }
 
 void check_opensmt2t::set_dump_query_name(const string& n)
 {
-    if (mainSolver != nullptr) {
-        config->set_dump_query_name(n.c_str());
-    }
-
+    assert(config);
+    config->set_dump_query_name(n.c_str());
     base_dump_query_name = n;
     pre_queries_file_name = "__preq_" + base_dump_query_name;
 }

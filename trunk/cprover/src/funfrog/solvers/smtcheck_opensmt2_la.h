@@ -16,6 +16,8 @@ public:
             smtcheck_opensmt2t(),
             type_constraints_level(_type_constraints_level)
     {
+        lalogic = new LRALogic();
+        logic.reset(lalogic);
     }
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor

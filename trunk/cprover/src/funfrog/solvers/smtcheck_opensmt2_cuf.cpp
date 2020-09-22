@@ -26,7 +26,7 @@ Function: smtcheck_opensmt2t_cuf::initializeSolver
 \*******************************************************************/
 void smtcheck_opensmt2t_cuf::initializeSolver(solver_optionst solver_options, const char* name)
 {
-    mainSolver.reset(new MainSolver(*logic, * config, name));
+    mainSolver.reset(new MainSolver(*logic, *config, name));
  
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;
