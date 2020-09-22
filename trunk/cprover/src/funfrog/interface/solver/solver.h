@@ -20,6 +20,8 @@ class solvert
     virtual exprt get_value(const exprt &expr) = 0;
 
     virtual bool is_overapprox_encoding() const = 0;
+    
+    virtual void reset_solver() = 0;
 
 };
 #endif //PROJECT_SOLVER_H

@@ -31,7 +31,10 @@ public:
     check_opensmt2t();
           
     virtual ~check_opensmt2t();
-
+    
+    void reset_solver() override {
+        mainSolver.reset(new MainSolver(*logic, *config, "opensmt"));
+    }
     // ********************* methods implementing ssa_solvert interface ***************************************
 #ifdef PRODUCE_PROOF
     interpolating_solvert* get_interpolating_solver() override { return this; }

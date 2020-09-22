@@ -128,7 +128,7 @@ bool summary_validationt::call_graph_traversal()
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
     // init solver and load older summaries in the same way as hifrog
-    init_solver_and_summary_store();
+    decider->get_solver()->reset_solver();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
     if(options.is_set("sanity-check")){
