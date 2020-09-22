@@ -128,7 +128,7 @@ bool summary_validationt::call_graph_traversal()
     omega.process_goto_locations();
     omega.setup_last_assertion_loc(assertion_infot());
     // init solver and load older summaries in the same way as hifrog
-    decider->get_solver()->reset_solver();
+    init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
     if(options.is_set("sanity-check")){
@@ -224,17 +224,13 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
         if (!validated) {
             //invalidates summary for call tree node -> remove summary_id and set precision
             //                                       -> delete summary itself from summary store
-            std::shared_ptr<summary_storet> summary_store_backup = this->summary_store;
-            itpt_summaryt &currentSum_total = summary_store_backup->find_summary(full_sumID);
-    
-            //remove summary and decrease ID here, otherwise stay around and mess up as in ex14
-            summary_store->remove_summary(full_sumID);
-            node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
-//            summary_store->decrease_max_id();
+            //std::shared_ptr<summary_storet> summary_store_backup = this->summary_store;
+            itpt_summaryt &currentSum_full = summary_store->find_summary(full_sumID);
+//            currentSum_full.serialize(std::cout);
             
             std::string _logic = options.get_option(HiFrogOptions::LOGIC);
             if (_logic == "qflra" || _logic == "qfuf") {
-                smt_itpt_summaryt *sum_total = dynamic_cast<smt_itpt_summaryt *>(&currentSum_total);
+                smt_itpt_summaryt *sum_total = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
                 PTRef currentSum_PTRef = sum_total->getInterpolant();
                 //get an access to the solver
                 //and make a backup as it is needed for next iteration
@@ -246,42 +242,46 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 //drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID;remove old summary
                 if (solver->isConjunctive(currentSum_PTRef)) {
                     status() << "\n" << "------ " << function_name << "'s summary is  conjunctive!" << eom;
-    //                std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
+//                  std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
                     //iterate over conjuncts
                     for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
                         PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
-    //                    std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
+//                        std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                         //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
                         smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sum_total,
                                                                                     node.get_function_id().c_str(), c);
-    //                  get ID for new sub-summary
-                        auto sub_sumID = summary_store_backup->insert_summary(sub_sum, node.get_function_id().c_str());
+                        //get ID for new sub-summary
+                        auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
                         //node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
                         //store summary in the file
-                        summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
+                        summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
                         //validate new sub summary
                         validated = validate_summary(node, sub_sumID);
                         if (!validated) {
                             //node.remove_summaryID(sub_sumID); //we didn't add ID
                             //remove summary ID from summary store
-                            summary_store_backup->remove_summary(sub_sumID);
-                            summary_store_backup->decrease_max_id();
+                            summary_store->remove_summary(sub_sumID);
                         } else {
                             node.add_summary_IDs(sub_sumID);
                             node.set_precision(SUMMARY);
                             status() << "\n" << "------ " << i+1 << "th summary conjunct was good enough to capture "
                                      << node.get_function_id().c_str() << eom;
-    //                        sub_sum->serialize(std::cout);
-                            summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
+//                          sub_sum->serialize(std::cout);
+                            //remove full-summary and its ID
+                            summary_store->remove_summary(full_sumID);
+                            node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
+                            summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
                             break; //if you find one good summary no need to continue other conjuncts.
                         }
                     }
                 }
             }
-            else {
+            if (!validated){ //prop or no-conjuct was good enough
                 node.set_inline();
-                summary_store_backup->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
-    
+                //remove summary and ID of original full-summary
+                summary_store->remove_summary(full_sumID);
+                node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
+                summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
             }
         }
         else { //mark the node that has summery, otherwise parent would not know!
@@ -304,9 +304,9 @@ Function:
 bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
     //each time we need a cleaned solver, otherwise old solver conflicts with new check; in the classical check also we init first.
     //SA: did we add something to the summary store? make sure not!
-    status() << "------validating summary " << node.get_function_id().c_str() << " ..." << eom;
-    init_solver_and_summary_store();
-//    initialize_solver();
+    status() << "------validating summary of " << node.get_function_id().c_str() << " ..." << eom;
+    decider->get_solver()->reset_solver();
+    
     partitioning_target_equationt equation(ns, *summary_store, true);
     std::unique_ptr<path_storaget> worklist;
     symex_assertion_sumt symex{get_goto_functions(),
