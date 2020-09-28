@@ -201,7 +201,13 @@ Purpose: Triggers validation of summary associated with the node
 Note: Obtain summaries based on call-nodes, not function name(as different nodes can have different summaries)
 // hack to update the summaryFile for the next occasion(for e.g, we will need the updated summaries
 // for the next decider which will read this summaryFile to update the summary_storet)
-// TODO: later make decider and summary store independent
+ NOTE: summary of each function has single ID and single PTref stored in Logic
+NOTE: When summary vas invalid:
+//if is'nt conjunctive, invalidate summary for call tree node, i.e., remove summary_id, delete summary itself from summary store,
+and set precision
+//if it's conjunctive, drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID
+NOTE: Remember to delete from 4 places: vec: store, map:function_to_summary, map:id_to_summary, set:summary_IDset
+N.B: no-need for wrapper: std::shared_ptr<summary_storet> summary_store_backup = this->summary_store;
 \*******************************************************************/
 bool summary_validationt::validate_node(call_tree_nodet &node) {
     
@@ -214,32 +220,25 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     if (has_summary){
         //for now we only consider one summary per node
         //there is only one summary per node due to full unrolling using goto-instrument
-//      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//always take the same ID for all, obviously wrong
+//      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//don't do this as it always take the same ID for all
         const summary_idt full_sumID = *(node.get_used_summaries().begin());
-//      status() << "size of set of ids: " <<node.get_used_summaries().size() << "   single_sumID: " << single_sumID <<eom;
+//      status() << "size of set of ids: " <<node.get_used_summaries().size() << "  single_sumID: " << single_sumID <<eom;
 //      print summary-in-use in the console
 //      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
         validated = validate_summary(node , full_sumID);
         if (!validated) {
-            //invalidates summary for call tree node -> remove summary_id and set precision
-            //                                       -> delete summary itself from summary store
-            //std::shared_ptr<summary_storet> summary_store_backup = this->summary_store;
             itpt_summaryt &currentSum_full = summary_store->find_summary(full_sumID);
 //            currentSum_full.serialize(std::cout);
             
             std::string _logic = options.get_option(HiFrogOptions::LOGIC);
-            if (_logic == "qflra" || _logic == "qfuf") {
-                smt_itpt_summaryt *sum_total = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
-                PTRef currentSum_PTRef = sum_total->getInterpolant();
-                //get an access to the solver
-                //and make a backup as it is needed for next iteration
-                auto decider_backup = this->decider;  //shared_ptr
-                smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider_backup->get_solver());
-                //when initialize_solver() assign a new object to decider, solver and decider_backup were preserved alive.
+            if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop. 
+                smt_itpt_summaryt *sum_full = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
+                PTRef currentSum_PTRef = sum_full->getInterpolant();
+//              auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
+                smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver()); //self-reference
                 assert(solver);
-                //if summary is conjunctive -- logic is not prop. Note: summary of each function has single ID and single PTref
-                //drop one conjunct per time: add the resultant summary to summary_storet and ask for new ID;remove old summary
+               
                 if (solver->isConjunctive(currentSum_PTRef)) {
                     status() << "\n" << "------ " << function_name << "'s summary is  conjunctive!" << eom;
 //                  std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
@@ -248,9 +247,9 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
 //                        std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                         //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
-                        smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sum_total,
+                        smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sum_full,
                                                                                     node.get_function_id().c_str(), c);
-                        //get ID for new sub-summary
+                        //ask for new ID for new sub-summary
                         auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
                         //node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
                         //store summary in the file
@@ -258,15 +257,15 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         //validate new sub summary
                         validated = validate_summary(node, sub_sumID);
                         if (!validated) {
-                            //node.remove_summaryID(sub_sumID); //we didn't add ID
                             //remove summary ID from summary store
                             summary_store->remove_summary(sub_sumID);
+                            //node.remove_summaryID(sub_sumID); //no-need as we didn't add ID
                         } else {
                             node.add_summary_IDs(sub_sumID);
                             node.set_precision(SUMMARY);
                             status() << "\n" << "------ " << i+1 << "th summary conjunct was good enough to capture "
                                      << node.get_function_id().c_str() << eom;
-//                          sub_sum->serialize(std::cout);
+//                            sub_sum->serialize(std::cout);
                             //remove full-summary and its ID
                             summary_store->remove_summary(full_sumID);
                             node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
