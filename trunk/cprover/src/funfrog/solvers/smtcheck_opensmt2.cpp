@@ -164,7 +164,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
   // Create the proof graph
-  solver.createProofGraph();
+  solver.createProofGraph(osmt->getMainSolver().getPartitionManager());
 
   // Reduce the proof graph
   if(reduction)
@@ -703,14 +703,7 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
     PTRef ptref = get_from_cache(expr);
     if (ptref != PTRef_Undef) {
         // Get the value of the PTRef
-        if (logic->isIteVar(ptref)) // true/false - evaluation of a branching
-        {
-            if (smtcheck_opensmt2t::is_value_from_solver_false(ptref))
-                return false_exprt();
-            else
-                return true_exprt();
-        }
-        else if (logic->isTrue(ptref)) //true only
+        if (logic->isTrue(ptref)) //true only
         {
             return true_exprt();
         }
