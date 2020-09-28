@@ -164,7 +164,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
   // Create the proof graph
-  solver.createProofGraph(osmt->getMainSolver().getPartitionManager());
+  solver.createProofGraph(mainSolver->getPartitionManager());
 
   // Reduce the proof graph
   if(reduction)
