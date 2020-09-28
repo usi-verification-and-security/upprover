@@ -116,7 +116,7 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DLATTICE_REF_ALGORITHM
     )
 
-find_library(OPENSMT2_LIB NAMES opensmt2)
+find_library(OPENSMT2_LIB NAMES opensmt)
 if(NOT OPENSMT2_LIB)
 	message(FATAL_ERROR "opensmt library not found")
 endif()

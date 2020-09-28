@@ -153,7 +153,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   SimpSMTSolver& solver = mainSolver->getSMTSolver();
 
   // Create the proof graph
-  solver.createProofGraph();
+  solver.createProofGraph(mainSolver->getPartitionManager());
 
   std::vector<PTRef> itp_ptrefs;
 
