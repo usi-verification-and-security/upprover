@@ -11,13 +11,18 @@ Module: Storage class for function summaries (union-find).
 const summary_storet::nodet& summary_storet::find_repr(summary_idt id) const
 {
     assert(id >= 0 ); //in UpProver summaryID gets deleted in the middle of store so id < store.size() would n't hold
-    const nodet& node = store[id];
-    return node;
+    auto it = std::find_if(store.begin(), store.end(), [id](nodet const & node) { return node.id == id; });
+    if (it != store.end()) {
+        return *it;
+    } else {
+        throw "No summary was found associated with this summaryID: " + std::to_string(id);
+    }
+//    const nodet& node = store[id]; //this does not suit to upprover Alg as summary IDs are not well-ordered anymore
+//    return node;
 
 //  assert(node.id != id);
-//
 //  const summary_storet::nodet& repr_node = find_repr(node.id);
-////  node.update_repr(repr_node.repr_id);
+// node.update_repr(repr_node.repr_id);
 //  return repr_node;
 }
 
