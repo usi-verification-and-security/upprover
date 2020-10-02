@@ -325,7 +325,7 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
 
     auto constants = get_constants();
     for (const PTRef ptref : constants) {
-        std::string line{logic->printTerm(ptref)};
+        line = logic->printTerm(ptref);
 
         if (line.compare("0") == 0)
             continue;
@@ -824,23 +824,18 @@ Function:
 Purpose: create a summary after dropping conjuncts;
  associate PTRef to function name
 \*******************************************************************/
-smt_itpt * smtcheck_opensmt2t::create_partial_summary(smt_itpt_summaryt* total_sum, const std::string & function_name, PTRef ptr) {
+smt_itpt * smtcheck_opensmt2t::create_partial_summary( const std::vector<PTRef>& sumArgs_full, const std::string & function_name, const PTRef pref_sub) {
     auto sub_sum = new smt_itpt();
     sub_sum->setDecider(this);
-    sub_sum->setInterpolant(ptr);
+    sub_sum->setInterpolant(pref_sub);
 //need to fill Template with name, body, args
     sub_sum->getTempl().setName(function_name);
-    //for sub_sum we can use the template of sum_total that was filled in generalize_summary(),
+    //for sub_sum we can use the template of full_sum that was filled in generalize_summary(),
     //copy with new body
-    sub_sum->getTempl().setBody(ptr);
-//    vec<PTRef> copy;
-//    total_sum->getTempl().getArgs().copyTo(copy);
-//    for(PTRef arg : copy){
-//        sub_sum->getTempl().addArg(arg);
-//    }
-    //get the args of full summary and use it in the sub-summary
-    auto const& sum_tot_args = total_sum->getTempl().getArgs();
-    for(PTRef arg : sum_tot_args){
+    sub_sum->getTempl().setBody(pref_sub);
+//  auto sum_full_args = full_sum->getTempl().getArgs(); //args of full-sum are passed via call since it should be deleted from summary_store
+//copy args of  full-sum into the args of sub-summary
+    for(PTRef arg : sumArgs_full){
         sub_sum->getTempl().addArg(arg);
     }
 //    sub_sum->serialize(std::cout);
@@ -1010,7 +1005,7 @@ void simple_interpretert::declareFun(ASTNode & node) {
         throw std::logic_error("Error in parsing summary file");
     }
     for (auto it2 = args_node.children->begin(); it2 != args_node.children->end(); it2++) {
-        char* name = buildSortName(**it2);
+         name = buildSortName(**it2);
         if (logic.containsSort(name)) {
             args.push(logic.getSortRef(name));
             free(name);

@@ -235,6 +235,11 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
             if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop. 
                 smt_itpt_summaryt *sum_full = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
                 PTRef currentSum_PTRef = sum_full->getInterpolant();
+                //get the args of full-summary and use it in the sub-summary
+                vector<PTRef> sumArgs_copy = sum_full->getTempl().getArgs();
+                //remove full-summary and its ID from everywhere
+                summary_store->remove_summary(full_sumID);
+                node.remove_summaryID(full_sumID);
 //              auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
                 smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver()); //self-reference
                 assert(solver);
@@ -247,7 +252,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         PTRef c = solver->getLogic()->getPterm(currentSum_PTRef)[i];
 //                        std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                         //for sub_sum we use the template of sum_total that was filled in generalize_summary(),
-                        smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sum_full,
+                        smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
                                                                                     node.get_function_id().c_str(), c);
                         //ask for new ID for new sub-summary
                         auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
@@ -266,9 +271,6 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             status() << "\n" << "------ " << i+1 << "th summary conjunct was good enough to capture "
                                      << node.get_function_id().c_str() << eom;
 //                            sub_sum->serialize(std::cout);
-                            //remove full-summary and its ID
-                            summary_store->remove_summary(full_sumID);
-                            node.remove_summaryID(full_sumID); //does n't remove completely from summary_store, just remove from summary_ID_set
                             summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
                             break; //if you find one good summary no need to continue other conjuncts.
                         }

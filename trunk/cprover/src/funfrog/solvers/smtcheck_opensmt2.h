@@ -111,7 +111,7 @@ public:
 
     virtual itpt * create_stub_summary(const std::string & function_name) override;
     
-    smt_itpt * create_partial_summary(smt_itpt_summaryt* sum_total, const std::string & function_name, PTRef ptr);
+    smt_itpt * create_partial_summary(const std::vector<PTRef>& sum_full_args, const std::string & function_name, const PTRef ptr);
 
     // Extract interpolant form OpenSMT files/data
     void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
