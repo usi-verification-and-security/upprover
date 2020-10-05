@@ -134,7 +134,7 @@ bool summary_validationt::call_graph_traversal()
     if(options.is_set("sanity-check")){
        sanity_check(calls);
     }
-    std::unordered_set<call_tree_nodet*> marked_to_check;
+//    std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
     auto before_iteration_over_functions = timestamp();
     //iterate over functions in reverse order of Pre-order traversal, from node with the largest call location
@@ -226,6 +226,11 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
 //      currentSum.serialize(std::cout);
         validated = validate_summary(node , sumID_full);
         if (!validated) {
+            //Since the original summary of node was invalid, mark the parent to be checked anyway
+            bool has_parent = node.get_function_id()!=ID_main;
+            if (has_parent) {
+                marked_to_check.insert(&node.get_parent());
+            }
             std::string _logic = options.get_option(HiFrogOptions::LOGIC);
             if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop.
                 itpt_summaryt &currentSum_full = summary_store->find_summary(sumID_full);

@@ -33,27 +33,12 @@ public:
     
     bool call_graph_traversal();
     void sanity_check(vector<call_tree_nodet*>& calls);
-
-
-//    // Removes summary from the summary store
-//    void remove_summary(call_tree_nodet * node, summary_idt to_delete){
-//        callNode_to_summaryIds.at(node).erase(to_delete);
-//    }
-//
-//    const summary_ids_sett& get_set_SummaryIds(call_tree_nodet * node) const{
-//        return callNode_to_summaryIds.at(node);
-//    }
-//
-//    void update_SummaryIds(call_tree_nodet * node, summary_idt& new_id){
-//        callNode_to_summaryIds.at(node).insert(new_id);
-//    }
     
 protected:
-//    std::unordered_map<call_tree_nodet*, summary_ids_sett> callNode_to_summaryIds;
-//
-//    summary_ids_sett checked_summs;
-	
-	bool validate_node(call_tree_nodet & node);
+//  for remembering the parents to be checked (upward refinement)
+    std::unordered_set<call_tree_nodet*> marked_to_check;
+    
+    bool validate_node(call_tree_nodet & node);
 	
 	bool validate_summary(call_tree_nodet & node, summary_idt summary);
     void update_subtree_summaries(call_tree_nodet & node);
