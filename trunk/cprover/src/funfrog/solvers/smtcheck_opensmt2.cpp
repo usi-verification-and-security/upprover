@@ -161,27 +161,17 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   config->setLRAInterpolationAlgorithm(itp_lra_algorithm);
   if(!itp_lra_factor.empty()) config->setLRAStrengthFactor(itp_lra_factor.c_str());
 
-  SimpSMTSolver& solver = mainSolver->getSMTSolver();
-
-  // Create the proof graph
-  solver.createProofGraph(mainSolver->getPartitionManager());
-
-  // Reduce the proof graph
   if(reduction)
   {
       config->setReduction(1);
       config->setReductionGraph(reduction_graph);
       config->setReductionLoops(reduction_loops);
-      solver.reduceProofGraph();
   }
-
-  std::vector<PTRef> itp_ptrefs;
   
-
+  std::vector<PTRef> itp_ptrefs;
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);
 
-  solver.deleteProofGraph();
 //    int atoms;
 //    std::cout <<"###summary size: " << itp_ptrefs.size() <<endl;
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)

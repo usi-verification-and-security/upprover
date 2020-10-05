@@ -141,7 +141,7 @@ void check_opensmt2t::insert_top_level_formulas() {
 
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
                                                       std::vector<PTRef> & interpolants) const {
-    SimpSMTSolver& solver = mainSolver->getSMTSolver();
+    auto itpCtx = mainSolver->getInterpolationContext();
 
     // First interpolant is true -> all partitions in B
     for ( unsigned i = 0; i < configs.size(); i++ )
@@ -151,7 +151,7 @@ void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vec
         {
             setbit ( mask, configs[i][j]);
         }
-        solver.getSingleInterpolant(interpolants, mask);
+        itpCtx->getSingleInterpolant(interpolants, mask);
     }
 }
 

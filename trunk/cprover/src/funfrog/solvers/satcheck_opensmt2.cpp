@@ -150,17 +150,12 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
   config->setBooleanInterpolationAlgorithm(itp_algorithm);
 
-  SimpSMTSolver& solver = mainSolver->getSMTSolver();
-
   // Create the proof graph
-  solver.createProofGraph(mainSolver->getPartitionManager());
 
   std::vector<PTRef> itp_ptrefs;
 
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);
-
-  solver.deleteProofGraph();
 
   for(auto itp_ptref : itp_ptrefs)
   {
