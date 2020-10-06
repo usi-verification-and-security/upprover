@@ -581,10 +581,10 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         std::cout << "</cprover>" << std::endl;
     }
     //report
-    msg.status() << "\nnumber of Preserved nodes: " << count_preserved -1 << msg.eom; //deduct Cprover_initialize
-    msg.status() << "number of UNpreserved nodes: " << count_UNpreserved << msg.eom;
-    msg.status() << "number of interface changes: " << count_interface_change <<"\n"<< msg.eom;
-    
+    msg.status() << "\n### number of Preserved nodes: " << count_preserved -1 << msg.eom; //deduct Cprover_initialize
+    msg.status() << "### number of UNpreserved nodes: " << count_UNpreserved << msg.eom;
+    msg.status() << "### number of interface changes: " << count_interface_change <<"\n"<< msg.eom;
+    msg.status() << "### number of initial summaries: " << count_interface_change + count_UNpreserved  + count_preserved -1  <<"\n"<< msg.eom;
     bool res = true;
     for (unsigned i = 1; i < functions_old.size(); i++){
         res &= functions_new[i].second;     // continues Bit Wise AND for all the functions' res

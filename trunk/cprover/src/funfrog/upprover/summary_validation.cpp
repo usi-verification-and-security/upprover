@@ -134,9 +134,9 @@ bool summary_validationt::call_graph_traversal()
     if(options.is_set("sanity-check")){
        sanity_check(calls);
     }
-//    std::unordered_set<call_tree_nodet*> marked_to_check;
     bool validated = false;
-    auto before_iteration_over_functions = timestamp();
+    int repaired = 0;
+//    auto before_iteration_over_functions = timestamp();
     //iterate over functions in reverse order of Pre-order traversal, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
         call_tree_nodet& current_node = *calls[i];
@@ -170,27 +170,31 @@ bool summary_validationt::call_graph_traversal()
         }
         if (validated){
             status() << "------Node " << function_name << " has been validated!" << eom;
+            repaired++;
         }
         else {
             status() << "------Node " << function_name << " was NOT validated!" << eom;
         }
     } //End of forloop
-    auto after_iteration_over_functions  = timestamp();
-    status() << "\nTotal iteration TIME over ALL functions for node validation (includes sub-SYMEX+CONVERSION+SOLVING times): "
-             << time_gap(after_iteration_over_functions,before_iteration_over_functions) << eom;
+//    auto after_iteration_over_functions  = timestamp();
+//    status() << "\nTotal iteration TIME over ALL functions for node validation (includes sub-SYMEX+CONVERSION+SOLVING times): "
+//             << time_gap(after_iteration_over_functions,before_iteration_over_functions) << eom;
     //Final conclusion
     if (validated) {
-        status() << "\nThe whole call tree has been validated!" << eom;
+        status() << "\nValidation Done!" << eom;
     }
     else {
         status() << "Validation failed! A real bug found. " << eom;
         report_failure();
+        status() << "### number of repaired summaries: " << repaired << eom;
         return false;
     }
     //update __omega file
     serialize();
-    
+    //update summary file for subsequent runs
+    summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
+    status() << "### number of repaired summaries: " << repaired << eom;
     return true;
 }
 
@@ -258,8 +262,6 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         //Ask for new ID for new sub-summary and insert ID in both maps funcToid and idTosum
                         auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
 //                      node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
-                        //No need to store summary in the file
-//                      summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
                         //Validate new sub summary
                         validated = validate_summary(node, sub_sumID);
                         if (!validated) {
@@ -284,7 +286,6 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 //remove summary and ID of original full-summary from everywhere
                 summary_store->remove_summary(sumID_full);
                 node.remove_summaryID(sumID_full); //does n't remove completely from summary_store, just remove from summary_ID_set
-//              summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
             }
         }
         else { //mark the node that has summery, otherwise parent would not know!
