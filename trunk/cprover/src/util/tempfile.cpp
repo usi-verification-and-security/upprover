@@ -120,8 +120,10 @@ std::string get_temporary_file(
 
   int fd=mkstemps(t_ptr, suffix.size());
 
-  if(fd<0)
-    throw "mkstemps failed";
+  if(fd<0) {
+      free(t_ptr);
+      throw "mkstemps failed";
+  }
 
   close(fd);
 
