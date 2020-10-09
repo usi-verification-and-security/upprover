@@ -187,6 +187,7 @@ bool summary_validationt::call_graph_traversal()
         status() << "Validation failed! A real bug found. " << eom;
         report_failure();
         status() << "### number of repaired summaries: " << repaired << eom;
+        status() << "### number of validation check: " << counter_validation_check << eom;
         return false;
     }
     //update __omega file
@@ -195,6 +196,7 @@ bool summary_validationt::call_graph_traversal()
     summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
     status() << "### number of repaired summaries: " << repaired << eom;
+    status() << "### number of validation check: " << counter_validation_check << eom;
     return true;
 }
 
@@ -218,6 +220,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     const std::string function_name = node.get_function_id().c_str();
     bool validated = false;
     status() << "\n------validating node " << function_name << " ..." << eom;
+    counter_validation_check++;
     bool has_summary;
     //has_summary = summary_store->has_summaries(function_name);
     has_summary = !node.get_used_summaries().empty();

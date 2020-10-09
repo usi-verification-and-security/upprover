@@ -35,6 +35,7 @@ public:
     void sanity_check(vector<call_tree_nodet*>& calls);
     
 protected:
+    unsigned int counter_validation_check = 0;
 //  for remembering the parents to be checked (upward refinement)
     std::unordered_set<call_tree_nodet*> marked_to_check;
     
