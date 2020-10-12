@@ -8,7 +8,7 @@
 
 #include <map>
 #include <unordered_map>
-
+#include <stdexcept>
 #include "symbol.h"
 
 typedef std::multimap<irep_idt, irep_idt> symbol_base_mapt;
