@@ -388,6 +388,12 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                 break;
             }
             else {
+                //remove the summary of functions that were accumulated in refiner
+                for (auto const & refined_node : functions_to_refine ){
+                    const summary_idt smID = *(refined_node->get_used_summaries().begin());
+                    summary_store->remove_summary(smID);
+                    refined_node->remove_summaryID(smID);
+                }
                 status() << ("Go to next iteration\n") << eom;
                 // do the actual refinement of ssa
                 refineSSA(symex, functions_to_refine );
