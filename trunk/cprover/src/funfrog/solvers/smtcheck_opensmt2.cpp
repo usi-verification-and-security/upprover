@@ -178,9 +178,14 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   {
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
+//      logic->printTerm(itp_ptrefs[i]);
+//      char *s = logic->printTerm(itp_ptrefs[i]);
+//      std::cout << "Interpolant " << i << " = " << s << '\n';
+//      free(s);
 //      atoms = getAtoms(itp_ptrefs[i]);
 //      std::cout <<"# theory atoms for this sub-summary: " << atoms <<endl;
       interpolants.push_back(new_itp);
+      
 
 #ifdef DEBUG_SMT_ITP
     char *s = logic->printTerm(new_itp->getInterpolant());
@@ -227,15 +232,7 @@ bool smtcheck_opensmt2t::solve() {
         //std::cout << ";; Open file " << (pre_queries_file_name + "_X.smt2") << " for pre queries" << std::endl;
         out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
-
-        // Print the .oites terms
-        int size_oite = ite_map_str.size() - 1; // since goes from 0-(n-1)
-        int i = 0;
-        for (it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-            out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") "
-                    << iterator->first << endl << "(assert " << iterator->second << "\n)" << endl;
-            i++;
-        }
+        
         for (int i = 0; i < top_level_formulas.size(); ++i) {
             out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
             char * s = logic->printTerm(top_level_formulas[i]);

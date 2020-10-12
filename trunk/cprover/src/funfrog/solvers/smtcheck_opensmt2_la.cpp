@@ -232,32 +232,12 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                 ptref = logic->mkImpl(args);
             } else {
                 ptref = logic->mkIte(args);
-
-#ifdef DISABLE_OPTIMIZATIONS
-                if (dump_pre_queries)
-                {
-                    char *s = logic->printTerm(logic->getTopLevelIte(ptref));
-                    ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
-                    //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")"
-                    //    << string(getPTermString(ptref)) << endl << s << endl;
-                    free(s);
-                }
-#endif
+//                char *s =  logic->printTerm(ptref);
+//                cout << ";;;" << string(getPTermString(ptref)) << s << endl;
             }
         } else if(_id == ID_ifthenelse) {
-            assert(args.size() >= 3); // KE: check the case if so and add the needed code!
+             assert(args.size() >= 3); // SA: I think this branch is not reachable
             ptref = logic->mkIte(args);
-
-#ifdef DISABLE_OPTIMIZATIONS
-            if (dump_pre_queries)
-            {
-                char *s = logic->printTerm(logic->getTopLevelIte(ptref));
-                ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
-                //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")"
-                //        << string(getPTermString(ptref)) << endl << s << endl;
-                free(s); s=NULL;
-            }
-#endif
         } else if(_id == ID_and) {
             ptref = logic->mkAnd(args);
         } else if(_id == ID_or) {
@@ -765,16 +745,6 @@ PTRef smtcheck_opensmt2t_la::abs_to_ptref(const exprt & expr)
             lalogic->mkNumLt(inner, lalogic->getTerm_NumZero()),  // IF
             lalogic->mkNumNeg(inner),                 // Then
             inner);                                     // Else
-#ifdef DISABLE_OPTIMIZATIONS
-    if (dump_pre_queries)
-    {
-        char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-        ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-        //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")"
-        //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s);
-    }
-#endif
     return ptl;
 }
 
@@ -805,20 +775,6 @@ PTRef smtcheck_opensmt2t_la::type_cast(const exprt & expr)
         // Cast from Boolean to Num - Add
         PTRef operand_ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(operand_ptref, lalogic->mkConst("1"), lalogic->mkConst("0"));
-#ifdef DISABLE_OPTIMIZATIONS
-        if (dump_pre_queries)
-        {
-            // if the condition evaluated to constant, no ite was created
-            if(logic->isIte(ptl))
-            {
-              char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-              ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-              //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
-              //    << string(getPTermString(ptl)) << endl << s << endl;
-              free(s);
-            }
-        }
-#endif
         return ptl;
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
         // Cast from Num to Boolean - Add

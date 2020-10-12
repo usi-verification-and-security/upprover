@@ -1313,11 +1313,6 @@ PTRef smtcheck_opensmt2t_cuf::numeric_constant(const exprt & expr)
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t_cuf::type_cast
-
-  Inputs:
-
- Outputs:
-
  Purpose:
  *
 // KE: Got here and this failed? Please use the debug print at the end of this
@@ -1348,18 +1343,6 @@ PTRef smtcheck_opensmt2t_cuf::type_cast(const exprt & expr) {
         // Cast from Boolean to Real - Add
         PTRef ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(ptref, uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
-        
-#ifdef DISABLE_OPTIMIZATIONS
-        if (dump_pre_queries)
-        {
-            char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-            //std::cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
-            //    << string(getPTermString(ptl)) << std::endl << s << std::endl;
-            free(s); s=nullptr;    
-        }
-#endif          
-        
         return ptl;
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
@@ -1488,27 +1471,11 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
                 ptref = logic->mkImpl(args);
             } else {            
                 ptref = logic->mkIte(args);
-#ifdef DISABLE_OPTIMIZATIONS
-                if (dump_pre_queries)
-                {
-                    char *s = logic->printTerm(logic->getTopLevelIte(ptref));
-                    ite_map_str.insert(make_pair(string(getPTermString(ptref)), std::string(s)));
-                    free(s);
-                }
-#endif
             }
         } else if (_id == ID_ifthenelse) {
             assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             
             ptref = logic->mkIte(args);
-#ifdef DISABLE_OPTIMIZATIONS
-            if (dump_pre_queries)
-            {
-                char *s = logic->printTerm(logic->getTopLevelIte(ptref));
-                ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
-                free(s);
-            }
-#endif
         } else if (_id == ID_and) {
             // TODO: to cuf
             ptref = logic->mkAnd(args);

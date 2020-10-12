@@ -194,9 +194,9 @@ protected:
     std::string   m_pre_queries_file_name;
 
     
-    std::map <std::string,std::string> ite_map_str;
+//    std::map <std::string,std::string> ite_map_str; // ITE is handled internally in solver side;
     std::set <std::string> var_set_str;
-    typedef std::map<std::string,std::string>::iterator it_ite_map_str;
+//    typedef std::map<std::string,std::string>::iterator it_ite_map_str;
     typedef std::set<std::string>::iterator it_var_set_str;
 #endif   
     

@@ -267,9 +267,9 @@ protected:
     }
 
 #ifdef DISABLE_OPTIMIZATIONS
-    std::map <std::string,std::string> ite_map_str;
-    typedef std::map<std::string,std::string>::iterator it_ite_map_str;
-
+//    std::map <std::string,std::string> ite_map_str; //SA: ITE is handled internally in solver side;
+//    typedef std::map<std::string,std::string>::iterator it_ite_map_str;
+//
     std::string getVarData(const PTRef &var) {
             return string(logic->getSortName(logic->getSortRef(var)));
     }
