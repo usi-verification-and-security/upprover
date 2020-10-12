@@ -742,7 +742,7 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         partition.get_iface().call_tree_node.clear_summaries();
     }
 
-    // Find partitions suitable for summary extraction
+    // Find partitions in the subtree suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
         partitiont& current_partition = partitions[i];
 

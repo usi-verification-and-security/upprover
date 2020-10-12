@@ -61,15 +61,15 @@ public:
   // Removes summary from the summary store
   void remove_summary(const summary_idt id){
     
-      //erase the ID and the corresponding summary
+      //1- erase the ID and the corresponding summary
       id_to_summary.erase(id);
 
-      //delete from vector of store
+      //2- delete from vector of store
       auto it = std::remove_if(store.begin(), store.end(), [id](nodet const & node){return node.id == id; });
       if (it != store.end()) {
           store.erase(it); //remove from vector of ids
       }
-      //delete from map function_to_summaries
+      //3- delete from map function_to_summaries
       bool found = false;
       for (auto & entry : function_to_summaries) {
           auto& summs = entry.second;  //vector of ids
@@ -80,9 +80,6 @@ public:
           }
           if (found) { break; }
       }
-  }
-  void decrease_max_id(){
-      max_id--;
   }
   
 protected:

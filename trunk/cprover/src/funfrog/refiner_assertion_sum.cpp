@@ -80,18 +80,18 @@ void refiner_assertion_sumt::reset_random(call_tree_nodet& node)
 \*******************************************************************/
 void refiner_assertion_sumt::mark_sum_for_refine(
         const solvert &solvert,
-        call_tree_nodet &summary,
+        call_tree_nodet &treeNode,
         partitioning_target_equationt &equation) {
     refined_functions.clear();
     switch (mode) {
         case refinement_modet::FORCE_INLINING:
-            reset_inline(summary);
+            reset_inline(treeNode);
             break;
         case refinement_modet::RANDOM_SUBSTITUTION:
-            reset_random(summary);
+            reset_random(treeNode);
             break;
         case refinement_modet::SLICING_RESULT:
-            reset_depend(solvert, summary, equation);
+            reset_depend(solvert, treeNode, equation);
             break;
         default:
             assert(false);
@@ -101,7 +101,7 @@ void refiner_assertion_sumt::mark_sum_for_refine(
 
 void refiner_assertion_sumt::reset_depend(
         const solvert &solver,
-        call_tree_nodet &summary,
+        call_tree_nodet &treeNode,
         partitioning_target_equationt &equation) {
     std::vector<call_tree_nodet *> tmp;
 

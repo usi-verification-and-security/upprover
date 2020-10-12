@@ -135,7 +135,6 @@ bool summary_validationt::call_graph_traversal()
        sanity_check(calls);
     }
     bool validated = false;
-    int repaired = 0;
 //    auto before_iteration_over_functions = timestamp();
     //iterate over functions in reverse order of Pre-order traversal, from node with the largest call location
     for (unsigned i = calls.size() - 1; i > 0; i--){
@@ -182,6 +181,7 @@ bool summary_validationt::call_graph_traversal()
     //Final conclusion
     if (validated) {
         status() << "\nValidation Done!" << eom;
+        status() << "### number of validation check: " << counter_validation_check << eom;
     }
     else {
         status() << "Validation failed! A real bug found. " << eom;
@@ -196,7 +196,6 @@ bool summary_validationt::call_graph_traversal()
     summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
     status() << "### number of repaired summaries: " << repaired << eom;
-    status() << "### number of validation check: " << counter_validation_check << eom;
     return true;
 }
 
@@ -220,7 +219,6 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     const std::string function_name = node.get_function_id().c_str();
     bool validated = false;
     status() << "\n------validating node " << function_name << " ..." << eom;
-    counter_validation_check++;
     bool has_summary;
     //has_summary = summary_store->has_summaries(function_name);
     has_summary = !node.get_used_summaries().empty();
@@ -301,7 +299,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
 
 Function:
 
-// NOTE: checks implication \phi_f => I_f.
+// NOTE: checks implication \phi_f => Sum_f.
 
  Purpose: Checks whether a new implementation of a node still implies
  its original summary?
@@ -309,9 +307,9 @@ Function:
 \*******************************************************************/
 
 bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
-    //each time we need a cleaned solver, otherwise old solver conflicts with new check; in the classical check also we init first.
-    //SA: did we add something to the summary store? make sure not!
     status() << "------validating summary of " << node.get_function_id().c_str() << " ..." << eom;
+    counter_validation_check++;
+    //each time we need a cleaned solver; this resets mainSolver but logic and config stay the same.
     decider->get_solver()->reset_solver();
     
     partitioning_target_equationt equation(ns, *summary_store, true);
@@ -329,7 +327,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                                options.get_unsigned_int_option("unwind"),
                                options.get_bool_option("partial-loops"),
     };
-//    assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
+//  assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
     assertion_infot assertion_info; // MB: It turns out we need to consider the assertions, in case the summary contains the err symbol.
     symex.set_assertion_info_to_verify(&assertion_info);
 
@@ -345,16 +343,10 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
         return true;
     }
 
-    // the checker main loop:
-    unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
     prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
 
     //local creation of solver; in every call a fresh raw pointer "solver" pointing to decider is created.
-    //but be careful decider(which is member variable of core_checker) will be alive after validate_summary()
-    //is done. So raw pointer solver gets out-of-scope, but decider is still around and
-    // will mess up with the next check. At the moment opensmt does not have method for cleaning
-    //and temporarily we do init_solver_and_summary_store(); for this purpose in the beginning.
     auto solver = decider->get_solver();
     // first partition for the summary to check
     auto interpolator = decider->get_interpolating_solver();
@@ -362,65 +354,48 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     auto& entry_partition = equation.get_partitions()[0];
     fle_part_idt summary_partition_id = interpolator->new_partition();
     (void)(summary_partition_id);
-    // TODO split, we need to negate first!
     itpt& summary = summary_store->find_summary(summary_id);
-    // TODO: figure out a way to check beforehand whether interface matches or not
     try {
         interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
     }
     catch (SummaryInvalidException& ex) {
+        // TODO: figure out a way to check beforehand whether interface matches or not
         // Summary cannot be used for current body -> invalidated
         return false;
     }
     while (!assertion_holds)
     {
         iteration_counter++;
-
         //Converts SSA to SMT formula
         ssa_to_formula.convert_to_formula( *(decider->get_convertor()), *(decider->get_interpolating_solver()));
-
         // Decides the equation
         bool is_sat = ssa_to_formula.is_satisfiable(*solver);
-        summaries_used = omega.get_summaries_count();
-
         assertion_holds = !is_sat;
 
         if (is_sat) {
             // this refiner can refine if we have summary or havoc representation of a function
             // Else quit the loop! (shall move into a function)
-            if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0)
+            if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0) {
                 // nothing left to refine, cex is real -> break out of the refinement loop
                 break;
-
-            // Else, report and try to refine!
-
-            // REPORT part
-            if (summaries_used > 0){
-                status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
             }
-
-            const unsigned int nondet_used = omega.get_nondets_count();
-            if (nondet_used > 0){
-                status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-            }
-            // END of REPORT
-
+            // Else, try to refine!
             // figure out functions that can be refined
             refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
-            bool refined = !refiner.get_refined_functions().empty();
-            if (!refined) {
+            const std::list<call_tree_nodet *> & functions_to_refine = refiner.get_refined_functions();
+            if (functions_to_refine.empty()) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
                 break;
-            } else {
-                // REPORT
+            }
+            else {
                 status() << ("Go to next iteration\n") << eom;
                 // do the actual refinement of ssa
-                refineSSA(symex, refiner.get_refined_functions());
+                refineSSA(symex, functions_to_refine );
             }
         }
     } // end of refinement loop
 
-    // the assertion has been successfully verified if we have (end == true)
+    // if true, the assertion has been successfully verified
     const bool is_verified = assertion_holds;
     if (is_verified) {
         // produce and store the summaries
