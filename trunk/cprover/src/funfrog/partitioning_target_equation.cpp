@@ -669,7 +669,7 @@ namespace{
     }
 
     bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
-        return !partition.is_real_ssa_partition() ||
+        return !partition.is_real_ssa_partition() || //i.e. has abstract repr
                (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
                partition.get_iface().call_tree_node.is_recursion_nondet() ||
                skip_partition_with_name(partition.get_iface().function_id.c_str());
@@ -735,6 +735,7 @@ SA: inner method- called by extract_interpolants from core_checker;
 void partitioning_target_equationt::extract_interpolants(interpolating_solvert &interpolator) {
 #ifdef PRODUCE_PROOF
     // Prepare the interpolation task. NOTE: ignore the root partition!
+    //number of interpolation task after UNSAT proof
     unsigned valid_tasks = 0;
 
     // Clear the summary_ID_set
@@ -753,16 +754,14 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
             }
         }
 
-        if (!skip_partition(current_partition, store_summaries_with_assertion)){
+        if (!skip_partition(current_partition, store_summaries_with_assertion)){ //if has not abstract repr
             valid_tasks++;
 //            std::cout << ";;for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
         }
     }
-
     // Only do the interpolation if there are some interpolation tasks
     if (valid_tasks == 0)
         return;
-
     interpolation_taskt itp_task(valid_tasks);
     //creates interpolation tasks that goes over the partitions and collects ids of partitions in subtree
     //that forms the A-part in interpolation problem ( pid: partitionID , tid: taskID).

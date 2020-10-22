@@ -16,8 +16,6 @@
 #include "partition_iface.h"
 #include "funfrog/interface/solver/solver.h"
 
-//#define DEBUG_REFINER
-
 void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& node)
 {
   std::string function_name = id2string(node.get_function_id());
@@ -39,7 +37,8 @@ void refiner_assertion_sumt::reset_inline(call_tree_nodet& node)
           status() << "Automatically increasing unwinding bound for " << (it->second).get_function_id() << eom;
           omega.refine_recursion_call(it->second);
       }
-    } else {
+    }
+    else {
       reset_inline(it->second);
     }
   }
@@ -67,13 +66,6 @@ void refiner_assertion_sumt::reset_random(call_tree_nodet& node)
 }
 
 /*******************************************************************
-
- Function: refiner_assertion_sumt::refine
-
- Inputs:
-
- Outputs:
-
  Purpose: Analyses the results of slicing in order to refine,
           Which function call to inline, which to summarize and which to havoc
 
@@ -90,8 +82,8 @@ void refiner_assertion_sumt::mark_sum_for_refine(
         case refinement_modet::RANDOM_SUBSTITUTION:
             reset_random(treeNode);
             break;
-        case refinement_modet::SLICING_RESULT:
-            reset_depend(solvert, treeNode, equation);
+        case refinement_modet::SLICING_RESULT:       //Default
+            reset_inline_with_opt(solvert, treeNode, equation); //set node as inline if has sum & ...
             break;
         default:
             assert(false);
@@ -99,7 +91,7 @@ void refiner_assertion_sumt::mark_sum_for_refine(
     }
 }
 
-void refiner_assertion_sumt::reset_depend(
+void refiner_assertion_sumt::reset_inline_with_opt(
         const solvert &solver,
         call_tree_nodet &treeNode,
         partitioning_target_equationt &equation) {
@@ -110,26 +102,20 @@ void refiner_assertion_sumt::reset_depend(
         partitiont part = parts[i];
         if (!part.ignore && (part.has_abstract_representation())) {
             partition_ifacet ipart = part.get_iface();
-#     ifdef DEBUG_REFINER
-            std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
-#     endif
-            /*if (part.summary && part.applicable_summaries.empty()) {
-      #       ifdef DEBUG_REFINER
-              std::cout<< "    -- no applicable summaries" << std::endl;
-      #       endif
-              tmp.push_back(&ipart.call_tree_node);
-            }*/
+            //std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
+            //filter out function calls which do not affect satisfiability of the assertion.
+            // e.g: fun(); int x =0; assert(x>=0); no need to inline fun() as it does n't matter
             if (solver.is_assignment_true(ipart.callstart_literal)) {
-#       ifdef DEBUG_REFINER
-                std::cout<< "    -- callstart literal is true" << std::endl;
-#       endif
+                //std::cout<< "    -- callstart literal is true" << std::endl;
+                //Grisha's paper 2014 for the summarization-based automatic detection of recursion depth
                 if (ipart.call_tree_node.get_precision() != INLINE) {
                     if (ipart.call_tree_node.is_recursion_nondet()) {
                         status() << "Automatically increasing unwinding bound for "
                                  << ipart.call_tree_node.get_function_id() << eom;
+                        //unwind the calltree on demand
                         omega.refine_recursion_call(ipart.call_tree_node);
                     }
-                    set_inline_sum(ipart.call_tree_node);
+                    set_inline_sum(ipart.call_tree_node); //main action set node as inline
                 }
             }
         }

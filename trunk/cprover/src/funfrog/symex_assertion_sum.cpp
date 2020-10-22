@@ -191,8 +191,8 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
                   // Marks the given partition as invalid. This is used in incremental SSA
                   // generation to replace previously summarized partitions
                   //TODO
-                  //  equation.invalidate_partition(partition_iface->partition_id);//SA:was commented in Hifrog,
-                                                                                 //should be uncomented in upgrade check
+                  //  equation.invalidate_partition(partition_iface->partition_id);
+                    
                     equation.refine_partition(partition_iface->partition_id);
                 }
                 auto const & partition = equation.get_partitions()[partition_iface->partition_id];
@@ -745,6 +745,7 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
   for(const auto & parameter : function_type.parameters())
   {
     const auto& identifier = parameter.get_identifier();
+    //std::cout << "identifier: " << identifier.c_str() << std::endl;
     const auto & symbol = get_normal_symbol(identifier);
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);

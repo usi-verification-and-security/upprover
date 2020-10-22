@@ -43,7 +43,7 @@ public:
   bool returns_value;
   
   // Filled during conversion
-  FlaRef callstart_literal;
+  FlaRef callstart_literal; //shows when a function is invoked
   FlaRef callend_literal;
   FlaRef error_literal;
   

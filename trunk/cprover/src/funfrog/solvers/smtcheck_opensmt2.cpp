@@ -51,11 +51,13 @@ FlaRef smtcheck_opensmt2t::ptref_to_flaref(PTRef ptl) {
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
 bool smtcheck_opensmt2t::is_assignment_true(FlaRef fr) const
 {
+    //if true const
     if (fr.is_true())
         return true;
+    //if false const
     else if (fr.is_false())
         return false;
-
+    //value for boolean expression
     ValPair a_p = mainSolver->getValue(flaref_to_ptref(fr));
     return ((*a_p.val == *true_str) ^ (fr.sign()));
 }
@@ -601,6 +603,13 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     Map<PTRef, PtAsgn, PTRefHash> subst;
     if (symbols.size() != static_cast<std::size_t>(args.size())) {
         throw SummaryInvalidException("Number of interface symbols do not match the summary signature!\n");
+        for (int i =0 ; i < symbols.size() ; i++) {
+            std::string symbol_name{quote_if_necessary(get_symbol_name(symbols[i]).c_str())};
+            std::cout << "symbol: " << symbol_name << "\n";
+        }
+        for (int i =0 ; i < args.size() ; i++) {
+            std::cout << "\nargs: " <<logic->pp(args[i]) <<std::endl;
+        }
     }
     for(std::size_t i = 0; i < symbols.size(); ++i){
         std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
@@ -748,6 +757,25 @@ itpt * smtcheck_opensmt2t::create_stub_summary(const std::string & function_name
     ret->setInterpolant(logic->getTerm_true());
     return ret;
 }
+
+/*
+itpt * smtcheck_opensmt2t::create_false_summary(const std::string & function_name) {
+    auto ret = new smt_itpt();
+    ret->setDecider(this);
+    ret->getTempl().setName(function_name);
+    ret->getTempl().setBody(logic->getTerm_false());
+    //create dummy vars with he size of args
+//    for (int i = 0; i < args.size() ; ++i) {
+//        std::string str = "dummy" + std::to_string(i);
+//        const char * dummy_name = str.c_str();
+//        //const char * dummy_name2 = ("dummy" + std::to_string(i)).c_str();
+//        PTRef arg = this->mainSolver->getLogic().mkVar(this->get_numeric_sort(), dummy_name);
+//        ret->getTempl().addArg(arg);
+//    }
+    ret->setInterpolant(logic->getTerm_false());
+    return ret;
+}
+*/
 /*******************************************************************\
 Function:
 Purpose:

@@ -13,6 +13,7 @@ import os
 import sys
 import argparse  #Parser for command-line options
 from datetime import datetime
+import time
 
 RED   = "\033[1;31m"
 BLUE  = "\033[0;34m"
@@ -95,6 +96,7 @@ def run_summary_validation(newargs, shouldSuccess, scriptpath, testname):
 def run_bootstrapping(args, shouldSuccess, scriptpath, testname):
 	computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))  
 	cleaning()
+	time.sleep(3) #sometime rm command takes a while to delete summaries 
 	newargs = args
 	command = ' '.join(newargs)
 	title('Bootstraping phase:'),

@@ -45,7 +45,7 @@ public:
   const std::list<call_tree_nodet*>& get_refined_functions() const { return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
-  void mark_sum_for_refine(const solvert &solvert, call_tree_nodet &treeNodet,
+  void mark_sum_for_refine(const solvert &solvert, call_tree_nodet &treeNode,
                            partitioning_target_equationt &equation);
 
 protected:
@@ -69,7 +69,7 @@ protected:
   void reset_random(call_tree_nodet& summary);
 
 
-    void reset_depend(const solvert &solver, call_tree_nodet &treeNode, partitioning_target_equationt &equation);
+    void reset_inline_with_opt(const solvert &solver, call_tree_nodet &treeNode, partitioning_target_equationt &equation);
 
   void set_inline_sum(call_tree_nodet& summary);
 };

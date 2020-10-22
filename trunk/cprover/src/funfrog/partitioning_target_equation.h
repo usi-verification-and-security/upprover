@@ -45,7 +45,6 @@ public:
 	  first_call_expr = 0; // Not here to do the delete
 #         endif
   }
-
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
   partition_idt reserve_partition(partition_ifacet& partition_iface);
@@ -54,7 +53,7 @@ public:
   // generation to replace previously summarized partitions
   //void invalidate_partition(partition_idt partition_id);
 
-    void refine_partition(partition_idt partition_id);
+  void refine_partition(partition_idt partition_id);
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id, const std::string & function_id);
@@ -97,10 +96,6 @@ public:
   std::vector<exprt> get_exprs_to_refine();
 
   const summary_storet & get_summary_store() const { return summary_store; }
-  
- //for upgrade check; TODO: needs investigation
-//  void fill_inverted_summary_partition(partition_idt partition_id,
-//                                         const summary_idst& summaries, const summary_ids_sett& summary_IDs);
 
   void fill_function_templates(interpolating_solvert &interpolator, std::vector<itpt_summaryt*>& templates);
  
