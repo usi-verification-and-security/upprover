@@ -118,7 +118,9 @@ protected:
     bool is_option_set(std::string const & o) { return !options.get_option(o).empty();}
     
     void delete_and_initialize_solver();
-
+    
+    //counts total number of repaired summaries in UpProver
+    int repaired = 0;
 };
 
 #endif

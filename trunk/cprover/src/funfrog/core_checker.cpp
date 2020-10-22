@@ -499,8 +499,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc};//, true};
 
-    bool end = prepareSSA(symex);
-    if(!end && options.get_bool_option("claims-opt")){
+    bool assertion_holds = prepareSSA(symex);
+    if(!assertion_holds && options.get_bool_option("claims-opt")){
         dependency_checkert(ns,
                     message_handler, 
                     get_main_function(),
@@ -517,7 +517,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     unsigned iteration_counter = 0;
     prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
     auto solver = decider->get_solver();
-    while (!end) {
+    while (!assertion_holds) {
         iteration_counter++;
 
         //Converts SSA to SMT formula
@@ -526,8 +526,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
         // Decides the equation
         bool is_sat = ssa_to_formula.is_satisfiable(*solver);
         summaries_used = omega.get_summaries_count();
-        
-        end = !is_sat;
+    
+        assertion_holds = !is_sat;
         if (is_sat) {
             // this refiner can refine if we have summary or havoc representation of a function
             // Else quit the loop! (shall move into a function)
@@ -550,13 +550,22 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
 
             // figure out functions that can be refined
             refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
-            bool refined = !refiner.get_refined_functions().empty();
-            if (!refined) {
+            const std::list<call_tree_nodet *> refined_functions = refiner.get_refined_functions();
+            if (refined_functions.empty()) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
                 break;
             } else {
                 // REPORT
                 status() << ("Go to next iteration\n") << eom;
+                for (auto const & refined_node : refined_functions ){
+                    if (!refined_node->get_used_summaries().empty()) {
+                        const summary_idt smID = *(refined_node->get_used_summaries().begin());
+                        summary_store->remove_summary(smID);
+                        refined_node->remove_summaryID(smID);
+                        if(options.is_set("summary-validation"))
+                            repaired--;
+                    }
+                }
                 // do the actual refinement of ssa
                 refineSSA(symex, refiner.get_refined_functions());
             }
@@ -569,7 +578,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     //////////////////
   
     // the assertion has been successfully verified if we have (end == true)
-    const bool is_verified = end;
+    const bool is_verified = assertion_holds;
     if (is_verified) {
         // produce and store the summaries   
         if (!options.get_bool_option("no-itp")) {

@@ -762,6 +762,9 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
     // Only do the interpolation if there are some interpolation tasks
     if (valid_tasks == 0)
         return;
+    //report for UpProver
+    std::cout << "\n### generated summaries at this stage: " << valid_tasks << "\n\n";
+    
     interpolation_taskt itp_task(valid_tasks);
     //creates interpolation tasks that goes over the partitions and collects ids of partitions in subtree
     //that forms the A-part in interpolation problem ( pid: partitionID , tid: taskID).

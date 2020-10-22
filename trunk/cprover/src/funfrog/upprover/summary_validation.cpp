@@ -18,6 +18,7 @@
 #include <funfrog/solvers/smt_itp.h>
 #include <funfrog/utils/SummaryInvalidException.h>
 #include <unordered_set>
+
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -155,21 +156,22 @@ bool summary_validationt::call_graph_traversal()
             if (has_parent) {
                 marked_to_check.insert(&current_node.get_parent());
             }
-            // The subtrees in call_tree_nodes have the correct information about summaries
-            //if validated summaries for subtrees are updated in extract_interpolaion
-            // make sure the new summary was added, or replaced the old summaries correctly
             if(current_node.get_function_id() == ID_main){
-                // Final check:  main function does not have a summary form previous run (i.e., false summary)
-                // perform a classic HiFrog check and normal refinement (inline if summary not enough) if
-                // it reaches the top-level main and fails --> report immediately
+                // Final check:  main function
                 status() << "\nFinal validation node " << function_name << " ..." << eom;
-                init_solver_and_summary_store();
+//                check_opensmt2t* solver = dynamic_cast<check_opensmt2t*>(decider->get_solver());
+                //size_t main_args_size = goto_model.goto_functions.function_map.at(current_node.get_function_id()).parameter_identifiers.size();
+                // create a false summary for main function to obtain just ID, although won't be used.
+                //itpt * summary_main = solver->create_false_summary(function_name);
+                //summary_idt sumID_main = summary_store->insert_summary(summary_main, function_name);
+                //validated = validate_summary(current_node, sumID_main);
+                decider->get_solver()->reset_solver();
+                //classic HiFrog check
                 validated = this->assertion_holds_smt(assertion_infot(), true);
             }
         }
         if (validated){
             status() << "------Node " << function_name << " has been validated!" << eom;
-            repaired++;
         }
         else {
             status() << "------Node " << function_name << " was NOT validated!" << eom;
@@ -186,7 +188,7 @@ bool summary_validationt::call_graph_traversal()
     else {
         status() << "Validation failed! A real bug found. " << eom;
         report_failure();
-        status() << "### number of repaired summaries: " << repaired << eom;
+        status() << "### repaired summaries at this stage: " << 0 << eom;
         status() << "### number of validation check: " << counter_validation_check << eom;
         return false;
     }
@@ -195,7 +197,9 @@ bool summary_validationt::call_graph_traversal()
     //update summary file for subsequent runs
     summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
-    status() << "### number of repaired summaries: " << repaired << eom;
+    // if #repaired became negative due to substraction in refiner, round it to zero
+    repaired = (repaired > 0) ? repaired : 0;
+    status() << "### repaired summaries at this stage: " << repaired << eom;
     return true;
 }
 
@@ -274,9 +278,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             node.set_precision(SUMMARY);
                             status() << "\n" << "------ " << i+1 << "th summary conjunct was good enough to capture "
                                      << node.get_function_id().c_str() << eom;
-//                            sub_sum->serialize(std::cout);
-                            
-//                            summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
+                            repaired++;
                             break; //if you find one good summary no need to continue other conjuncts.
                         }
                     }
@@ -380,23 +382,28 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                 break;
             }
             // Else, try to refine!
-            // figure out functions that can be refined
+            // normal refinement (inline if summary not enough) if
+            // it reaches the top-level main and fails --> report immediately
+            // 1st figure out functions that can be refined
             refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
-            const std::list<call_tree_nodet *> & functions_to_refine = refiner.get_refined_functions();
-            if (functions_to_refine.empty()) {
+            const std::list<call_tree_nodet *> refined_functions = refiner.get_refined_functions();
+            if (refined_functions.empty()) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
                 break;
             }
             else {
                 //remove the summary of functions that were accumulated in refiner
-                for (auto const & refined_node : functions_to_refine ){
-                    const summary_idt smID = *(refined_node->get_used_summaries().begin());
-                    summary_store->remove_summary(smID);
-                    refined_node->remove_summaryID(smID);
+                for (auto const & refined_node : refined_functions ){
+                    if (!refined_node->get_used_summaries().empty()) {
+                        const summary_idt smID = *(refined_node->get_used_summaries().begin());
+                        summary_store->remove_summary(smID);
+                        refined_node->remove_summaryID(smID);
+                        repaired--;
+                    }
                 }
                 status() << ("Go to next iteration\n") << eom;
                 // do the actual refinement of ssa
-                refineSSA(symex, functions_to_refine );
+                refineSSA(symex, refined_functions );
             }
         }
     } // end of refinement loop
