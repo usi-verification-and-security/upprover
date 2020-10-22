@@ -19,6 +19,7 @@
 #include <funfrog/utils/SummaryInvalidException.h>
 #include <unordered_set>
 
+#define HOUDINI_REF
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -240,6 +241,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
             if (has_parent) {
                 marked_to_check.insert(&node.get_parent());
             }
+# ifdef HOUDINI_REF
             std::string _logic = options.get_option(HiFrogOptions::LOGIC);
             if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop.
                 itpt_summaryt &currentSum_full = summary_store->find_summary(sumID_full);
@@ -284,6 +286,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     }
                 }
             }
+# endif
             if (!validated) { //either prop or none of conjuncts was n't good enough
                 node.set_inline();
                 //remove summary and ID of original full-summary from everywhere
