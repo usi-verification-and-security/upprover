@@ -19,7 +19,6 @@ const summary_storet::nodet& summary_storet::find_repr(summary_idt id) const
     }
 //    const nodet& node = store[id]; //this does not suit to upprover Alg as summary IDs are not well-ordered anymore
 //    return node;
-
 //  assert(node.id != id);
 //  const summary_storet::nodet& repr_node = find_repr(node.id);
 // node.update_repr(repr_node.repr_id);

@@ -225,25 +225,27 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     bool validated = false;
     status() << "\n------validating node " << function_name << " ..." << eom;
     bool has_summary;
-    //has_summary = summary_store->has_summaries(function_name);
-    has_summary = !node.get_used_summaries().empty();
+    //has_summary = summary_store->has_summaries(function_name); //no! when there are several same-name-nodes, cannot distinguish the summaries per node. use the next line
+    has_summary = !node.get_used_summaries().empty(); //yes, summary associated with node
     if (has_summary){
         //there is only one summary per node due to full unrolling using goto-instrument
 //      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//don't do this as it always take the same ID for all
         const summary_idt sumID_full = *(node.get_used_summaries().begin());
+        //TODO if the summary is true dont call method validate_summary(), it's gonna be captured anyway
 //      print summary-in-use in the console
 //      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
         validated = validate_summary(node , sumID_full);
         if (!validated) {
             //Since the original summary of node was invalid, mark the parent to be checked anyway
-            bool has_parent = node.get_function_id()!=ID_main;
+            bool has_parent = node.get_function_id() != ID_main;
             if (has_parent) {
                 marked_to_check.insert(&node.get_parent());
             }
+            if(!node.get_used_summaries().empty() && summary_store->id_exists(sumID_full)){
 # ifdef HOUDINI_REF
-            std::string _logic = options.get_option(HiFrogOptions::LOGIC);
-            if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop.
+                std::string _logic = options.get_option(HiFrogOptions::LOGIC);
+                if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop.
                 itpt_summaryt &currentSum_full = summary_store->find_summary(sumID_full);
 //              currentSum_full.serialize(std::cout);
                 smt_itpt_summaryt *sum_full = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
@@ -265,7 +267,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
 //                      std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
                         //Form args of sub_summary based on the full summary
                         smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
-                                                                                    node.get_function_id().c_str(), pref_sub);
+                                                                                    node.get_function_id().c_str(),
+                                                                                    pref_sub);
                         //Ask for new ID for new sub-summary and insert ID in both maps funcToid and idTosum
                         auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
 //                      node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
@@ -278,7 +281,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         } else {
                             node.add_summary_IDs(sub_sumID);
                             node.set_precision(SUMMARY);
-                            status() << "\n" << "------ " << i+1 << "th summary conjunct was good enough to capture "
+                            status() << "\n" << "------ " << i + 1 << "th summary conjunct was good enough to capture "
                                      << node.get_function_id().c_str() << eom;
                             repaired++;
                             break; //if you find one good summary no need to continue other conjuncts.
@@ -287,14 +290,15 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 }
             }
 # endif
-            if (!validated) { //either prop or none of conjuncts was n't good enough
-                node.set_inline();
-                //remove summary and ID of original full-summary from everywhere
-                summary_store->remove_summary(sumID_full);
-                node.remove_summaryID(sumID_full); //does n't remove completely from summary_store, just remove from summary_ID_set
+                if (!validated) { //i.e., either prop or none of conjuncts was n't good enough
+                    node.set_inline();
+                    //remove summary and ID of original full-summary from everywhere
+                    summary_store->remove_summary(sumID_full);
+                    node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
+                }
             }
         }
-        else { //mark the node that has summery, otherwise parent would not know!
+        else { //i.e., validated; mark the node that has summery, otherwise parent would not know!
             node.set_precision(SUMMARY);
         }
     }
@@ -359,13 +363,25 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     auto& entry_partition = equation.get_partitions()[0];
     fle_part_idt summary_partition_id = interpolator->new_partition();
     (void)(summary_partition_id);
-    itpt& summary = summary_store->find_summary(summary_id);
-    try {
-        interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
+    
+    if (!node.get_used_summaries().empty() && summary_store->id_exists(summary_id)) {
+        itpt &summary = summary_store->find_summary(summary_id);
+        try {
+            interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
+        }
+        catch (SummaryInvalidException &ex) {
+            // TODO: figure out a way to check beforehand whether interface matches or not
+            // Summary cannot be used for current body -> invalidated
+            if (!node.get_used_summaries().empty()) {
+                node.set_inline();
+                //remove summary and ID of original full-summary from everywhere
+                summary_store->remove_summary(summary_id);
+                node.remove_summaryID(summary_id);
+            }
+            return false;
+        }
     }
-    catch (SummaryInvalidException& ex) {
-        // TODO: figure out a way to check beforehand whether interface matches or not
-        // Summary cannot be used for current body -> invalidated
+    else { //i.e., there was no summary for node
         return false;
     }
     while (!assertion_holds)

@@ -54,7 +54,7 @@ protected:
     SummaryTemplate templ; //has 3 main features:   char* name; vec<PTRef> args; PTRef body;
 
     smtcheck_opensmt2t *m_decider;
-
+//TODO body has already the same PTRef, and "interpolant" looks redundant
     PTRef interpolant;
 
 };

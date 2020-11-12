@@ -17,7 +17,7 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 using namespace std;
-
+#include <sstream>
 #include <iostream>
 #endif
 
@@ -622,8 +622,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
         if(symbol_name != argument_name){
             std::stringstream ss;
             ss << "Argument name read from summary do not match expected symbol name!\n"
-               << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
-
+               << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name <<"\n";
             throw SummaryInvalidException(ss.str());
         }
         PTRef symbol_ptref = expression_to_ptref(symbols[i]);
@@ -653,6 +652,9 @@ void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::v
     assert(!itp.is_trivial());
     assert(logic);
     auto const & smt_itp = static_cast<smt_itpt const &> (itp);
+//    for (int i = 0; i <symbols.size() ; ++i) {
+//        std::cout << symbols[i].get_identifier() <<"\n";
+//    }
     PTRef new_root = instantiate(smt_itp, symbols); //new root is summary body
     // the actual insertion
     this->set_to_true(logic->mkNot(new_root));

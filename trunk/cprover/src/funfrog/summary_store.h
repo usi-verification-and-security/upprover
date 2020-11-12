@@ -53,6 +53,11 @@ public:
       //return if found & if the entry is not empty
       return it != function_to_summaries.end() && !it->second.empty();
   }
+  
+  bool id_exists (const summary_idt id) {
+    std::unordered_map<summary_idt,itpt_summaryt*>::iterator it = id_to_summary.find(id);
+    return it != id_to_summary.end();
+  }
 
   const summary_ids_vect& get_summariesID(const std::string &function_name) const{
       return function_to_summaries.at(function_name);
