@@ -603,11 +603,11 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     Map<PTRef, PtAsgn, PTRefHash> subst;
     if (symbols.size() != static_cast<std::size_t>(args.size())) {
         throw SummaryInvalidException("Number of interface symbols do not match the summary signature!\n");
-        for (int i =0 ; i < symbols.size() ; i++) {
+        for (size_t i =0 ; i < symbols.size() ; i++) {
             std::string symbol_name{quote_if_necessary(get_symbol_name(symbols[i]).c_str())};
             std::cout << "symbol: " << symbol_name << "\n";
         }
-        for (int i =0 ; i < args.size() ; i++) {
+        for (size_t i =0 ; i < args.size() ; i++) {
             std::cout << "\nargs: " <<logic->pp(args[i]) <<std::endl;
         }
     }

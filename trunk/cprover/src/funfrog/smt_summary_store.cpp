@@ -29,7 +29,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     }
     this->clear();
 
-    int old_function_count = 0;
+    size_t old_function_count = 0;
     for (const auto & fileName : fileNames) {
         try {
             if (decider->read_formula_from_file(fileName)) {
@@ -38,7 +38,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                 assert(old_function_count <= functions.size());
                 // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
                 // we have added previously; Also note that this will work only if functions in files have different names!
-                for (int i = old_function_count; i < functions.size(); ++i) {
+                for (size_t i = old_function_count; i < functions.size(); ++i) {
                     auto itp = new smt_itpt_summaryt();
                     // only copy assignment work correctly, copy constructor do not at the moment
                     itp->getTempl() = functions[i];
