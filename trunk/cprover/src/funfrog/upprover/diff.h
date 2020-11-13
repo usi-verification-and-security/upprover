@@ -7,7 +7,7 @@
 #define PROJECT_DIFF_H
 
 //#include <time_stopping.h>
-#include <goto-programs/goto_functions.h>
+#include <goto-programs/goto_model.h>
 #include <goto-programs/read_goto_binary.h>
 
 #include "base_type.h"
@@ -67,7 +67,7 @@ public:
           callhistory_new(0)
     {};
     
-    bool do_diff(const goto_functionst & , const goto_functionst &);
+    bool do_diff(const goto_modelt & old_model, const goto_modelt & new_model);
     
     void set_output(const char* _output){
         // FIXME:

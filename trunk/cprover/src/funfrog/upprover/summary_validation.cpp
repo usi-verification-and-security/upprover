@@ -69,7 +69,7 @@ bool launch_upprover(
         return 1;
     }
     difft diff(msg, options.get_option("load-omega").c_str(), options.get_option("save-omega").c_str() );
-    bool res_diff = diff.do_diff(goto_model_old.goto_functions, goto_model_new.goto_functions); //false means at least one function has changed
+    bool res_diff = diff.do_diff(goto_model_old, goto_model_new); //false means at least one function has changed
     auto after = timestamp();
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){

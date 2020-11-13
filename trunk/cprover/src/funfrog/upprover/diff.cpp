@@ -441,7 +441,7 @@ int difft::get_call_tree_node_id(const irep_idt& new_call_name, std::vector<std:
  Purpose:
 
 \*******************************************************************/
-bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_functionst &goto_functions_2)
+bool difft ::do_diff(const goto_modelt & old_model, const goto_modelt & new_model)
 {
     //naming helpers for omega file enteries
     const int ENTRIES_PER_NODE = 7; //ENTRIES_PER_FUNCTION in omega file
@@ -471,11 +471,14 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     if (locs_output){
         std::cout << "<cprover>" << std::endl;
     }
+
+    auto const & goto_functions_old = old_model.goto_functions;
+    auto const & goto_functions_new = new_model.goto_functions;
     
     unsigned loc = 0;
-    collect_functions(goto_functions_1, goto_functions_1.function_map.at(goto_functionst::entry_point()).body, functions_old, calltree_old, loc);
+    collect_functions(goto_functions_old, goto_functions_old.function_map.at(goto_functionst::entry_point()).body, functions_old, calltree_old, loc);
     loc = 0;
-    collect_functions(goto_functions_2, goto_functions_2.function_map.at(goto_functionst::entry_point()).body, functions_new, calltree_new, loc);
+    collect_functions(goto_functions_new, goto_functions_new.function_map.at(goto_functionst::entry_point()).body, functions_new, calltree_new, loc);
     
     if (do_write){
         stub_new_summs(0);
@@ -485,8 +488,7 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
     goto_sequencet goto_unrolled_2;
     goto_sequencet goto_common;
     
-    symbol_tablet temp_symb;
-    namespacet ns (temp_symb);
+    namespacet ns (old_model.symbol_table, new_model.symbol_table);
     
     for (unsigned i = 0; i < functions_new.size() ; i++)
     {
@@ -510,8 +512,8 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
         }
         //interface change support: if the signature of a function was changed, we mark it as changed,
         // and invalidate all summaries(mark as Inline); so the upprover algorithm propagates to the parent)
-        if(is_new_node || (!base_type_eq(goto_functions_1.function_map.at(new_call_name).type,
-                                         goto_functions_2.function_map.at(new_call_name).type, ns) && !locs_output)){
+        if(is_new_node || (!base_type_eq(goto_functions_old.function_map.at(new_call_name).type,
+                                         goto_functions_new.function_map.at(new_call_name).type, ns) && !locs_output)){
             msg.status() << std::string("function \"") + new_call_name.c_str() + std::string ("\" has changed interface") << msg.eom;
             count_interface_change++;
             //manually add omega entries for new name that were not in old goto-function (goto_functions_1)
@@ -528,10 +530,10 @@ bool difft :: do_diff (const goto_functionst &goto_functions_1 , const goto_func
              pre_comp_res = true;
         }
        else {
-            bool pre_res_1 = add_loc_info(goto_functions_1, new_call_name, goto_unrolled_1,
+            bool pre_res_1 = add_loc_info(goto_functions_old, new_call_name, goto_unrolled_1,
                                           calltree_old, old_call_tree_node_id, false);
             
-            bool pre_res_2 = add_loc_info(goto_functions_2, new_call_name, goto_unrolled_2,
+            bool pre_res_2 = add_loc_info(goto_functions_new, new_call_name, goto_unrolled_2,
                                           calltree_new, i, false);
             //TODO currentlyadd_loc_info is always return true; it just updates call-locations. Simplify it!
             
