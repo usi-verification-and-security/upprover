@@ -611,7 +611,7 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
         return true;
     }
     
-    catch(std::bad_alloc)
+    catch(const std::bad_alloc &)
     {
         msg.error() << "Out of memory" <<msg.eom;
         return true;
