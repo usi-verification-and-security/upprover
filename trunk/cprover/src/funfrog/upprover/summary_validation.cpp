@@ -344,12 +344,25 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             *summary_store, omega,
             get_refine_mode(options.get_option("refine-mode")),
             message_handler, omega.get_last_assertion_loc()};
-
-    bool assertion_holds = prepareSSA(symex);
-    //trivial case without actual solving
-    if (assertion_holds){
-        report_success();
-        return true;
+    
+    bool assertion_holds = false;
+    try {
+        assertion_holds = prepareSSA(symex);
+        //trivial case without actual solving
+        if (assertion_holds) {
+            report_success();
+            return true;
+        }
+    }
+    catch (const std::string &s) {
+        std::cerr << "Error in preparing SSA in finding symbol " << s << ". Invalidate this summary, go to check the parent.\n";
+        if (!node.get_used_summaries().empty()) {
+            node.set_inline();
+            //remove summary and ID
+            summary_store->remove_summary(summary_id);
+            node.remove_summaryID(summary_id);
+        }
+        return false;
     }
 
     unsigned iteration_counter = 0;
@@ -374,7 +387,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             // Summary cannot be used for current body -> invalidated
             if (!node.get_used_summaries().empty()) {
                 node.set_inline();
-                //remove summary and ID of original full-summary from everywhere
+                //remove summary and ID from everywhere
                 summary_store->remove_summary(summary_id);
                 node.remove_summaryID(summary_id);
             }
