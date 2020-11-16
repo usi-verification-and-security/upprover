@@ -156,7 +156,6 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 {
     PTRef ptref = get_from_cache(expr);
     if(ptref != PTRef_Undef) { return ptref; }
-
     const irep_idt & _id = expr.id();
 
     /* Check which case it is */
@@ -771,12 +770,12 @@ PTRef smtcheck_opensmt2t_la::type_cast(const exprt & expr)
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
         return constant_bool(!val_const_zero);
-    } else if (is_number(expr.type()) && is_operands_bool) {
+    } else if (!is_expr_bool && is_operands_bool) {
         // Cast from Boolean to Num - Add
         PTRef operand_ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(operand_ptref, lalogic->mkConst("1"), lalogic->mkConst("0"));
         return ptl;
-    } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
+    } else if (is_expr_bool && !is_operands_bool) {
         // Cast from Num to Boolean - Add
         PTRef operand_ptref = expression_to_ptref((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkNot(logic->mkEq(operand_ptref, lalogic->mkConst("0")));
