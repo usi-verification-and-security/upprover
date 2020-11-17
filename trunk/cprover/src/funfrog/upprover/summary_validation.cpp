@@ -271,13 +271,13 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                                                                     pref_sub);
                         //Ask for new ID for new sub-summary and insert ID in both maps funcToid and idTosum
                         auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
-//                      node.add_summary_IDs(sub_sumID); //too soon to add;lets add it when was validated
+                        node.add_summary_IDs(sub_sumID);
                         //Validate new sub summary
                         validated = validate_summary(node, sub_sumID);
                         if (!validated) {
                             //remove summary ID from everywhere
                             summary_store->remove_summary(sub_sumID);
-                            //node.remove_summaryID(sub_sumID); //no-need as we had n't add ID
+                            node.remove_summaryID(sub_sumID);
                         } else {
                             node.add_summary_IDs(sub_sumID);
                             node.set_precision(SUMMARY);
@@ -377,7 +377,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     fle_part_idt summary_partition_id = interpolator->new_partition();
     (void)(summary_partition_id);
     
-    if (!node.get_used_summaries().empty() && summary_store->id_exists(summary_id)) {
+    if ((!node.get_used_summaries().empty()) && summary_store->id_exists(summary_id)) {
         itpt &summary = summary_store->find_summary(summary_id);
         try {
             interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
