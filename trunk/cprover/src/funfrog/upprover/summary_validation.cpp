@@ -243,58 +243,83 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 marked_to_check.insert(&node.get_parent());
             }
             if(!node.get_used_summaries().empty() && summary_store->id_exists(sumID_full)){
-# ifdef HOUDINI_REF
                 std::string _logic = options.get_option(HiFrogOptions::LOGIC);
-                if (_logic == "qflra" || _logic == "qfuf") { //if summary is conjunctive, logic is not prop.
-                itpt_summaryt &currentSum_full = summary_store->find_summary(sumID_full);
-//              currentSum_full.serialize(std::cout);
-                smt_itpt_summaryt *sum_full = dynamic_cast<smt_itpt_summaryt *>(&currentSum_full);
-                PTRef currentSum_PTRef = sum_full->getInterpolant();
-                // auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
-                smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver()); //self-reference
-                assert(solver);
-                if (solver->isConjunctive(currentSum_PTRef)) {
-                    status() << "\n" << "------ " << function_name << "'s summary is  conjunctive!" << eom;
-                    //Get the args of full-summary and use it in the sub-summary
-                    std::vector<PTRef> sumArgs_copy = sum_full->getTempl().getArgs();
-                    //Remove full-summary and its ID from everywhere
-                    summary_store->remove_summary(sumID_full);
-                    node.remove_summaryID(sumID_full);
-//                  std::cout <<solver->getLogic()->printTerm(currentSum_PTRef) <<"\n";
-                    //Iterate over conjuncts of the full-summary
-                    for (int i = 0; i < solver->getLogic()->getPterm(currentSum_PTRef).size(); i++) {
-                        const PTRef pref_sub = solver->getLogic()->getPterm(currentSum_PTRef)[i];
-//                      std::cout <<";sub summary associated with ptref " << c.x << " is: \n" << solver->getLogic()->pp(c) <<"\n";
-                        //Form args of sub_summary based on the full summary
-                        smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
-                                                                                    node.get_function_id().c_str(),
-                                                                                    pref_sub);
-                        //Ask for new ID for new sub-summary and insert ID in both maps funcToid and idTosum
-                        auto sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
-                        node.add_summary_IDs(sub_sumID);
-                        //Validate new sub summary
-                        validated = validate_summary(node, sub_sumID);
-                        if (!validated) {
-                            //remove summary ID from everywhere
-                            summary_store->remove_summary(sub_sumID);
-                            node.remove_summaryID(sub_sumID);
-                        } else {
-                            node.add_summary_IDs(sub_sumID);
-                            node.set_precision(SUMMARY);
-                            status() << "\n" << "------ " << i + 1 << "th summary conjunct was good enough to capture "
-                                     << node.get_function_id().c_str() << eom;
-                            repaired++;
-                            break; //if you find one good summary no need to continue other conjuncts.
-                        }
-                    }
-                }
-            }
-# endif
-                if (!validated) { //i.e., either prop or none of conjuncts was n't good enough
+                if (_logic == "prop") {
                     node.set_inline();
                     //remove summary and ID of original full-summary from everywhere
                     summary_store->remove_summary(sumID_full);
                     node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
+                }
+                else if (_logic == "qflra" || _logic == "qfuf") { //if summary is con/dis-junctive, logic could n't be prop.
+                    itpt_summaryt &itpFull = summary_store->find_summary(sumID_full);
+                    //itpFull.serialize(std::cout);
+                    smt_itpt_summaryt *sumFull = dynamic_cast<smt_itpt_summaryt *>(&itpFull);
+                    PTRef sumFull_pref = sumFull->getInterpolant();
+                    // auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
+                    smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver());
+                    assert(solver);
+                    //Get the args of full-summary and use it in the sub-summary
+                    std::vector<PTRef> sumArgs_copy = sumFull->getTempl().getArgs();
+                    //Remove full-summary and its ID from everywhere
+                    summary_store->remove_summary(sumID_full);
+                    node.remove_summaryID(sumID_full);
+                    //node.set_inline(); not sure
+# ifdef HOUDINI_REF
+                    summary_idt sub_sumID;
+                    if (solver->isConjunctive(sumFull_pref)) {
+                        status() << "\n" << "------ " << function_name << "'s summary is  conjunctive!" << eom;
+                        //store passed conjuncts and conjoin them later
+                        std::vector<PTRef> validConjs;
+                        //Iterate over conjuncts of the full-summary
+                        for (int i = 0; i < solver->getLogic()->getPterm(sumFull_pref).size(); i++) {
+                            const PTRef subConj_pref = solver->getLogic()->getPterm(sumFull_pref)[i];
+                            //std::cout <<";sub summary is: \n" << solver->getLogic()->pp(subConj_pref) <<"\n";
+                            //Form args of sub_summary based on the full summary
+                            smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
+                                                                                        node.get_function_id().c_str(),
+                                                                                        subConj_pref);
+                            //Ask for new ID and insert ID in both maps funcToid and idTosum
+                            sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
+                            node.add_summary_IDs(sub_sumID);
+                            //Validate new sub summary
+                            validated = validate_summary(node, sub_sumID);
+                            //regardless of validation result remove summaryID from everywhere; validated conjuncts will be mkAnd
+                            summary_store->remove_summary(sub_sumID);
+                            node.remove_summaryID(sub_sumID);
+                            if (validated) {
+                                validConjs.push_back(subConj_pref);
+                                status() << "\n" << "--conjunct " << i + 1 << " was good enough to capture the change of "
+                                         << node.get_function_id().c_str() << eom;
+                                //add ID once all conjuncts were checked-->mkAnd(valid conj)-->
+                                // form summay with suitable args -->insert-summary-store -->update node precision
+                                //node.add_summary_IDs(sub_sumID);
+                                // node.set_precision(SUMMARY);
+                                //repaired++;
+                                //break; //if you find one good summary keep continuing to find more conjuncts and mkAnd them
+                            }
+                        }
+                        if (validConjs.size()) {
+                            const PTRef weakened_sum_ptref = solver->getLogic()->mkAnd(validConjs);
+                            smt_itpt_summaryt *weakened_sum = solver->create_partial_summary(sumArgs_copy,
+                                                                                        node.get_function_id().c_str(),
+                                                                                             weakened_sum_ptref);
+                            //Ask for new ID and insert sumID in both maps funcToid and idTosum
+                            sub_sumID = summary_store->insert_summary(weakened_sum, node.get_function_id().c_str());
+                            node.add_summary_IDs(sub_sumID);
+                            node.set_precision(SUMMARY);
+                            repaired++;
+                            status() << "\n" << "--weakened summary was good enough to capture the change of "
+                                     << node.get_function_id().c_str() << eom;
+                            validated = true;
+                        }
+                        else { //none of conjuncts was good enough
+                            node.set_inline();
+                            //remove summary and ID of original full-summary from everywhere
+                            summary_store->remove_summary(sumID_full);
+                            node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
+                        }
+                    }
+# endif
                 }
             }
         }
