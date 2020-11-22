@@ -787,6 +787,11 @@ bool smtcheck_opensmt2t::isConjunctive(PTRef ptr) const
     return logic->isAnd(ptr);
 }
 
+bool smtcheck_opensmt2t::isDisjunctive(PTRef ptr) const
+{
+    return logic->isOr(ptr);
+}
+
 /*******************************************************************\
 Function: getAtoms
 Purpose: counting theory atoms in function summaries

@@ -123,6 +123,7 @@ public:
     std::set<PTRef> get_non_linears() const;
     int getAtoms( PTRef tr) const;
     bool isConjunctive(PTRef ptref) const;
+    bool isDisjunctive(PTRef ptref) const;
 #endif
 
     void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;

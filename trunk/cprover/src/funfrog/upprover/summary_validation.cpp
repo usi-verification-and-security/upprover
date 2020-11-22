@@ -319,6 +319,60 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
                         }
                     }
+                    else if (solver->isDisjunctive(sumFull_pref)) {
+                        status() << "\n" << "------ " << function_name << "'s summary is  disjunctive!" << eom;
+                        //Iterate over disjuncts of the full-summary
+                        size_t number_of_disjuncts = solver->getLogic()->getPterm(sumFull_pref).size();
+                        for (size_t disj = 0; disj < number_of_disjuncts; disj++) {
+                            const PTRef one_disjunct = solver->getLogic()->getPterm(sumFull_pref)[disj];
+                            if (solver->isConjunctive(one_disjunct)) {
+                                // dropping conjuncts inside the disjunctions, but keeping the full disjunctions.
+                                //size-1 because you want to keep at least one element in each conjunct
+                                Map<PTRef, PtAsgn, PTRefHash> subst;
+                                size_t number_of_conjuncts = solver->getLogic()->getPterm(one_disjunct).size();
+                                for (size_t conj = 0; conj < number_of_conjuncts - 1; conj++) {
+                                    const PTRef one_conj = solver->getLogic()->getPterm(one_disjunct)[conj];
+                                    //std::cout << ";orig disjunctive fla: \n" << solver->getLogic()->pp(sumFull_pref) << "\n\n";
+                                    //std::cout <<";its sub-conj to be deleted: \n" << solver->getLogic()->pp(one_conj) <<"\n\n";
+                                    //get rid of one_conj by setting it true
+                                    subst.insert(one_conj, PtAsgn{solver->getLogic()->getTerm_true(), l_True});
+                                    PTRef res_subst = PTRef_Undef;
+                                    solver->getLogic()->varsubstitute(sumFull_pref, subst,
+                                                                      res_subst); //sumFull_pref as entire disj fla is kept
+                                    // original disjunctive is untouched here
+                                    //std::cout << ";res_subst is: \n" << solver->getLogic()->pp(res_subst) << "\n";
+                                    //summary args are taken from the full summary
+                                    smt_itpt_summaryt *sub_fla_sum = solver->create_partial_summary(sumArgs_copy,
+                                                                                                    node.get_function_id().c_str(),
+                                                                                                    res_subst);
+                                    //Ask for new ID
+                                    sub_sumID = summary_store->insert_summary(sub_fla_sum,
+                                                                              node.get_function_id().c_str());
+                                    node.add_summary_IDs(sub_sumID);
+                                    //Validate new sub summary
+                                    validated = validate_summary(node, sub_sumID);
+            
+                                    if (!validated) {
+                                        //remove summary ID from everywhere
+                                        summary_store->remove_summary(sub_sumID);
+                                        node.remove_summaryID(sub_sumID);
+                                    } else {
+                                        node.add_summary_IDs(sub_sumID);
+                                        node.set_precision(SUMMARY);
+                                        status() << "\n" << "--disjunct " << disj + 1
+                                                 << " was good enough to capture the change of "
+                                                 << node.get_function_id().c_str() << eom;
+                                        repaired++;
+                                        break; //if one good summary was found, no need to check other conjuncts.
+                                    }
+                                } //for loop over conjuncts in DNF
+                            }//End of IF Conj
+                            if (validated) {
+                                //if one good summary from a disjunct was found, no need to check other disjuncts.
+                                break;
+                            }
+                        }
+                    }
 # endif
                 }
             }
