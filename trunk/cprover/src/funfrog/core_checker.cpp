@@ -562,8 +562,11 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                         const summary_idt smID = *(refined_node->get_used_summaries().begin());
                         summary_store->remove_summary(smID);
                         refined_node->remove_summaryID(smID);
-                        if(options.is_set("summary-validation"))
-                            repaired--;
+                        if(options.is_set("summary-validation")) {
+                            //if function were already marked as repaired delete it
+                            if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
+                                repaired_nodes.erase(refined_node->get_function_id());
+                        }
                     }
                 }
                 // do the actual refinement of ssa

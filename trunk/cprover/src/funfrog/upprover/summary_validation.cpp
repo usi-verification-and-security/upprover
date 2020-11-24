@@ -189,7 +189,7 @@ bool summary_validationt::call_graph_traversal()
     else {
         status() << "Validation failed! A real bug found. " << eom;
         report_failure();
-        status() << "### repaired summaries at this stage: " << 0 << eom;
+        status() << "### repaired summaries at this stage: " << repaired_nodes.size()  << eom;
         status() << "### number of validation check: " << counter_validation_check << eom;
         return false;
     }
@@ -199,8 +199,7 @@ bool summary_validationt::call_graph_traversal()
     summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
     // if #repaired became negative due to substraction in refiner, round it to zero
-    repaired = (repaired > 0) ? repaired : 0;
-    status() << "### repaired summaries at this stage: " << repaired << eom;
+    status() << "### repaired summaries at this stage: " << repaired_nodes.size() << eom;
     return true;
 }
 
@@ -290,11 +289,12 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                 validConjs.push_back(subConj_pref);
                                 status() << "\n" << "--conjunct " << i + 1 << " was good enough to capture the change of "
                                          << node.get_function_id().c_str() << eom;
+                                //increase # of repaired summaries
+                                repaired_nodes.insert(node.get_function_id());
                                 //add ID once all conjuncts were checked-->mkAnd(valid conj)-->
                                 // form summay with suitable args -->insert-summary-store -->update node precision
                                 //node.add_summary_IDs(sub_sumID);
                                 // node.set_precision(SUMMARY);
-                                repaired++;
                                 //break; //if you find one good summary keep continuing to find more conjuncts and mkAnd them
                             }
                         }
@@ -307,7 +307,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             sub_sumID = summary_store->insert_summary(weakened_sum, node.get_function_id().c_str());
                             node.add_summary_IDs(sub_sumID);
                             node.set_precision(SUMMARY);
-                            repaired++;
+                            //increase repaired summary count
+                            repaired_nodes.insert(node.get_function_id());
                             status() << "\n" << "--weakened summary was good enough to capture the change of "
                                      << node.get_function_id().c_str() << eom;
                             validated = true;
@@ -362,7 +363,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                         status() << "\n" << "--disjunct " << disj + 1
                                                  << " was good enough to capture the change of "
                                                  << node.get_function_id().c_str() << eom;
-                                        repaired++;
+                                        //increase repaired summary count
+                                        repaired_nodes.insert(node.get_function_id());
                                         break; //if one good summary was found, no need to check other conjuncts.
                                     }
                                 } //for loop over conjuncts in DNF
@@ -515,7 +517,9 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                         refined_node->remove_summaryID(smID);
                         refined_node->set_inline();
                         node.set_precision(INLINE);
-                        repaired--;
+                        //increase # of repaired summaries
+                        if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
+                            repaired_nodes.erase(refined_node->get_function_id());
                     }
                 }
                 status() << ("Go to next iteration\n") << eom;
