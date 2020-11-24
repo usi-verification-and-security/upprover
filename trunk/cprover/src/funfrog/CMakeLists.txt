@@ -30,8 +30,8 @@ set(HIFROG_SOURCE_FILES
         prop_summary_store.h
         refiner_assertion_sum.cpp
         refiner_assertion_sum.h
-        prepare_formula.cpp
-        prepare_formula.h
+        formula_manager.cpp
+        formula_manager.h
         smt_summary_store.cpp
         smt_summary_store.h
         subst_scenario.cpp

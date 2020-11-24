@@ -167,7 +167,7 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
                     to_code_function_call(to_code(it->code));
             
             const irep_idt &name = call.function().get("identifier");
-            std::cout << "function name: " << name.c_str() <<"\n";
+            //std::cout << "function name: " << name.c_str() <<"\n";
             current_children.push_back(global_loc);
             functions.push_back(std::make_pair(&name, false));    //false as a default; is_touched?
             

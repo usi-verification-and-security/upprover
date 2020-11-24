@@ -7,7 +7,7 @@
 #include <goto-symex/path_storage.h>
 #include <funfrog/symex_assertion_sum.h>
 #include <funfrog/refiner_assertion_sum.h>
-#include <funfrog/prepare_formula.h>
+#include <funfrog/formula_manager.h>
 #include "summary_validation.h"
 #include "funfrog/check_claims.h"
 #include "funfrog/assertion_info.h"
@@ -263,7 +263,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     //Remove full-summary and its ID from everywhere
                     summary_store->remove_summary(sumID_full);
                     node.remove_summaryID(sumID_full);
-                    //node.set_inline(); not sure
+                    //node.set_inline(); //not sure
 # ifdef HOUDINI_REF
                     summary_idt sub_sumID;
                     if (solver->isConjunctive(sumFull_pref)) {
@@ -294,7 +294,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                 // form summay with suitable args -->insert-summary-store -->update node precision
                                 //node.add_summary_IDs(sub_sumID);
                                 // node.set_precision(SUMMARY);
-                                //repaired++;
+                                repaired++;
                                 //break; //if you find one good summary keep continuing to find more conjuncts and mkAnd them
                             }
                         }
@@ -443,11 +443,10 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
         }
         return false;
     }
+    //obj for managing ssa to smt conversion and then solving
+    formula_managert formula_manager{equation, message_handler};
 
-    unsigned iteration_counter = 0;
-    prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
-
-    //local creation of solver; in every call a fresh raw pointer "solver" pointing to decider is created.
+    //local creation of solver; each time a fresh pointer "solver" is created.
     auto solver = decider->get_solver();
     // first partition for the summary to check
     auto interpolator = decider->get_interpolating_solver();
@@ -456,6 +455,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     fle_part_idt summary_partition_id = interpolator->new_partition();
     (void)(summary_partition_id);
     
+    // f /\ !summary --> ?
     if ((!node.get_used_summaries().empty()) && summary_store->id_exists(summary_id)) {
         itpt &summary = summary_store->find_summary(summary_id);
         try {
@@ -466,9 +466,12 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             // Summary cannot be used for current body -> invalidated
             if (!node.get_used_summaries().empty()) {
                 node.set_inline();
+                node.set_precision(INLINE);
                 //remove summary and ID from everywhere
                 summary_store->remove_summary(summary_id);
                 node.remove_summaryID(summary_id);
+                //notify partitions about removal of summaries //I've not seen the necessity
+                //equation.refine_partition(entry_partition.get_iface().partition_id);
             }
             return false;
         }
@@ -476,13 +479,14 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     else { //i.e., there was no summary for node
         return false;
     }
+    unsigned iteration_counter = 0;
     while (!assertion_holds)
     {
         iteration_counter++;
         //Converts SSA to SMT formula
-        ssa_to_formula.convert_to_formula( *(decider->get_convertor()), *(decider->get_interpolating_solver()));
+        formula_manager.convert_to_formula(*(decider->get_convertor()), *(decider->get_interpolating_solver()));
         // Decides the equation
-        bool is_sat = ssa_to_formula.is_satisfiable(*solver);
+        bool is_sat = formula_manager.is_satisfiable(*solver);
         assertion_holds = !is_sat;
 
         if (is_sat) {
@@ -503,17 +507,19 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                 break;
             }
             else {
-                //remove the summary of functions that were accumulated in refiner
+                //there is room for refinement; remove the summary of functions accumulated in refiner
                 for (auto const & refined_node : refined_functions ){
                     if (!refined_node->get_used_summaries().empty()) {
                         const summary_idt smID = *(refined_node->get_used_summaries().begin());
                         summary_store->remove_summary(smID);
                         refined_node->remove_summaryID(smID);
+                        refined_node->set_inline();
+                        node.set_precision(INLINE);
                         repaired--;
                     }
                 }
                 status() << ("Go to next iteration\n") << eom;
-                // do the actual refinement of ssa
+                // do the actual refinement of ssa; clear summary info from partition; partition.summary_ID_vec
                 refineSSA(symex, refined_functions );
             }
         }
@@ -528,7 +534,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     } // End of UNSAT section
     else // assertion was falsified
     {
-        assertion_violated(ssa_to_formula, symex.guard_expln);
+        assertion_violated(formula_manager, symex.guard_expln);
     }
 
     return is_verified;
@@ -626,7 +632,7 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
         if (implication_holds) {
             status() << "trivial success " << eom;
         }
-        prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+        formula_managert ssa_to_formula = formula_managert(equation, message_handler);
     
         // first partition for the summary to check
         // refers to entry partition including its subtree

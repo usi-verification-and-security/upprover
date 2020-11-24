@@ -14,7 +14,7 @@
 #include "partition_iface.h"
 #include "funfrog/nopartition/prepare_formula_no_partition.h"
 #include "partitioning_target_equation.h"
-#include "prepare_formula.h"
+#include "formula_manager.h"
 #include "symex_assertion_sum.h"
 //#include "funfrog/utils/naming_helpers.h"
 #include "funfrog/utils/string_utils.h"
@@ -515,7 +515,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     // the checker main loop:
     unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
-    prepare_formulat ssa_to_formula = prepare_formulat(equation, message_handler);
+    formula_managert ssa_to_formula = formula_managert(equation, message_handler);
     auto solver = decider->get_solver();
     while (!assertion_holds) {
         iteration_counter++;
@@ -646,8 +646,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
 
  Purpose: Prints the error trace for smt encoding
 \*******************************************************************/
-void core_checkert::assertion_violated (prepare_formulat& prop,
-				std::map<irep_idt, std::string> &guard_expln)
+void core_checkert::assertion_violated (formula_managert& prop,
+                                        std::map<irep_idt, std::string> &guard_expln)
 {
     if (!options.get_bool_option("no-error-trace"))
     {

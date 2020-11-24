@@ -3,7 +3,7 @@
 
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
-#include "prepare_formula.h"
+#include "formula_manager.h"
 
 class smtcheck_opensmt2t;
 class optionst;

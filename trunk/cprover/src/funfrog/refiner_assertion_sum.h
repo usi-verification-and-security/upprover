@@ -69,7 +69,7 @@ protected:
   void reset_random(call_tree_nodet& summary);
 
 
-    void reset_inline_with_opt(const solvert &solver, call_tree_nodet &treeNode, partitioning_target_equationt &equation);
+    void reset_inline_wrt_slicing(const solvert &solver, call_tree_nodet &treeNode, partitioning_target_equationt &equation);
 
   void set_inline_sum(call_tree_nodet& summary);
 };

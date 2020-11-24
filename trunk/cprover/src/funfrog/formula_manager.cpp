@@ -4,78 +4,57 @@
 
 \*******************************************************************/
 
-#include "prepare_formula.h"
+#include "formula_manager.h"
 
 #include "error_trace.h"
 #include <funfrog/utils/time_utils.h>
 #include "partitioning_target_equation.h"
 
 /*******************************************************************
-
- Function: smt_formulat::convert_to_formula
-
- Inputs:
-
- Outputs:
-
  Purpose: Converts SSA form to SMT formula
 
 \*******************************************************************/
-void prepare_formulat::convert_to_formula(convertort &convertor, interpolating_solvert &interpolator)
+void formula_managert::convert_to_formula(convertort &convertor, interpolating_solvert &interpolator)
 {
-  auto before=timestamp();
-  equation.convert(convertor, interpolator);
+    auto before=timestamp();
+    equation.convert(convertor, interpolator);
 
-  auto after=timestamp();
+    auto after=timestamp();
 
     message.status() << "CONVERSION TIME: " << time_gap(after,before) << message.eom;
 }
 
 /*******************************************************************
-
- Function: smt_assertion_sumt::is_satisfiable
-
- Inputs:
-
- Outputs:
-
  Purpose: Checks if prepared formula is SAT
 
 \*******************************************************************/
 
-bool prepare_formulat::is_satisfiable(
-		solvert& decider)
+bool formula_managert::is_satisfiable(solvert& decider)
 {
-  auto before=timestamp();
-  bool is_sat = decider.solve();
-  auto after=timestamp();
+    auto before=timestamp();
+    bool is_sat = decider.solve();
+    auto after=timestamp();
     message.status() << "SOLVER TIME: " << time_gap(after,before) << message.eom;
     message.status() << "RESULT: ";
 
-  // solve it
-  if (is_sat)
-  {
-      message.status() << "SAT - doesn't hold" << message.eom;
-    return true;
-  }
-  else
-  {
-      message.status() << "UNSAT - it holds!" << message.eom;
-    return false;
-  }
+    // solve it
+    if (is_sat)
+    {
+        message.status() << "SAT - doesn't hold" << message.eom;
+        return true;
+    }
+    else
+    {
+        message.status() << "UNSAT - it holds!" << message.eom;
+        return false;
+    }
   //  return is_sat;
 }
 /*******************************************************************
-
- Function:
- Inputs:
-
- Outputs:
-
  Purpose:
 
 \*******************************************************************/
-void prepare_formulat::error_trace(solvert &solver, const namespacet &ns,
+void formula_managert::error_trace(solvert &solver, const namespacet &ns,
                                    std::map<irep_idt, std::string> &guard_expln)
 {      
     // Only if can build an error trace - give notice to the user

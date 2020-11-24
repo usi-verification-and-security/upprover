@@ -19,7 +19,7 @@
 
 class prepare_formula_no_partitiont;
 class partitioning_target_equationt;
-class prepare_formulat;
+class formula_managert;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
@@ -93,8 +93,8 @@ protected:
   
   void report_success();
   void report_failure();
-  void assertion_violated(prepare_formulat& prop,
-		  std::map<irep_idt, std::string> &guard_expln);
+  void assertion_violated(formula_managert& prop,
+                          std::map<irep_idt, std::string> &guard_expln);
   void assertion_violated_no_partition(prepare_formula_no_partitiont &prop,
                                        std::map<irep_idt, std::string> &guard_expln);
 

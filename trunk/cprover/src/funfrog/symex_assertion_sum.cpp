@@ -161,15 +161,10 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
 }
 /*******************************************************************
 
- Function: symex_assertion_sumt::refine_SSA
-
- Inputs:
-
- Outputs:
-
  Purpose: Generate SSA statements for the refined program starting from 
  the given set of functions.
-
+ NOTE: This function only refines the partitions that were already marked by
+ refiner_assertion_sumt::reset_inline_wrt_slicing
 \*******************************************************************/
 
 bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refined_functions)
@@ -186,7 +181,8 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
                 if (partition_iface->partition_id != NO_PARTITION_ID) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
                     assert(partition.has_abstract_representation()); (void)(partition);
-                    log.status() << "Refining partition: " << partition_iface->partition_id << messaget::eom;
+                    log.status() << "Refining partition: " << partition_iface->partition_id
+                    << " associated with " << refined_function->get_function_id().c_str()<< messaget::eom;
                  
                   // Marks the given partition as invalid. This is used in incremental SSA
                   // generation to replace previously summarized partitions

@@ -12,10 +12,10 @@ class interpolating_solvert;
 class solvert;
 class convertort;
 
-class prepare_formulat
+class formula_managert
 {
 public:
-    prepare_formulat(
+    formula_managert(
             partitioning_target_equationt &_target,
             ui_message_handlert &_message_handler
             )
@@ -35,5 +35,5 @@ private:
 
 };
 
-#endif /* SMT_ASSERTION_SUM_H */
+#endif
 
