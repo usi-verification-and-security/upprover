@@ -472,8 +472,8 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                 //remove summary and ID from everywhere
                 summary_store->remove_summary(summary_id);
                 node.remove_summaryID(summary_id);
-                //notify partitions about removal of summaries //I've not seen the necessity
-                //equation.refine_partition(entry_partition.get_iface().partition_id);
+                //notify partitions about removal of summaries
+                equation.refine_partition(entry_partition.get_iface().partition_id);
             }
             return false;
         }
