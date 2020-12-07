@@ -340,22 +340,23 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
  Purpose: Writes summary_IDs in omega file (the last field) if IDs are meaningful
 \*******************************************************************/
 void serialize_used_summaries(std::ofstream& out, 
-        const summary_ids_sett& used_summary_IDs)
+        const summary_idt& used_single_sumID)
 {
-  if (used_summary_IDs.empty()) {
+  if (used_single_sumID == 0) {
     out << "-" << std::endl;
     return;
   }
 //writing summary_IDs in omega file (the last field)
-  bool first = true;
-  for (summary_ids_sett::const_iterator it = used_summary_IDs.begin();
-       it != used_summary_IDs.end(); ++it) {
-    if (first) first = false;
-    else {
-      out << ","; //if there are more IDs, separate them by ,
-    }
-    out << *it;
-  }
+//  bool first = true;
+//  for (summary_ids_sett::const_iterator it = used_summary_IDs.begin();
+//       it != used_summary_IDs.end(); ++it) {
+   // if (first) first = false;
+    //else {
+    //  out << ","; //if there are more IDs, separate them by ','
+    // SA:we don't have such scenario in UpProver, each node has single summary
+    //}
+    out << used_single_sumID;
+ // }
   out << std::endl;
 }
 /*******************************************************************\
@@ -363,7 +364,24 @@ void serialize_used_summaries(std::ofstream& out,
 
  Purpose: Reads summary_IDs from omega file (the last field) if IDs are meaningful
 \*******************************************************************/
-void deserialize_used_summaries(const std::string& line, 
+void read_summaryIDs_from_omega(const std::string& line,
+                                summary_idt& read_summaryID)
+{
+    if (line.length() == 0)
+        return;
+    
+    char *bfr = new char[line.length()+1];
+    strcpy(bfr, line.c_str());
+
+    read_summaryID = atoi(bfr);
+}
+
+/*******************************************************************\
+ Function: Old method used in Evolcheck
+
+ Purpose: Reads summary_IDs from omega file (the last field) if IDs are meaningful
+\*******************************************************************/
+/*void deserialize_used_summaries(const std::string& line,
         summary_ids_sett& used_summary_IDs)
 {
   used_summary_IDs.clear();
@@ -390,6 +408,7 @@ void deserialize_used_summaries(const std::string& line,
       break;
   }
 }
+ */
 /*******************************************************************\
  
  Function: Usage ONly in UpProver
@@ -416,7 +435,7 @@ void subst_scenariot::serialize(const std::string& file)
     out << info.is_preserved_node() << std::endl;
     out << info.is_preserved_edge() << std::endl;
     out << info.has_assertion_in_subtree() << std::endl;
-    serialize_used_summaries(out, info.get_used_summaries());
+    serialize_used_summaries(out, info.get_node_sumID()); //NOTE: always get sumID from call-tree-node, that's the updated one!
 //    call_sitest call_sites = (*functions[i]).get_call_sites();
 //    for (call_sitest::iterator it = call_sites.begin();
 //            it != call_sites.end(); ++it)
@@ -462,7 +481,7 @@ void subst_scenariot::deserialize(
  
  Function:
 
- Purpose:
+ Purpose: Reads the info in omega file and
  Note: data contains __omega info
 \*******************************************************************/
 void subst_scenariot::restore_call_info(
@@ -470,37 +489,47 @@ void subst_scenariot::restore_call_info(
 {
   call_info.get_assertions().clear();
   //code.output(std::cout); //for printing
-  for(goto_programt::const_targett inst=code.instructions.begin();
-      inst!=code.instructions.end(); ++inst)
+  for(goto_programt::const_targett inst=code.instructions.begin(); inst!=code.instructions.end(); ++inst)
   {
     global_loc++;
 
     if (inst->type == FUNCTION_CALL)
     {
-      call_tree_nodet& call_site = call_info.get_call_sites().insert(
-              std::pair<goto_programt::const_targett, call_tree_nodet>(inst,
-              call_tree_nodet(&call_info, global_loc)
-              )).first->second;
+        //insert a pair of goto_programt and call_tree_node into map (call_site)
+        call_tree_nodet& call_site = call_info.get_call_sites().insert(
+              std::pair<goto_programt::const_targett, call_tree_nodet>
+                      (inst,call_tree_nodet(&call_info, global_loc))
+                      ).first->second;
 
-      functions.push_back(&call_site);
-
-      const irep_idt &target_function = data[(functions.size()-1)*7];
-     // std::cout << target_function.c_str() << std::endl; //be careful target_function(which is read from omega file) not to be different than inst(code.instruction)
-      call_site.set_function_id(target_function);
-      switch (atoi(data[(functions.size()-1)*7+2].c_str())){
-        case 0: {call_site.set_precision(HAVOC);} break;
-        case 1: {call_site.set_precision(SUMMARY);} break;
-        case 2: {call_site.set_precision(INLINE);} break;
-      }
+        functions.push_back(&call_site);
+    
+        //target_function function read from omega file
+        const irep_idt &target_function = data[(functions.size()-1)*7];
+#ifdef PRINT_DEBUG_UPPROVER
+        std::cout << target_function.c_str() <<" --> BELONGS TO FUNCTION: " <<inst->function.c_str() << std::endl;
+        //be careful target_function(which is read from omega file) not to be different than inst(code.instruction)//
+#endif
+        call_site.set_function_id(target_function);
+        switch (atoi(data[(functions.size()-1)*7+2].c_str())){
+            case 0: {call_site.set_precision(HAVOC);} break;
+            case 1: {call_site.set_precision(SUMMARY);} break;
+            case 2: {call_site.set_precision(INLINE);} break;
+        }
 
       if (data[(functions.size()-1)*7+3] == "1") { call_site.set_preserved_node(); }
       if (data[(functions.size()-1)*7+4] == "1") { call_site.set_preserved_edge(); }
       if (data[(functions.size()-1)*7+5] == "1") { call_site.set_assertion_in_subtree(); }
-      
+     
+      summary_idt read_summaryID = 0;
       if (data[(functions.size()-1)*7+6] != "-") {   //meaningful summary_IDs
-        summary_ids_sett used_summary_IDs;
-        deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summary_IDs);
-        call_site.set_used_summaries(used_summary_IDs);
+        //summary_ids_sett used_summary_IDs;
+        //deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summary_IDs); deprecated method
+        read_summaryIDs_from_omega(data[(functions.size()-1)*7+6], read_summaryID);
+        //call_site.set_used_summaries(used_summary_IDs);
+          call_site.add_node_sumID(read_summaryID);
+      }
+      else if (data[(functions.size()-1)*7+6] == "-") {
+          call_site.add_node_sumID(0);  //so, from now on if sumID is zero means no summary
       }
 
       const goto_programt &function_body =
