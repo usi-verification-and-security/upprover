@@ -25,7 +25,8 @@ public:
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           ignore(false),
-//          converted(false),
+//        converted(false),
+          partition_summaryID(0),
           parent_id(_parent_id),
           representation(partition_representation::NONE),
           partition_iface(&_partition_iface) { }
@@ -100,16 +101,19 @@ public:
   void add_ssa_representation() {representation = (representation | partition_representation ::SSA);}
     
 //    void remove_partition(){
-//        representation = representation & (partition_representation::NONE );  //SA: check it later if needed
+//        representation = representation & (partition_representation::NONE );  //SA: check it if needed
 //    }
 
  // =========== PARTITION FLAGS ==============================
 
   // All summaries for the associated function
-  summary_ids_vect summary_ID_vec;
-  // Summaries that are applicable after slicing //MB: TODO investigate this
-  summary_ids_sett summary_ID_set;
-
+  //summary_ids_vect partition_summary_ID_vec; // no use in UpProver
+  // Summaries that are applicable after slicing
+  //summary_ids_sett partition_summary_ID_set; // do not use in UpProver
+  
+  //single summary of partition (node)
+  summary_idt partition_summaryID; // every partition must have single summary ID obtained from cal-tree-node
+  
 //  fle_part_idt fle_part_id;
   partition_idt parent_id;
   partition_idst child_ids;
