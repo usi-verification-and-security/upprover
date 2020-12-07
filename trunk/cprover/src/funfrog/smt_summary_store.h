@@ -24,10 +24,10 @@ public:
 
   virtual void serialize(std::ostream& out) const override;
   virtual void deserialize(std::vector<std::string> fileNames) override;
-  virtual summary_idt insert_summary(itpt_summaryt *summary_given, const std::string & function_name) override;
+  summary_idt insert_summary(itpt_summaryt *summary_given, const std::string & function_name) override;
 
-  void set_decider(smtcheck_opensmt2t * decider) {
-      this->decider = decider;
+  void set_decider(smtcheck_opensmt2t * _decider) {
+      this->decider = _decider;
   }
 
 private:

@@ -25,8 +25,8 @@ void prop_summary_storet::serialize(std::ostream& out) const
 
   // serializing mapping of function names to summary ids
   out << '\n';
-  out << this->function_to_summaries.size() << '\n';
-  for (const auto & summaries_for_function : this->function_to_summaries) {
+  out << this->fname_to_summaryIDs.size() << '\n';
+  for (const auto & summaries_for_function : this->fname_to_summaryIDs) {
       out << summaries_for_function.first << ' ';
       out << summaries_for_function.second.size() << '\n';
       for (auto summary_id : summaries_for_function.second) {
@@ -72,7 +72,7 @@ void prop_summary_storet::deserialize(std::istream& in)
       in >> name;
       unsigned int summary_count;
       in >> summary_count;
-      auto & ids = function_to_summaries[name];
+      auto & ids = fname_to_summaryIDs[name];
       for (unsigned int j = 0; j < summary_count; ++j) {
             unsigned int id;
             in >> id;

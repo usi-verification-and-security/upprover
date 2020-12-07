@@ -7,6 +7,7 @@ Module: Storage class for function summaries (union-find).
 #include "summary_store.h"
 #include "call_tree_node.h"
 #include <algorithm>
+#include <utility>
 
 const summary_storet::nodet& summary_storet::find_repr(summary_idt id) const
 {
@@ -83,20 +84,15 @@ itpt_summaryt& summary_storet::find_summary(summary_idt new_id) const
 }
 
 /*******************************************************************\
-
 Function: summary_storet::insert_summary
-
-  Inputs:
-
- Outputs:
  base functionality
  Purpose: Inserts a new summary and associates a new ID to that.
  Note that summary store takes ownership of the pointer; the passed pointer cannot be used anymore!
 \*******************************************************************/
-summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const std::string & function_name) {
-    // Do not add summary if the same is already there
-    if(has_summaries(function_name)) {
-        const auto & summaries = get_summariesID(function_name);
+summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const std::string & fname_countered) {
+    // Do not add summary if the same ID is already there
+    if(has_summaries(fname_countered)) {
+        const auto & summaries = get_summariesID(fname_countered);
         auto it = std::find_if(summaries.begin(), summaries.end(), [this, summary_given](summary_idt id){
             return find_summary(id).equals(summary_given);
         });
@@ -112,11 +108,15 @@ summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const 
     summary_idt new_id = max_id++;
     store.emplace_back(new_id, summary_given);
     // this also creates the map entry if it is the first time we see this function_name
-    function_to_summaries[function_name].push_back(new_id);
+    fname_to_summaryIDs[fname_countered].push_back(new_id);
     id_to_summary[new_id] = summary_given;
+#ifdef PRINT_DEBUG_UPPROVER
+    std::cout << "\n@@Added map/store ID: "  << new_id << " for " << fname_countered <<"\n";
+#endif
     repr_count++;
     return new_id;
 }
+
 /*******************************************************************
  Purpose: store summaries into a given file
 \*******************************************************************/

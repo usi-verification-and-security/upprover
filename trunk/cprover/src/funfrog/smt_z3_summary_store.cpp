@@ -81,7 +81,7 @@ void smt_z3_summary_storet::deserialize(std::vector<std::string> fileNames) {
                 
                 clean_name(fname); // + remove space!
                 itp->setInterpolant(body);
-                this->insert_summary(itp, fname);                
+                this->insert_summary(itp, fname);  //ret val not used?!
             }
         } catch (...) { // default, TODO: map the errors
             std::cerr << "Non linear operation encounter in file " << fileName << ". Ignoring this file.\n";
