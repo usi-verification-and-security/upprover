@@ -91,7 +91,7 @@ Function: summary_storet::insert_summary
 \*******************************************************************/
 summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const std::string & fname_countered) {
     // Do not add summary if the same ID is already there
-    if(has_summaries(fname_countered)) {
+    if(function_has_summaries(fname_countered)) {
         const auto & summaries = get_summariesID(fname_countered);
         auto it = std::find_if(summaries.begin(), summaries.end(), [this, summary_given](summary_idt id){
             return find_summary(id).equals(summary_given);
@@ -126,4 +126,11 @@ void summary_storet::serialize(std::string file_name) {
     out.open(file_name);
     this->serialize(out);
     out.close();
+}
+
+/*******************************************************************
+ Purpose: use this method in UpProver to understand if a partition has summary
+\*******************************************************************/
+bool summary_storet::node_has_summaries(const call_tree_nodet* node) {
+    return node->get_node_sumID() != 0;
 }

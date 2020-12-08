@@ -77,45 +77,72 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
 void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
-
-    if(! partition.has_abstract_representation()){
-        throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
+    if (partition.get_iface().call_tree_node.node_has_summary()) {
+        if (!partition.has_abstract_representation()) {
+            throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
+        }
+        partition.remove_abstract_representation();
+        //partition.partition_summary_ID_vec.clear();
+        //partition.partition_summary_ID_set.clear();
+        partition.partition_summaryID = 0;
     }
-    partition.remove_abstract_representation();
-    partition.summary_ID_vec.clear();
-    partition.summary_ID_set.clear();
 }
 
 
+/*******************************************************************
 
-void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const std::string & function_id)
+ Purpose: SA: usage only in HiFrog
+
+ \*******************************************************************/
+//void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const std::string & function_id)
+//{
+//    assert(summary_store.has_summaries(function_id));
+//    if(!summary_store.has_summaries(function_id)){
+//        throw std::logic_error{"Trying to set non-existent summary_ids_vec to a partition for " + function_id};
+//    }
+//    std::cout << "##fill summary for fname: " <<function_id<<" ";
+//    auto const & summary_ids_vec = summary_store.get_summariesID(function_id);
+//    assert(!summary_ids_vec.empty());
+//
+//    partitiont& sum_partition = partitions.at(partition_id);
+//    std::cout << ", with partition_ID summary: " <<partition_id<<" ";
+//
+//    sum_partition.add_summary_representation();
+//    sum_partition.partition_summary_ID_vec = summary_ids_vec;
+//
+//    sum_partition.partition_summary_ID_set.clear();
+//    //copy summary_ids_vec into node_summaryID_set
+//    for (unsigned long summary_id : summary_ids_vec) {
+//        sum_partition.partition_summary_ID_set.insert(summary_id);
+//        std::cout << "with summary ID of : " <<summary_id<<"\n";
+//    }
+//}
+
+/*******************************************************************
+
+ Purpose: usage only in UpProver
+Note: obtain summary ID from node.
+ customized for UpProver to work with single sumID
+ \*******************************************************************/
+void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, call_tree_nodet & node)
 {
-    assert(summary_store.has_summaries(function_id));
-    if(!summary_store.has_summaries(function_id)){
-        throw std::logic_error{"Trying to set non-existent summary_ids_vec to a partition for " + function_id};
+    if(!node.node_has_summary()){
+        std::string fname = node.get_function_id().c_str(); //cast char* to string
+        throw std::logic_error{"Trying to set non-existent summary_id to a partition for " + fname};
     }
-    auto const & summary_ids_vec = summary_store.get_summariesID(function_id);
-    assert(!summary_ids_vec.empty());
-
+    //always get sumID from node (one-to-one mapping), not function name (NO one-to-one mapping)!
+    const summary_idt & sum_ID = node.get_node_sumID();
     partitiont& sum_partition = partitions.at(partition_id);
-
+    
+#ifdef PRINT_DEBUG_UPPROVER
+    std::cout << "@@fill summary for partition_id: " <<partition_id <<" , with sum_ID: " <<sum_ID<<"\n";
+#endif
     sum_partition.add_summary_representation();
-    sum_partition.summary_ID_vec = summary_ids_vec;
 
-    sum_partition.summary_ID_set.clear();
-    //copy summary_ids_vec into summary_ID_set
-    for (unsigned long summary_id : summary_ids_vec) {
-        sum_partition.summary_ID_set.insert(summary_id);
-    }
+    sum_partition.partition_summaryID = sum_ID;
 }
 
 /*******************************************************************
- Function: partitioning_target_equationt::partitioning_target_equationt
-
- Inputs:
-
- Outputs:
-
  Purpose: Collects information about the specified partitions for later
  processing and conversion
 
@@ -382,10 +409,6 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
 /*******************************************************************
  Function: partitioning_target_equationt::convert_partition_assertions
 
- Inputs:
-
- Outputs:
-
  Purpose: Convert a specific partition assertions of SSA steps
 
  \*******************************************************************/
@@ -530,10 +553,6 @@ void partitioning_target_equationt::convert_partition_assertions(
 /*******************************************************************
  Function: partitioning_target_equationt::convert_partition_assumptions
 
- Inputs:
-
- Outputs:
-
  Purpose: Convert a specific partition assumptions of SSA steps
 
  \*******************************************************************/
@@ -581,32 +600,41 @@ void partitioning_target_equationt::convert_partition_io(
 /*******************************************************************
  Function: partitioning_target_equationt::convert_partition_summary
 
- Inputs:
-
- Outputs:
-
  Purpose: Convert a summary partition (i.e., assert its summary)
-
+Note: SA: customized for UpProver to work with single sumID
  \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
         interpolating_solvert &interpolator, partitiont &partition)
 {
     auto common_symbs = partition.get_iface().get_iface_symbols();
-    unsigned i = 0;
+    //unsigned i = 0;
 
     bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
-    unsigned last_summary = partition.summary_ID_set.size() - 1;
+    //unsigned last_summary = partition.partition_summary_ID_set.size() - 1;
 
-    for (auto summary_id : partition.summary_ID_set)
-    {
-        auto & summary = summary_store.find_summary(summary_id);
-        if ((!is_recursive || last_summary == i++)) {
+//    for (auto summary_id : partition.partition_summary_ID_set)
+//    {
+//        if (partition.get_iface().call_tree_node.get_node_sumID() != 0) {
+//            auto &summary = summary_store.find_summary(summary_id);
+//            if ((!is_recursive || last_summary == i++)) {
+//                // we do not want to actually change the summary, because we might need the template later,
+//                // we just get a PTRef to the substituted version
+//                interpolator.insert_substituted(summary, common_symbs);
+//            }
+//        }
+//    }
+    //there is at most one summary per partition
+    if (partition.get_iface().call_tree_node.node_has_summary()) {
+        summary_idt summary_id = partition.get_iface().call_tree_node.get_node_sumID();
+        auto &summary = summary_store.find_summary(summary_id);
+        if ((!is_recursive)) {
             // we do not want to actually change the summary, because we might need the template later,
             // we just get a PTRef to the substituted version
             interpolator.insert_substituted(summary, common_symbs);
         }
     }
+    
 }
 
 /*******************************************************************
@@ -642,7 +670,7 @@ void partitioning_target_equationt::convert_partition(
     partition.add_fle_part_id(interpolator.new_partition());
 
     // If this is a summary partition, apply the summary
-    if (partition.has_summary_representation()) {
+    if (partition.has_summary_representation() && !(partition.ignore) && partition.get_iface().call_tree_node.node_has_summary()) {
         convert_partition_summary(interpolator, partition);
         return;
     }
@@ -738,20 +766,23 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
     //number of interpolation task after UNSAT proof
     unsigned valid_tasks = 0;
 
-    // Clear the summary_ID_set
-    for (auto const & partition : partitions){
-        partition.get_iface().call_tree_node.clear_summaries();
-    }
+//Clear the node_summaryID_set //SA:doesn't clear node_summaryID_set!
+//    for (auto const & partition : partitions){
+//        //partition.get_iface().call_tree_node.clear_summaries();
+//        for (auto it = partition.node_summaryID_set.begin(); it!=partition.node_summaryID_set.end(); ++it)
+//           std::cout << "sumId_set " << *it;
+//    }
 
     // Find partitions in the subtree suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
         partitiont& current_partition = partitions[i];
 
-        // Mark the used summaries
+        // Mark the used summaries //should be a single summary per partition in UpProver
         if (current_partition.has_summary_representation() && !(current_partition.ignore)) {
-            for (auto summary_id : current_partition.summary_ID_set) {
-                current_partition.get_iface().call_tree_node.add_summary_IDs(summary_id);
-            }
+            //for (auto summary_id : current_partition.partition_summary_ID_set) {
+            auto summary_id = current_partition.get_iface().call_tree_node.get_node_sumID();
+            current_partition.get_iface().call_tree_node.add_node_sumID(summary_id);
+          //  }
         }
 
         if (!skip_partition(current_partition, store_summaries_with_assertion)){ //if has not abstract repr
@@ -825,7 +856,7 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         }
         // Store the interpolant in summary_storet and asks a new ID for each summary
         auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
-        partition.get_iface().call_tree_node.add_summary_IDs(new_id);
+        partition.get_iface().call_tree_node.add_node_sumID(new_id);
         // Update the precision information for omega deserialization; which partition
         //is now summarized?
         partition.get_iface().call_tree_node.set_summary();

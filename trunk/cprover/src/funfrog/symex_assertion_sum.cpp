@@ -1094,15 +1094,18 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << log.eom;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
-
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-
-  equation.fill_summary_partition(partition_id, id2string(function_id));
+  //log.statistics() << " for partition-ID: " << partition_iface.partition_id << " sumID "<<
+  // partition_iface.call_tree_node.get_node_sumID() << log.eom;
+  
+  //SA: use node in fill_summary_partition not function-name
+  call_tree_nodet& node = partition_iface.call_tree_node;
+  equation.fill_summary_partition(partition_id, node);
 }
 
 /*******************************************************************

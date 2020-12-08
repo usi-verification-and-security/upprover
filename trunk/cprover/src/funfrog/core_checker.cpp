@@ -446,9 +446,9 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
   }
     init_solver_and_summary_store();
     const auto & const_summary_store = *summary_store;
-    bool nopartitions = options.get_bool_option("no-partitions");
+    bool nopartitions = options.get_bool_option("no-partitions"); //no-summary in no-partitioning
     auto has_summary = [&const_summary_store, nopartitions](const std::string & function_name){
-        return nopartitions ? false : const_summary_store.has_summaries(function_name);
+        return nopartitions ? false : const_summary_store.function_has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary);
   if (nopartitions) // BMC alike version
@@ -558,10 +558,12 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                 // REPORT
                 status() << ("Go to next iteration\n") << eom;
                 for (auto const & refined_node : refined_functions ){
-                    if (!refined_node->get_used_summaries().empty()) {
-                        const summary_idt smID = *(refined_node->get_used_summaries().begin());
+                    if (refined_node->node_has_summary()) {
+                        const summary_idt smID = refined_node->get_node_sumID();
                         summary_store->remove_summary(smID);
-                        refined_node->remove_summaryID(smID);
+                        refined_node->remove_node_sumID(smID);
+                        //notify partitions about removal of summaries
+                        //equation.refine_partition(entry_partition.get_iface().partition_id);
                         if(options.is_set("summary-validation")) {
                             //if function were already marked as repaired delete it
                             if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
@@ -902,12 +904,12 @@ Purpose: extracts summaries after successful verification; and dumps the summari
             const auto & function_name = id2string(partition.get_iface().function_id);
             bool should_summarize = partition.get_iface().call_tree_node.get_precision() == summary_precisiont::SUMMARY;
             // should_summarize -> store.has_summaries
-            assert(!should_summarize || store.has_summaries(function_name));
+            assert(!should_summarize || store.function_has_summaries(function_name) || partition.get_iface().call_tree_node.node_has_summary());
             bool was_summarized = partition.has_summary_representation();
             if(should_summarize){
                 // clear the old information and load new information from the store
                 // fill the partition with new summaries
-                eq.fill_summary_partition(partition.get_iface().partition_id, function_name);
+                eq.fill_summary_partition(partition.get_iface().partition_id, partition.get_iface().call_tree_node);
                 assert(partition.has_summary_representation());
             }
             else{
@@ -945,7 +947,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     const auto & const_summary_store = summary_store;
     auto has_summary = [&const_summary_store]
             (const std::string & function_name){
-        return const_summary_store.has_summaries(function_name);
+        return const_summary_store.function_has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary);
     std::unique_ptr<path_storaget> worklist;
@@ -1057,7 +1059,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     init_solver_and_summary_store();
     const auto & const_summary_store_prop = *(this->summary_store);
     auto has_summary_prop = [&const_summary_store_prop](const std::string & function_name){
-        return const_summary_store_prop.has_summaries(function_name);
+        return const_summary_store_prop.function_has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary_prop);
     auto res = this->assertion_holds_smt(assertion, false);

@@ -25,6 +25,7 @@ different deferred functions.
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"
+#include "call_tree_node.h"
 
 class partition_ifacet;
 class interpolating_solvert;
@@ -57,8 +58,10 @@ public:
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id, const std::string & function_id);
-
-  // Fill the (reserved) partition with the stub summary.
+  
+  void fill_summary_partition(partition_idt partition_id, call_tree_nodet & node);
+    
+    // Fill the (reserved) partition with the stub summary.
   void fill_stub_partition(partition_idt partition_id);
 
   // Begin processing of the given (previously reserved) partition.

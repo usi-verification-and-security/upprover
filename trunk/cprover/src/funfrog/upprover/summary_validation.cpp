@@ -123,8 +123,8 @@ bool launch_upprover(
 \*******************************************************************/
 bool summary_validationt::call_graph_traversal()
 {
-// Here we suppose that "__omega" already contains information about changes
-// TODO: Maybe omega should be passed internally, not as a file.
+    // we suppose "__omega" already contains information about changes
+    //extract info from omega file(e.g., function ID, summary ID, call location, preserved,....) to several call-tree-nodet(call_site)
     omega.deserialize(options.get_option("save-omega"),
             goto_model.goto_functions.function_map.at(goto_functionst::entry_point()).body); //double check restore_call_info
     omega.process_goto_locations();
@@ -225,11 +225,12 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     status() << "\n------validating node " << function_name << " ..." << eom;
     bool has_summary;
     //has_summary = summary_store->has_summaries(function_name); //no! when there are several same-name-nodes, cannot distinguish the summaries per node. use the next line
-    has_summary = !node.get_used_summaries().empty(); //yes, summary associated with node
+    has_summary = node.get_node_sumID() != 0; //yes, summary associated with node; zero initial value
     if (has_summary){
         //there is only one summary per node due to full unrolling using goto-instrument
 //      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//don't do this as it always take the same ID for all
-        const summary_idt sumID_full = *(node.get_used_summaries().begin());
+        //const summary_idt sumID_full = *(node.get_used_summaries().begin());
+        const summary_idt sumID_full = node.get_node_sumID();
         //TODO if the summary is true dont call method validate_summary(), it's gonna be captured anyway
 //      print summary-in-use in the console
 //      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
@@ -241,13 +242,13 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
             if (has_parent) {
                 marked_to_check.insert(&node.get_parent());
             }
-            if(!node.get_used_summaries().empty() && summary_store->id_exists(sumID_full)){
+            if(node.get_node_sumID() != 0 && summary_store->id_exists(sumID_full)){
                 std::string _logic = options.get_option(HiFrogOptions::LOGIC);
                 if (_logic == "prop") {
                     node.set_inline();
                     //remove summary and ID of original full-summary from everywhere
                     summary_store->remove_summary(sumID_full);
-                    node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
+                    node.remove_node_sumID(sumID_full); //just deletes from node_summaryID_set
                 }
                 else if (_logic == "qflra" || _logic == "qfuf") { //if summary is con/dis-junctive, logic could n't be prop.
                     itpt_summaryt &itpFull = summary_store->find_summary(sumID_full);
@@ -261,7 +262,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     std::vector<PTRef> sumArgs_copy = sumFull->getTempl().getArgs();
                     //Remove full-summary and its ID from everywhere
                     summary_store->remove_summary(sumID_full);
-                    node.remove_summaryID(sumID_full);
+                    node.remove_node_sumID(sumID_full);
                     //node.set_inline(); //not sure
 # ifdef HOUDINI_REF
                     summary_idt sub_sumID;
@@ -271,30 +272,28 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         std::vector<PTRef> validConjs;
                         //Iterate over conjuncts of the full-summary
                         for (int i = 0; i < solver->getLogic()->getPterm(sumFull_pref).size(); i++) {
+                            status() << "\n" << "-- checking conjunct: " <<  i+1 << eom;
                             const PTRef subConj_pref = solver->getLogic()->getPterm(sumFull_pref)[i];
                             //std::cout <<";sub summary is: \n" << solver->getLogic()->pp(subConj_pref) <<"\n";
                             //Form args of sub_summary based on the full summary
                             smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
                                                                                         node.get_function_id().c_str(),
                                                                                         subConj_pref);
-                            //Ask for new ID and insert ID in both maps funcToid and idTosum
+                    // Ask for new ID and add ID <vec>store and <map> funcToid and idTosum
                             sub_sumID = summary_store->insert_summary(sub_sum, node.get_function_id().c_str());
-                            node.add_summary_IDs(sub_sumID);
+                            //add ID <set> node_summaryID_set
+                            node.add_node_sumID(sub_sumID);
                             //Validate new sub summary
                             validated = validate_summary(node, sub_sumID);
                             //regardless of validation result remove summaryID from everywhere; validated conjuncts will be mkAnd
                             summary_store->remove_summary(sub_sumID);
-                            node.remove_summaryID(sub_sumID);
+                            node.remove_node_sumID(sub_sumID);
                             if (validated) {
                                 validConjs.push_back(subConj_pref);
                                 status() << "\n" << "--conjunct " << i + 1 << " was good enough to capture the change of "
                                          << node.get_function_id().c_str() << eom;
-                                //increase # of repaired summaries
-                                repaired_nodes.insert(node.get_function_id());
                                 //add ID once all conjuncts were checked-->mkAnd(valid conj)-->
-                                // form summay with suitable args -->insert-summary-store -->update node precision
-                                //node.add_summary_IDs(sub_sumID);
-                                // node.set_precision(SUMMARY);
+                                // form summay with suitable args -->insert-summary-store -->update node precision -->increase repaired count
                                 //break; //if you find one good summary keep continuing to find more conjuncts and mkAnd them
                             }
                         }
@@ -305,7 +304,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                                                                              weakened_sum_ptref);
                             //Ask for new ID and insert sumID in both maps funcToid and idTosum
                             sub_sumID = summary_store->insert_summary(weakened_sum, node.get_function_id().c_str());
-                            node.add_summary_IDs(sub_sumID);
+                            node.add_node_sumID(sub_sumID);
                             node.set_precision(SUMMARY);
                             //increase repaired summary count
                             repaired_nodes.insert(node.get_function_id());
@@ -315,9 +314,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                         }
                         else { //none of conjuncts was good enough
                             node.set_inline();
-                            //remove summary and ID of original full-summary from everywhere
-                            summary_store->remove_summary(sumID_full);
-                            node.remove_summaryID(sumID_full); //just deletes from summary_ID_set
+                            //ID of original full-summary already was deleted
                         }
                     }
                     else if (solver->isDisjunctive(sumFull_pref)) {
@@ -347,18 +344,17 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                                                                                     node.get_function_id().c_str(),
                                                                                                     res_subst);
                                     //Ask for new ID
-                                    sub_sumID = summary_store->insert_summary(sub_fla_sum,
-                                                                              node.get_function_id().c_str());
-                                    node.add_summary_IDs(sub_sumID);
+                                    sub_sumID = summary_store->insert_summary(sub_fla_sum, node.get_function_id().c_str());
+                                    node.add_node_sumID(sub_sumID);
                                     //Validate new sub summary
                                     validated = validate_summary(node, sub_sumID);
             
                                     if (!validated) {
                                         //remove summary ID from everywhere
                                         summary_store->remove_summary(sub_sumID);
-                                        node.remove_summaryID(sub_sumID);
+                                        node.remove_node_sumID(sub_sumID);
                                     } else {
-                                        node.add_summary_IDs(sub_sumID);
+                                        node.add_node_sumID(sub_sumID);
                                         node.set_precision(SUMMARY);
                                         status() << "\n" << "--disjunct " << disj + 1
                                                  << " was good enough to capture the change of "
@@ -397,7 +393,7 @@ Function:
 \*******************************************************************/
 
 bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
-    status() << "------validating summary of " << node.get_function_id().c_str() << " ..." << eom;
+    status() << "------validating summary of " << node.get_function_id().c_str() << " with ID: " << summary_id << eom;
     counter_validation_check++;
     //each time we need a cleaned solver; this resets mainSolver but logic and config stay the same.
     decider->get_solver()->reset_solver();
@@ -437,11 +433,11 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     }
     catch (const std::string &s) {
         std::cerr << "Error in preparing SSA in finding symbol " << s << ". Invalidate this summary, go to check the parent.\n";
-        if (!node.get_used_summaries().empty()) {
+        if (node.node_has_summary()) {
             node.set_inline();
             //remove summary and ID
             summary_store->remove_summary(summary_id);
-            node.remove_summaryID(summary_id);
+            node.remove_node_sumID(summary_id);
         }
         return false;
     }
@@ -458,7 +454,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     (void)(summary_partition_id);
     
     // f /\ !summary --> ?
-    if ((!node.get_used_summaries().empty()) && summary_store->id_exists(summary_id)) {
+    if ((node.node_has_summary()) && summary_store->id_exists(summary_id)) {
         itpt &summary = summary_store->find_summary(summary_id);
         try {
             interpolator->substitute_negate_insert(summary, entry_partition.get_iface().get_iface_symbols());
@@ -466,12 +462,12 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
         catch (SummaryInvalidException &ex) {
             // TODO: figure out a way to check beforehand whether interface matches or not
             // Summary cannot be used for current body -> invalidated
-            if (!node.get_used_summaries().empty()) {
+            if (node.node_has_summary()) {
                 node.set_inline();
                 node.set_precision(INLINE);
                 //remove summary and ID from everywhere
                 summary_store->remove_summary(summary_id);
-                node.remove_summaryID(summary_id);
+                node.remove_node_sumID(summary_id);
                 //notify partitions about removal of summaries
                 equation.refine_partition(entry_partition.get_iface().partition_id);
             }
@@ -511,13 +507,13 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             else {
                 //there is room for refinement; remove the summary of functions accumulated in refiner
                 for (auto const & refined_node : refined_functions ){
-                    if (!refined_node->get_used_summaries().empty()) {
-                        const summary_idt smID = *(refined_node->get_used_summaries().begin());
+                    if (refined_node->node_has_summary()) {
+                        const summary_idt smID = refined_node->get_node_sumID();
                         summary_store->remove_summary(smID);
-                        refined_node->remove_summaryID(smID);
+                        refined_node->remove_node_sumID(smID);
                         refined_node->set_inline();
                         node.set_precision(INLINE);
-                        //increase # of repaired summaries
+                        //decrease # of repaired summaries
                         if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
                             repaired_nodes.erase(refined_node->get_function_id());
                     }
@@ -645,9 +641,11 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
         fle_part_idt summary_partition_id = interpolator1->new_partition();
         (void) (summary_partition_id);
     
-        bool has_summary = !current_parent->get_used_summaries().empty();
+        //bool has_summary = !current_parent->get_used_summaries().empty();
+        bool has_summary = current_parent->node_has_summary();
         if (has_summary) {
-            const summary_idt parent_sumID = *current_parent->get_used_summaries().begin();
+            //const summary_idt parent_sumID = *current_parent->get_used_summaries().begin();
+            const summary_idt parent_sumID = current_parent->get_node_sumID();
             itpt &parent_summary = summary_store->find_summary(parent_sumID);
             try {
                 status() << "------adding negation of summary of node  : " << entry_partition.get_iface().function_id.c_str() << eom;

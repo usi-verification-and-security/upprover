@@ -46,12 +46,16 @@ public:
   call_sitest& get_call_sites() { return call_sites; }
 
   const goto_programt::const_targett* get_target();
+  
+  bool node_has_summary() {
+    return this->get_node_sumID() != 0;
+  }
 
   const summary_idt& get_node_sumID() const {
       return this->node_summaryID;
   }
   
-  void set_node_sumID(summary_idt& other)  {
+  void set_node_sumID(summary_idt& other) {
       node_summaryID = other;
   }
     
@@ -61,7 +65,6 @@ public:
   #ifdef PRINT_DEBUG_UPPROVER
       std::cout << "\n@@Added node_summaryID: " <<id <<" for " << this->get_function_id().c_str() <<"\n";
   #endif
-  
   }
   
   void remove_node_sumID(summary_idt id_to_delete) {
@@ -71,7 +74,7 @@ public:
   #ifdef PRINT_DEBUG_UPPROVER
           std::cout << "@@Zeroed node_sumID: " << id_to_delete << "\n";
   #endif
-        }
+      }
   }
         
 // void clear_summaries() { node_summaryID_set.clear(); } //SA: no need in UpProver

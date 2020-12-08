@@ -50,12 +50,15 @@ public:
   void clear() { store.clear(); max_id = 1; repr_count = 0; fname_to_summaryIDs.clear();}
 
 
-  bool has_summaries(const std::string & function_name) const {
+  bool function_has_summaries(const std::string & function_name) const {
       auto it = fname_to_summaryIDs.find(function_name);
       //return if found & if the entry is not empty
       return it != fname_to_summaryIDs.end() && !it->second.empty();
   }
   
+  //usage in UpProver
+    bool node_has_summaries(const call_tree_nodet* node);
+    
   bool id_exists (const summary_idt id) {
     std::unordered_map<summary_idt,itpt_summaryt*>::iterator it = id_to_summary.find(id);
     return it != id_to_summary.end();

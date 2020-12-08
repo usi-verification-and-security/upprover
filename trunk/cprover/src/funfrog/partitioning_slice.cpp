@@ -85,20 +85,23 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
     // We can only slice assignments
     it->ignore = it->is_assignment();
   }
-  for (auto & partition : equation.get_partitions())
-  {
-    if (partition.has_summary_representation()) {
-      partition.summary_ID_set.clear();
-      // We can only slice standard summaries, not inverted and not summaries
-      // with assertion in subtree
-      if (partition.get_iface().assertion_in_subtree) {
-        mark_summary_symbols(summary_store, partition);
-        partition.ignore = false;
-      } else {
-        partition.ignore = true;
-      }
-    }
-  }
+  //SA: Due to crash in upprover in ex21-upg3.c. The problem is it gets ignored unwantedly.
+//  for (auto & partition : equation.get_partitions())
+//  {
+//    if (partition.has_summary_representation()) {
+//      //partition.partition_summary_ID_set.clear();
+//      // We can only slice standard summaries, not inverted and not summaries
+//      // with assertion in subtree
+//      if (partition.get_iface().assertion_in_subtree) {
+//        mark_summary_symbols(summary_store, partition);
+//        partition.ignore = false;
+//      } else {
+//        partition.ignore = true;
+//        std::cout << "Ignoring partition: " << partition.parent_id << partition.get_iface().function_id.c_str() << std::endl;
+//
+//      }
+//    }
+//  }
 
   // Prepare necessary maps
   prepare_maps(equation);
@@ -135,37 +138,42 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
     }
     
     // Is constrained by a summary?
-    summary_mapt::iterator sum_it = summary_map.find(id);
-    if (sum_it != summary_map.end()) {
-      partitiont& partition = *(sum_it->second.first);
-      partition_ifacet& partition_iface = partition.get_iface();
-      assert(partition.has_summary_representation());
-      const summary_ids_vect& itps = partition.summary_ID_vec;
-      //unsigned symbol_idx = sum_it->second.second;
-
-      // Any of the summaries can match, we need to go through all of them
-      // (this may be optimized by precomputation)
-      for (unsigned long summary_id : itps) {
+    summary_mapt::iterator sum_part_iter = summary_map.find(id);
+    if (sum_part_iter != summary_map.end()) {
+        partitiont &partition = *(sum_part_iter->second.first);
+        partition_ifacet &partition_iface = partition.get_iface();
+        if (partition.get_iface().call_tree_node.node_has_summary()) {
+        
+            assert(partition.has_summary_representation());
+        //const summary_ids_vect& itps = partition.partition_summary_ID_vec;
+            // const summary_idt &sumID = partition.partition_summaryID;
+            const summary_idt &sumID = partition.get_iface().call_tree_node.get_node_sumID();
+        //unsigned symbol_idx = sum_it->second.second;
+    
+        // Any of the summaries can match, we need to go through all of them
+        // (this may be optimized by precomputation)
+        //     for (unsigned long summary_id : itps) {
         // Already used summary
-        if (partition.summary_ID_set.find(summary_id) !=
-            partition.summary_ID_set.end())
-          continue;
+//        if (partition.partition_summary_ID_set.find(sumID) !=
+//            partition.partition_summary_ID_set.end())
+//          continue;
+            itpt_summaryt &summary = summary_store.find_summary(sumID);
         
-        itpt_summaryt& summary = summary_store.find_summary(summary_id);
-        // Does not restrict the given symbol
-        //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
-        //  continue;
+            // Does not restrict the given symbol
+            //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
+            //  continue;
         
-        // Yes it is relevant, add only symbols constrained by the summary
-        partition.summary_ID_set.insert(summary_id);
-        for (unsigned idx = 0; idx < partition_iface.argument_symbols.size(); ++idx) {
-          if(summary.usesVar(idx))
-          {
-            get_symbols(partition_iface.argument_symbols[idx], depends);
-          }
+            // Yes it is relevant, add only symbols constrained by the summary
+            //partition.partition_summary_ID_set.insert(sumID);
+            partition.partition_summaryID = sumID;
+            for (unsigned idx = 0; idx < partition_iface.argument_symbols.size(); ++idx) {
+                if (summary.usesVar(idx)) {
+                    get_symbols(partition_iface.argument_symbols[idx], depends);
+                }
+            }
+            //     }
+            partition.ignore = false;
         }
-      }
-      partition.ignore = false;
     }
   }
   
@@ -184,7 +192,7 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       }
     }
     if (ignore) {
-      //std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
+      std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
       partition.ignore = ignore;
     }
   }
@@ -387,21 +395,23 @@ Function: partitioning_slicet::mark_summary_symbols
 void partitioning_slicet::mark_summary_symbols(const summary_storet & summary_store,
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
-  const partition_ifacet& partition_iface = partition.get_iface();
-  const summary_ids_vect& itps = partition.summary_ID_vec;
-  auto iface_symbols = partition_iface.get_iface_symbols();
+    const partition_ifacet& partition_iface = partition.get_iface();
+    const summary_idt & sumID = partition_iface.call_tree_node.get_node_sumID();
+  //const summary_ids_vect& itps = partition.partition_summary_ID_vec;
+  //const summary_idt & sumID = summary_store.get_summariesID();
+    auto iface_symbols = partition_iface.get_iface_symbols();
   // Mark all the used symbols in all summaries
-  for (auto summary_id : itps) {
+  //for (auto summary_id : itps) {
 //    auto& summary = summary_store.find_summary(summary_id);
     // Add only symbols constrained by the summary
-    partition.summary_ID_set.insert(summary_id);
+    partition.partition_summaryID = sumID;
 
     for (unsigned idx = 0; idx < iface_symbols.size(); ++idx)
     {
 //    if(summary.usesVar(idx)) //always True remove the condition
       get_symbols(iface_symbols[idx], depends);
     }
-  }
+  
 }
 
 /*******************************************************************\
