@@ -465,6 +465,8 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
 bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                                         bool store_summaries_with_assertion)
 {
+    //UpProver: disable slicing
+    options.set_option("no-slicing", true);
     // MB: now assumes the decider, summary store and omega are prepared beforehand!
     auto before = timestamp();
 
@@ -1109,8 +1111,8 @@ bool core_checkert::prepareSSA(symex_assertion_sumt & symex) {
 \*******************************************************************/
 bool core_checkert::refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine) {
     auto verified = symex.refine_SSA(functions_to_refine);
-    if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
-        slice_target(symex.get_target_equation());
-    }
+//    if(!verified && !options.get_bool_option(HiFrogOptions::NO_SLICING)){
+//        slice_target(symex.get_target_equation());
+//    }
     return verified;
 }

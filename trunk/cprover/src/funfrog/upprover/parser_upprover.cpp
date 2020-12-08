@@ -112,7 +112,7 @@ void parser_upprovert::help()
 \*******************************************************************/
 void parser_upprovert::trigger_upprover(const goto_modelt &goto_model_old) {
     // a bit of hack; for now slicing does not work in upprover
-    //options.set_option("no-slicing", true);
+    options.set_option("no-slicing", true); //disable slicing
     options.set_option("all-claims", true);  //for UpProver this is always true
     
     
