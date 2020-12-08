@@ -114,7 +114,10 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_GLOBALS
     #-DDISABLE_OPTIMIZATIONS
     #-DLATTICE_REF_ALGORITHM
+    #-DPRINT_DEBUG_UPPROVER //Print debug info for summary IDs in UpProver
     )
+
+#option(PRINT_DEBUG_UPPROVER "Print debug info of summary IDs in UpProver" ON)
 
 find_library(OPENSMT2_LIB NAMES opensmt)
 if(NOT OPENSMT2_LIB)
@@ -169,3 +172,4 @@ RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11
 CXX_STANDARD_REQUIRED true
 )
+

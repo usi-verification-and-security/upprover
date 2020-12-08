@@ -14,7 +14,9 @@ module is based on symex_slice_class.h and slice.[cpp/h]
 #include "summary_store.h"
 #include "partitioning_target_equation.h"
 
-//#define DEBUG_SLICER
+#ifdef PRINT_DEBUG_UPPROVER
+#include <iostream>
+#endif
 
 /*******************************************************************\
 
@@ -192,7 +194,9 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       }
     }
     if (ignore) {
+#ifdef PRINT_DEBUG_UPPROVER
       std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
+#endif
       partition.ignore = ignore;
     }
   }
