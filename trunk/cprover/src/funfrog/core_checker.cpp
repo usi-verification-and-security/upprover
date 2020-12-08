@@ -444,7 +444,11 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
     
     return true;
   }
-    init_solver_and_summary_store();
+    if (options.is_set("bootstrapping")) {
+      init_solver_and_summary_store();
+    } else if (options.is_set("summary-validation")) {
+      initialize_solver(); //SA:UpProver
+    }
     const auto & const_summary_store = *summary_store;
     bool nopartitions = options.get_bool_option("no-partitions"); //no-summary in no-partitioning
     auto has_summary = [&const_summary_store, nopartitions](const std::string & function_name){
