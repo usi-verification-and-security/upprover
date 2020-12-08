@@ -114,7 +114,7 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_GLOBALS
     #-DDISABLE_OPTIMIZATIONS
     #-DLATTICE_REF_ALGORITHM
-    #-DPRINT_DEBUG_UPPROVER //Print debug info for summary IDs in UpProver
+    #-DPRINT_DEBUG_UPPROVER #Print debug info for summary IDs in UpProver
     )
 
 #option(PRINT_DEBUG_UPPROVER "Print debug info of summary IDs in UpProver" ON)

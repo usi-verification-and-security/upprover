@@ -809,6 +809,7 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
     }
 
     // Interpolate...
+    //number of newly generated summaries = itp_result.size() = valid_tasks
     interpolantst itp_result;
     itp_result.reserve(valid_tasks);
     interpolator.get_interpolant(itp_task, itp_result);
@@ -857,6 +858,8 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
         // Store the interpolant in summary_storet and asks a new ID for each summary
         auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
         partition.get_iface().call_tree_node.add_node_sumID(new_id);
+        //for stat
+        summary_store.generated_sumIDs.insert(new_id);
         // Update the precision information for omega deserialization; which partition
         //is now summarized?
         partition.get_iface().call_tree_node.set_summary();

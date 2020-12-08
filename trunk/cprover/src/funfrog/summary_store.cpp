@@ -110,6 +110,7 @@ summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const 
     // this also creates the map entry if it is the first time we see this function_name
     fname_to_summaryIDs[fname_countered].push_back(new_id);
     id_to_summary[new_id] = summary_given;
+
 #ifdef PRINT_DEBUG_UPPROVER
     std::cout << "\n@@Added map/store ID: "  << new_id << " for " << fname_countered <<"\n";
 #endif

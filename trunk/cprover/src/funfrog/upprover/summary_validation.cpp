@@ -159,7 +159,8 @@ bool summary_validationt::call_graph_traversal()
             }
             if(current_node.get_function_id() == ID_main){
                 // Final check:  main function
-                status() << "\nFinal validation node " << function_name << " ..." << eom;
+                status() << "------Final validation node " << function_name << " ..." << eom;
+                counter_validation_check++;
 //                check_opensmt2t* solver = dynamic_cast<check_opensmt2t*>(decider->get_solver());
                 //size_t main_args_size = goto_model.goto_functions.function_map.at(current_node.get_function_id()).parameter_identifiers.size();
                 // create a false summary for main function to obtain just ID, although won't be used.
@@ -184,13 +185,15 @@ bool summary_validationt::call_graph_traversal()
     //Final conclusion
     if (validated) {
         status() << "\nValidation Done!" << eom;
-        status() << "### number of validation check: " << counter_validation_check << eom;
     }
     else {
         status() << "Validation failed! A real bug found. " << eom;
         report_failure();
-        status() << "### repaired summaries at this stage: " << repaired_nodes.size()  << eom;
-        status() << "### number of validation check: " << counter_validation_check << eom;
+        status() << "\n### Total number of validation check (implication check via solver): " << counter_validation_check << eom;
+        status() << "### Total number of deleted summary IDs: " << summary_store->deleted_sumIDs.size() << eom;
+        status() << "### Total number of generated summaries: " << summary_store->generated_sumIDs.size() << eom;
+        status() << "### Total number of repaired summaries: " << repaired_nodes.size() <<"\n" << eom;
+    
         return false;
     }
     //update __omega file
@@ -198,8 +201,10 @@ bool summary_validationt::call_graph_traversal()
     //update summary file for subsequent runs
     summary_store->serialize(options.get_option(HiFrogOptions::SAVE_FILE));
     report_success();
-    // if #repaired became negative due to substraction in refiner, round it to zero
-    status() << "### repaired summaries at this stage: " << repaired_nodes.size() << eom;
+    status() << "\n### Total number of validation check (implication check via solver): " << counter_validation_check << eom;
+    status() << "### Total number of deleted summaries: " << summary_store->deleted_sumIDs.size() << eom;
+    status() << "### Total number of generated summaries: " << summary_store->generated_sumIDs.size()  << eom;
+    status() << "### Total number of repaired summaries: " << repaired_nodes.size() <<"\n" << eom;
     return true;
 }
 
@@ -226,7 +231,11 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
     bool has_summary;
     //has_summary = summary_store->has_summaries(function_name); //no! when there are several same-name-nodes, cannot distinguish the summaries per node. use the next line
     has_summary = node.get_node_sumID() != 0; //yes, summary associated with node; zero initial value
-    if (has_summary){
+    //TODO when this node has not summary, but its homonyms has summaries, find a way to use it soundly
+    if (!has_summary) {
+        status() << "------there is no summary ID for this node in omega!" << eom;
+    }
+    else {
         //there is only one summary per node due to full unrolling using goto-instrument
 //      const summary_idt single_sumID2 = summary_store->get_summariesID(function_name)[0];//don't do this as it always take the same ID for all
         //const summary_idt sumID_full = *(node.get_used_summaries().begin());

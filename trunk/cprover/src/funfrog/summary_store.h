@@ -70,6 +70,9 @@ public:
   
   // Removes summary from the summary store
   void remove_summary(const summary_idt id){
+      //for statistics
+      deleted_sumIDs.insert(id);
+      
       //1- Delete ID and its associated summary
       id_to_summary.erase(id);
       
@@ -97,8 +100,15 @@ public:
               break;
           }
       }
+      //4- delete from generated_sumIDs set
+      if (generated_sumIDs.find(id) != generated_sumIDs.end()){
+          generated_sumIDs.erase(id);
+      }
   }
-  
+    //[statistics] counts total number of generated summaries in UpProver
+    std::unordered_set<summary_idt> generated_sumIDs;
+    //[statistics] counts total number of deleted summaries in UpProver
+    std::unordered_set<summary_idt> deleted_sumIDs;
 protected:
 
   // Union find node
@@ -139,7 +149,6 @@ protected:
   std::unordered_map<std::string, summary_ids_vect> fname_to_summaryIDs;
   std::unordered_map<summary_idt, itpt_summaryt*> id_to_summary;
   //std::unordered_map<call_tree_nodet*, summary_idt> node_to_summaryID; //no-need! sumID is attribute of call-tree-node from now on.
-  
 };
 
 #endif

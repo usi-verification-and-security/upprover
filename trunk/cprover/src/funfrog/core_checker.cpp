@@ -444,10 +444,12 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
     
     return true;
   }
-    if (options.is_set("bootstrapping")) {
-      init_solver_and_summary_store();
-    } else if (options.is_set("summary-validation")) {
+    //do not re-initialize summary store when verifying the root of call-tree in summary validation
+    if (options.get_bool_option("summary-validation")) {
       initialize_solver(); //SA:UpProver
+    }
+    else { //bootstrapping or normal BMC check
+        init_solver_and_summary_store();
     }
     const auto & const_summary_store = *summary_store;
     bool nopartitions = options.get_bool_option("no-partitions"); //no-summary in no-partitioning
@@ -611,8 +613,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
         // Report Summaries use
         if (summaries_used > 0)
         {
-            status() << "FUNCTION SUMMARIES (for " << summaries_used
-                     << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+            status() << "\n### Total number of calls were substituted with FUNCTION SUMMARIES in the root function: " << summaries_used << eom;
         } else {
             status() << ("ASSERTION(S) HOLD(S) WITH FULL INLINE") << eom;
         }
@@ -649,7 +650,11 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
               << eom;  
 #endif
   
+  if (options.get_bool_option("bootstrapping")){
+      status() << "\n### Total number of initial summaries from bootstrapping (written in summary-file and omega): " << summary_store->generated_sumIDs.size() << eom;
+  }
   return is_verified;
+  
 }
   
 /*******************************************************************
