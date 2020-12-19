@@ -211,7 +211,7 @@ Function: prop_itpt::serialize
 
  Outputs:
 
- Purpose: Store the summaries
+ Purpose: Store the summary bodies
 
 \*******************************************************************/
 
@@ -245,15 +245,11 @@ void prop_itpt::serialize(std::ostream& out) const
 }
 
 /*******************************************************************\
-
 Function: prop_itpt::deserialize
 
-  Inputs:
-
- Outputs:
-
- Purpose:
-
+Purpose: reads the summary body (after CNFization) each line represents 1 clause in which several literals may exist
+3 13 183 184       1 clause in which 3 literals are placed
+2 12 186           1 clause has 2 literals
 \*******************************************************************/
 
 void prop_itpt::deserialize(std::istream& in)

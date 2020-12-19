@@ -698,7 +698,8 @@ namespace{
 
     bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
         return !partition.is_real_ssa_partition() || //i.e. has abstract repr
-               (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+               (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) || //if there is assertion in subtree of a function, we dont generate summary for that function
+               // since the err symbol would appear in the summary interface and would get wierd
                partition.get_iface().call_tree_node.is_recursion_nondet() ||
                skip_partition_with_name(partition.get_iface().function_id.c_str());
     }
@@ -787,7 +788,9 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
 
         if (!skip_partition(current_partition, store_summaries_with_assertion)){ //if has not abstract repr
             valid_tasks++;
-//            std::cout << ";;for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
+//            std::cout << ";;create itp task for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
+//        } else{
+//            std::cout << ";;skiped itp task for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
         }
     }
     // Only do the interpolation if there are some interpolation tasks
