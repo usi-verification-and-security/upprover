@@ -36,7 +36,7 @@ set(booleforce_source
     ${CMAKE_CURRENT_SOURCE_DIR}/sat/satcheck_booleforce.cpp
 )
 set(minibdd_source
-    ${CMAKE_CURRENT_SOURCE_DIR}/miniBDD/example.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bdd/miniBDD/example.cpp
 )
 
 file(GLOB_RECURSE sources "*.cpp" "*.h")
@@ -60,10 +60,14 @@ include("${PROJECT_SOURCE_DIR}/../cmake/DownloadProject.cmake")
 if("${sat_impl}" STREQUAL "minisat2")
     message(STATUS "Building solvers with minisat2")
 
+    # once we upgrade to CMake 3.7 or higher we can specify multiple URLs as a
+    # fall-back in case the first URL fails (the Makefile-based build retries up
+    # to 2 times)
     download_project(PROJ minisat2
         URL http://ftp.debian.org/debian/pool/main/m/minisat2/minisat2_2.2.1.orig.tar.gz
         PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/../scripts/minisat-2.2.1-patch
         COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/../scripts/minisat2_CMakeLists.txt CMakeLists.txt
+        URL_MD5 27faa19ee0508660bd6fb7f894646d42
     )
 
     add_subdirectory(${minisat2_SOURCE_DIR} ${minisat2_BINARY_DIR})
@@ -82,6 +86,7 @@ elseif("${sat_impl}" STREQUAL "glucose")
         URL http://www.labri.fr/perso/lsimon/downloads/softwares/glucose-syrup.tgz
         PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/../scripts/glucose-syrup-patch
         COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/../scripts/glucose_CMakeLists.txt CMakeLists.txt
+        URL_MD5 b6f040a6c28f011f3be994663338f548
     )
 
     add_subdirectory(${glucose_SOURCE_DIR} ${glucose_BINARY_DIR})
@@ -95,7 +100,15 @@ elseif("${sat_impl}" STREQUAL "glucose")
     target_link_libraries(solvers glucose-condensed)
 endif()
 
-target_link_libraries(solvers util)
+if(CMAKE_USE_CUDD)
+    target_link_libraries(solvers util cudd-cplusplus cudd)
+    target_include_directories(solvers
+        PUBLIC
+        ${CUDD_INCLUDE}/cudd/
+    )
+else()
+    target_link_libraries(solvers util)
+endif()
 
 # Executable
 add_executable(smt2_solver smt2/smt2_solver.cpp)

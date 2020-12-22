@@ -27,6 +27,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
 )
     #   Ensure NDEBUG is not set for release builds
     set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
     #   Enable lots of warnings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror -Wno-deprecated-declarations")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -43,16 +44,45 @@ set(sat_impl "minisat2" CACHE STRING
 if(${enable_cbmc_tests})
     enable_testing()
 endif()
+
+function(cprover_default_properties)
+    set(CBMC_CXX_STANDARD 11)
+    set(CBMC_CXX_STANDARD_REQUIRED true)
+    set(CBMC_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY
+            "Developer ID Application: Daniel Kroening")
+
+    set_target_properties(
+      ${ARGN}
+     PROPERTIES
+     CXX_STANDARD ${CBMC_CXX_STANDARD}
+     CXX_STANDARD_REQUIRED ${CBMC_CXX_STANDARD_REQUIRED}
+     XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CBMC_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY})
+endfunction()
+
+option(WITH_MEMORY_ANALYZER OFF
+  "build the memory analyzer")
+
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+set(WITH_MEMORY_ANALYZER_DEFAULT ON)
+else()
+set(WITH_MEMORY_ANALYZER_DEFAULT OFF)
+endif()
+
+option(WITH_MEMORY_ANALYZER ${WITH_MEMORY_ANALYZER_DEFAULT}
+  "build the memory analyzer")
+
+#HiFrog test
 if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
+
 add_subdirectory(src)
 #add_subdirectory(regression)
 #add_subdirectory(unit)
 
 #add_subdirectory(jbmc)
 
-set_target_properties(
+cprover_default_properties(
     analyses
     ansi-c
     assembler
@@ -65,7 +95,8 @@ set_target_properties(
     goto-analyzer-lib
     goto-cc
     goto-cc-lib
-    #goto-diff
+    goto-checker
+	#goto-diff
     #goto-diff-lib
     goto-instrument
     goto-instrument-lib
@@ -73,21 +104,18 @@ set_target_properties(
     goto-symex
     jsil
     json
+	json-symtab-language
     langapi
     linking
-    #miniBDD
-    #mmcc
     pointer-analysis
     solvers
-    test-bigint
-    #testing-utils
-    #unit
-    util
-    xml
+    statement-list
+	symtab2gb
+	#testing-utils
+	#unit
+	util
+	xml
     #miniz
-
-    PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED true
-    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Daniel Kroening"
+	#miniBDD
+	#mmcc
 )

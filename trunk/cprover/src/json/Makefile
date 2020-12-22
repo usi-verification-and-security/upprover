@@ -1,4 +1,5 @@
-SRC = json_lex.yy.cpp \
+SRC = json_interface.cpp \
+      json_lex.yy.cpp \
       json_parser.cpp \
       json_y.tab.cpp \
       # Empty last line
@@ -18,11 +19,9 @@ json$(LIBEXT): $(OBJ)
 	$(LINKLIB)
 
 json_y.tab.cpp: parser.y
-	$(YACC) $(YFLAGS) $$flags -pyyjson -d parser.y -o $@
+	$(YACC) $(YFLAGS) $$flags -pyyjson parser.y --defines=json_y.tab.h -o $@
 
 json_y.tab.h: json_y.tab.cpp
-	if [ -e json_y.tab.hpp ] ; then mv json_y.tab.hpp $@ ; else \
-        mv json_y.tab.cpp.h $@ ; fi
 
 json_lex.yy.cpp: scanner.l
 	$(LEX) -Pyyjson -o$@ scanner.l

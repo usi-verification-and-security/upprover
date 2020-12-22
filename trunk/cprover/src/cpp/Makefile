@@ -17,6 +17,7 @@ SRC = cpp_constructor.cpp \
       cpp_parser.cpp \
       cpp_scope.cpp \
       cpp_scopes.cpp \
+      cpp_storage_spec.cpp \
       cpp_token_buffer.cpp \
       cpp_type2name.cpp \
       cpp_typecheck.cpp \
@@ -59,6 +60,11 @@ all: cpp$(LIBEXT)
 
 ###############################################################################
 
+# extra dependencies
+cprover_library$(OBJEXT): cprover_library.inc
+
+###############################################################################
+
 ../ansi-c/library/converter$(EXEEXT): ../ansi-c/library/converter.cpp
 	$(MAKE) -C ../ansi-c library/converter$(EXEEXT)
 
@@ -68,8 +74,6 @@ library_check: library/*.c
 
 cprover_library.inc: ../ansi-c/library/converter$(EXEEXT) library/*.c
 	cat library/*.c | ../ansi-c/library/converter$(EXEEXT) > $@
-
-cprover_library.cpp: cprover_library.inc
 
 generated_files: cprover_library.inc
 

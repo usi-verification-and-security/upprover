@@ -33,7 +33,7 @@ add_executable(unit ${sources})
 target_include_directories(unit
     PUBLIC
     ${CBMC_BINARY_DIR}
-    ${CBMC_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(unit testing-utils ansi-c solvers java_bytecode)
@@ -48,7 +48,7 @@ add_executable(miniBDD miniBDD.cpp)
 target_include_directories(miniBDD
     PUBLIC
     ${CBMC_BINARY_DIR}
-    ${CBMC_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(miniBDD solvers ansi-c)
@@ -59,7 +59,7 @@ add_executable(string_utils string_utils.cpp)
 target_include_directories(string_utils
     PUBLIC
     ${CBMC_BINARY_DIR}
-    ${CBMC_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(string_utils solvers ansi-c)

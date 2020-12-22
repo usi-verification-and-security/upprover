@@ -4,15 +4,16 @@ generic_flex(ansi_c)
 add_executable(converter library/converter.cpp)
 
 file(GLOB ansi_c_library_sources "library/*.c")
-
-add_custom_command(OUTPUT converter_input.txt
-    COMMAND cat ${ansi_c_library_sources} > converter_input.txt
-    DEPENDS ${ansi_c_library_sources}
-)
+set(converter_input_path "${CMAKE_CURRENT_SOURCE_DIR}/converter_input.txt")
+file(WRITE ${converter_input_path} "")
+foreach(source ${ansi_c_library_sources})
+    file(READ ${source} file_contents)
+    file(APPEND ${converter_input_path} "${file_contents}")
+endforeach()
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cprover_library.inc"
-    COMMAND converter < "converter_input.txt" > "${CMAKE_CURRENT_BINARY_DIR}/cprover_library.inc"
-    DEPENDS "converter_input.txt" converter
+    COMMAND converter < ${converter_input_path} > "${CMAKE_CURRENT_BINARY_DIR}/cprover_library.inc"
+    DEPENDS converter
 )
 
 add_executable(file_converter file_converter.cpp)
@@ -50,9 +51,11 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_custom_target(c_library_check
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/library-check.stamp
+if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    add_custom_target(c_library_check
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/library-check.stamp
 )
+endif()
 
 ################################################################################
 
@@ -101,6 +104,12 @@ set(extra_dependencies
     ${CMAKE_CURRENT_BINARY_DIR}/windows_builtin_headers.inc
     ${CMAKE_CURRENT_BINARY_DIR}/library-check.stamp
 )
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    list(REMOVE_ITEM
+         extra_dependencies
+         ${CMAKE_CURRENT_BINARY_DIR}/library-check.stamp)
+endif()
 
 file(GLOB_RECURSE sources "*.cpp" "*.h")
 

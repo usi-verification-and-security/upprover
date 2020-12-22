@@ -13,14 +13,17 @@ target_link_libraries(cbmc-lib
     assembler
     big-int
     cpp
+    goto-checker
     goto-instrument-lib
     goto-programs
     goto-symex
     json
+    json-symtab-language
     langapi
     linking
     pointer-analysis
     solvers
+    statement-list
     util
     xml
 )

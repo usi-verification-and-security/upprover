@@ -1,5 +1,6 @@
 SRC = ai.cpp \
       ai_domain.cpp \
+      ai_history.cpp \
       call_graph.cpp \
       call_graph_helpers.cpp \
       constant_propagator.cpp \
@@ -12,6 +13,8 @@ SRC = ai.cpp \
       global_may_alias.cpp \
       goto_check.cpp \
       goto_rw.cpp \
+      guard_bdd.cpp \
+      guard_expr.cpp \
       interval_analysis.cpp \
       interval_domain.cpp \
       invariant_propagation.cpp \
@@ -23,8 +26,8 @@ SRC = ai.cpp \
       local_may_alias.cpp \
       local_safe_pointers.cpp \
       locals.cpp \
-      natural_loops.cpp \
       reaching_definitions.cpp \
+      sese_regions.cpp \
       static_analysis.cpp \
       uncaught_exceptions_analysis.cpp \
       uninitialized_domain.cpp \
@@ -38,6 +41,10 @@ include ../common
 CLEANFILES = analyses$(LIBEXT)
 
 all: analyses$(LIBEXT)
+
+ifneq ($(CUDD),)
+  OBJ += $(CUDD)/cudd/.libs/libcudd$(LIBEXT) $(CUDD)/cplusplus/.libs/libobj$(LIBEXT)
+endif
 
 ###############################################################################
 
