@@ -4,6 +4,7 @@
 #include <util/symbol.h>
 #include <util/ui_message.h>
 #include <goto-symex/symex_target_equation.h>
+#include <goto-symex/ssa_step.h>
 #include <goto-symex/slice.h>
 
 #include <funfrog/utils/UnionFind.h>
@@ -54,7 +55,7 @@ public:
   void do_it(partitioning_target_equationt &equation);
   void do_it(hifrog_symex_target_equationt &equation);
 
-  using SSA_stepst = std::vector<symex_target_equationt::SSA_stept> ;
+  using SSA_stepst = std::vector<SSA_stept> ;
   using SSA_steps_it = SSA_stepst::iterator;
 
   void find_var_deps(UnionFind<std::string> &deps_ds, std::map<std::string, bool> &visited);
@@ -115,8 +116,8 @@ extern inline bool operator<(
 }
 
 extern inline bool operator==(
-    symex_target_equationt::SSA_stept a,
-    symex_target_equationt::SSA_stept b)
+    SSA_stept a,
+    SSA_stept b)
 {
   return a.source.pc == b.source.pc;
 }

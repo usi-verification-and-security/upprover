@@ -159,7 +159,7 @@ void error_tracet::build_goto_trace_formula (
       it!=SSA_steps.end();
       it++)
   {
-    const symex_target_equationt::SSA_stept &SSA_step=**it;
+    const SSA_stept &SSA_step=**it;
 
     if(!decider.is_assignment_true(SSA_step.guard_literal))
       continue;
@@ -324,7 +324,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(solvert &solver, co
             it!=SSA_steps.end();
             it++)
         {
-            const symex_target_equationt::SSA_stept &SSA_step=**it;
+            const SSA_stept &SSA_step=**it;
             if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
                 continue;
             if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)

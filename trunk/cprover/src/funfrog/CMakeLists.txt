@@ -91,6 +91,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modul
 
 find_package(GMP REQUIRED)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
 
 add_executable(hifrog main.cpp

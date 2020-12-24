@@ -7,7 +7,7 @@
 #define HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H
 
 #include <goto-symex/symex_target_equation.h>
-
+#include <goto-symex/ssa_step.h>
 class convertort;
 
 class hifrog_symex_target_equationt:public symex_target_equationt

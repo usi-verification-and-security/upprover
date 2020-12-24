@@ -99,12 +99,12 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
 
     //reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
-    for(symex_target_equationt::SSA_stepst::iterator
+    for(SSA_stepst::iterator
       it=equation.SSA_steps.begin();
       it!=equation.SSA_steps.end();
       it++)
     {
-      symex_target_equationt::SSA_stept& SSA_step=(*it);
+      SSA_stept& SSA_step=(*it);
       this->SSA_steps.push_back(SSA_step);
       SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
     }
@@ -558,7 +558,7 @@ void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equatio
   const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
   for(auto ssa_step : SSA_steps)
   {
-    symex_target_equationt::SSA_stept& SSA_step = *ssa_step;
+    SSA_stept& SSA_step = *ssa_step;
     this->SSA_steps.push_back(SSA_step);
     SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
   }

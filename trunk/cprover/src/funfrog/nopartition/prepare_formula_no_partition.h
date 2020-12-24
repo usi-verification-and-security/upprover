@@ -30,7 +30,7 @@ public:
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);}
 
-    using SSA_steps_orderingt = std::vector<symex_target_equationt::SSA_stept*>;
+    using SSA_steps_orderingt = std::vector<SSA_stept*>;
 
     virtual ~prepare_formula_no_partitiont() {}
           
