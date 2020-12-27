@@ -4,7 +4,6 @@
 
 \*******************************************************************/
 #include "parser_hifrog.h"
-
 /*******************************************************************\
 
  Function: parser_hifrogt::help
@@ -144,78 +143,281 @@ void parser_hifrogt::help()
  Function:
 
  Purpose: invoke main modules
+ Taken from CBMC 5.12
 
 \*******************************************************************/
 
 int parser_hifrogt::doit()
 {
-    if (config.set(cmdline))
+    if(cmdline.isset("version"))
     {
-        usage_error();
-        exit(1);
+        std::cout << HIFROG_VERSION << '\n';
+        return CPROVER_EXIT_SUCCESS;
     }
+    //
+    // command line options
+    //
+    optionst options;
+    set_options(cmdline); //HiFrog/UpProver specific; removed in CBMC5.12
     
-    register_languages();
-    set_options(cmdline);
+    get_command_line_options(options);
     
-    //stream_message_handlert mh(std::cout);
-    set_message_handler(ui_message_handler);
-    
-    eval_verbosity();
-    
-    
-    if(cmdline.args.size()==0)
+    //customized
+    if(cmdline.args.empty())
     {
-        cbmc_error_interface("Please provide an input file.");
-        return 1;
+        log.error() << "Please provide an input file" << messaget::eom;
+        return CPROVER_EXIT_INCORRECT_TASK;
     }
     else if (cmdline.args.size()>1)
     {
-        cbmc_error_interface("Multiple input files not supported.");
-        return 1;
+        log.error() << "Please give exactly one source file" << messaget::eom;
+        return CPROVER_EXIT_INCORRECT_TASK;
     }
     
-    std::ifstream infile(cmdline.args[0].c_str());
-    if (!infile)
+    messaget::eval_verbosity(
+            cmdline.get_value("verbosity"), messaget::M_STATISTICS, ui_message_handler);
+    
+    //
+    // Print a banner
+    //
+    log.status() << "HiFrog version " << HIFROG_VERSION << " " << sizeof(void *) * 8
+                 << "-bit " << configt::this_architecture() << " "
+                 << configt::this_operating_system() << messaget::eom;
+    
+    //
+    // Unwinding of transition systems is done by hw-cbmc.
+    //
+    if(cmdline.isset("module") ||
+       cmdline.isset("gen-interface"))
     {
-        cbmc_error_interface(std::string("Error opening file `")+cmdline.args[0]+"'.");
-        return 1;
+        log.error() << "This version of CBMC has no support for "
+                       " hardware modules. Please use hw-cbmc."
+                    << messaget::eom;
+        return CPROVER_EXIT_USAGE_ERROR;
     }
+    register_languages();
     
-    //namespacet ns (symbol_table);
-    cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
-    auto before=timestamp();
-    
-    
-    goto_modelt goto_model;  //1st goto program associated with the original inputFile for normal use of hifrog & bootstraping.
-    if(get_goto_program(goto_model, cmdline)) {    //obtains 1st goto-program
-        return 6;
-    }
-    
-    auto after=timestamp();
-    cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
-    
-    
-    if (cmdline.isset("show-symbol-table"))
+    // configure gcc, if required
+    if(config.ansi_c.preprocessor == configt::ansi_ct::preprocessort::GCC)
     {
-        show_symbol_table(goto_model, ui_message_handler.get_ui());
-        return 0;
+        gcc_versiont gcc_version;
+        gcc_version.get("gcc");
+        configure_gcc(gcc_version);
     }
     
-    if(cmdline.isset("show-goto-functions"))
+    if(cmdline.isset("test-preprocessor"))
+        return test_c_preprocessor(ui_message_handler)
+               ? CPROVER_EXIT_PREPROCESSOR_TEST_FAILED
+               : CPROVER_EXIT_SUCCESS;
+    
+    if(cmdline.isset("preprocess"))
     {
+        preprocessing(options);
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    if(cmdline.isset("show-parse-tree"))
+    {
+        if(
+                cmdline.args.size() != 1 ||
+                is_goto_binary(cmdline.args[0], ui_message_handler))
+        {
+            log.error() << "Please give exactly one source file" << messaget::eom;
+            return CPROVER_EXIT_INCORRECT_TASK;
+        }
         
-        show_goto_functions(
-                goto_model,
-                get_message_handler(),
-                ui_message_handler.get_ui(),
-                false);
-        return 0;
+        std::string filename=cmdline.args[0];
+
+#ifdef _MSC_VER
+        std::ifstream infile(widen(filename));
+#else
+        std::ifstream infile(filename);
+#endif
+        
+        if(!infile)
+        {
+            log.error() << "failed to open input file '" << filename << "'"
+                        << messaget::eom;
+            return CPROVER_EXIT_INCORRECT_TASK;
+        }
+        
+        std::unique_ptr<languaget> language=
+                get_language_from_filename(filename);
+        
+        if(language==nullptr)
+        {
+            log.error() << "failed to figure out type of file '" << filename << "'"
+                        << messaget::eom;
+            return CPROVER_EXIT_INCORRECT_TASK;
+        }
+        
+        language->set_language_options(options);
+        language->set_message_handler(ui_message_handler);
+        
+        log.status() << "Parsing " << filename << messaget::eom;
+        
+        if(language->parse(infile, filename))
+        {
+            log.error() << "PARSING ERROR" << messaget::eom;
+            return CPROVER_EXIT_INCORRECT_TASK;
+        }
+        
+        language->show_parse(std::cout);
+        return CPROVER_EXIT_SUCCESS;
     }
+    
+    //1st goto program of the original inputFile for standalone HiFrog & bootstraping UpProver.
+    goto_modelt goto_model;
+    //get 1st goto-program
+    
+    int get_goto_program_ret =
+            get_goto_program(goto_model, options, cmdline, ui_message_handler);
+    
+    if(get_goto_program_ret!=-1)
+        return get_goto_program_ret;
+    
+    if(cmdline.isset("show-claims") || // will go away
+       cmdline.isset("show-properties")) // use this one
+    {
+        show_properties(goto_model, ui_message_handler);
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    if(set_properties(goto_model))
+        return CPROVER_EXIT_SET_PROPERTIES_FAILED;
+    
+    if(
+            options.get_bool_option("program-only") ||
+            options.get_bool_option("show-vcc"))
+    {
+        if(options.get_bool_option("paths"))
+        {
+            all_properties_verifiert<single_path_symex_only_checkert> verifier(
+                    options, ui_message_handler, goto_model);
+            (void)verifier();
+        }
+        else
+        {
+            all_properties_verifiert<multi_path_symex_only_checkert> verifier(
+                    options, ui_message_handler, goto_model);
+            (void)verifier();
+        }
+        
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    if(
+            options.get_bool_option("dimacs") || !options.get_option("outfile").empty())
+    {
+        if(options.get_bool_option("paths"))
+        {
+            stop_on_fail_verifiert<single_path_symex_checkert> verifier(
+                    options, ui_message_handler, goto_model);
+            (void)verifier();
+        }
+        else
+        {
+            stop_on_fail_verifiert<multi_path_symex_checkert> verifier(
+                    options, ui_message_handler, goto_model);
+            (void)verifier();
+        }
+        
+        return CPROVER_EXIT_SUCCESS;
+    }
+
+//    if(options.is_set("cover"))
+//    {
+//        cover_goals_verifier_with_trace_storaget<multi_path_symex_checkert>
+//                verifier(options, ui_message_handler, goto_model);
+//        (void)verifier();
+//        verifier.report();
+//
+//        c_test_input_generatort test_generator(ui_message_handler, options);
+//        test_generator(verifier.get_traces());
+//
+//        return CPROVER_EXIT_SUCCESS;
+//    }
+    
+    std::unique_ptr<goto_verifiert> verifier = nullptr;
+    
+    if(options.is_set("incremental-loop"))
+    {
+        if(options.get_bool_option("stop-on-fail"))
+        {
+            verifier = util_make_unique<
+                    stop_on_fail_verifiert<single_loop_incremental_symex_checkert>>(
+                    options, ui_message_handler, goto_model);
+        }
+        else
+        {
+            verifier = util_make_unique<all_properties_verifier_with_trace_storaget<
+                    single_loop_incremental_symex_checkert>>(
+                    options, ui_message_handler, goto_model);
+        }
+    }
+    else if(
+            options.get_bool_option("stop-on-fail") && options.get_bool_option("paths"))
+    {
+        verifier =
+                util_make_unique<stop_on_fail_verifiert<single_path_symex_checkert>>(
+                options, ui_message_handler, goto_model);
+    }
+    else if(
+            options.get_bool_option("stop-on-fail") &&
+            !options.get_bool_option("paths"))
+    {
+        if(options.get_bool_option("localize-faults"))
+        {
+            verifier =
+                    util_make_unique<stop_on_fail_verifier_with_fault_localizationt<
+                            multi_path_symex_checkert>>(options, ui_message_handler, goto_model);
+        }
+        else
+        {
+            verifier =
+                    util_make_unique<stop_on_fail_verifiert<multi_path_symex_checkert>>(
+                    options, ui_message_handler, goto_model);
+        }
+    }
+    else if(
+            !options.get_bool_option("stop-on-fail") &&
+            options.get_bool_option("paths"))
+    {
+        verifier = util_make_unique<
+                all_properties_verifier_with_trace_storaget<single_path_symex_checkert>>(
+                options, ui_message_handler, goto_model);
+    }
+    else if(
+            !options.get_bool_option("stop-on-fail") &&
+            !options.get_bool_option("paths"))
+    {
+        if(options.get_bool_option("localize-faults"))
+        {
+            verifier =
+                    util_make_unique<all_properties_verifier_with_fault_localizationt<
+                            multi_path_symex_checkert>>(options, ui_message_handler, goto_model);
+        }
+        else
+        {
+            verifier = util_make_unique<
+                    all_properties_verifier_with_trace_storaget<multi_path_symex_checkert>>(
+                    options, ui_message_handler, goto_model);
+        }
+    }
+    else
+    {
+        UNREACHABLE;
+    }
+    
+    const resultt result = (*verifier)();
+    verifier->report();
+    
+    //stream_message_handlert mh(std::cout);
+    //set_message_handler(ui_message_handler);
     
     if(cmdline.isset("list-templates")) {
         if (options.get_option("logic") != "prop") {
-            cbmc_status_interface("Listing templates\n");
+            log.status() <<"Listing templates\n"<< messaget::eom;
             
             UserDefinedSummaryt uds;
             namespacet ns(goto_model.get_symbol_table());
@@ -225,9 +427,9 @@ int parser_hifrogt::doit()
                                     options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE));
         }
         else{
-            cbmc_error_interface("Error: invalid request for listing the template; it is supported only in LRA and EUF");
+            log.error() <<"Error: invalid request for listing the template; it is supported only in LRA and EUF"<< messaget::eom;
         }
-        return 0;
+        return CPROVER_EXIT_SUCCESS;
     }
     
     calculate_show_claims(goto_model);
@@ -242,11 +444,11 @@ int parser_hifrogt::doit()
                      claim_user_nr);
     }
     else {
-        cbmc_status_interface("Please check --help to revise the user's options ");
-        return 1;
+        log.status() << "Typo! Please see --help to correct the user's options "<< messaget::eom;
+        return CPROVER_EXIT_INCORRECT_TASK;
     }
     
-    cbmc_status_interface("#X: Done.");
+    log.status() <<"#X: Done." << messaget::eom;
     
-    return 0;
+    return result_to_exit_code(result);
 }

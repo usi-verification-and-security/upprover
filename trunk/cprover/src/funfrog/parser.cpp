@@ -1,5 +1,10 @@
 
 #include "parser.h"
+#include <util/exit_codes.h>
+#include <goto-symex/path_storage.h>
+#include <goto-instrument/cover.h>
+#include <goto-programs/loop_ids.h>
+
 
 
 /*******************************************************************\
@@ -18,24 +23,24 @@ bool parser_baset::validate_input_options()
     // perform standalone check (all the functionality remains the same)
     if(cmdline.isset("claim") &&
        (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-        cbmc_error_interface("A specific claim cannot be specified if any other claim specification is set.");
+        log.status()<< "A specific claim cannot be specified if any other claim specification is set." << messaget::eom;
         return false;
     }
     
     if(cmdline.isset("all-claims") &&
        (cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-        cbmc_error_interface("All claims cannot be specified if any other claim specification is set.");
+        log.status()<<"All claims cannot be specified if any other claim specification is set."<< messaget::eom;
         return false;
     }
     
     if(cmdline.isset("claimset") && cmdline.isset("claims-order")) {
-        cbmc_error_interface("A specific claimset cannot be specified if any other claim specification is set.");
+        log.status()<<"A specific claimset cannot be specified if any other claim specification is set."<< messaget::eom;
         return false;
     }
     else if(cmdline.isset("claim")) {
         claim_user_nr=atoi(cmdline.get_value("claim").c_str());
         if (claim_user_nr == 0 || claim_user_nr > claim_numbers.size()) {
-            cbmc_error_interface("Testclaim not found.");
+            log.status()<<"Testclaim not found."<< messaget::eom;
             return false;
         }
     }
@@ -44,8 +49,8 @@ bool parser_baset::validate_input_options()
             !cmdline.isset("claims-order") &&
             !cmdline.isset("claim"))
     {
-        cbmc_error_interface("A specific claim is not set, nor any other claim specification is set.");
-        cbmc_status_interface("Warrning: --claim is set to 1.");
+        log.status()<<"A specific claim is not set, nor any other claim specification is set."<< messaget::eom;
+        log.status()<< "Warrning: --claim is set to 1." <<messaget::eom;
         claim_user_nr = 1; // Set as defualt
     }
     
@@ -72,11 +77,11 @@ bool parser_baset::validate_input_options()
     {
         unsigned bitwidth = options.get_unsigned_int_option("bitwidth");
         if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
-            cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
-                                 + ". Please re-run with bit-width parameter that is a pow of 2!");
+            log.status()<<"Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+                                 + ". Please re-run with bit-width parameter that is a pow of 2!"<< messaget::eom;
             return false;
         } else if (bitwidth > 32) {
-            cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");
+            log.status()<<"Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf"<< messaget::eom;
         }
     }
     
@@ -107,55 +112,535 @@ void parser_baset::set_default_options(optionst &options)
     options.set_option("sat-preprocessor", true);
     options.set_option("simplify", true);
     options.set_option("simplify-if", true);
+    options.set_option("show-goto-symex-steps", false);
     
     // Other default
     options.set_option("arrays-uf", "auto");
 }
-
 /*******************************************************************
 
- Function:
-
- Purpose:  Get a Goto Program; initialize_goto_model does the whole job
+Note: Taken from CBMC 5.12 (cbmc_parse_options.cpp)
 
 \*******************************************************************/
-bool parser_baset::get_goto_program( goto_modelt &goto_model, cmdlinet &cmdline)
+void parser_baset::get_command_line_options(optionst &options)
 {
-    
-    try
+    if(config.set(cmdline))
     {
-        //goto model is obtained completely
-        goto_model = initialize_goto_model(cmdline, get_message_handler());
+        usage_error();
+        exit(CPROVER_EXIT_USAGE_ERROR);
+    }
+    
+    set_default_options(options);
+    parse_c_object_factory_options(cmdline, options);
+    
+    if(cmdline.isset("function"))
+        options.set_option("function", cmdline.get_value("function"));
+    
+    if(cmdline.isset("cover") && cmdline.isset("unwinding-assertions"))
+    {
+        log.error()
+                << "--cover and --unwinding-assertions must not be given together"
+                << messaget::eom;
+        exit(CPROVER_EXIT_USAGE_ERROR);
+    }
+    
+    if(cmdline.isset("max-field-sensitivity-array-size"))
+    {
+        options.set_option(
+                "max-field-sensitivity-array-size",
+                cmdline.get_value("max-field-sensitivity-array-size"));
+    }
+    
+    if(cmdline.isset("no-array-field-sensitivity"))
+    {
+        if(cmdline.isset("max-field-sensitivity-array-size"))
+        {
+            log.error()
+                    << "--no-array-field-sensitivity and --max-field-sensitivity-array-size"
+                    << " must not be given together" << messaget::eom;
+            exit(CPROVER_EXIT_USAGE_ERROR);
+        }
+        options.set_option("no-array-field-sensitivity", true);
+    }
+    
+    if(cmdline.isset("partial-loops") && cmdline.isset("unwinding-assertions"))
+    {
+        log.error()
+                << "--partial-loops and --unwinding-assertions must not be given "
+                << "together" << messaget::eom;
+        exit(CPROVER_EXIT_USAGE_ERROR);
+    }
+    
+    if(cmdline.isset("reachability-slice") &&
+       cmdline.isset("reachability-slice-fb"))
+    {
+        log.error()
+                << "--reachability-slice and --reachability-slice-fb must not be "
+                << "given together" << messaget::eom;
+        exit(CPROVER_EXIT_USAGE_ERROR);
+    }
+    
+    if(cmdline.isset("full-slice"))
+        options.set_option("full-slice", true);
+    
+    if(cmdline.isset("show-symex-strategies"))
+    {
+        log.status() << show_path_strategies() << messaget::eom;
+        exit(CPROVER_EXIT_SUCCESS);
+    }
+    
+    parse_path_strategy_options(cmdline, options, ui_message_handler);
+    
+    if(cmdline.isset("program-only"))
+        options.set_option("program-only", true);
+    
+    if(cmdline.isset("show-vcc"))
+        options.set_option("show-vcc", true);
+    
+    if(cmdline.isset("cover"))
+        parse_cover_options(cmdline, options);
+    
+    if(cmdline.isset("mm"))
+        options.set_option("mm", cmdline.get_value("mm"));
+    
+    if(cmdline.isset("c89"))
+        config.ansi_c.set_c89();
+    
+    if(cmdline.isset("symex-complexity-limit"))
+        options.set_option(
+                "symex-complexity-limit", cmdline.get_value("symex-complexity-limit"));
+    
+    if(cmdline.isset("symex-complexity-failed-child-loops-limit"))
+        options.set_option(
+                "symex-complexity-failed-child-loops-limit",
+                cmdline.get_value("symex-complexity-failed-child-loops-limit"));
+    
+    if(cmdline.isset("c99"))
+        config.ansi_c.set_c99();
+    
+    if(cmdline.isset("c11"))
+        config.ansi_c.set_c11();
+    
+    if(cmdline.isset("cpp98"))
+        config.cpp.set_cpp98();
+    
+    if(cmdline.isset("cpp03"))
+        config.cpp.set_cpp03();
+    
+    if(cmdline.isset("cpp11"))
+        config.cpp.set_cpp11();
+    
+    if(cmdline.isset("property"))
+        options.set_option("property", cmdline.get_values("property"));
+    
+    if(cmdline.isset("drop-unused-functions"))
+        options.set_option("drop-unused-functions", true);
+    
+    if(cmdline.isset("string-abstraction"))
+        options.set_option("string-abstraction", true);
+    
+    if(cmdline.isset("reachability-slice-fb"))
+        options.set_option("reachability-slice-fb", true);
+    
+    if(cmdline.isset("reachability-slice"))
+        options.set_option("reachability-slice", true);
+    
+    if(cmdline.isset("nondet-static"))
+        options.set_option("nondet-static", true);
+    
+    if(cmdline.isset("no-simplify"))
+        options.set_option("simplify", false);
+    
+    if(cmdline.isset("stop-on-fail") ||
+       cmdline.isset("dimacs") ||
+       cmdline.isset("outfile"))
+        options.set_option("stop-on-fail", true);
+    
+    if(
+            cmdline.isset("trace") || cmdline.isset("compact-trace") ||
+            cmdline.isset("stack-trace") || cmdline.isset("stop-on-fail") ||
+            (ui_message_handler.get_ui() != ui_message_handlert::uit::PLAIN &&
+             !cmdline.isset("cover")))
+    {
+        options.set_option("trace", true);
+    }
+    
+    if(cmdline.isset("localize-faults"))
+        options.set_option("localize-faults", true);
+    
+    if(cmdline.isset("unwind"))
+        options.set_option("unwind", cmdline.get_value("unwind"));
+    
+    if(cmdline.isset("depth"))
+        options.set_option("depth", cmdline.get_value("depth"));
+    
+    if(cmdline.isset("debug-level"))
+        options.set_option("debug-level", cmdline.get_value("debug-level"));
+    
+    if(cmdline.isset("slice-by-trace"))
+    {
+        log.error() << "--slice-by-trace has been removed" << messaget::eom;
+        exit(CPROVER_EXIT_USAGE_ERROR);
+    }
+    
+    if(cmdline.isset("unwindset"))
+        options.set_option("unwindset", cmdline.get_values("unwindset"));
+    
+    // constant propagation
+    if(cmdline.isset("no-propagation"))
+        options.set_option("propagation", false);
+    
+    // transform self loops to assumptions
+    options.set_option(
+            "self-loops-to-assumptions",
+            !cmdline.isset("no-self-loops-to-assumptions"));
+    
+    // all checks supported by goto_check
+    PARSE_OPTIONS_GOTO_CHECK(cmdline, options);
+    
+    // check assertions
+    if(cmdline.isset("no-assertions"))
+        options.set_option("assertions", false);
+    
+    // use assumptions
+    if(cmdline.isset("no-assumptions"))
+        options.set_option("assumptions", false);
+    
+    // magic error label
+    if(cmdline.isset("error-label"))
+        options.set_option("error-label", cmdline.get_values("error-label"));
+    
+    // generate unwinding assertions
+    if(cmdline.isset("unwinding-assertions"))
+    {
+        options.set_option("unwinding-assertions", true);
+        options.set_option("paths-symex-explore-all", true);
+    }
+    
+    if(cmdline.isset("partial-loops"))
+        options.set_option("partial-loops", true);
+    
+    // remove unused equations
+    if(cmdline.isset("slice-formula"))
+        options.set_option("slice-formula", true);
+    
+    // simplify if conditions and branches
+    if(cmdline.isset("no-simplify-if"))
+        options.set_option("simplify-if", false);
+    
+    if(cmdline.isset("arrays-uf-always"))
+        options.set_option("arrays-uf", "always");
+    else if(cmdline.isset("arrays-uf-never"))
+        options.set_option("arrays-uf", "never");
+    
+    if(cmdline.isset("dimacs"))
+        options.set_option("dimacs", true);
+    
+    if(cmdline.isset("refine-arrays"))
+    {
+        options.set_option("refine", true);
+        options.set_option("refine-arrays", true);
+    }
+    
+    if(cmdline.isset("refine-arithmetic"))
+    {
+        options.set_option("refine", true);
+        options.set_option("refine-arithmetic", true);
+    }
+    
+    if(cmdline.isset("refine"))
+    {
+        options.set_option("refine", true);
+        options.set_option("refine-arrays", true);
+        options.set_option("refine-arithmetic", true);
+    }
+    
+    if(cmdline.isset("refine-strings"))
+    {
+        options.set_option("refine-strings", true);
+        options.set_option("string-printable", cmdline.isset("string-printable"));
+    }
+    
+    if(cmdline.isset("max-node-refinement"))
+        options.set_option(
+                "max-node-refinement",
+                cmdline.get_value("max-node-refinement"));
+    
+    if(cmdline.isset("incremental-loop"))
+    {
+        options.set_option(
+                "incremental-loop", cmdline.get_value("incremental-loop"));
+        options.set_option("refine", true);
+        options.set_option("refine-arrays", true);
         
-        if(process_goto_program(cmdline, options, goto_model, *this ))
-            return true;
+        if(cmdline.isset("unwind-min"))
+            options.set_option("unwind-min", cmdline.get_value("unwind-min"));
+        
+        if(cmdline.isset("unwind-max"))
+            options.set_option("unwind-max", cmdline.get_value("unwind-max"));
+        
+        if(cmdline.isset("ignore-properties-before-unwind-min"))
+            options.set_option("ignore-properties-before-unwind-min", true);
+        
+        if(cmdline.isset("paths"))
+        {
+            log.error() << "--paths not supported with --incremental-loop"
+                        << messaget::eom;
+            exit(CPROVER_EXIT_USAGE_ERROR);
+        }
     }
     
-    catch(const char *e)
+    // SMT Options
+    
+    if(cmdline.isset("smt1"))
     {
-        error() << e << eom;
-        return true;
+        log.error() << "--smt1 is no longer supported" << messaget::eom;
+        exit(CPROVER_EXIT_USAGE_ERROR);
     }
     
-    catch(const std::string &e)
+    if(cmdline.isset("smt2"))
+        options.set_option("smt2", true);
+    
+    if(cmdline.isset("fpa"))
+        options.set_option("fpa", true);
+    
+    bool solver_set=false;
+    
+    if(cmdline.isset("boolector"))
     {
-        error() << e << eom;
-        return true;
+        options.set_option("boolector", true), solver_set=true;
+        options.set_option("smt2", true);
     }
     
-    catch(int e)
+    if(cmdline.isset("cprover-smt2"))
     {
-        error() << "Numeric exception : " << e << eom;
-        return true;
+        options.set_option("cprover-smt2", true), solver_set = true;
+        options.set_option("smt2", true);
     }
     
-    catch(const std::bad_alloc &)
+    if(cmdline.isset("mathsat"))
     {
-        cbmc_error_interface("Out of memory");
-        return true;
+        options.set_option("mathsat", true), solver_set=true;
+        options.set_option("smt2", true);
     }
+    
+    if(cmdline.isset("cvc4"))
+    {
+        options.set_option("cvc4", true), solver_set=true;
+        options.set_option("smt2", true);
+    }
+    
+    if(cmdline.isset("yices"))
+    {
+        options.set_option("yices", true), solver_set=true;
+        options.set_option("smt2", true);
+    }
+    
+    if(cmdline.isset("z3"))
+    {
+        options.set_option("z3", true), solver_set=true;
+        options.set_option("smt2", true);
+    }
+    
+    if(cmdline.isset("smt2") && !solver_set)
+    {
+        if(cmdline.isset("outfile"))
+        {
+            // outfile and no solver should give standard compliant SMT-LIB
+            options.set_option("generic", true);
+        }
+        else
+        {
+            // the default smt2 solver
+            options.set_option("z3", true);
+        }
+    }
+    
+    if(cmdline.isset("beautify"))
+        options.set_option("beautify", true);
+    
+    if(cmdline.isset("no-sat-preprocessor"))
+        options.set_option("sat-preprocessor", false);
+    
+    if(cmdline.isset("no-pretty-names"))
+        options.set_option("pretty-names", false);
+    
+    if(cmdline.isset("outfile"))
+        options.set_option("outfile", cmdline.get_value("outfile"));
+    
+    if(cmdline.isset("graphml-witness"))
+    {
+        options.set_option("graphml-witness", cmdline.get_value("graphml-witness"));
+        options.set_option("stop-on-fail", true);
+        options.set_option("trace", true);
+    }
+    
+    if(cmdline.isset("symex-coverage-report"))
+    {
+        options.set_option(
+                "symex-coverage-report",
+                cmdline.get_value("symex-coverage-report"));
+        options.set_option("paths-symex-explore-all", true);
+    }
+    
+    if(cmdline.isset("validate-ssa-equation"))
+    {
+        options.set_option("validate-ssa-equation", true);
+    }
+    
+    if(cmdline.isset("validate-goto-model"))
+    {
+        options.set_option("validate-goto-model", true);
+    }
+    
+    if(cmdline.isset("show-goto-symex-steps"))
+        options.set_option("show-goto-symex-steps", true);
+    
+    PARSE_OPTIONS_GOTO_TRACE(cmdline, options);
+}
+
+bool parser_baset::set_properties(goto_modelt & goto_model)
+{
+    if(cmdline.isset("claim")) // will go away
+        ::set_properties(goto_model, cmdline.get_values("claim"));
+    
+    if(cmdline.isset("property")) // use this one
+        ::set_properties(goto_model, cmdline.get_values("property"));
     
     return false;
+}
+/*******************************************************************
+General Note:
+ A goto_functionst object contains a set of GOTO programs. Note the
+counter-intuitive naming: `goto_functionst` instances are the top level
+structure representing the program and contain `goto_programt` instances
+which represent the individual functions.
+
+An instance of  goto_programt is effectively a list of
+instructions (a nested class called goto_programt::instructiont).
+
+Purpose:  Get a Goto-Program; initialize_goto_model does the whole job.
+
+Note: In CBMC5.12 this method is static, but UpProver needs non-static
+ to have two goto-programs at the same time
+
+\*******************************************************************/
+int parser_baset::get_goto_program( goto_modelt &goto_model,
+                                     const optionst &options,
+                                     const cmdlinet &cmdline,
+                                     ui_message_handlert &ui_message_handler)
+                                     
+{
+    messaget log{ui_message_handler};
+    if(cmdline.args.empty())
+    {
+        log.error() << "Please provide a program to verify" << messaget::eom;
+        return CPROVER_EXIT_INCORRECT_TASK;
+    }
+    if(cmdline.isset("show-symbol-table"))
+    {
+        show_symbol_table(goto_model, ui_message_handler);
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    //if(process_goto_program(goto_model, options, log))
+    if (process_goto_program(cmdline, options, goto_model, *this ))
+        return CPROVER_EXIT_INTERNAL_ERROR;
+    
+    if(cmdline.isset("validate-goto-model"))
+    {
+        goto_model.validate();
+    }
+    
+    // show it?
+    if(cmdline.isset("show-loops"))
+    {
+        show_loop_ids(ui_message_handler.get_ui(), goto_model);
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    // show it?
+    if(
+            cmdline.isset("show-goto-functions") ||
+            cmdline.isset("list-goto-functions"))
+    {
+        show_goto_functions(
+                goto_model, ui_message_handler, cmdline.isset("list-goto-functions"));
+        return CPROVER_EXIT_SUCCESS;
+    }
+    
+    log.status() << config.object_bits_info() << messaget::eom;
+    
+    return -1; // no error, continue
+    
+//    try
+//    {
+//        //goto model is obtained completely
+//        goto_model = initialize_goto_model(cmdline.args, ui_message_handler, options);
+//        if(process_goto_program(cmdline, options, goto_model, *this ))
+//            return true;
+//    }
+//
+//    catch(const char *e)
+//    {
+//        error() << e << eom;
+//        return true;
+//    }
+//
+//    catch(const std::string &e)
+//    {
+//        error() << e << eom;
+//        return true;
+//    }
+//
+//    catch(int e)
+//    {
+//        error() << "Numeric exception : " << e << eom;
+//        return true;
+//    }
+//
+//    catch(const std::bad_alloc &)
+//    {
+//        cbmc_error_interface("Out of memory");
+//        return true;
+//    }
+//
+//    log.status() << config.object_bits_info() << messaget::eom;
+//    return false;
+}
+
+
+void parser_baset::preprocessing(const optionst &options)
+{
+    if(cmdline.args.size() != 1)
+    {
+        log.error() << "Please provide one program to preprocess" << messaget::eom;
+        return;
+    }
+    
+    std::string filename = cmdline.args[0];
+    
+    std::ifstream infile(filename);
+    
+    if(!infile)
+    {
+        log.error() << "failed to open input file" << messaget::eom;
+        return;
+    }
+    
+    std::unique_ptr<languaget> language = get_language_from_filename(filename);
+    language->set_language_options(options);
+    
+    if(language == nullptr)
+    {
+        log.error() << "failed to figure out type of file" << messaget::eom;
+        return;
+    }
+    
+    language->set_message_handler(ui_message_handler);
+    
+    if(language->preprocess(infile, filename, std::cout))
+        log.error() << "PREPROCESSING ERROR" << messaget::eom;
 }
 
 
@@ -209,11 +694,11 @@ unsigned parser_baset::count(const goto_programt &goto_program) const
 void parser_baset::calculate_show_claims(goto_modelt & goto_model) {
     
     get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
-    cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")");
+    log.status()<<"Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")"<< messaget::eom;
     
     if (cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
-        show_properties(goto_model, get_message_handler(), ui_message_handler.get_ui());
-        cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
+        show_properties(goto_model, ui_message_handler);
+        log.status()<<"#Total number of claims: " + std::to_string(claim_numbers.size())<< messaget::eom;
         exit(0);
     }
     if (cmdline.isset("claims-opt"))
@@ -457,31 +942,6 @@ void parser_baset::set_options(const cmdlinet &cmdline)
     //}
 }
 
-/*******************************************************************\
- 
- Function:
-
- Purpose:
-
- Note: Taken from void cbmc_parse_optionst::eval_verbosity(),
-       Update if needed (once upgrade cprover)
-
-\*******************************************************************/
-void parser_baset::eval_verbosity()
-{
-    // this is our default verbosity
-    unsigned int v=messaget::M_STATISTICS;
-    
-    if(cmdline.isset("verbosity"))
-    {
-        v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-        if(v>10)
-            v=10;
-    }
-    
-    ui_message_handler.set_verbosity(v);
-}
-
 /*******************************************************************
 
  Function: standalone process_goto_program
@@ -617,5 +1077,5 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
         return true;
     }
     
-    return false;
+    return false; // no error, continue
 }
