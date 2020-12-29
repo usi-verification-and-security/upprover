@@ -7,6 +7,7 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 #include "smtcheck_opensmt2_cuf.h"
 #include <opensmt/BitBlaster.h>
 #include <funfrog/utils/naming_helpers.h>
+#include <util/mathematical_types.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -292,10 +293,10 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         }
         
         // Check if fits - using cprover information
-        if (expr.type().get_unsigned_int("width") > this->bitwidth)
+        if (expr.type().get_size_t("width") > this->bitwidth)
         {
             std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            std::cout << "\n  Data " << str << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
+            std::cout << "\n  Data " << str << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
                     << (-max_num) << " and " << (max_num-1) << std::endl;
                 
             /* Report always, but only exit if must to */
@@ -393,10 +394,10 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         // Check first that we don't need larger reg.
         if (expr.type().id() == ID_floatbv) 
         {
-            if (expr.type().get_unsigned_int("width") > this->bitwidth)
+            if (expr.type().get_size_t("width") > this->bitwidth)
             {
                 std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                std::cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
+                std::cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
                         << (-max_num) << " and " << (max_num-1) << std::endl;
                 exit(0);
             }
@@ -425,7 +426,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         
         assert(0); // Not suppose to get here!
 
-    } else if (is_number(expr.type()) && is_number(expr_op0.type()) && 
+    } else if (is_number(expr.type()) && is_number(expr_op0.type()) &&
                                         (expr.id() == ID_floatbv_typecast)) {
         
         return unsupported2var_bv(expr); // stub for now
@@ -796,7 +797,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // Check the id is a var
     assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
 
-    int size = var_type.get_unsigned_int("width");
+    int size = var_type.get_size_t("width");
     assert("Data type constraints for Bytes are valid for 8 bit-width or up" 
                 && (size >= 8 || expr.is_boolean()));
     
@@ -1283,7 +1284,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         irep_idt value(v1.val);
 
         // Create the expr with it
-        constant_exprt tmp;
+        constant_exprt tmp(value, expr.type());
         tmp.set_value(value);
         return tmp;
     }
