@@ -109,7 +109,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     return false;
 }
 
-bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const goto_symex_statet::call_stackt &context, unsigned unwind) {
+bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const call_stackt &context, unsigned unwind) {
     // returns true if we should not continue unwinding
     // for support of different bounds in different loops, see how it's done in symex_bmct
     return unwind >= max_unwind;

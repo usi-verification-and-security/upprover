@@ -50,8 +50,8 @@ public:
 protected:
     bool get_unwind(
     const symex_targett::sourcet &source,
-    const goto_symex_statet::call_stackt &context,
-    unsigned unwind) override;
+    const call_stackt &context,
+    unsigned unwind);
 
 private:
     unsigned int max_unwind = 1;

@@ -28,7 +28,8 @@ class boolbv_mapt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-    satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
+    satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns,
+                       message_handlert & message_handler);
 
     virtual ~satcheck_opensmt2t() {
     }
@@ -48,9 +49,9 @@ public:
       throw std::logic_error("Unreachable");
     }
 
-    bool is_overapproximating() const override {return false;}
+    //bool is_overapproximating() const override {return false;}
 
-    virtual resultt prop_solve() override;
+    virtual resultt prop_solve();
     virtual tvt l_get(literalt a) const override;
 
     bool is_assignment_true(FlaRef l) const override {
@@ -150,6 +151,10 @@ public:
     literalt new_variable() override;
 
 protected:
+    resultt do_prop_solve() override
+    {
+        return resultt::P_ERROR;
+    }
     // Use in the convert from SSA -> SMT-prop encoding
 
     // Solver verbosity

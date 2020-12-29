@@ -73,7 +73,7 @@ public:
 
     void close_partition() override;
 
-    virtual bool is_overapproximating() const = 0;
+    //virtual bool is_overapproximating() const = 0;
 
     /* General consts for prop version - Shall be Static. No need to allocate these all the time */
     static const char* false_str;
