@@ -407,8 +407,9 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     //each time we need a cleaned solver; this resets mainSolver but logic and config stay the same.
     decider->get_solver()->reset_solver();
     
-    partitioning_target_equationt equation(ns, *summary_store, true);
+    partitioning_target_equationt equation(ns, *summary_store, true, message_handler);
     std::unique_ptr<path_storaget> worklist;
+    guard_managert guard_manager;
     symex_assertion_sumt symex{get_goto_functions(),
                                node,
                                options, *worklist,
@@ -421,6 +422,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                                !options.get_bool_option("no-error-trace"),
                                options.get_unsigned_int_option("unwind"),
                                options.get_bool_option("partial-loops"),
+                               guard_manager
     };
 //  assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
     assertion_infot assertion_info; // MB: It turns out we need to consider the assertions, in case the summary contains the err symbol.
@@ -615,9 +617,12 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
         auto interpolator1 = decider->get_interpolating_solver();
         auto convertor1 = decider->get_convertor();
         
-        partitioning_target_equationt equation(ns, *summary_store, true);//true:all-claims
+        partitioning_target_equationt equation(ns, *summary_store, true,
+                                               message_handler);//true:all-claims
     
         std::unique_ptr<path_storaget> worklist;
+        guard_managert guard_manager;
+        
         symex_assertion_sumt symex{get_goto_functions(),
                                    *current_parent,
                                    options, *worklist,
@@ -631,6 +636,7 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
                                    !options.get_bool_option("no-error-trace"),
                                    options.get_unsigned_int_option("unwind"),
                                    options.get_bool_option("partial-loops"),
+                                   guard_manager
         };
 //      assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
         assertion_infot assertion_info; //It turns out we need to consider the assertions, in case the summary contains the err symbol.

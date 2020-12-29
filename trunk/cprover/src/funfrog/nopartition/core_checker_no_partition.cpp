@@ -28,7 +28,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 //  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 
-  hifrog_symex_target_equationt equation(ns);
+  hifrog_symex_target_equationt equation(ns, message_handler);
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
     equation.set_dump_SSA_tree(true);
@@ -152,7 +152,7 @@ void core_checkert::assertion_violated_no_partition(prepare_formula_no_partition
     assert(solver);
     prop.error_trace(*solver, ns, guard_expln);
     if (solver->is_overapprox_encoding()) {
-      status() << "\nA bug found." << endl;
+      status() << "\nA bug found." << "\n";
       status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
       status() << "A real bug found." << eom;

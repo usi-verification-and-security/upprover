@@ -424,7 +424,7 @@ int parser_hifrogt::doit()
             auto& goto_functions = goto_model.get_goto_functions();
             auto& main = goto_functions.function_map.at(goto_functions.entry_point()).body;
             uds.dump_list_templates(ns, main, goto_functions, options, options.get_unsigned_int_option(HiFrogOptions::UNWIND),
-                                    options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE));
+                                    options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE), ui_message_handler);
         }
         else{
             log.error() <<"Error: invalid request for listing the template; it is supported only in LRA and EUF"<< messaget::eom;

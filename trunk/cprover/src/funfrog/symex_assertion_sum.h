@@ -35,7 +35,8 @@ public:
                        partitioning_target_equationt & _target,
                        message_handlert & _message_handler, const goto_programt & _goto_program,
                        unsigned _last_assertion_loc, bool _single_assertion_check,
-                       bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops);
+                       bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops,
+                       guard_managert guard_manager);
   
     symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const optionst &, path_storaget &,
             const symbol_tablet&, partitioning_target_equationt&, message_handlert&,
@@ -311,7 +312,7 @@ protected:
   // KE: override from goto_symex.h
   virtual void phi_function(
     const statet::goto_statet &goto_state,
-    statet &state) override;
+    statet &state);
 
   // KE: override from goto_symex.h
   virtual void vcc(
@@ -322,8 +323,8 @@ protected:
   // for loop unwinding
   virtual bool get_unwind(
     const symex_targett::sourcet &source,
-    const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
-    unsigned unwind) override
+    const call_stackt &call_stack, // KE: changed to fit the override
+    unsigned unwind)
   {
     // returns true if we should not continue unwinding
     // for support of different bounds in different loops, see how it's done in symex_bmct

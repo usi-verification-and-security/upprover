@@ -79,7 +79,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   smt_summary_storet dummy(nullptr);
   partitioning_target_equationt equation(ns, dummy,
-      store_summaries_with_assertion);
+      store_summaries_with_assertion, message_handler);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -90,10 +90,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   call_tree_nodet& call_info = omega.get_call_tree_root();
   std::unique_ptr<path_storaget> worklist;
+  guard_managert guard_manager;
+  
   symex_assertion_sumt symex{
           omega.get_goto_functions(), call_info, options, *worklist, ns.get_symbol_table(),
           equation, message_handler, goto_program, last_assertion_loc,
-          single_assertion_check, true, unwind_bound, false};
+          single_assertion_check, true, unwind_bound, false, guard_manager};
   symex.set_assertion_info_to_verify(&assertion);
 
   formula_managert ssaTosmt = formula_managert(equation, message_handler);
@@ -113,7 +115,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   if (end)
   {
-      status() << "ASSERTION HOLDS" << endl << eom;
+      status() << "ASSERTION HOLDS" << "\n" << eom;
       report_success();
 
   } else {  //do refinement
@@ -140,7 +142,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
       } else {*/
 
-          status() << endl << "Trying to refine with CUF+BitBlast" << eom;
+          status() << "\n" << "Trying to refine with CUF+BitBlast" << eom;
 
           std::set<int> exprs_ids;
           get_numbers(exprs_ids, options.get_option("custom"));
@@ -152,46 +154,46 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           if (exprs_ids.size() > 0){
 
-              status() << "(user-specified statements only)" << endl << eom;
+              status() << "(user-specified statements only)" << eom;
 
               if (decider->refine_ce_mul(exprs, exprs_ids)){
-                  status() << "ASSERTION UNKNOWN" << endl;
+                  status() << "ASSERTION UNKNOWN" ;
                   status() << "(further refinement needed)" << eom;
                   //report_failure(); // KE: confusing, it is UNKNOWN and SAT at the same time?!
               } else {
-                  status() << endl << "Custom refinement successful" << endl;
+                  status() << "\n" << "Custom refinement successful" << "\n";
                   status() << "(" << exprs_ids.size() << " / "
-                                  << exprs.size()  << " expressions bit-blasted)" << endl;
+                                  << exprs.size()  << " expressions bit-blasted)" << "\n";
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
           } else if (refine_all) {
 
-              status() << "(all statements at once)" << endl << eom;
+              status() << "(all statements at once)" << "\n" << eom;
 
               if (decider->force_refine_ce(exprs, refined)){
 #ifdef _NO_OPTIMIZATION
                   std::string reason = decider->get_refinement_failure_reason();
                   if (reason.size() > 0)
                   {
-                      status() << "ASSERTION UNKNOWN" << endl;
+                      status() << "ASSERTION UNKNOWN" << "\n";
                       status() << "(further refinement needed)" << eom;
-                      status() << "\n\n(" << reason << ")" << endl;
+                      status() << "\n\n(" << reason << ")" << "\n";
                   } else {
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                   }
 #endif
                   report_failure();
               } else {
-                  status() << endl << "Naive refinement successful" << endl;
+                  status() << "\n" << "Naive refinement successful" << "\n";
                   status() << "(" << exprs.size() << " / "
-                                  << exprs.size()  << " expressions bit-blasted)" << endl;
+                                  << exprs.size()  << " expressions bit-blasted)" << "\n";
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
           } else {
 
-              status() << "(driven by iterative CE-analysis)" << endl << eom;
+              status() << "(driven by iterative CE-analysis)" << "\n" << eom;
               unsigned heuristic = options.get_unsigned_int_option("heuristic");
 
               while (true){
@@ -278,36 +280,36 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
                   if (weak.size() > 0){
 
-                      status() << "  Weak statement encodings (" << weak.size() << ") found" << endl;
+                      status() << "  Weak statement encodings (" << weak.size() << ") found" << "\n";
 
                       for (auto it = weak.begin(); it != weak.end(); ++it){
                           refined.insert(*it);
                       }
 
                       if (!decider->refine_ce_mul(exprs, weak)){
-                          status() << endl << "Refinement successful" << endl;
+                          status() << "\n" << "Refinement successful" << "\n";
                           status() << "(" << refined.size() << " / "
-                                          << exprs.size()  << " expressions bit-blasted)" << endl;
+                                          << exprs.size()  << " expressions bit-blasted)" << "\n";
                           status() << "Command-line options to double-check: --theoref --custom ";
                           for (auto it = refined.begin(); it != refined.end(); ++it){
                               status() << *it << ",";
                           }
-                          status() << endl << "ASSERTION HOLDS" << eom;
+                          status() << "\n" << "ASSERTION HOLDS" << eom;
                           report_success();
                           end = true;
                           break;
                       }
                   } else  if (decider->force_refine_ce(exprs, refined) ){ // TODO: comment once the bug with thoref is fixed
-                      status() << endl << "Obtained counter-examples are refined" << endl;
+                      status() << "\n" << "Obtained counter-examples are refined" << "\n";
                       status() << "(" << refined.size() << " / "
-                                      << exprs.size()  << " expressions bit-blasted)" << endl;
+                                      << exprs.size()  << " expressions bit-blasted)" << "\n";
 #ifdef _NO_OPTIMIZATION
                       std::string reason = decider->get_refinement_failure_reason();
                       if (reason.size() > 0)
                       {
-                        status() << "ASSERTION UNKNOWN" << endl;
+                        status() << "ASSERTION UNKNOWN" << "\n";
                         status() << "(further refinement needed)" << eom;
-                        status() << "\n\n(" << reason << ")" << endl;
+                        status() << "\n\n(" << reason << ")" << "\n";
                       } else {
                         status() << "ASSERTION DOES NOT HOLD" << eom;
                       }
@@ -316,13 +318,13 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       end = false;
                       break;
                   } else {
-                      status() << endl << "Naive refinement successful" << endl;
-                      status() << "(" << refined.size() << " counter-examples + refine everything else)" << endl;
+                      status() << "\n" << "Naive refinement successful" << "\n";
+                      status() << "(" << refined.size() << " counter-examples + refine everything else)" << "\n";
                       status() << "Command-line options to double-check: --theoref --custom ";
                       for (unsigned int i = 0; i < exprs.size(); i++){
                           status() << i << ",";
                       }
-                      status() << endl << "ASSERTION HOLDS" << eom;
+                      status() << "\n" << "ASSERTION HOLDS" << eom;
                       report_success();
                       end = true;
                       break;

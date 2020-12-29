@@ -333,7 +333,7 @@ std::unique_ptr<ssa_solvert> core_checkert::initialize__prop_solver()
     std::string _solver = options.get_option(HiFrogOptions::SOLVER);
     if (_solver == "osmt") {
         status() << "\n*** SOLVER in use is OpenSMT2 ***\n" << eom;
-        return std::unique_ptr<ssa_solvert>(new satcheck_opensmt2t(solver_options, "prop checker", ns));
+        return std::unique_ptr<ssa_solvert>(new satcheck_opensmt2t(solver_options, "prop checker", ns, message_handler));
     } else {
         error() << ("Unsupported SOLVER: " +  _solver + "\n") << eom;
         exit(0); //Unsupported 
@@ -482,7 +482,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     const bool single_assertion_check = omega.is_single_assertion_check();
 
     partitioning_target_equationt equation(ns, *summary_store,
-                                                store_summaries_with_assertion);
+                                                store_summaries_with_assertion, message_handler);
 
 #ifdef DISABLE_OPTIMIZATIONS
     if (options.get_bool_option("dump-SSA-tree")) {
@@ -493,12 +493,15 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     std::unique_ptr<path_storaget> worklist;
+    guard_managert guard_manager;
+    
     symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
                                                       message_handler, get_main_function(), last_assertion_loc,
                                                       single_assertion_check, !no_ce_option,
                                                       unwind_bound,
                                                       options.get_bool_option("partial-loops"),
+                                                      guard_manager
                                 };
     symex.set_assertion_info_to_verify(&assertion);
 
@@ -962,7 +965,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     };
     omega.set_initial_precision(assertion, has_summary);
     std::unique_ptr<path_storaget> worklist;
-    partitioning_target_equationt equation {ns, summary_store, false};
+    partitioning_target_equationt equation {ns, summary_store, false, message_handler};
+    guard_managert guard_manager;
 
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
@@ -976,6 +980,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                !options.get_bool_option("no-error-trace"),
                                options.get_unsigned_int_option("unwind"),
                                options.get_bool_option("partial-loops"),
+                               guard_manager
     };
     symex.set_assertion_info_to_verify(&assertion);
 

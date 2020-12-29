@@ -14,7 +14,6 @@
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "subst_scenario.h"
-
 #include <memory>
 
 class prepare_formula_no_partitiont;

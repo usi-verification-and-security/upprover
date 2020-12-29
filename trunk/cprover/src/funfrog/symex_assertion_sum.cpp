@@ -46,8 +46,9 @@ symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functio
                                            partitioning_target_equationt & _target,
                                            message_handlert & _message_handler, const goto_programt & _goto_program,
                                            unsigned _last_assertion_loc, bool _single_assertion_check,
-                                           bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
-  goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
+                                           bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops,
+                                           guard_managert &guard_manager) :
+  goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage, guard_manager),
   goto_functions(_goto_functions),
   call_tree_root(_call_info),
   current_call_tree_node(&_call_info),

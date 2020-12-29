@@ -99,8 +99,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
 
     //reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
-    for(SSA_stepst::iterator
-      it=equation.SSA_steps.begin();
+    for(auto it=equation.SSA_steps.begin();
       it!=equation.SSA_steps.end();
       it++)
     {
@@ -752,8 +751,8 @@ void dependency_checkert::convert_io(
                 (*it).converted_io_args.push_back(tmp);
             else
             {
-                symbol_exprt symbol;
-                symbol.type()=tmp.type();
+                symbol_exprt symbol(tmp.type());
+                //symbol.type()=tmp.type();
                 symbol.set_identifier(CProverStringConstants::IO_CONST + std::to_string(io_count++));
                 convertor.set_to_true(equal_exprt(tmp, symbol));
                 (*it).converted_io_args.push_back(symbol);
@@ -811,8 +810,8 @@ std::pair<bool, timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{
         // TODO: create solver according to current settings?
-        solver_optionst solver_options; // Set defaults inside
-        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns);
+        const solver_optionst solver_options; // Set defaults inside
+        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns, *message_handler);
         decider->new_partition();
 
         convert_delta_SSA(*decider, c1, c2);
