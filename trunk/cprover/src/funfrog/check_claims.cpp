@@ -12,6 +12,7 @@
 #include <util/xml.h>
 #include <util/xml_irep.h>
 #include <ansi-c/expr2c.h>
+#include <funfrog/call_stack.h>
 
 #include <fstream>
 
@@ -29,7 +30,7 @@
 goto_programt::const_targett claim_statst::find_assertion(
   const goto_programt::const_targett &start,
   const goto_functionst &goto_functions,
-  call_stackt &stack)
+  callStackt &stack)
 {
   auto it = start;
   it++;
@@ -135,7 +136,7 @@ void check_claims(
 
   const auto & goto_functions = goto_model.goto_functions;
   const auto & main_body = goto_functions.function_map.at(goto_functionst::entry_point()).body;
-  call_stackt stack;
+  callStackt stack;
   goto_programt::const_targett ass_ptr = main_body.instructions.begin();
   
   // NOTE: Not reimplemented yet

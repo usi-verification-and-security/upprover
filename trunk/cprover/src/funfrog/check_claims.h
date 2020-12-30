@@ -14,7 +14,7 @@
 #include <goto-programs/goto_functions.h>
 #include <util/ui_message.h>
 #include "unwind.h"
-#include "call_stack.h"
+#include "funfrog/call_stack.h"
 
 class claim_statst:public messaget, public unwindt
 {
@@ -46,7 +46,7 @@ public:
   goto_programt::const_targett find_assertion(
     const goto_programt::const_targett &start,
     const goto_functionst &goto_functions,
-    call_stackt &stack);
+    callStackt &stack);
 
 };
 

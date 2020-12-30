@@ -10,6 +10,6 @@
 #include <vector>
 #include <goto-programs/goto_program.h>
 
-using call_stackt = std::vector<goto_programt::const_targett>;
+using callStackt = std::vector<goto_programt::const_targett>;
 
 #endif /*_CPROVER_LOOPFROG_CALL_STACK_H_*/
