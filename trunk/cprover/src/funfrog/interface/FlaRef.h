@@ -6,7 +6,20 @@
 #define PROJECT_FLAREF_H
 
 #include <solvers/prop/literal.h> // MB: remove when not necessary
+/* We needed a unified abstraction for a formula representation:
+ * 1) for propositional literalts in Prop-HiFrog (CProver's literalt),
+ * 2) for PTRefs in OpenSMT in SMT-HiFrog, and
+ * 3) for Z3's expressions.
+ *
+ * FlaRef is a handle to a boolean term of the underlying solver(OpenSMT, Z3),
+ * without the explicit need to know which solver is in use.
 
+ * This Flaref struct has been introduced to extract the general `convertort` interface
+ * to replace CProver's literalt
+
+
+An abstraction used in the interface 'convertort' in convertor.h
+*/
 struct FlaRef{
     using reft = unsigned;
 
@@ -65,7 +78,8 @@ inline FlaRef const_formula(bool value)
     return FlaRef(FlaRef::const_no(), value);
 }
 
-// MB: ideally these should not be necessary, or at least, they should be present only in SAT version; but first we need to modify ssa steps
+// MB: ideally these should not be necessary, or at least, they should be present only in SAT
+// version; but first we need to modify ssa steps
 inline literalt flaref_to_literal(const FlaRef f) { return literalt{f.no(), f.sign()};}
 inline FlaRef literal_to_flaref (const literalt l) { return FlaRef{l.var_no(), l.sign()};}
 

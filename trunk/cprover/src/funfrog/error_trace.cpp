@@ -42,7 +42,8 @@ void error_tracet::build_goto_trace(
   for(auto ssa_step_ptr : SSA_steps)
   {
     const auto & SSA_step = *ssa_step_ptr;
-    if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
+    //if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_handle)))
+    if(!solver.get_value(SSA_step.guard_handle).is_true())
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -74,26 +75,26 @@ void error_tracet::build_goto_trace(
     goto_trace.steps.push_back(goto_trace_stept());
     goto_trace_stept &goto_trace_step = goto_trace.steps.back();
 
-    goto_trace_step.thread_nr=SSA_step.source.thread_nr;
-    goto_trace_step.pc=SSA_step.source.pc;
-    goto_trace_step.comment=SSA_step.comment;
-    goto_trace_step.type=SSA_step.type;
-    goto_trace_step.hidden=SSA_step.hidden;
-    goto_trace_step.step_nr=step_nr;
-    goto_trace_step.format_string=SSA_step.format_string;
-    goto_trace_step.io_id=SSA_step.io_id;
-    goto_trace_step.formatted=SSA_step.formatted;
-    goto_trace_step.function_identifier=SSA_step.function_identifier;
+    goto_trace_step.thread_nr = SSA_step.source.thread_nr;
+    goto_trace_step.pc = SSA_step.source.pc;
+    goto_trace_step.comment = SSA_step.comment;
+    goto_trace_step.type = SSA_step.type;
+    goto_trace_step.hidden = SSA_step.hidden;
+    goto_trace_step.step_nr = step_nr;
+    goto_trace_step.format_string = SSA_step.format_string;
+    goto_trace_step.io_id = SSA_step.io_id;
+    goto_trace_step.formatted = SSA_step.formatted;
+    goto_trace_step.called_function = SSA_step.called_function;
 
     if(SSA_step.ssa_lhs.is_not_nil()) {
         if (str.find(CProverStringConstants::GOTO_GUARD) == 0){
-            goto_trace_step.lhs_object = SSA_step.ssa_lhs;
+            goto_trace_step.get_lhs_object() = SSA_step.ssa_lhs;
         } else {
             //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
-            goto_trace_step.lhs_object = ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
+            goto_trace_step.get_lhs_object() = ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
         }
     } else {
-        goto_trace_step.lhs_object.make_nil();
+        goto_trace_step.get_lhs_object().value().make_nil();
     }
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
@@ -128,7 +129,7 @@ void error_tracet::build_goto_trace(
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
       goto_trace_step.cond_value=
-    		  solver.is_assignment_true(literal_to_flaref(SSA_step.cond_literal));
+    		  solver.get_value(SSA_step.cond_handle).is_true();
 
       // we stop after a violated assertion
       if(SSA_step.is_assert() && !goto_trace_step.cond_value)
@@ -325,7 +326,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(solvert &solver, co
             it++)
         {
             const SSA_stept &SSA_step=**it;
-            if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
+            if(!solver.get_value(SSA_step.guard_handle).is_true())
                 continue;
             if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
                 continue;
@@ -359,7 +360,7 @@ Function: show_goto_trace
 
 \*******************************************************************/
 void error_tracet::show_goto_trace(
-    std::ostream &out,
+    messaget::mstreamt &out,
     const namespacet &ns,
     std::map<irep_idt, std::string> &guard_expln)
 {
@@ -409,13 +410,13 @@ void error_tracet::show_goto_trace(
                 if(!step.cond_value)
                 {
                     // KE: keep the same format of prints as in goto-programs/goto_trace.cpp
-                    out << std::endl;
+                    out << "\n";
                     out << "Violated property:\n  " <<
                         step.pc->source_location <<
                         "\n  " << step.comment <<
                         "\n  " << from_expr(ns, "", step.pc->guard);
 
-                    out << std::endl;
+                    out << "\n";
                 }
                 break;
 
@@ -423,7 +424,7 @@ void error_tracet::show_goto_trace(
                 if(step.pc->is_assign() ||
                         step.pc->is_return() || // returns have a lhs!
                         step.pc->is_function_call() ||
-                        (step.pc->is_other() && step.lhs_object.is_not_nil()))
+                        (step.pc->is_other() && step.get_lhs_object()->is_not_nil()))
                 {
                     if(prev_step_nr!=step.step_nr || first_step)
                     {
@@ -432,14 +433,14 @@ void error_tracet::show_goto_trace(
                         show_state_header(out, step.thread_nr, step.pc->source_location, step.step_nr);
                     }
 
-                    std::string str = guard_expln[step.lhs_object.get("identifier")];
+                    std::string str = guard_expln[step.get_lhs_object()->get_identifier()];
                     if (str != "")
                         show_guard_value(out, str, step.full_lhs_value);
                     else if (step.format_string != "")
                         show_misc_value(out, step.format_string, step.full_lhs_value);
                     else
-                        show_var_value(out, ns, step.lhs_object, step.lhs_object, step.full_lhs_value);
-            }
+                        show_var_value(out, ns, step.get_lhs_object(), step.full_lhs, step.full_lhs_value);
+                }
                 break;
 
             case goto_trace_stept::typet::OUTPUT:
@@ -448,7 +449,7 @@ void error_tracet::show_goto_trace(
                     printf_formattert printf_formatter(ns);
                     printf_formatter(id2string(step.format_string), step.io_args);
                     printf_formatter.print(out);
-                    out << std::endl;
+                    out << "\n";
                 }
                 else
                 {
@@ -464,7 +465,7 @@ void error_tracet::show_goto_trace(
                             out << " " << from_expr(ns, "", *l_it);
                     }
 
-                        out << std::endl;
+                        out << '\n';
                 }
                 break;
 
@@ -481,11 +482,11 @@ void error_tracet::show_goto_trace(
                         out << " " << from_expr(ns, "", *l_it);
                 }
 
-                out << std::endl;
+                out << '\n';
                 break;
 
             default:
-                //std::cout << "Error " << step.type << std::endl;
+                //std::cout << "Error " << step.type << '\n';
                 assert(false);
         }
     }
@@ -510,15 +511,15 @@ void error_tracet::show_state_header(
   const source_locationt &location,
   unsigned step_nr)
 {
-  out << std::endl;
+  out << '\n';
 
   if(step_nr==0)
     out << "Initial State";
   else
     out << "State " << step_nr;
 
-  out << " " << location << " thread " << thread_nr << std::endl;
-  out << "----------------------------------------------------" << std::endl;
+  out << " " << location << " thread " << thread_nr << '\n';
+  out << "----------------------------------------------------" << '\n';
 }
 
 void error_tracet::show_guard_value(
@@ -526,7 +527,7 @@ void error_tracet::show_guard_value(
   const std::string &str,
   const exprt &value)
 {
-	out << "  [" << str <<  "] = " << value.get(ID_value) << std::endl;
+	out << "  [" << str <<  "] = " << value.get(ID_value) << '\n';
 }
 
 void error_tracet::show_misc_value(
@@ -534,7 +535,7 @@ void error_tracet::show_misc_value(
   const irep_idt &str,
   const exprt &value)
 {
-	out << "  \"" << str <<  "\" = " << value.get(ID_value) << std::endl;
+	out << "  \"" << str <<  "\" = " << value.get(ID_value) << '\n';
 }
 
 /*******************************************************************\
@@ -549,48 +550,62 @@ Function: error_tracet::show_var_value
 
 \*******************************************************************/
 void error_tracet::show_var_value(
-  std::ostream &out,
+  messaget::mstreamt &out,
   const namespacet &ns,
-  const symbol_exprt &lhs_object,
+  const optionalt<symbol_exprt> &lhs_object,
   const exprt &full_lhs,
   const exprt &value)
 {
-    const irep_idt &identifier=lhs_object.get_identifier();
+//    irep_idt identifier;
+//    if(lhs_object.has_value())
+//        identifier = lhs_object->get_identifier();
+    
     out << "  ";
-    show_expr(out, ns, identifier, full_lhs, false);
+    show_expr(out, ns, lhs_object, full_lhs, value, false);
     out << " = ";
-    show_expr(out, ns, identifier, value, value.is_nil());
-    out << std::endl;
+    show_expr(out, ns, lhs_object, value, value, value.is_nil());
+    out << "\n";
 }
 
 /*******************************************************************\
 
 Function: error_tracet::show_expr
 
-  Inputs:
-
-  Outputs:
-
-  Purpose:
+  Note: similar to static void trace_value()
 
 \*******************************************************************/
 void error_tracet::show_expr(
-  std::ostream &out,
-  const namespacet &ns,
-  const irep_idt &identifier,
-  const exprt &expr,
-  bool is_removed)
+    messaget::mstreamt &out,
+    const namespacet &ns,
+    const optionalt<symbol_exprt> &lhs_object,
+    const exprt &full_lhs,
+    const exprt &value,
+    bool is_removed)
 {
+    irep_idt identifier;
+    
+    if (lhs_object.has_value())
+        identifier = lhs_object->get_identifier();
+//CPROVER 5.12
+//    out << from_expr(ns, identifier, full_lhs) << '=';
+//
+//    if (value.is_nil())
+//        out << "(assignment removed)";
+//    else {
+//        out << from_expr(ns, identifier, value);
+//    }
+//
+//    out << '\n';
+
     if (is_removed) // only for the value check
         out << "(assignment removed)";
-    else if (expr.id() == ID_nil)
+    else if (value.id() == ID_nil)
         out << CProverStringConstants::NIL;
-    else if (expr.id() == ID_constant)
-        out << expr.get(ID_value);
+    else if (value.id() == ID_constant)
+        out << value.get(ID_value);
     else
-        out << from_expr(ns, identifier, expr);
-    }
-
+        out << from_expr(ns, identifier, value);
+}
 /*******************************************************************\
 
 Function: error_tracet::is_index_member_symbol
