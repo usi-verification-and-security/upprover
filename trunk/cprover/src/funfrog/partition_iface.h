@@ -35,7 +35,7 @@ public:
   std::vector<symbol_exprt> in_arg_symbols;
   std::vector<symbol_exprt> out_arg_symbols;
   symbol_exprt retval_symbol;
-  //symbol_exprt retval_tmp;
+  symbol_exprt retval_tmp;
   symbol_exprt callstart_symbol;
   symbol_exprt callend_symbol;
   symbol_exprt error_symbol;
@@ -60,10 +60,6 @@ public:
 
   std::vector<symbol_exprt> get_iface_symbols() const;
   
-  
-  //newly added for upgrade check
-  
-  symbol_exprt retval_tmp;
   void share_symbols(const partition_ifacet& other) {
     argument_symbols = other.argument_symbols;
     in_arg_symbols = other.in_arg_symbols;
