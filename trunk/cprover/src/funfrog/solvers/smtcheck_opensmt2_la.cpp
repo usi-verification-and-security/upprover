@@ -790,11 +790,8 @@ PTRef smtcheck_opensmt2t_la::type_cast(const exprt & expr)
 
 Function: smtcheck_opensmt2t_la::get_and_clear_var_constraints
 
-  Inputs:
-
- Outputs:
-
  Purpose: Free all inner objects
+ Usage: in variable's constraint in LRA and LIA
 
 \*******************************************************************/
 FlaRef smtcheck_opensmt2t_la::get_and_clear_var_constraints()
