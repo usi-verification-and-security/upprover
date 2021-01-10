@@ -32,12 +32,11 @@ int linker_script_merget::add_linker_script_definitions()
 
   temporary_filet linker_def_outfile("goto-cc-linker-info", ".json");
   std::list<irep_idt> linker_defined_symbols;
-  int fail=
-    get_linker_script_data(
-      linker_defined_symbols,
-      compiler.symbol_table,
-      elf_binary,
-      linker_def_outfile());
+  int fail = get_linker_script_data(
+    linker_defined_symbols,
+    compiler.goto_model.symbol_table,
+    elf_binary,
+    linker_def_outfile());
   // ignore linker script parsing failures until the code is tested more widely
   if(fail!=0)
     return 0;
@@ -58,33 +57,31 @@ int linker_script_merget::add_linker_script_definitions()
     return fail;
   }
 
-  symbol_tablet original_st;
-  goto_functionst original_gf;
+  auto original_goto_model =
+    read_goto_binary(goto_binary, get_message_handler());
 
-  fail=read_goto_binary(goto_binary, original_st, original_gf,
-      get_message_handler());
-
-  if(fail!=0)
+  if(!original_goto_model.has_value())
   {
     error() << "Unable to read goto binary for linker script merging" << eom;
-    return fail;
+    return 1;
   }
 
   fail=1;
   linker_valuest linker_values;
-  const auto &pair=original_gf.function_map.find(INITIALIZE_FUNCTION);
-  if(pair==original_gf.function_map.end())
+  const auto &pair =
+    original_goto_model->goto_functions.function_map.find(INITIALIZE_FUNCTION);
+  if(pair == original_goto_model->goto_functions.function_map.end())
   {
     error() << "No " << INITIALIZE_FUNCTION << " found in goto_functions"
             << eom;
     return fail;
   }
-  fail=ls_data2instructions(
-      data,
-      cmdline.get_value('T'),
-      pair->second.body,
-      original_st,
-      linker_values);
+  fail = ls_data2instructions(
+    data,
+    cmdline.get_value('T'),
+    pair->second.body,
+    original_goto_model->symbol_table,
+    linker_values);
   if(fail!=0)
   {
     error() << "Could not add linkerscript defs to " INITIALIZE_FUNCTION << eom;
@@ -98,8 +95,7 @@ int linker_script_merget::add_linker_script_definitions()
   // The keys of linker_values are exactly the elements of
   // linker_defined_symbols, so iterate over linker_values from now on.
 
-  fail=pointerize_linker_defined_symbols(original_gf, original_st,
-      linker_values);
+  fail = pointerize_linker_defined_symbols(*original_goto_model, linker_values);
 
   if(fail!=0)
   {
@@ -107,7 +103,7 @@ int linker_script_merget::add_linker_script_definitions()
     return fail;
   }
 
-  fail=compiler.write_object_file(goto_binary, original_st, original_gf);
+  fail = compiler.write_bin_object_file(goto_binary, *original_goto_model);
 
   if(fail!=0)
     error() << "Could not write linkerscript-augmented binary" << eom;
@@ -116,86 +112,102 @@ int linker_script_merget::add_linker_script_definitions()
 }
 
 linker_script_merget::linker_script_merget(
-      compilet &compiler,
-      const std::string &elf_binary,
-      const std::string &goto_binary,
-      const cmdlinet &cmdline,
-      message_handlert &message_handler) :
-    messaget(message_handler), compiler(compiler),
-    elf_binary(elf_binary), goto_binary(goto_binary),
+  compilet &compiler,
+  const std::string &elf_binary,
+  const std::string &goto_binary,
+  const cmdlinet &cmdline,
+  message_handlert &message_handler)
+  : messaget(message_handler),
+    compiler(compiler),
+    elf_binary(elf_binary),
+    goto_binary(goto_binary),
     cmdline(cmdline),
     replacement_predicates(
-    {
-      replacement_predicatet("address of array's first member",
-        [](const exprt &expr) -> const symbol_exprt&
-        { return to_symbol_expr(expr.op0().op0()); },
-        [](const exprt &expr, const namespacet &)
-        {
-          return expr.id()==ID_address_of &&
-                 expr.type().id()==ID_pointer &&
+      {replacement_predicatet(
+         "address of array's first member",
+         [](const exprt &expr) -> const symbol_exprt & {
+           return to_symbol_expr(
+             to_index_expr(to_address_of_expr(expr).object()).index());
+         },
+         [](const exprt &expr) {
+           return expr.id() == ID_address_of &&
+                  expr.type().id() == ID_pointer &&
 
-                 expr.op0().id()==ID_index &&
-                 expr.op0().type().id()==ID_unsignedbv &&
+                  to_address_of_expr(expr).object().id() == ID_index &&
+                  to_address_of_expr(expr).object().type().id() ==
+                    ID_unsignedbv &&
 
-                 expr.op0().op0().id()==ID_symbol &&
-                 expr.op0().op0().type().id()==ID_array &&
+                  to_index_expr(to_address_of_expr(expr).object())
+                      .array()
+                      .id() == ID_symbol &&
+                  to_index_expr(to_address_of_expr(expr).object())
+                      .array()
+                      .type()
+                      .id() == ID_array &&
 
-                 expr.op0().op1().id()==ID_constant &&
-                 expr.op0().op1().type().id()==ID_signedbv;
-        }),
-      replacement_predicatet("address of array",
-        [](const exprt &expr) -> const symbol_exprt&
-        { return to_symbol_expr(expr.op0()); },
-        [](const exprt &expr, const namespacet &)
-        {
-          return expr.id()==ID_address_of &&
-                 expr.type().id()==ID_pointer &&
+                  to_index_expr(to_address_of_expr(expr).object())
+                      .index()
+                      .id() == ID_constant &&
+                  to_index_expr(to_address_of_expr(expr).object())
+                      .index()
+                      .type()
+                      .id() == ID_signedbv;
+         }),
+       replacement_predicatet(
+         "address of array",
+         [](const exprt &expr) -> const symbol_exprt & {
+           return to_symbol_expr(to_address_of_expr(expr).object());
+         },
+         [](const exprt &expr) {
+           return expr.id() == ID_address_of &&
+                  expr.type().id() == ID_pointer &&
 
-                 expr.op0().id()==ID_symbol &&
-                 expr.op0().type().id()==ID_array;
-        }),
-      replacement_predicatet("address of struct",
-        [](const exprt &expr) -> const symbol_exprt&
-        { return to_symbol_expr(expr.op0()); },
-        [](const exprt &expr, const namespacet &ns)
-        {
-          return expr.id()==ID_address_of &&
-                 expr.type().id()==ID_pointer &&
+                  to_address_of_expr(expr).object().id() == ID_symbol &&
+                  to_address_of_expr(expr).object().type().id() == ID_array;
+         }),
+       replacement_predicatet(
+         "address of struct",
+         [](const exprt &expr) -> const symbol_exprt & {
+           return to_symbol_expr(to_address_of_expr(expr).object());
+         },
+         [](const exprt &expr) {
+           return expr.id() == ID_address_of &&
+                  expr.type().id() == ID_pointer &&
 
-                 expr.op0().id()==ID_symbol &&
-                 ns.follow(expr.op0().type()).id()==ID_struct;
-        }),
-      replacement_predicatet("array variable",
-        [](const exprt &expr) -> const symbol_exprt&
-        { return to_symbol_expr(expr); },
-        [](const exprt &expr, const namespacet &)
-        {
-          return expr.id()==ID_symbol &&
-                 expr.type().id()==ID_array;
-        }),
-      replacement_predicatet("pointer (does not need pointerizing)",
-        [](const exprt &expr) -> const symbol_exprt&
-        { return to_symbol_expr(expr); },
-        [](const exprt &expr, const namespacet &)
-        {
-          return expr.id()==ID_symbol &&
-                 expr.type().id()==ID_pointer;
-        })
-    })
+                  to_address_of_expr(expr).object().id() == ID_symbol &&
+                  (to_address_of_expr(expr).object().type().id() == ID_struct ||
+                   to_address_of_expr(expr).object().type().id() ==
+                     ID_struct_tag);
+         }),
+       replacement_predicatet(
+         "array variable",
+         [](const exprt &expr) -> const symbol_exprt & {
+           return to_symbol_expr(expr);
+         },
+         [](const exprt &expr) {
+           return expr.id() == ID_symbol && expr.type().id() == ID_array;
+         }),
+       replacement_predicatet(
+         "pointer (does not need pointerizing)",
+         [](const exprt &expr) -> const symbol_exprt & {
+           return to_symbol_expr(expr);
+         },
+         [](const exprt &expr) {
+           return expr.id() == ID_symbol && expr.type().id() == ID_pointer;
+         })})
 {}
 
 int linker_script_merget::pointerize_linker_defined_symbols(
-      goto_functionst &goto_functions,
-      symbol_tablet &symbol_table,
-      const linker_valuest &linker_values)
+  goto_modelt &goto_model,
+  const linker_valuest &linker_values)
 {
-  const namespacet ns(symbol_table);
+  const namespacet ns(goto_model.symbol_table);
 
   int ret=0;
   // First, pointerize the actual linker-defined symbols
   for(const auto &pair : linker_values)
   {
-    const auto maybe_symbol=symbol_table.get_writeable(pair.first);
+    const auto maybe_symbol = goto_model.symbol_table.get_writeable(pair.first);
     if(!maybe_symbol)
       continue;
     symbolt &entry=*maybe_symbol;
@@ -206,7 +218,7 @@ int linker_script_merget::pointerize_linker_defined_symbols(
 
   // Next, find all occurrences of linker-defined symbols that are _values_
   // of some symbol in the symbol table, and pointerize them too
-  for(const auto &pair : symbol_table.symbols)
+  for(const auto &pair : goto_model.symbol_table.symbols)
   {
     std::list<symbol_exprt> to_pointerize;
     symbols_to_pointerize(linker_values, pair.second.value, to_pointerize);
@@ -215,11 +227,10 @@ int linker_script_merget::pointerize_linker_defined_symbols(
       continue;
     debug() << "Pointerizing the symbol-table value of symbol " << pair.first
             << eom;
-    int fail=pointerize_subexprs_of(
-      symbol_table.get_writeable_ref(pair.first).value,
+    int fail = pointerize_subexprs_of(
+      goto_model.symbol_table.get_writeable_ref(pair.first).value,
       to_pointerize,
-      linker_values,
-      ns);
+      linker_values);
     if(to_pointerize.empty() && fail==0)
       continue;
     ret=1;
@@ -232,7 +243,7 @@ int linker_script_merget::pointerize_linker_defined_symbols(
 
   // Finally, pointerize all occurrences of linker-defined symbols in the
   // goto program
-  for(auto &gf : goto_functions.function_map)
+  for(auto &gf : goto_model.goto_functions.function_map)
   {
     goto_programt &program=gf.second.body;
     Forall_goto_program_instructions(iit, program)
@@ -244,8 +255,7 @@ int linker_script_merget::pointerize_linker_defined_symbols(
         if(to_pointerize.empty())
           continue;
         debug() << "Pointerizing a program expression..." << eom;
-        int fail = pointerize_subexprs_of(
-          *insts, to_pointerize, linker_values, ns);
+        int fail = pointerize_subexprs_of(*insts, to_pointerize, linker_values);
         if(to_pointerize.empty() && fail==0)
           continue;
         ret=1;
@@ -286,16 +296,15 @@ int linker_script_merget::replace_expr(
 }
 
 int linker_script_merget::pointerize_subexprs_of(
-    exprt &expr,
-    std::list<symbol_exprt> &to_pointerize,
-    const linker_valuest &linker_values,
-    const namespacet &ns)
+  exprt &expr,
+  std::list<symbol_exprt> &to_pointerize,
+  const linker_valuest &linker_values)
 {
   int fail=0, tmp=0;
   for(auto const &pair : linker_values)
     for(auto const &pattern : replacement_predicates)
     {
-      if(!pattern.match(expr, ns))
+      if(!pattern.match(expr))
         continue;
       // take a copy, expr will be changed below
       const symbol_exprt inner_symbol=pattern.inner_symbol(expr);
@@ -323,7 +332,7 @@ int linker_script_merget::pointerize_subexprs_of(
 
   for(auto &op : expr.operands())
   {
-    tmp=pointerize_subexprs_of(op, to_pointerize, linker_values, ns);
+    tmp = pointerize_subexprs_of(op, to_pointerize, linker_values);
     fail=tmp?tmp:fail;
   }
   return fail;
@@ -403,7 +412,7 @@ int linker_script_merget::ls_data2instructions(
 {
   goto_programt::instructionst initialize_instructions=gp.instructions;
   std::map<irep_idt, std::size_t> truncated_symbols;
-  for(auto &d : data["regions"].array)
+  for(auto &d : to_json_array(data["regions"]))
   {
     bool has_end=d["has-end-symbol"].is_true();
 
@@ -444,16 +453,18 @@ int linker_script_merget::ls_data2instructions(
 
     // Linker-defined symbol_exprt pointing to start address
     symbol_exprt start_sym(d["start-symbol"].value, pointer_type(char_type()));
-    linker_values[d["start-symbol"].value]=std::make_pair(start_sym,
-        array_start);
+    linker_values.emplace(
+      d["start-symbol"].value, std::make_pair(start_sym, array_start));
 
     // Since the value of the pointer will be a random CBMC address, write a
     // note about the real address in the object file
-    auto it=std::find_if(data["addresses"].array.begin(),
-                         data["addresses"].array.end(),
-                         [&d](const jsont &add)
-                         { return add["sym"].value==d["start-symbol"].value; });
-    if(it==data["addresses"].array.end())
+    auto it = std::find_if(
+      to_json_array(data["addresses"]).begin(),
+      to_json_array(data["addresses"]).end(),
+      [&d](const jsont &add) {
+        return add["sym"].value == d["start-symbol"].value;
+      });
+    if(it == to_json_array(data["addresses"]).end())
     {
       error() << "Start: Could not find address corresponding to symbol '"
               << d["start-symbol"].value << "' (start of section)" << eom;
@@ -471,9 +482,8 @@ int linker_script_merget::ls_data2instructions(
     // Instruction for start-address pointer in __CPROVER_initialize
     code_assignt start_assign(start_sym, array_start);
     start_assign.add_source_location()=start_loc;
-    goto_programt::instructiont start_assign_i;
-    start_assign_i.make_assignment(start_assign);
-    start_assign_i.source_location=start_loc;
+    goto_programt::instructiont start_assign_i =
+      goto_programt::make_assignment(start_assign, start_loc);
     initialize_instructions.push_front(start_assign_i);
 
     if(has_end) // Same for pointer to end of array
@@ -481,13 +491,16 @@ int linker_script_merget::ls_data2instructions(
       plus_exprt array_end(array_start, array_size_expr);
 
       symbol_exprt end_sym(d["end-symbol"].value, pointer_type(char_type()));
-      linker_values[d["end-symbol"].value]=std::make_pair(end_sym, array_end);
+      linker_values.emplace(
+        d["end-symbol"].value, std::make_pair(end_sym, array_end));
 
-      auto it=std::find_if(data["addresses"].array.begin(),
-                           data["addresses"].array.end(),
-                           [&d](const jsont &add)
-                           { return add["sym"].value==d["end-symbol"].value; });
-      if(it==data["addresses"].array.end())
+      auto entry = std::find_if(
+        to_json_array(data["addresses"]).begin(),
+        to_json_array(data["addresses"]).end(),
+        [&d](const jsont &add) {
+          return add["sym"].value == d["end-symbol"].value;
+        });
+      if(entry == to_json_array(data["addresses"]).end())
       {
         error() << "Could not find address corresponding to symbol '"
                 << d["end-symbol"].value << "' (end of section)" << eom;
@@ -496,17 +509,16 @@ int linker_script_merget::ls_data2instructions(
       source_locationt  end_loc;
       end_loc.set_file(linker_script);
       std::ostringstream end_comment;
-      end_comment << "Pointer to end of object section '"
-                  << d["section"].value << "'. Original address in object file"
-                  << " is " << (*it)["val"].value;
+      end_comment << "Pointer to end of object section '" << d["section"].value
+                  << "'. Original address in object file"
+                  << " is " << (*entry)["val"].value;
       end_loc.set_comment(end_comment.str());
       end_sym.add_source_location()=end_loc;
 
       code_assignt end_assign(end_sym, array_end);
       end_assign.add_source_location()=end_loc;
-      goto_programt::instructiont end_assign_i;
-      end_assign_i.make_assignment(end_assign);
-      end_assign_i.source_location=end_loc;
+      goto_programt::instructiont end_assign_i =
+        goto_programt::make_assignment(end_assign, end_loc);
       initialize_instructions.push_front(end_assign_i);
     }
 
@@ -525,12 +537,12 @@ int linker_script_merget::ls_data2instructions(
     // Push the array initialization to the front now, so that it happens before
     // the initialization of the symbols that point to it.
     namespacet ns(symbol_table);
-    exprt zi=zero_initializer(array_type, array_loc, ns, *message_handler);
-    code_assignt array_assign(array_expr, zi);
+    const auto zi = zero_initializer(array_type, array_loc, ns);
+    CHECK_RETURN(zi.has_value());
+    code_assignt array_assign(array_expr, *zi);
     array_assign.add_source_location()=array_loc;
-    goto_programt::instructiont array_assign_i;
-    array_assign_i.make_assignment(array_assign);
-    array_assign_i.source_location=array_loc;
+    goto_programt::instructiont array_assign_i =
+      goto_programt::make_assignment(array_assign, array_loc);
     initialize_instructions.push_front(array_assign_i);
   }
 
@@ -539,7 +551,7 @@ int linker_script_merget::ls_data2instructions(
   // address. These will have been declared extern too, so we need to give them
   // a value also. Here, we give them the actual value that they have in the
   // object file, since we're not assigning any object to them.
-  for(const auto &d : data["addresses"].array)
+  for(const auto &d : to_json_array(data["addresses"]))
   {
     auto it=linker_values.find(irep_idt(d["sym"].value));
     if(it!=linker_values.end())
@@ -568,21 +580,21 @@ int linker_script_merget::ls_data2instructions(
 
     symbol_exprt lhs(d["sym"].value, pointer_type(char_type()));
 
-    constant_exprt rhs;
-    rhs.set_value(integer2binary(string2integer(id2string(symbol_value)),
-          unsigned_int_type().get_width()));
-    rhs.type()=unsigned_int_type();
+    constant_exprt rhs(
+      integer2bvrep(
+        string2integer(id2string(symbol_value)),
+        unsigned_int_type().get_width()),
+      unsigned_int_type());
 
-    exprt rhs_tc(rhs);
-    rhs_tc.make_typecast(pointer_type(char_type()));
+    typecast_exprt rhs_tc(rhs, pointer_type(char_type()));
 
-    linker_values[irep_idt(d["sym"].value)]=std::make_pair(lhs, rhs_tc);
+    linker_values.emplace(
+      irep_idt(d["sym"].value), std::make_pair(lhs, rhs_tc));
 
     code_assignt assign(lhs, rhs_tc);
     assign.add_source_location()=loc;
-    goto_programt::instructiont assign_i;
-    assign_i.make_assignment(assign);
-    assign_i.source_location=loc;
+    goto_programt::instructiont assign_i =
+      goto_programt::make_assignment(assign, loc);
     initialize_instructions.push_front(assign_i);
   }
   return 0;
@@ -590,17 +602,15 @@ int linker_script_merget::ls_data2instructions(
 #else
 {
   goto_programt::instructionst initialize_instructions=gp.instructions;
-  for(const auto &d : data["regions"].array)
+  for(const auto &d : to_json_array(data["regions"]))
   {
-    code_function_callt f;
-    const code_typet void_t({}, empty_typet());
-    f.function()=symbol_exprt(CPROVER_PREFIX "allocated_memory", void_t);
     unsigned start=safe_string2unsigned(d["start"].value);
     unsigned size=safe_string2unsigned(d["size"].value);
     constant_exprt first=from_integer(start, size_type());
     constant_exprt second=from_integer(size, size_type());
-    code_function_callt::argumentst args={first, second};
-    f.arguments()=args;
+    const code_typet void_t({}, empty_typet());
+    code_function_callt f(
+      symbol_exprt(CPROVER_PREFIX "allocated_memory", void_t), {first, second});
 
     source_locationt loc;
     loc.set_file(linker_script);
@@ -624,7 +634,7 @@ int linker_script_merget::ls_data2instructions(
     symbol_table.add(sym);
   }
 
-  for(const auto &d : data["addresses"].array)
+  for(const auto &d : to_json_array(data["addresses"]))
   {
     source_locationt loc;
     loc.set_file(linker_script);
@@ -634,14 +644,15 @@ int linker_script_merget::ls_data2instructions(
     symbol_exprt lhs(d["sym"].value, pointer_type(char_type()));
 
     constant_exprt rhs;
-    rhs.set_value(integer2binary(string2integer(d["val"].value),
-          unsigned_int_type().get_width()));
+    rhs.set_value(integer2bvrep(
+      string2integer(d["val"].value), unsigned_int_type().get_width()));
     rhs.type()=unsigned_int_type();
 
-    exprt rhs_tc(rhs);
-    rhs_tc.make_typecast(pointer_type(char_type()));
+    exprt rhs_tc =
+      typecast_exprt::conditional_cast(rhs, pointer_type(char_type()));
 
-    linker_values[irep_idt(d["sym"].value)]=std::make_pair(lhs, rhs_tc);
+    linker_values.emplace(
+      irep_idt(d["sym"].value), std::make_pair(lhs, rhs_tc));
 
     code_assignt assign(lhs, rhs_tc);
     assign.add_source_location()=loc;
@@ -660,9 +671,14 @@ int linker_script_merget::get_linker_script_data(
     const std::string &def_out_file)
 {
   for(auto const &pair : symbol_table.symbols)
-    if(pair.second.is_extern && pair.second.value.is_nil() &&
-       pair.second.name!="__CPROVER_memory")
+  {
+    if(
+      pair.second.is_extern && pair.second.value.is_nil() &&
+      pair.second.name != CPROVER_PREFIX "memory")
+    {
       linker_defined_symbols.push_back(pair.second.name);
+    }
+  }
 
   std::ostringstream linker_def_str;
   std::copy(
@@ -696,7 +712,7 @@ int linker_script_merget::get_linker_script_data(
     debug() << " " << argv[i];
   debug() << eom;
 
-  int rc=run(argv[0], argv, linker_def_infile(), def_out_file);
+  int rc = run(argv[0], argv, linker_def_infile(), def_out_file, "");
   if(rc!=0)
     warning() << "Problem parsing linker script" << eom;
 
@@ -734,45 +750,51 @@ int linker_script_merget::goto_and_object_mismatch(
 
 int linker_script_merget::linker_data_is_malformed(const jsont &data) const
 {
-  return (!(data.is_object() &&
-    data.object.find("regions")!=data.object.end() &&
-    data.object.find("addresses")!=data.object.end() &&
-    data["regions"].is_array() &&
-    data["addresses"].is_array() &&
-    std::all_of(data["addresses"].array.begin(),
-                data["addresses"].array.end(),
-                [](jsont j)
-                {
-                  return j.is_object() &&
-                         j.object.find("val")!=j.object.end() &&
-                         j.object.find("sym")!=j.object.end() &&
-                         j["val"].is_number() &&
-                         j["sym"].is_string();
-                }) &&
-    std::all_of(data["regions"].array.begin(),
-                   data["regions"].array.end(),
-                   [](jsont j)
-                   {
-                     return j.is_object() &&
-                            j.object.find("start")!=j.object.end() &&
-                            j.object.find("size")!=j.object.end() &&
-                            j.object.find("annot")!=j.object.end() &&
-                            j.object.find("commt")!=j.object.end() &&
-                            j.object.find("start-symbol")!=j.object.end() &&
-                            j.object.find("has-end-symbol")!=j.object.end() &&
-                            j.object.find("section")!=j.object.end() &&
-                            j["start"].is_number() &&
-                            j["size"].is_number() &&
-                            j["annot"].is_string() &&
-                            j["start-symbol"].is_string() &&
-                            j["section"].is_string() &&
-                            j["commt"].is_string() &&
-                            ( (j["has-end-symbol"].is_true() &&
-                               j.object.find("end-symbol")!=j.object.end() &&
-                               j["end-symbol"].is_string())
-                            ||(j["has-end-symbol"].is_false() &&
-                               j.object.find("size-symbol")!=j.object.end() &&
-                               j.object.find("end-symbol")==j.object.end() &&
-                               j["size-symbol"].is_string()));
-                   })));
+  if(!data.is_object())
+    return true;
+
+  const json_objectt &data_object = to_json_object(data);
+  return (
+    !(data_object.find("regions") != data_object.end() &&
+      data_object.find("addresses") != data_object.end() &&
+      data["regions"].is_array() && data["addresses"].is_array() &&
+      std::all_of(
+        to_json_array(data["addresses"]).begin(),
+        to_json_array(data["addresses"]).end(),
+        [](const jsont &j) {
+          if(!j.is_object())
+            return false;
+
+          const json_objectt &address = to_json_object(j);
+          return address.find("val") != address.end() &&
+                 address.find("sym") != address.end() &&
+                 address["val"].is_number() && address["sym"].is_string();
+        }) &&
+      std::all_of(
+        to_json_array(data["regions"]).begin(),
+        to_json_array(data["regions"]).end(),
+        [](const jsont &j) {
+          if(!j.is_object())
+            return false;
+
+          const json_objectt &region = to_json_object(j);
+          return region.find("start") != region.end() &&
+                 region.find("size") != region.end() &&
+                 region.find("annot") != region.end() &&
+                 region.find("commt") != region.end() &&
+                 region.find("start-symbol") != region.end() &&
+                 region.find("has-end-symbol") != region.end() &&
+                 region.find("section") != region.end() &&
+                 region["start"].is_number() && region["size"].is_number() &&
+                 region["annot"].is_string() &&
+                 region["start-symbol"].is_string() &&
+                 region["section"].is_string() && region["commt"].is_string() &&
+                 ((region["has-end-symbol"].is_true() &&
+                   region.find("end-symbol") != region.end() &&
+                   region["end-symbol"].is_string()) ||
+                  (region["has-end-symbol"].is_false() &&
+                   region.find("size-symbol") != region.end() &&
+                   region.find("end-symbol") == region.end() &&
+                   region["size-symbol"].is_string()));
+        })));
 }

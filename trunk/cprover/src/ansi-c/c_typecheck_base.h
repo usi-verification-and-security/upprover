@@ -124,8 +124,8 @@ protected:
   virtual void typecheck_code(codet &code);
 
   virtual void typecheck_assign(codet &expr);
-  virtual void typecheck_asm(codet &code);
-  virtual void typecheck_block(codet &code);
+  virtual void typecheck_asm(code_asmt &code);
+  virtual void typecheck_block(code_blockt &code);
   virtual void typecheck_break(codet &code);
   virtual void typecheck_continue(codet &code);
   virtual void typecheck_decl(codet &code);
@@ -136,10 +136,10 @@ protected:
   virtual void typecheck_label(code_labelt &code);
   virtual void typecheck_switch_case(code_switch_caset &code);
   virtual void typecheck_gcc_computed_goto(codet &code);
-  virtual void typecheck_gcc_switch_case_range(codet &code);
+  virtual void typecheck_gcc_switch_case_range(code_gcc_switch_case_ranget &);
   virtual void typecheck_gcc_local_label(codet &code);
-  virtual void typecheck_return(codet &code);
-  virtual void typecheck_switch(code_switcht &code);
+  virtual void typecheck_return(code_returnt &code);
+  virtual void typecheck_switch(codet &code);
   virtual void typecheck_while(code_whilet &code);
   virtual void typecheck_dowhile(code_dowhilet &code);
   virtual void typecheck_start_thread(codet &code);
@@ -177,7 +177,7 @@ protected:
   virtual void typecheck_expr_ptrmember(exprt &expr);
   virtual void typecheck_expr_rel(binary_relation_exprt &expr);
   virtual void typecheck_expr_rel_vector(binary_relation_exprt &expr);
-  virtual void adjust_float_rel(exprt &expr);
+  virtual void adjust_float_rel(binary_relation_exprt &);
   static void add_rounding_mode(exprt &);
   virtual void typecheck_expr_index(exprt &expr);
   virtual void typecheck_expr_typecast(exprt &expr);
@@ -195,6 +195,13 @@ protected:
   virtual void typecheck_function_call_arguments(
     side_effect_expr_function_callt &expr);
   virtual exprt do_special_functions(side_effect_expr_function_callt &expr);
+  virtual optionalt<symbol_exprt> typecheck_gcc_polymorphic_builtin(
+    const irep_idt &identifier,
+    const exprt::operandst &arguments,
+    const source_locationt &source_location);
+  virtual code_blockt instantiate_gcc_polymorphic_builtin(
+    const irep_idt &identifier,
+    const symbol_exprt &function_symbol);
 
   virtual void make_index_type(exprt &expr);
   virtual void make_constant(exprt &expr);
@@ -209,12 +216,11 @@ protected:
   virtual void typecheck_c_enum_type(typet &type);
   virtual void typecheck_c_enum_tag_type(c_enum_tag_typet &type);
   virtual void typecheck_code_type(code_typet &type);
-  virtual void typecheck_symbol_type(symbol_typet &type);
   virtual void typecheck_typedef_type(typet &type);
   virtual void typecheck_c_bit_field_type(c_bit_field_typet &type);
   virtual void typecheck_typeof_type(typet &type);
   virtual void typecheck_array_type(array_typet &type);
-  virtual void typecheck_vector_type(vector_typet &type);
+  virtual void typecheck_vector_type(typet &type);
   virtual void typecheck_custom_type(typet &type);
   virtual void adjust_function_parameter(typet &type) const;
   virtual bool is_complete_type(const typet &type) const;
@@ -222,22 +228,13 @@ protected:
   typet enum_constant_type(
     const mp_integer &min, const mp_integer &max) const;
 
-  typet enum_underlying_type(
-    const mp_integer &min, const mp_integer &max,
+  bitvector_typet enum_underlying_type(
+    const mp_integer &min,
+    const mp_integer &max,
     bool is_packed) const;
-
-  void make_already_typechecked(typet &dest)
-  {
-    typet result(ID_already_typechecked);
-    result.subtype().swap(dest);
-    result.swap(dest);
-  }
 
   // this cleans expressions in array types
   std::list<codet> clean_code;
-
-  // environment
-  void add_argc_argv(const symbolt &main_symbol);
 
   // symbol table management
   void move_symbol(symbolt &symbol, symbolt *&new_symbol);
@@ -275,5 +272,61 @@ protected:
 
   void apply_asm_label(const irep_idt &asm_label, symbolt &symbol);
 };
+
+class already_typechecked_exprt : public expr_protectedt
+{
+public:
+  explicit already_typechecked_exprt(exprt expr)
+    : expr_protectedt(ID_already_typechecked, typet{}, {std::move(expr)})
+  {
+  }
+
+  static void make_already_typechecked(exprt &expr)
+  {
+    already_typechecked_exprt a{expr};
+    expr.swap(a);
+  }
+
+  exprt &get_expr()
+  {
+    return op0();
+  }
+};
+
+class already_typechecked_typet : public type_with_subtypet
+{
+public:
+  explicit already_typechecked_typet(typet type)
+    : type_with_subtypet(ID_already_typechecked, std::move(type))
+  {
+  }
+
+  static void make_already_typechecked(typet &type)
+  {
+    already_typechecked_typet a{type};
+    type.swap(a);
+  }
+
+  typet &get_type()
+  {
+    return subtype();
+  }
+};
+
+inline already_typechecked_exprt &to_already_typechecked_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_already_typechecked);
+  PRECONDITION(expr.operands().size() == 1);
+
+  return static_cast<already_typechecked_exprt &>(expr);
+}
+
+inline already_typechecked_typet &to_already_typechecked_type(typet &type)
+{
+  PRECONDITION(type.id() == ID_already_typechecked);
+  PRECONDITION(type.has_subtype());
+
+  return static_cast<already_typechecked_typet &>(type);
+}
 
 #endif // CPROVER_ANSI_C_C_TYPECHECK_BASE_H

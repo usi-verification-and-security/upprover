@@ -12,7 +12,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <memory>
 
-#include "message.h"
+#include "cout_message.h"
 #include "json_stream.h"
 #include "timestamper.h"
 
@@ -21,48 +21,41 @@ class ui_message_handlert : public message_handlert
 public:
   enum class uit { PLAIN, XML_UI, JSON_UI };
 
-  ui_message_handlert(
-    uit,
-    const std::string &program,
-    const bool always_flush,
-    timestampert::clockt clock_type);
-
   ui_message_handlert(const class cmdlinet &, const std::string &program);
 
-  /// Default constructor; implementation is in .cpp file
-  ui_message_handlert();
+  explicit ui_message_handlert(message_handlert &);
+  ui_message_handlert(ui_message_handlert &&) = default;
 
   virtual ~ui_message_handlert();
 
-  uit get_ui() const
+  virtual uit get_ui() const
   {
     return _ui;
   }
 
-  void set_ui(uit __ui)
-  {
-    _ui=__ui;
-    if(_ui == uit::JSON_UI && !json_stream)
-    {
-      json_stream =
-        std::unique_ptr<json_stream_arrayt>(new json_stream_arrayt(out));
-    }
-  }
-
   virtual void flush(unsigned level) override;
 
-  json_stream_arrayt &get_json_stream() override
+  virtual json_stream_arrayt &get_json_stream()
   {
     PRECONDITION(json_stream!=nullptr);
     return *json_stream;
   }
 
 protected:
+  std::unique_ptr<console_message_handlert> console_message_handler;
+  message_handlert *message_handler;
   uit _ui;
   const bool always_flush;
   std::unique_ptr<const timestampert> time;
   std::ostream &out;
   std::unique_ptr<json_stream_arrayt> json_stream;
+
+  ui_message_handlert(
+    message_handlert *,
+    uit,
+    const std::string &program,
+    const bool always_flush,
+    timestampert::clockt clock_type);
 
   virtual void print(
     unsigned level,
@@ -97,6 +90,14 @@ protected:
     const source_locationt &location);
 
   const char *level_string(unsigned level);
+
+  std::string command(unsigned c) const override
+  {
+    if(message_handler)
+      return message_handler->command(c);
+    else
+      return std::string();
+  }
 };
 
 #define OPT_FLUSH "(flush)"

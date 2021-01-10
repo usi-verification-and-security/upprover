@@ -17,8 +17,7 @@ Date: August 2013
 #include <cassert>
 
 #include <util/container_utils.h>
-#include <util/json.h>
-#include <util/json_expr.h>
+#include <util/json_irep.h>
 
 #include "goto_rw.h"
 
@@ -53,6 +52,7 @@ bool dep_graph_domaint::merge(
 }
 
 void dep_graph_domaint::control_dependencies(
+  const irep_idt &function_id,
   goto_programt::const_targett from,
   goto_programt::const_targett to,
   dependence_grapht &dep_graph)
@@ -83,7 +83,7 @@ void dep_graph_domaint::control_dependencies(
 
   // Get postdominators
 
-  const irep_idt id=from->function;
+  const irep_idt id = function_id;
   const cfg_post_dominatorst &pd=dep_graph.cfg_post_dominators().at(id);
 
   // Check all candidates
@@ -97,18 +97,15 @@ void dep_graph_domaint::control_dependencies(
 
     // we could hard-code assume and goto handling here to improve
     // performance
-    cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e =
-      pd.cfg.entry_map.find(control_dep_candidate);
-
-    INVARIANT(
-      e != pd.cfg.entry_map.end(), "cfg must have an entry for every location");
-
-    const cfg_post_dominatorst::cfgt::nodet &m=
-      pd.cfg[e->second];
+    const cfg_post_dominatorst::cfgt::nodet &m =
+      pd.get_node(control_dep_candidate);
 
     // successors of M
     for(const auto &edge : m.out)
     {
+      // Could use pd.dominates(to, control_dep_candidate) but this would impose
+      // another dominator node lookup per call to this function, which is too
+      // expensive.
       const cfg_post_dominatorst::cfgt::nodet &m_s=
         pd.cfg[edge.first];
 
@@ -152,6 +149,7 @@ static bool may_be_def_use_pair(
 
 void dep_graph_domaint::data_dependencies(
   goto_programt::const_targett,
+  const irep_idt &function_to,
   goto_programt::const_targett to,
   dependence_grapht &dep_graph,
   const namespacet &ns)
@@ -163,7 +161,7 @@ void dep_graph_domaint::data_dependencies(
   value_setst &value_sets=
     dep_graph.reaching_definitions().get_value_sets();
   rw_range_set_value_sett rw_set(ns, value_sets);
-  goto_rw(to, rw_set);
+  goto_rw(function_to, to, rw_set);
 
   forall_rw_range_set_r_objects(it, rw_set)
   {
@@ -175,7 +173,9 @@ void dep_graph_domaint::data_dependencies(
     {
       bool found=false;
       for(const auto &wr : w_range.second)
+      {
         for(const auto &r_range : r_ranges)
+        {
           if(!found &&
              may_be_def_use_pair(wr.first, wr.second,
                                  r_range.first, r_range.second))
@@ -184,6 +184,8 @@ void dep_graph_domaint::data_dependencies(
             data_deps.insert(w_range.first);
             found=true;
           }
+        }
+      }
     }
 
     dep_graph.reaching_definitions()[to].clear_cache(it->first);
@@ -191,7 +193,9 @@ void dep_graph_domaint::data_dependencies(
 }
 
 void dep_graph_domaint::transform(
+  const irep_idt &function_from,
   goto_programt::const_targett from,
+  const irep_idt &function_to,
   goto_programt::const_targett to,
   ai_baset &ai,
   const namespacet &ns)
@@ -202,9 +206,9 @@ void dep_graph_domaint::transform(
   // propagate control dependencies across function calls
   if(from->is_function_call())
   {
-    if(from->function == to->function)
+    if(function_from == function_to)
     {
-      control_dependencies(from, to, *dep_graph);
+      control_dependencies(function_from, from, to, *dep_graph);
     }
     else
     {
@@ -230,9 +234,9 @@ void dep_graph_domaint::transform(
     }
   }
   else
-    control_dependencies(from, to, *dep_graph);
+    control_dependencies(function_from, from, to, *dep_graph);
 
-  data_dependencies(from, to, *dep_graph, ns);
+  data_dependencies(from, function_to, to, *dep_graph, ns);
 }
 
 void dep_graph_domaint::output(
@@ -282,24 +286,54 @@ jsont dep_graph_domaint::output_json(
 
   for(const auto &cd : control_deps)
   {
-    json_objectt &link=graph.push_back().make_object();
-    link["locationNumber"]=
-      json_numbert(std::to_string(cd->location_number));
-    link["sourceLocation"]=json(cd->source_location);
-    link["type"]=json_stringt("control");
+    json_objectt link{
+      {"locationNumber", json_numbert(std::to_string(cd->location_number))},
+      {"sourceLocation", json(cd->source_location)},
+      {"type", json_stringt("control")}};
+    graph.push_back(std::move(link));
   }
 
   for(const auto &dd : data_deps)
   {
-    json_objectt &link=graph.push_back().make_object();
-    link["locationNumber"]=
-      json_numbert(std::to_string(dd->location_number));
-    link["sourceLocation"]=json(dd->source_location);
-      json_stringt(dd->source_location.as_string());
-    link["type"]=json_stringt("data");
+    json_objectt link{
+      {"locationNumber", json_numbert(std::to_string(dd->location_number))},
+      {"sourceLocation", json(dd->source_location)},
+      {"type", json_stringt("data")}};
+    graph.push_back(std::move(link));
   }
 
-  return graph;
+  return std::move(graph);
+}
+
+/// This ensures that all domains are constructed with the node ID that links
+/// them to the graph part of the dependency graph.  Using a factory is a tad
+/// verbose but it works well with the ait infrastructure.
+class dep_graph_domain_factoryt : public ai_domain_factoryt<dep_graph_domaint>
+{
+public:
+  explicit dep_graph_domain_factoryt(dependence_grapht &_dg) : dg(_dg)
+  {
+  }
+
+  std::unique_ptr<statet> make(locationt l) const override
+  {
+    auto node_id = dg.add_node();
+    dg.nodes[node_id].PC = l;
+    auto p = util_make_unique<dep_graph_domaint>(node_id);
+    CHECK_RETURN(p->is_bottom());
+
+    return std::unique_ptr<statet>(p.release());
+  }
+
+private:
+  dependence_grapht &dg;
+};
+
+dependence_grapht::dependence_grapht(const namespacet &_ns)
+  : ait<dep_graph_domaint>(util_make_unique<dep_graph_domain_factoryt>(*this)),
+    ns(_ns),
+    rd(ns)
+{
 }
 
 void dependence_grapht::add_dep(

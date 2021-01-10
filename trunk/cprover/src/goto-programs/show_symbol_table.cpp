@@ -11,11 +11,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "show_symbol_table.h"
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 
 #include <langapi/language.h>
 #include <langapi/mode.h>
+
+#include <util/json_irep.h>
 
 #include "goto_model.h"
 
@@ -28,22 +31,15 @@ void show_symbol_table_brief_plain(
   std::ostream &out)
 {
   // we want to sort alphabetically
-  std::set<std::string> symbols;
-
-  for(const auto &symbol_pair : symbol_table.symbols)
-  {
-    symbols.insert(id2string(symbol_pair.first));
-  }
-
   const namespacet ns(symbol_table);
 
-  for(const std::string &id : symbols)
+  for(const auto &id : symbol_table.sorted_symbol_names())
   {
     const symbolt &symbol=ns.lookup(id);
 
     std::unique_ptr<languaget> ptr;
 
-    if(symbol.mode=="")
+    if(symbol.mode.empty())
       ptr=get_default_language();
     else
     {
@@ -67,23 +63,16 @@ void show_symbol_table_plain(
 {
   out << '\n' << "Symbols:" << '\n' << '\n';
 
-  // we want to sort alphabetically
-  std::set<std::string> symbols;
-
-  for(const auto &symbol_pair : symbol_table.symbols)
-  {
-    symbols.insert(id2string(symbol_pair.first));
-  }
-
   const namespacet ns(symbol_table);
 
-  for(const std::string &id : symbols)
+  // we want to sort alphabetically
+  for(const irep_idt &id : symbol_table.sorted_symbol_names())
   {
     const symbolt &symbol=ns.lookup(id);
 
     std::unique_ptr<languaget> ptr;
 
-    if(symbol.mode=="")
+    if(symbol.mode.empty())
     {
       ptr=get_default_language();
     }
@@ -152,11 +141,135 @@ void show_symbol_table_plain(
   }
 }
 
+static void show_symbol_table_json_ui(
+  const symbol_tablet &symbol_table,
+  ui_message_handlert &message_handler)
+{
+  json_stream_arrayt &out = message_handler.get_json_stream();
+
+  json_stream_objectt &result_wrapper = out.push_back_stream_object();
+  json_stream_objectt &result =
+    result_wrapper.push_back_stream_object("symbolTable");
+
+  const namespacet ns(symbol_table);
+  json_irept irep_converter(true);
+
+  for(const auto &id_and_symbol : symbol_table.symbols)
+  {
+    const symbolt &symbol = id_and_symbol.second;
+
+    std::unique_ptr<languaget> ptr;
+
+    if(symbol.mode.empty())
+    {
+      ptr=get_default_language();
+    }
+    else
+    {
+      ptr=get_language_from_mode(symbol.mode);
+    }
+
+    if(!ptr)
+      throw "symbol "+id2string(symbol.name)+" has unknown mode";
+
+    std::string type_str, value_str;
+
+    if(symbol.type.is_not_nil())
+      ptr->from_type(symbol.type, type_str, ns);
+
+    if(symbol.value.is_not_nil())
+      ptr->from_expr(symbol.value, value_str, ns);
+
+    json_objectt symbol_json{
+      {"prettyName", json_stringt(symbol.pretty_name)},
+      {"name", json_stringt(symbol.name)},
+      {"baseName", json_stringt(symbol.base_name)},
+      {"mode", json_stringt(symbol.mode)},
+      {"module", json_stringt(symbol.module)},
+
+      {"prettyType", json_stringt(type_str)},
+      {"prettyValue", json_stringt(value_str)},
+
+      {"type", irep_converter.convert_from_irep(symbol.type)},
+      {"value", irep_converter.convert_from_irep(symbol.value)},
+      {"location", irep_converter.convert_from_irep(symbol.location)},
+
+      {"isType", jsont::json_boolean(symbol.is_type)},
+      {"isMacro", jsont::json_boolean(symbol.is_macro)},
+      {"isExported", jsont::json_boolean(symbol.is_exported)},
+      {"isInput", jsont::json_boolean(symbol.is_input)},
+      {"isOutput", jsont::json_boolean(symbol.is_output)},
+      {"isStateVar", jsont::json_boolean(symbol.is_state_var)},
+      {"isProperty", jsont::json_boolean(symbol.is_property)},
+      {"isStaticLifetime", jsont::json_boolean(symbol.is_static_lifetime)},
+      {"isThreadLocal", jsont::json_boolean(symbol.is_thread_local)},
+      {"isLvalue", jsont::json_boolean(symbol.is_lvalue)},
+      {"isFileLocal", jsont::json_boolean(symbol.is_file_local)},
+      {"isExtern", jsont::json_boolean(symbol.is_extern)},
+      {"isVolatile", jsont::json_boolean(symbol.is_volatile)},
+      {"isParameter", jsont::json_boolean(symbol.is_parameter)},
+      {"isAuxiliary", jsont::json_boolean(symbol.is_auxiliary)},
+      {"isWeak", jsont::json_boolean(symbol.is_weak)}};
+
+    result.push_back(id2string(symbol.name), std::move(symbol_json));
+  }
+}
+
+static void show_symbol_table_brief_json_ui(
+  const symbol_tablet &symbol_table,
+  ui_message_handlert &message_handler)
+{
+  json_stream_arrayt &out = message_handler.get_json_stream();
+
+  json_stream_objectt &result_wrapper = out.push_back_stream_object();
+  json_stream_objectt &result =
+    result_wrapper.push_back_stream_object("symbolTable");
+
+  const namespacet ns(symbol_table);
+  json_irept irep_converter(true);
+
+  for(const auto &id_and_symbol : symbol_table.symbols)
+  {
+    const symbolt &symbol = id_and_symbol.second;
+
+    std::unique_ptr<languaget> ptr;
+
+    if(symbol.mode.empty())
+    {
+      ptr=get_default_language();
+    }
+    else
+    {
+      ptr=get_language_from_mode(symbol.mode);
+    }
+
+    if(!ptr)
+      throw "symbol "+id2string(symbol.name)+" has unknown mode";
+
+    std::string type_str, value_str;
+
+    if(symbol.type.is_not_nil())
+      ptr->from_type(symbol.type, type_str, ns);
+
+    json_objectt symbol_json{
+      {"prettyName", json_stringt(symbol.pretty_name)},
+      {"baseName", json_stringt(symbol.base_name)},
+      {"mode", json_stringt(symbol.mode)},
+      {"module", json_stringt(symbol.module)},
+
+      {"prettyType", json_stringt(type_str)},
+
+      {"type", irep_converter.convert_from_irep(symbol.type)}};
+
+    result.push_back(id2string(symbol.name), std::move(symbol_json));
+  }
+}
+
 void show_symbol_table(
   const symbol_tablet &symbol_table,
-  ui_message_handlert::uit ui)
+  ui_message_handlert &ui)
 {
-  switch(ui)
+  switch(ui.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     show_symbol_table_plain(symbol_table, std::cout);
@@ -166,23 +279,24 @@ void show_symbol_table(
     show_symbol_table_xml_ui();
     break;
 
-  default:
+  case ui_message_handlert::uit::JSON_UI:
+    show_symbol_table_json_ui(symbol_table, ui);
     break;
   }
 }
 
 void show_symbol_table(
   const goto_modelt &goto_model,
-  ui_message_handlert::uit ui)
+  ui_message_handlert &ui)
 {
   show_symbol_table(goto_model.symbol_table, ui);
 }
 
 void show_symbol_table_brief(
   const symbol_tablet &symbol_table,
-  ui_message_handlert::uit ui)
+  ui_message_handlert &ui)
 {
-  switch(ui)
+  switch(ui.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     show_symbol_table_brief_plain(symbol_table, std::cout);
@@ -192,14 +306,15 @@ void show_symbol_table_brief(
     show_symbol_table_xml_ui();
     break;
 
-  default:
+  case ui_message_handlert::uit::JSON_UI:
+    show_symbol_table_brief_json_ui(symbol_table, ui);
     break;
   }
 }
 
 void show_symbol_table_brief(
   const goto_modelt &goto_model,
-  ui_message_handlert::uit ui)
+  ui_message_handlert &ui)
 {
   show_symbol_table_brief(goto_model.symbol_table, ui);
 }

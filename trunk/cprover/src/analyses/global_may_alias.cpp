@@ -11,6 +11,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "global_may_alias.h"
 
+/// Populate list of aliases for a given identifier in a context in
+/// which an object is being written to.
+/// \param lhs: A left hand side expression, containing an identifier.
+/// \param alias_set: An external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::assign_lhs_aliases(
   const exprt &lhs,
   const std::set<irep_idt> &alias_set)
@@ -28,6 +33,11 @@ void global_may_alias_domaint::assign_lhs_aliases(
   }
 }
 
+/// Populate list of aliases for a given identifier in a context in
+/// which is an object is being read.
+/// \param rhs: A right hand side expression.
+/// \param alias_set: A external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::get_rhs_aliases(
   const exprt &rhs,
   std::set<irep_idt> &alias_set)
@@ -52,10 +62,15 @@ void global_may_alias_domaint::get_rhs_aliases(
   }
   else if(rhs.id()==ID_address_of)
   {
-    get_rhs_aliases_address_of(to_address_of_expr(rhs).op0(), alias_set);
+    get_rhs_aliases_address_of(to_address_of_expr(rhs).object(), alias_set);
   }
 }
 
+/// Specialisation of \ref global_may_alias_domaint::get_rhs_aliases
+/// to deal with address_of expressions.
+/// \param rhs: A right hand side expression.
+/// \param alias_set: A external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::get_rhs_aliases_address_of(
   const exprt &rhs,
   std::set<irep_idt> &alias_set)
@@ -76,7 +91,9 @@ void global_may_alias_domaint::get_rhs_aliases_address_of(
 }
 
 void global_may_alias_domaint::transform(
+  const irep_idt &,
   locationt from,
+  const irep_idt &,
   locationt,
   ai_baset &,
   const namespacet &)
@@ -89,32 +106,56 @@ void global_may_alias_domaint::transform(
   switch(instruction.type)
   {
   case ASSIGN:
-    {
-      const code_assignt &code_assign=to_code_assign(instruction.code);
+  {
+    const code_assignt &code_assign = to_code_assign(instruction.code);
 
-      std::set<irep_idt> aliases;
-      get_rhs_aliases(code_assign.rhs(), aliases);
-      assign_lhs_aliases(code_assign.lhs(), aliases);
-    }
+    std::set<irep_idt> rhs_aliases;
+    get_rhs_aliases(code_assign.rhs(), rhs_aliases);
+    assign_lhs_aliases(code_assign.lhs(), rhs_aliases);
     break;
+  }
 
   case DECL:
-    {
-      const code_declt &code_decl=to_code_decl(instruction.code);
-      aliases.isolate(code_decl.get_identifier());
-    }
+  {
+    const code_declt &code_decl = to_code_decl(instruction.code);
+    aliases.isolate(code_decl.get_identifier());
     break;
+  }
 
   case DEAD:
-    {
-      const code_deadt &code_dead=to_code_dead(instruction.code);
-      aliases.isolate(code_dead.get_identifier());
-    }
+  {
+    const code_deadt &code_dead = to_code_dead(instruction.code);
+    aliases.isolate(code_dead.get_identifier());
     break;
+  }
 
-  default:
-    {
-    }
+  case FUNCTION_CALL: // Probably safe
+  case GOTO:          // Ignoring the guard is a valid over-approximation
+    break;
+  case CATCH:
+  case THROW:
+    DATA_INVARIANT(false, "Exceptions must be removed before analysis");
+    break;
+  case RETURN:
+    DATA_INVARIANT(false, "Returns must be removed before analysis");
+    break;
+  case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
+  case ATOMIC_END:   // Ignoring is a valid over-approximation
+  case LOCATION:     // No action required
+  case START_THREAD: // Require a concurrent analysis at higher level
+  case END_THREAD:   // Require a concurrent analysis at higher level
+  case ASSERT:       // No action required
+  case ASSUME:       // Ignoring is a valid over-approximation
+  case SKIP:         // No action required
+  case END_FUNCTION: // No action required
+    break;
+  case OTHER:
+    DATA_INVARIANT(false, "Unclear what is a safe over-approximation of OTHER");
+    break;
+  case INCOMPLETE_GOTO:
+  case NO_INSTRUCTION_TYPE:
+    DATA_INVARIANT(false, "Only complete instructions can be analyzed");
+    break;
   }
 }
 

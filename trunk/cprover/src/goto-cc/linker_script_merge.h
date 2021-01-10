@@ -7,7 +7,6 @@
 
 #include <functional>
 
-#include <util/cout_message.h>
 #include <util/json.h>
 
 #include "compile.h"
@@ -24,12 +23,10 @@ class replacement_predicatet
 {
 public:
   replacement_predicatet(
-      const std::string &description,
-      const std::function<const symbol_exprt&(const exprt&)> inner_symbol,
-      const std::function<bool(const exprt&, const namespacet&)> match)
-    : _description(description),
-      _inner_symbol(inner_symbol),
-      _match(match)
+    const std::string &description,
+    const std::function<const symbol_exprt &(const exprt &)> inner_symbol,
+    const std::function<bool(const exprt &)> match)
+    : _description(description), _inner_symbol(inner_symbol), _match(match)
   {}
 
   /// \brief a textual description of the expression that we're trying to match
@@ -50,15 +47,15 @@ public:
   /// If this function returns true, the entire expression should be replaced by
   /// a pointer whose underlying symbol is the symbol returned by
   /// replacement_predicatet::inner_symbol().
-  const bool match(const exprt &expr, const namespacet &ns) const
+  bool match(const exprt &expr) const
   {
-    return _match(expr, ns);
+    return _match(expr);
   };
 
 private:
   std::string _description;
   std::function<const symbol_exprt&(const exprt&)> _inner_symbol;
-  std::function<bool(const exprt&, const namespacet&)> _match;
+  std::function<bool(const exprt &)> _match;
 };
 
 /// \brief Synthesise definitions of symbols that are defined in linker scripts
@@ -156,16 +153,12 @@ protected:
   /// \post Expressions of the shape `&foo[0]`, `&foo`, and `foo`, where `foo`
   ///       is a linker-script defined symbol with type array, have been
   ///       converted to `foo` whose type is `char*`.
-  int pointerize_linker_defined_symbols(
-      goto_functionst &goto_functions,
-      symbol_tablet &symbol_table,
-      const linker_valuest &linker_values);
+  int pointerize_linker_defined_symbols(goto_modelt &, const linker_valuest &);
 
-  /// \param expr an expr whose subexpressions may need to be pointerized
-  /// \param to_pointerize  The symbols that are contained in the subexpressions
-  ///                       that we will pointerize.
-  /// \param linker_values the names of symbols defined in linker scripts.
-  /// \param ns a namespace to look up types.
+  /// \param expr: an expr whose subexpressions may need to be pointerized
+  /// \param to_pointerize: The symbols that are contained in the subexpressions
+  ///   that we will pointerize.
+  /// \param linker_values: the names of symbols defined in linker scripts.
   ///
   /// The subexpressions that we pointerize should be in one-to-one
   /// correspondence with the symbols in `to_pointerize`. Every time we
@@ -174,10 +167,9 @@ protected:
   /// `to_pointerize` should be empty. If it is not, then the symbol is
   /// contained in a subexpression whose shape is not recognised.
   int pointerize_subexprs_of(
-      exprt &expr,
-      std::list<symbol_exprt> &to_pointerize,
-      const linker_valuest &linker_values,
-      const namespacet &ns);
+    exprt &expr,
+    std::list<symbol_exprt> &to_pointerize,
+    const linker_valuest &linker_values);
 
   /// \brief do the actual replacement of an expr with a new pointer expr
   int replace_expr(
@@ -199,13 +191,12 @@ protected:
   /// `linker_values` map. The error messages of this function describe what it
   /// means for this constraint to be violated.
   ///
-  /// \param linker_defined_symbols the list of symbols that were extern with no
-  ///                               value in the goto-program)
-  /// \param linker_values  map from the names of linker-defined symbols from
-  ///                       the object file, to synthesized values for those
-  ///                       linker symbols.
-  /// \return `1` if there is some mismatch between the list and map, `0`
-  ///                if everything is OK.
+  /// \param linker_defined_symbols: the list of symbols that were extern with
+  ///   no value in the goto-program
+  /// \param linker_values: map from the names of linker-defined symbols from
+  ///   the object file, to synthesized values for those linker symbols.
+  /// \return `1` if there is some mismatch between the list and map, `0` if
+  ///   everything is OK.
   int goto_and_object_mismatch(
       const std::list<irep_idt> &linker_defined_symbols,
       const linker_valuest &linker_values);

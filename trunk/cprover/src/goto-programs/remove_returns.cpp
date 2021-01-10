@@ -9,15 +9,18 @@ Date:   September 2009
 \*******************************************************************/
 
 /// \file
-/// Remove function return values
+/// Replace function returns by assignments to global variables
 
 #include "remove_returns.h"
 
 #include <util/std_expr.h>
+#include <util/suffix.h>
 
 #include "goto_model.h"
 
 #include "remove_skip.h"
+
+#define RETURN_VALUE_SUFFIX "#return_value"
 
 class remove_returnst
 {
@@ -44,7 +47,7 @@ protected:
     const irep_idt &function_id,
     goto_functionst::goto_functiont &function);
 
-  void do_function_calls(
+  bool do_function_calls(
     function_is_stubt function_is_stub,
     goto_programt &goto_program);
 
@@ -54,22 +57,24 @@ protected:
   void undo_function_calls(
     goto_programt &goto_program);
 
-  symbol_exprt get_or_create_return_value_symbol(const irep_idt &function_id);
+  optionalt<symbol_exprt>
+  get_or_create_return_value_symbol(const irep_idt &function_id);
 };
 
-symbol_exprt
+optionalt<symbol_exprt>
 remove_returnst::get_or_create_return_value_symbol(const irep_idt &function_id)
 {
-  const irep_idt symbol_name = id2string(function_id) + RETURN_VALUE_SUFFIX;
-  const symbolt *existing_symbol = symbol_table.lookup(symbol_name);
-  if(existing_symbol != nullptr)
-    return existing_symbol->symbol_expr();
+  const namespacet ns(symbol_table);
+  const auto symbol_expr = return_value_symbol(function_id, ns);
+  const auto symbol_name = symbol_expr.get_identifier();
+  if(symbol_table.has_symbol(symbol_name))
+    return symbol_expr;
 
   const symbolt &function_symbol = symbol_table.lookup_ref(function_id);
   const typet &return_type = to_code_type(function_symbol.type).return_type();
 
   if(return_type == empty_typet())
-    return symbol_exprt();
+    return {};
 
   auxiliary_symbolt new_symbol;
   new_symbol.is_static_lifetime = true;
@@ -103,14 +108,7 @@ void remove_returnst::replace_returns(
     return;
 
   // add return_value symbol to symbol_table, if not already created:
-  symbol_exprt return_symbol = get_or_create_return_value_symbol(function_id);
-
-  // look up the function symbol
-  symbolt &function_symbol = *symbol_table.get_writeable(function_id);
-
-  // make the return type 'void'
-  function.type.return_type() = empty_typet();
-  function_symbol.type = function.type;
+  const auto return_symbol = get_or_create_return_value_symbol(function_id);
 
   goto_programt &goto_program = function.body;
 
@@ -122,11 +120,17 @@ void remove_returnst::replace_returns(
         i_it->code.operands().size() == 1,
         "return instructions should have one operand");
 
-      // replace "return x;" by "fkt#return_value=x;"
-      code_assignt assignment(return_symbol, i_it->code.op0());
+      if(return_symbol.has_value())
+      {
+        // replace "return x;" by "fkt#return_value=x;"
+        code_assignt assignment(*return_symbol, i_it->code.op0());
 
-      // now turn the `return' into `assignment'
-      i_it->make_assignment(assignment);
+        // now turn the `return' into `assignment'
+        *i_it =
+          goto_programt::make_assignment(assignment, i_it->source_location);
+      }
+      else
+        i_it->turn_into_skip();
     }
   }
 }
@@ -135,15 +139,19 @@ void remove_returnst::replace_returns(
 /// \param function_is_stub: function (irep_idt -> bool) that determines whether
 ///   a given function ID is a stub
 /// \param goto_program: program to transform
-void remove_returnst::do_function_calls(
+/// \return True if, and only if, instructions have been inserted. In that case
+///   the caller must invoke an appropriate method to update location numbers.
+bool remove_returnst::do_function_calls(
   function_is_stubt function_is_stub,
   goto_programt &goto_program)
 {
+  bool requires_update = false;
+
   Forall_goto_program_instructions(i_it, goto_program)
   {
     if(i_it->is_function_call())
     {
-      code_function_callt &function_call=to_code_function_call(i_it->code);
+      code_function_callt function_call = i_it->get_function_call();
 
       INVARIANT(
         function_call.function().id() == ID_symbol,
@@ -153,68 +161,58 @@ void remove_returnst::do_function_calls(
       const irep_idt function_id =
         to_symbol_expr(function_call.function()).get_identifier();
 
-      symbol_exprt return_value;
-      typet old_return_type;
-      bool is_stub = function_is_stub(function_id);
-
-      if(is_stub)
-      {
-        old_return_type =
-          to_code_type(function_call.function().type()).return_type();
-      }
-      else
-      {
-        // The callee may or may not already have been transformed by this pass,
-        // so its symbol-table entry may already have void return type.
-        // To simplify matters, create its return-value global now (if not
-        // already done), and use that to determine its true return type.
-        return_value = get_or_create_return_value_symbol(function_id);
-        if(return_value == symbol_exprt()) // really void-typed?
-          continue;
-        old_return_type = return_value.type();
-      }
-
       // Do we return anything?
-      if(old_return_type != empty_typet())
+      if(does_function_call_return(function_call))
       {
         // replace "lhs=f(...)" by
         // "f(...); lhs=f#return_value; DEAD f#return_value;"
 
-        // fix the type
-        to_code_type(function_call.function().type()).return_type()=
-          empty_typet();
+        exprt rhs;
 
-        if(function_call.lhs().is_not_nil())
+        bool is_stub = function_is_stub(function_id);
+        optionalt<symbol_exprt> return_value;
+
+        if(!is_stub)
         {
-          exprt rhs;
+          return_value = get_or_create_return_value_symbol(function_id);
+          CHECK_RETURN(return_value.has_value());
 
-          if(!is_stub)
-            rhs=return_value;
-          else
-            rhs = side_effect_expr_nondett(
-              function_call.lhs().type(), i_it->source_location);
-
-          goto_programt::targett t_a=goto_program.insert_after(i_it);
-          t_a->make_assignment();
-          t_a->source_location=i_it->source_location;
-          t_a->code=code_assignt(function_call.lhs(), rhs);
-          t_a->function=i_it->function;
-
-          // fry the previous assignment
-          function_call.lhs().make_nil();
-
-          if(!is_stub)
-          {
-            goto_programt::targett t_d=goto_program.insert_after(t_a);
-            t_d->make_dead();
-            t_d->source_location=i_it->source_location;
-            t_d->code=code_deadt(rhs);
-            t_d->function=i_it->function;
-          }
+          // The return type in the definition of the function may differ
+          // from the return type in the declaration.  We therefore do a
+          // cast.
+          rhs = typecast_exprt::conditional_cast(
+            *return_value, function_call.lhs().type());
         }
+        else
+        {
+          rhs = side_effect_expr_nondett(
+            function_call.lhs().type(), i_it->source_location);
+        }
+
+        goto_programt::targett t_a = goto_program.insert_after(
+          i_it,
+          goto_programt::make_assignment(
+            code_assignt(function_call.lhs(), rhs), i_it->source_location));
+
+        // fry the previous assignment
+        function_call.lhs().make_nil();
+
+        if(!is_stub)
+        {
+          goto_program.insert_after(
+            t_a,
+            goto_programt::make_dead(*return_value, i_it->source_location));
+        }
+
+        // update the call
+        i_it->set_function_call(function_call);
+
+        requires_update = true;
       }
     }
   }
+
+  return requires_update;
 }
 
 void remove_returnst::operator()(goto_functionst &goto_functions)
@@ -226,12 +224,14 @@ void remove_returnst::operator()(goto_functionst &goto_functions)
       auto findit = goto_functions.function_map.find(function_id);
       INVARIANT(
         findit != goto_functions.function_map.end(),
-        "called function should have some entry in the function map");
+        "called function `" + id2string(function_id) +
+          "' should have an entry in the function map");
       return !findit->second.body_available();
     };
 
     replace_returns(it->first, it->second);
-    do_function_calls(function_is_stub, it->second.body);
+    if(do_function_calls(function_is_stub, it->second.body))
+      goto_functions.compute_location_numbers(it->second.body);
   }
 }
 
@@ -248,7 +248,8 @@ void remove_returnst::operator()(
     return;
 
   replace_returns(model_function.get_function_id(), goto_function);
-  do_function_calls(function_is_stub, goto_function.body);
+  if(do_function_calls(function_is_stub, goto_function.body))
+    model_function.compute_location_numbers();
 }
 
 /// removes returns
@@ -286,31 +287,6 @@ void remove_returns(goto_modelt &goto_model)
   rr(goto_model.goto_functions);
 }
 
-/// Get code type of a function that has had remove_returns run upon it
-/// \param symbol_table: global symbol table
-/// \param function_id: function to get the type of
-/// \return the function's type with its `return_type()` restored to its
-///   original value
-code_typet original_return_type(
-  const symbol_table_baset &symbol_table,
-  const irep_idt &function_id)
-{
-  // look up the function symbol
-  const symbolt &function_symbol = symbol_table.lookup_ref(function_id);
-  code_typet type = to_code_type(function_symbol.type);
-
-  // do we have X#return_value?
-  std::string rv_name=id2string(function_id)+RETURN_VALUE_SUFFIX;
-
-  symbol_tablet::symbolst::const_iterator rv_it=
-    symbol_table.symbols.find(rv_name);
-
-  if(rv_it != symbol_table.symbols.end())
-    type.return_type() = rv_it->second.type;
-
-  return type;
-}
-
 /// turns an assignment to fkt#return_value back into 'return x'
 bool remove_returnst::restore_returns(
   goto_functionst::function_mapt::iterator f_it)
@@ -318,20 +294,11 @@ bool remove_returnst::restore_returns(
   const irep_idt function_id=f_it->first;
 
   // do we have X#return_value?
-  std::string rv_name=id2string(function_id)+RETURN_VALUE_SUFFIX;
-
+  auto rv_name = return_value_identifier(function_id);
   symbol_tablet::symbolst::const_iterator rv_it=
     symbol_table.symbols.find(rv_name);
-
   if(rv_it==symbol_table.symbols.end())
     return true;
-
-  // look up the function symbol
-  symbolt &function_symbol=*symbol_table.get_writeable(function_id);
-
-  // restore the return type
-  f_it->second.type=original_return_type(symbol_table, function_id);
-  function_symbol.type=f_it->second.type;
 
   // remove the return_value symbol from the symbol_table
   irep_idt rv_name_id=rv_it->second.name;
@@ -345,15 +312,16 @@ bool remove_returnst::restore_returns(
   {
     if(i_it->is_assign())
     {
-      code_assignt &assign=to_code_assign(i_it->code);
+      const auto &assign = i_it->get_assign();
+
       if(assign.lhs().id()!=ID_symbol ||
          to_symbol_expr(assign.lhs()).get_identifier()!=rv_name_id)
         continue;
 
       // replace "fkt#return_value=x;" by "return x;"
       const exprt rhs = assign.rhs();
-      i_it->make_return();
-      i_it->code = code_returnt(rhs);
+      *i_it =
+        goto_programt::make_return(code_returnt(rhs), i_it->source_location);
       did_something = true;
     }
   }
@@ -374,7 +342,7 @@ void remove_returnst::undo_function_calls(
   {
     if(i_it->is_function_call())
     {
-      code_function_callt &function_call=to_code_function_call(i_it->code);
+      code_function_callt function_call = i_it->get_function_call();
 
       // ignore function pointers
       if(function_call.function().id()!=ID_symbol)
@@ -383,16 +351,10 @@ void remove_returnst::undo_function_calls(
       const irep_idt function_id=
         to_symbol_expr(function_call.function()).get_identifier();
 
-      const symbolt &function_symbol=ns.lookup(function_id);
-
-      // fix the type
-      to_code_type(function_call.function().type()).return_type()=
-        to_code_type(function_symbol.type).return_type();
-
       // find "f(...); lhs=f#return_value; DEAD f#return_value;"
       // and revert to "lhs=f(...);"
-      goto_programt::instructionst::iterator next=i_it;
-      ++next;
+      goto_programt::instructionst::iterator next = std::next(i_it);
+
       INVARIANT(
         next!=goto_program.instructions.end(),
         "non-void function call must be followed by #return_value read");
@@ -400,18 +362,16 @@ void remove_returnst::undo_function_calls(
       if(!next->is_assign())
         continue;
 
-      const code_assignt &assign=to_code_assign(next->code);
+      const code_assignt &assign = next->get_assign();
 
-      if(assign.rhs().id()!=ID_symbol)
-        continue;
-
-      irep_idt rv_name=id2string(function_id)+RETURN_VALUE_SUFFIX;
-      const symbol_exprt &rhs=to_symbol_expr(assign.rhs());
-      if(rhs.get_identifier()!=rv_name)
+      const auto rv_symbol = return_value_symbol(function_id, ns);
+      if(assign.rhs() != rv_symbol)
         continue;
 
       // restore the previous assignment
       function_call.lhs()=assign.lhs();
+
+      i_it->set_function_call(function_call);
 
       // remove the assignment and subsequent dead
       // i_it remains valid
@@ -444,4 +404,34 @@ void restore_returns(goto_modelt &goto_model)
 {
   remove_returnst rr(goto_model.symbol_table);
   rr.restore(goto_model.goto_functions);
+}
+
+irep_idt return_value_identifier(const irep_idt &identifier)
+{
+  return id2string(identifier) + RETURN_VALUE_SUFFIX;
+}
+
+symbol_exprt
+return_value_symbol(const irep_idt &identifier, const namespacet &ns)
+{
+  const symbolt &function_symbol = ns.lookup(identifier);
+  const typet &return_type = to_code_type(function_symbol.type).return_type();
+  return symbol_exprt(return_value_identifier(identifier), return_type);
+}
+
+bool is_return_value_identifier(const irep_idt &id)
+{
+  return has_suffix(id2string(id), RETURN_VALUE_SUFFIX);
+}
+
+bool is_return_value_symbol(const symbol_exprt &symbol_expr)
+{
+  return is_return_value_identifier(symbol_expr.get_identifier());
+}
+
+bool does_function_call_return(const code_function_callt &function_call)
+{
+  return to_code_type(function_call.function().type()).return_type() !=
+           empty_typet() &&
+         function_call.lhs().is_not_nil();
 }

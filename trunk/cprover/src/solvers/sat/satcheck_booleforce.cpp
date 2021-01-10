@@ -8,7 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "satcheck_booleforce.h"
 
-#include <cassert>
+#include <util/invariant.h>
 
 extern "C"
 {
@@ -32,7 +32,7 @@ satcheck_booleforce_baset::~satcheck_booleforce_baset()
 
 tvt satcheck_booleforce_baset::l_get(literalt a) const
 {
-  assert(status==SAT);
+  PRECONDITION(status == SAT);
 
   if(a.is_true())
     return tvt(true);
@@ -41,8 +41,7 @@ tvt satcheck_booleforce_baset::l_get(literalt a) const
 
   tvt result;
   unsigned v=a.var_no();
-
-  assert(v<no_variables());
+  CHECK_RETURN(v < no_variables());
 
   int r=booleforce_deref(v);
 
@@ -80,9 +79,9 @@ void satcheck_booleforce_baset::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_booleforce_baset::prop_solve()
+propt::resultt satcheck_booleforce_baset::do_prop_solve()
 {
-  assert(status==SAT || status==INIT);
+  PRECONDITION(status == SAT || status == INIT);
 
   int result=booleforce_sat();
 
@@ -104,7 +103,7 @@ propt::resultt satcheck_booleforce_baset::prop_solve()
       break;
     }
 
-    messaget::status() << msg << messaget::eom;
+    log.status() << msg << messaget::eom;
   }
 
   if(result==BOOLEFORCE_UNSATISFIABLE)

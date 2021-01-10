@@ -53,20 +53,7 @@ protected:
 void base_type_rec(
   typet &type, const namespacet &ns, std::set<irep_idt> &symb)
 {
-  if(type.id() == ID_symbol_type)
-  {
-    const symbolt *symbol;
-
-    if(
-      !ns.lookup(to_symbol_type(type).get_identifier(), symbol) &&
-      symbol->is_type && !symbol->type.is_nil())
-    {
-      type = symbol->type;
-      base_type_rec(type, ns, symb); // recursive call
-      return;
-    }
-  }
-  else if(
+  if(
     type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
     type.id() == ID_union_tag)
   {
@@ -99,20 +86,7 @@ void base_type_rec(
     typet &subtype=to_pointer_type(type).subtype();
 
     // we need to avoid running into an infinite loop
-    if(subtype.id() == ID_symbol_type)
-    {
-      const irep_idt &id = to_symbol_type(subtype).get_identifier();
-
-      if(symb.find(id) != symb.end())
-        return;
-
-      symb.insert(id);
-
-      base_type_rec(subtype, ns, symb);
-
-      symb.erase(id);
-    }
-    else if(
+    if(
       subtype.id() == ID_c_enum_tag || subtype.id() == ID_struct_tag ||
       subtype.id() == ID_union_tag)
     {
@@ -160,8 +134,8 @@ bool base_type_eqt::base_type_eq_rec(
 
   // loop avoidance
   if(
-    (type1.id() == ID_symbol_type || type1.id() == ID_c_enum_tag ||
-     type1.id() == ID_struct_tag || type1.id() == ID_union_tag) &&
+    (type1.id() == ID_c_enum_tag || type1.id() == ID_struct_tag ||
+     type1.id() == ID_union_tag) &&
     type2.id() == type1.id())
   {
     // already in same set?
@@ -172,8 +146,8 @@ bool base_type_eqt::base_type_eq_rec(
   }
 
   if(
-    type1.id() == ID_symbol_type || type1.id() == ID_c_enum_tag ||
-    type1.id() == ID_struct_tag || type1.id() == ID_union_tag)
+    type1.id() == ID_c_enum_tag || type1.id() == ID_struct_tag ||
+    type1.id() == ID_union_tag)
   {
     const symbolt &symbol=
       ns.lookup(type1.get(ID_identifier));
@@ -185,8 +159,8 @@ bool base_type_eqt::base_type_eq_rec(
   }
 
   if(
-    type2.id() == ID_symbol_type || type2.id() == ID_c_enum_tag ||
-    type2.id() == ID_struct_tag || type2.id() == ID_union_tag)
+    type2.id() == ID_c_enum_tag || type2.id() == ID_struct_tag ||
+    type2.id() == ID_union_tag)
   {
     const symbolt &symbol=
       ns.lookup(type2.get(ID_identifier));
@@ -222,14 +196,6 @@ bool base_type_eqt::base_type_eq_rec(
         return false;
     }
 
-    return true;
-  }
-  else if(type1.id()==ID_incomplete_struct)
-  {
-    return true;
-  }
-  else if(type1.id()==ID_incomplete_union)
-  {
     return true;
   }
   else if(type1.id()==ID_code)
@@ -275,12 +241,6 @@ bool base_type_eqt::base_type_eq_rec(
 
     return true;
   }
-  else if(type1.id()==ID_incomplete_array)
-  {
-    return base_type_eq_rec(
-      to_incomplete_array_type(type1).subtype(),
-      to_incomplete_array_type(type2).subtype());
-  }
 
   // the below will go away
   typet tmp1(type1), tmp2(type2);
@@ -320,15 +280,13 @@ bool base_type_eqt::base_type_eq_rec(
   return true;
 }
 
-/// Check types for equality across all levels of hierarchy. For equality
-/// in the top level of the hierarchy only use \ref type_eq.
+/// Check types for equality across all levels of hierarchy.
 /// Example:
-/// - `symbol_typet("a")` and `ns.lookup("a").type` will compare equal,
-/// - `struct_typet {symbol_typet("a")}` and `struct_typet {ns.lookup("a")
-///   .type}` will also compare equal.
-/// \param type1 The first type to compare.
-/// \param type2 The second type to compare.
-/// \param ns The namespace, needed for resolution of symbols.
+/// - `struct_typet {union_tag_typet("a")}` and `struct_typet {ns.lookup("a")
+///   .type}` will compare equal.
+/// \param type1: The first type to compare.
+/// \param type2: The second type to compare.
+/// \param ns: The namespace, needed for resolution of symbols.
 bool base_type_eq(
   const typet &type1,
   const typet &type2,
@@ -339,9 +297,9 @@ bool base_type_eq(
 }
 
 /// Check expressions for equality across all levels of hierarchy.
-/// \param expr1 The first expression to compare.
-/// \param expr2 The second expression to compare.
-/// \param ns The namespace, needed for resolution of symbols.
+/// \param expr1: The first expression to compare.
+/// \param expr2: The second expression to compare.
+/// \param ns: The namespace, needed for resolution of symbols.
 bool base_type_eq(
   const exprt &expr1,
   const exprt &expr2,

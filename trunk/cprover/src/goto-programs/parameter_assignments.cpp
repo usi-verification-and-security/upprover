@@ -42,11 +42,11 @@ void parameter_assignmentst::do_function_calls(
   {
     if(i_it->is_function_call())
     {
-      code_function_callt &function_call=to_code_function_call(i_it->code);
+      const code_function_callt &function_call = i_it->get_function_call();
 
       // add x=y for f(y) where x is the parameter
 
-      assert(function_call.function().id()==ID_symbol);
+      PRECONDITION(function_call.function().id() == ID_symbol);
 
       const irep_idt &identifier=
         to_symbol_expr(function_call.function()).get_identifier();
@@ -67,16 +67,12 @@ void parameter_assignmentst::do_function_calls(
 
         if(nr<function_call.arguments().size())
         {
-          goto_programt::targett t=tmp.add_instruction();
-          t->make_assignment();
-          t->source_location=i_it->source_location;
           const symbolt &lhs_symbol=ns.lookup(p_identifier);
           symbol_exprt lhs=lhs_symbol.symbol_expr();
-          exprt rhs=function_call.arguments()[nr];
-          if(rhs.type()!=lhs.type())
-            rhs.make_typecast(lhs.type());
-          t->code=code_assignt(lhs, rhs);
-          t->function=i_it->function;
+          exprt rhs = typecast_exprt::conditional_cast(
+            function_call.arguments()[nr], lhs.type());
+          tmp.add(goto_programt::make_assignment(
+            code_assignt(lhs, rhs), i_it->source_location));
         }
       }
 

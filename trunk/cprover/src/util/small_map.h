@@ -25,45 +25,6 @@ Author: Daniel Poetzl
 
 //#define _SMALL_MAP_REALLOC_STATS
 
-// The following templates are used by the class below to compute parameters at
-// compilation time. When having a compiler that supports constexpr, the
-// parameters are computed via static methods defined within the class.
-#if !defined(__GNUC__) && _MSC_VER < 1900
-
-template <std::size_t N>
-struct num_bitst
-{
-  static const std::size_t value = 1 + num_bitst<(N >> 1)>::value;
-};
-
-template <>
-struct num_bitst<1>
-{
-  static const std::size_t value = 1;
-};
-
-template <>
-struct num_bitst<0>
-{
-  static const std::size_t value = 1;
-};
-
-template <typename T, std::size_t B, typename U = std::integral_constant<T, 1>>
-struct indicator_maskt
-{
-  static const T value =
-    U::value |
-    indicator_maskt<T, B, std::integral_constant<T, (U::value << B)>>::value;
-};
-
-template <typename T, std::size_t B>
-struct indicator_maskt<T, B, std::integral_constant<T, 0>>
-{
-  static const T value = 0;
-};
-
-#endif
-
 /// Map from small integers to values
 ///
 /// A data structure that maps small integers (in {0, ..., Num-1}) to values.
@@ -96,10 +57,10 @@ struct indicator_maskt<T, B, std::integral_constant<T, 0>>
 ///   * useful:  48 B
 ///   * total:   64 B
 ///
-/// \tparam T mapped type
-/// \tparam Ind unsigned integer type, used to map integer indices to internal
+/// \tparam T: mapped type
+/// \tparam Ind: unsigned integer type, used to map integer indices to internal
 ///   indices that index into the memory block that stores the mapped values
-/// \tparam Num gives range of valid indices, i.e., the valid indices are {0,
+/// \tparam Num: gives range of valid indices, i.e., the valid indices are {0,
 ///   ..., Num-1}, must satisfy Num * num_bits(Num-1) + Num < sizeof(Ind) * 8,
 ///   with num_bits(n) denoting the minimum number of bits required to represent
 ///   integer n
@@ -112,7 +73,7 @@ public:
   }
 
 private:
-  static_assert(std::is_unsigned<Ind>::value, "");
+  static_assert(std::is_unsigned<Ind>::value, "Ind should be an unsigned type");
 
   typedef Ind index_fieldt;
 
@@ -206,18 +167,7 @@ private:
 
   static const std::size_t NUM = Num;
 
-  static_assert(NUM >= 2, "");
-
-// When we don't have constexpr
-#if !defined(__GNUC__) && _MSC_VER < 1900
-
-  static const std::size_t S_BITS = NUM * num_bitst<NUM - 1>::value + NUM;
-
-  static const std::size_t BITS = num_bitst<NUM - 1>::value + 1;
-
-  static const index_fieldt IND = indicator_maskt<index_fieldt, BITS>::value;
-
-#else
+  static_assert(NUM >= 2, "NUM should be at least 2");
 
   static constexpr std::size_t num_bits(const std::size_t n)
   {
@@ -235,40 +185,40 @@ private:
 
   static const index_fieldt IND = indicator_mask();
 
-#endif
-
   static const index_fieldt MASK = ((index_fieldt)1 << BITS) - 1;
 
-  static_assert(S_BITS <= N_BITS, "");
+  static_assert(S_BITS <= N_BITS, "S_BITS should be no larger than N_BITS");
 
-  static_assert(std::numeric_limits<unsigned>::digits >= BITS, "");
+  static_assert(
+    std::numeric_limits<std::size_t>::digits >= BITS,
+    "BITS must fit into an unsigned");
 
   // Internal
 
-  unsigned get_field(std::size_t field) const
+  std::size_t get_field(std::size_t field) const
   {
     PRECONDITION(field < NUM);
 
-    unsigned shift = field * BITS;
+    std::size_t shift = field * BITS;
     return (ind & (MASK << shift)) >> shift;
   }
 
-  void set_field(std::size_t field, unsigned v)
+  void set_field(std::size_t field, std::size_t v)
   {
     PRECONDITION(field < NUM);
     PRECONDITION((std::size_t)(v >> 1) < NUM);
 
-    unsigned shift = field * BITS;
+    std::size_t shift = field * BITS;
 
     ind &= ~((index_fieldt)MASK << shift);
-    ind |= v << shift;
+    ind |= (index_fieldt)v << shift;
   }
 
   void shift_indices(std::size_t ii)
   {
     for(std::size_t idx = 0; idx < S_BITS / BITS; idx++)
     {
-      unsigned v = get_field(idx);
+      std::size_t v = get_field(idx);
       if(v & 1)
       {
         v >>= 1;
@@ -284,7 +234,7 @@ private:
 public:
   // Standard const iterator
 
-  typedef std::pair<const unsigned, const T &> value_type;
+  typedef std::pair<const std::size_t, const T &> valuet;
 
   /// Const iterator
   ///
@@ -305,14 +255,14 @@ public:
     {
     }
 
-    const value_type operator*() const
+    const valuet operator*() const
     {
-      return value_type(idx, *(m.p + ii));
+      return valuet(idx, *(m.p + ii));
     }
 
-    const std::shared_ptr<value_type> operator->() const
+    const std::shared_ptr<valuet> operator->() const
     {
-      return std::make_shared<value_type>(idx, *(m.p + ii));
+      return std::make_shared<valuet>(idx, *(m.p + ii));
     }
 
     const_iterator operator++()
@@ -349,7 +299,7 @@ public:
     {
       while(idx < NUM)
       {
-        unsigned v = m.get_field(idx);
+        std::size_t v = m.get_field(idx);
         if(v & 1)
         {
           ii = v >> 1;
@@ -444,7 +394,7 @@ public:
   {
     PRECONDITION(idx < NUM);
 
-    unsigned v = get_field(idx);
+    std::size_t v = get_field(idx);
     if(v & 1)
     {
       std::size_t ii = v >> 1;
@@ -465,7 +415,7 @@ public:
   {
     PRECONDITION(idx < NUM);
 
-    unsigned v = get_field(idx);
+    std::size_t v = get_field(idx);
     if(v & 1)
     {
       std::size_t ii = v >> 1;
@@ -479,7 +429,7 @@ public:
   {
     PRECONDITION(idx < NUM);
 
-    unsigned v = get_field(idx);
+    std::size_t v = get_field(idx);
 
     if(v & 1)
     {
@@ -516,7 +466,7 @@ public:
   {
     PRECONDITION(idx < NUM);
 
-    unsigned v = get_field(idx);
+    std::size_t v = get_field(idx);
     INVARIANT(v & 1, "element must be in map");
 
     std::size_t ii = v >> 1;
@@ -550,7 +500,7 @@ public:
   {
     PRECONDITION(idx < NUM);
 
-    unsigned v = get_field(idx);
+    std::size_t v = get_field(idx);
     INVARIANT(!(v & 1), "element must not be in map");
 
     std::size_t n = size();

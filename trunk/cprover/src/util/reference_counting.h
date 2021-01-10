@@ -12,9 +12,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_REFERENCE_COUNTING_H
 #define CPROVER_UTIL_REFERENCE_COUNTING_H
 
-#include <cassert>
+#include "invariant.h"
 
-template<typename T>
+/// \tparam empty: pointer to empty data, if unspecified use a reference to
+///   T::blank
+template <typename T, const T &empty = T::blank>
 // NOLINTNEXTLINE(readability/identifiers)
 class reference_counting
 {
@@ -33,7 +35,7 @@ public:
   {
     if(d!=nullptr)
     {
-      assert(d->ref_count!=0);
+      PRECONDITION(d->ref_count != 0);
       d->ref_count++;
       #ifdef REFERENCE_COUNTING_DEBUG
       std::cout << "COPY " << d << " " << d->ref_count << '\n';
@@ -67,7 +69,7 @@ public:
   const T &read() const
   {
     if(d==nullptr)
-      return T::blank;
+      return empty;
     return *d;
   }
 
@@ -96,7 +98,7 @@ protected:
 
   void copy_from(const reference_counting &other)
   {
-    assert(&other!=this); // check if we assign to ourselves
+    PRECONDITION(&other != this); // check if we assign to ourselves
 
     #ifdef REFERENCE_COUNTING_DEBUG
     std::cout << "COPY " << (&other) << "\n";
@@ -115,13 +117,13 @@ public:
   }
 };
 
-template<class T>
-void reference_counting<T>::remove_ref(dt *old_d)
+template <class T, const T &empty>
+void reference_counting<T, empty>::remove_ref(dt *old_d)
 {
   if(old_d==nullptr)
     return;
 
-  assert(old_d->ref_count!=0);
+  PRECONDITION(old_d->ref_count != 0);
 
   #ifdef REFERENCE_COUNTING_DEBUG
   std::cout << "R: " << old_d << " " << old_d->ref_count << '\n';
@@ -144,8 +146,8 @@ void reference_counting<T>::remove_ref(dt *old_d)
   }
 }
 
-template<class T>
-void reference_counting<T>::detach()
+template <class T, const T &empty>
+void reference_counting<T, empty>::detach()
 {
   #ifdef REFERENCE_COUNTING_DEBUG
   std::cout << "DETACH1: " << d << '\n';
@@ -172,27 +174,27 @@ void reference_counting<T>::detach()
     remove_ref(old_d);
   }
 
-  assert(d->ref_count==1);
+  POSTCONDITION(d->ref_count == 1);
 
   #ifdef REFERENCE_COUNTING_DEBUG
   std::cout << "DETACH2: " << d << '\n'
   #endif
 }
 
-template<class T>
+template <class T, const T &empty>
 bool operator==(
-  const reference_counting<T> &o1,
-  const reference_counting<T> &o2)
+  const reference_counting<T, empty> &o1,
+  const reference_counting<T, empty> &o2)
 {
   if(o1.get_d()==o2.get_d())
     return true;
   return o1.read()==o2.read();
 }
 
-template<class T>
+template <class T, const T &empty>
 inline bool operator!=(
-  const reference_counting<T> &i1,
-  const reference_counting<T> &i2)
+  const reference_counting<T, empty> &i1,
+  const reference_counting<T, empty> &i2)
 { return !(i1==i2); }
 
 #endif // CPROVER_UTIL_REFERENCE_COUNTING_H

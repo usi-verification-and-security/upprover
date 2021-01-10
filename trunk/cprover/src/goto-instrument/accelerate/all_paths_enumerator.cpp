@@ -109,7 +109,7 @@ void all_paths_enumeratort::complete_path(patht &path, int succ)
 
   goto_programt::targett end=path.back().loc;
 
-  if(end==loop_header || loop.find(end)==loop.end())
+  if(end == loop_header || !loop.contains(end))
     return;
 
   complete_path(path, 0);
@@ -136,7 +136,7 @@ void all_paths_enumeratort::extend_path(
 
   if(t->is_goto())
   {
-    guard=not_exprt(t->guard);
+    guard = not_exprt(t->get_condition());
 
     for(goto_programt::targetst::iterator it=t->targets.begin();
         it != t->targets.end();
@@ -144,7 +144,7 @@ void all_paths_enumeratort::extend_path(
     {
       if(next == *it)
       {
-        guard=t->guard;
+        guard = t->get_condition();
         break;
       }
     }

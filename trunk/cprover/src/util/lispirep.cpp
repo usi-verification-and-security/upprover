@@ -32,7 +32,7 @@ void lisp2irep(const lispexprt &src, irept &dest)
         irept sub;
         lisp2irep(src[i], sub);
 
-        if(name=="")
+        if(name.empty())
           dest.move_to_sub(sub);
         else
           dest.move_to_named_sub(name, sub);
@@ -43,12 +43,16 @@ void lisp2irep(const lispexprt &src, irept &dest)
 void irep2lisp(const irept &src, lispexprt &dest)
 {
   dest.clear();
-  dest.value="";
+  dest.value.clear();
   dest.type=lispexprt::List;
 
-  dest.reserve(2+2*src.get_sub().size()
-                +2*src.get_named_sub().size()
-                +2*src.get_comments().size());
+#ifdef NAMED_SUB_IS_FORWARD_LIST
+  const std::size_t named_sub_size =
+    std::distance(src.get_named_sub().begin(), src.get_named_sub().end());
+#else
+  const std::size_t named_sub_size = src.get_named_sub().size();
+#endif
+  dest.reserve(2 + 2 * src.get_sub().size() + 2 * named_sub_size);
 
   lispexprt id;
   id.type=lispexprt::String;
@@ -61,7 +65,7 @@ void irep2lisp(const irept &src, lispexprt &dest)
   {
     lispexprt name;
     name.type=lispexprt::String;
-    name.value="";
+    name.value.clear();
     dest.push_back(name);
 
     lispexprt sub;
@@ -71,19 +75,6 @@ void irep2lisp(const irept &src, lispexprt &dest)
   }
 
   forall_named_irep(it, src.get_named_sub())
-  {
-    lispexprt name;
-    name.type=lispexprt::String;
-    name.value=name2string(it->first);
-    dest.push_back(name);
-
-    lispexprt sub;
-
-    irep2lisp(it->second, sub);
-    dest.push_back(sub);
-  }
-
-  forall_named_irep(it, src.get_comments())
   {
     lispexprt name;
     name.type=lispexprt::String;

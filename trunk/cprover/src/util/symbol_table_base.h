@@ -8,7 +8,7 @@
 
 #include <map>
 #include <unordered_map>
-#include <stdexcept>
+
 #include "symbol.h"
 
 typedef std::multimap<irep_idt, irep_idt> symbol_base_mapt;
@@ -24,8 +24,17 @@ public:
   typedef std::unordered_map<irep_idt, symbolt> symbolst;
 
 public:
+  /// Read-only field, used to look up symbols given their names.
+  /// Typically a subclass will have its own corresponding writeable field, and
+  /// the read-only fields declared here function as "getters" for them.
   const symbolst &symbols;
+  /// Read-only field, used to look up symbol names given their base names.
+  /// See \ref symbols.
   const symbol_base_mapt &symbol_base_map;
+  /// Read-only field, used to look up symbol names given their modules.
+  /// See \ref symbols.
+  /// Note that symbols whose module is empty are not recorded in this map.
+  /// Currently only used in EBMC.
   const symbol_module_mapt &symbol_module_map;
 
 public:
@@ -44,7 +53,27 @@ public:
 
   virtual ~symbol_table_baset();
 
-public:
+  /// Find smallest unused integer i so that prefix + std::to_string(i)
+  /// does not exist in the list \p symbols.
+  /// \param prefix: A string denoting the prefix we want to find the
+  ///   smallest suffix of.
+  /// \param start_number: The starting suffix number to search from.
+  /// \return The small unused suffix size.
+  std::size_t
+  next_unused_suffix(const std::string &prefix, std::size_t start_number) const
+  {
+    while(this->symbols.find(prefix + std::to_string(start_number)) !=
+          symbols.end())
+      ++start_number;
+
+    return start_number;
+  }
+
+  virtual std::size_t next_unused_suffix(const std::string &prefix) const
+  {
+    return next_unused_suffix(prefix, 0);
+  }
+
   /// Permits implicit cast to const symbol_tablet &
   operator const symbol_tablet &() const
   {
@@ -54,7 +83,7 @@ public:
 
   /// Check whether a symbol exists in the symbol table
   /// \param name: The name of the symbol to look for
-  /// \return true if the symbol exists
+  /// \return True if the symbol exists
   bool has_symbol(const irep_idt &name) const
   {
     return symbols.find(name) != symbols.end();
@@ -62,7 +91,7 @@ public:
 
   /// Find a symbol in the symbol table for read-only access.
   /// \param name: The name of the symbol to look for
-  /// \return a pointer to the found symbol if it exists, nullptr otherwise.
+  /// \return A pointer to the found symbol if it exists, nullptr otherwise.
   const symbolt *lookup(const irep_idt &name) const
   {
     symbolst::const_iterator it = symbols.find(name);
@@ -72,20 +101,22 @@ public:
   /// Find a symbol in the symbol table for read-only access.
   /// \param name: The name of the symbol to look for
   /// \return A reference to the symbol
-  /// \throw `std::out_of_range` if no such symbol exists
   const symbolt &lookup_ref(const irep_idt &name) const
   {
-    return symbols.at(name);
+    const symbolt *const symbol = lookup(name);
+    INVARIANT(
+      symbol, "`" + id2string(name) + "' must exist in the symbol table.");
+    return *symbol;
   }
 
   /// Find a symbol in the symbol table for read-write access.
   /// \param name: The name of the symbol to look for
-  /// \return a pointer to the found symbol if it exists, nullptr otherwise.
+  /// \return A pointer to the found symbol if it exists, nullptr otherwise.
   virtual symbolt *get_writeable(const irep_idt &name) = 0;
 
   /// Find a symbol in the symbol table for read-write access.
-  /// \param name: The name of the symbol to look for
-  /// \return A reference to the symbol
+  /// \param name: The name of the symbol to look for.
+  /// \return A reference to the symbol.
   /// \throw `std::out_of_range` if no such symbol exists
   symbolt &get_writeable_ref(const irep_idt &name)
   {
@@ -100,10 +131,11 @@ public:
   /// \remark: This is a nicer interface than move and achieves the same
   /// result as both move and add
   /// \param symbol: The symbol to be added to the symbol table - can be
-  /// moved or copied in
+  ///   moved or copied in.
   /// \return Returns a reference to the newly inserted symbol or to the
-  /// existing symbol if a symbol with the same name already exists in the
-  /// symbol table, along with a bool that is true if a new symbol was inserted.
+  ///   existing symbol if a symbol with the same name already exists in the
+  ///   symbol table, along with a bool that is true if a new symbol was
+  ///   inserted.
   virtual std::pair<symbolt &, bool> insert(symbolt symbol) = 0;
   virtual bool move(symbolt &symbol, symbolt *&new_symbol) = 0;
 
@@ -114,6 +146,10 @@ public:
   virtual void clear() = 0;
 
   void show(std::ostream &out) const;
+
+  /// Build and return a lexicographically sorted vector of symbol names from
+  /// all symbols stored in this symbol table.
+  std::vector<irep_idt> sorted_symbol_names() const;
 
   class iteratort
   {
@@ -183,12 +219,11 @@ public:
 
     /// Whereas the dereference operator gives a constant reference to the
     /// current symbol, this method allows users to get a writeable reference
-    /// to the symbol
-    /// \remarks
-    /// This method calls the on_get_writeable method first to give derived
-    /// symbol table classes the opportunity to note that this symbol is being
-    /// written to before it is accessed.
-    /// \returns a non-const reference to the current symbol
+    /// to the symbol.
+    /// \remarks This method calls the on_get_writeable method first to give
+    ///   derived symbol table classes the opportunity to note that this
+    ///   symbol is being written to before it is accessed.
+    /// \return A non-const reference to the current symbol.
     symbolt &get_writeable_symbol()
     {
       if(on_get_writeable)

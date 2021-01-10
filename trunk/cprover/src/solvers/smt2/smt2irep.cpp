@@ -8,7 +8,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "smt2irep.h"
 
-#include <cassert>
+#include <util/message.h>
+
 #include <stack>
 
 #include "smt2_tokenizer.h"
@@ -16,81 +17,78 @@ Author: Daniel Kroening, kroening@kroening.com
 class smt2irept:public smt2_tokenizert
 {
 public:
-  explicit smt2irept(std::istream &_in):smt2_tokenizert(_in)
+  smt2irept(std::istream &_in, message_handlert &message_handler)
+    : smt2_tokenizert(_in), log(message_handler)
   {
   }
 
-  inline irept operator()()
-  {
-    parse();
-    return result;
-  }
-
-  bool parse() override;
+  optionalt<irept> operator()();
 
 protected:
-  irept result;
+  messaget log;
 };
 
-bool smt2irept::parse()
+optionalt<irept> smt2irept::operator()()
 {
-  std::stack<irept> stack;
-  result.clear();
-
-  while(true)
+  try
   {
-    switch(next_token())
+    std::stack<irept> stack;
+
+    while(true)
     {
-    case END_OF_FILE:
-      error() << "unexpected end of file" << eom;
-      return true;
-
-    case STRING_LITERAL:
-    case NUMERAL:
-    case SYMBOL:
-      if(stack.empty())
+      switch(next_token())
       {
-        result=irept(buffer);
-        return false; // all done!
-      }
-      else
-        stack.top().get_sub().push_back(irept(buffer));
-      break;
-
-    case OPEN: // '('
-      // produce sub-irep
-      stack.push(irept());
-      break;
-
-    case CLOSE: // ')'
-      // done with sub-irep
-      if(stack.empty())
-      {
-        error() << "unexpected ')'" << eom;
-        return true;
-      }
-      else
-      {
-        irept tmp=stack.top();
-        stack.pop();
-
+      case END_OF_FILE:
         if(stack.empty())
+          return {};
+        else
+          throw error("unexpected end of file");
+
+      case STRING_LITERAL:
+      case NUMERAL:
+      case SYMBOL:
+        if(stack.empty())
+          return irept(buffer); // all done!
+        else
+          stack.top().get_sub().push_back(irept(buffer));
+        break;
+
+      case OPEN: // '('
+        // produce sub-irep
+        stack.push(irept());
+        break;
+
+      case CLOSE: // ')'
+        // done with sub-irep
+        if(stack.empty())
+          throw error("unexpected ')'");
+        else
         {
-          result=tmp;
-          return false; // all done!
+          irept tmp = stack.top();
+          stack.pop();
+
+          if(stack.empty())
+            return tmp; // all done!
+
+          stack.top().get_sub().push_back(tmp);
+          break;
         }
 
-        stack.top().get_sub().push_back(tmp);
-        break;
+      case NONE:
+      case KEYWORD:
+        throw error("unexpected token");
       }
-
-    default:
-      return true;
     }
+  }
+  catch(const smt2_errort &e)
+  {
+    log.error().source_location.set_line(e.get_line_no());
+    log.error() << e.what() << messaget::eom;
+    return {};
   }
 }
 
-irept smt2irep(std::istream &in)
+optionalt<irept> smt2irep(std::istream &in, message_handlert &message_handler)
 {
-  return smt2irept(in)();
+  return smt2irept(in, message_handler)();
 }

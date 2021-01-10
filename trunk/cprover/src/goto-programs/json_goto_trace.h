@@ -16,10 +16,10 @@ Date: November 2005
 
 #include "goto_trace.h"
 
-#include <util/json.h>
-#include <util/json_stream.h>
-#include <util/json_expr.h>
 #include <util/invariant.h>
+#include <util/json.h>
+#include <util/json_irep.h>
+#include <util/json_stream.h>
 
 /// This is structure is here to facilitate
 /// passing arguments to the conversion
@@ -29,7 +29,6 @@ typedef struct
   const jsont &location;
   const goto_trace_stept &step;
   const namespacet &ns;
-  const source_locationt &source_location;
 } conversion_dependenciest;
 
 /// Convert an ASSERT goto_trace step.
@@ -133,7 +132,7 @@ void convert(
 
     // NOLINTNEXTLINE(whitespace/braces)
     conversion_dependenciest conversion_dependencies = {
-      json_location, step, ns, source_location};
+      json_location, step, ns};
 
     switch(step.type)
     {
@@ -175,7 +174,18 @@ void convert(
     }
     break;
 
-    default:
+    case goto_trace_stept::typet::ATOMIC_BEGIN:
+    case goto_trace_stept::typet::ATOMIC_END:
+    case goto_trace_stept::typet::DEAD:
+    case goto_trace_stept::typet::LOCATION:
+    case goto_trace_stept::typet::GOTO:
+    case goto_trace_stept::typet::ASSUME:
+    case goto_trace_stept::typet::MEMORY_BARRIER:
+    case goto_trace_stept::typet::SPAWN:
+    case goto_trace_stept::typet::SHARED_READ:
+    case goto_trace_stept::typet::SHARED_WRITE:
+    case goto_trace_stept::typet::CONSTRAINT:
+    case goto_trace_stept::typet::NONE:
       if(source_location != previous_source_location)
       {
         json_objectt &json_location_only = dest_array.push_back().make_object();

@@ -40,28 +40,20 @@ bool taint_parser(
     return true;
   }
 
-  for(jsont::arrayt::const_iterator
-      it=json.array.begin();
-      it!=json.array.end();
-      it++)
+  for(const auto &taint_spec : to_json_array(json))
   {
-    if(!it->is_object())
+    if(!taint_spec.is_object())
     {
       messaget message(message_handler);
       message.error() << "expecting an array of objects "
-                      << "in the taint file, but got "
-                      << *it << messaget::eom;
+                      << "in the taint file, but got " << taint_spec
+                      << messaget::eom;
       return true;
     }
 
     taint_parse_treet::rulet rule;
 
-    const std::string kind=(*it)["kind"].value;
-    const std::string function=(*it)["function"].value;
-    const std::string where=(*it)["where"].value;
-    const std::string taint=(*it)["taint"].value;
-    const std::string message=(*it)["message"].value;
-    const std::string id=(*it)["id"].value;
+    const std::string kind = taint_spec["kind"].value;
 
     if(kind=="source")
       rule.kind=taint_parse_treet::rulet::SOURCE;
@@ -78,6 +70,8 @@ bool taint_parser(
       return true;
     }
 
+    const std::string function = taint_spec["function"].value;
+
     if(function.empty())
     {
       messaget message(message_handler);
@@ -88,11 +82,13 @@ bool taint_parser(
     else
       rule.function_identifier=function;
 
+    const std::string where = taint_spec["where"].value;
+
     if(where=="return_value")
     {
       rule.where=taint_parse_treet::rulet::RETURN_VALUE;
     }
-    else if(where=="this")
+    else if(where == id2string(ID_this))
     {
       rule.where=taint_parse_treet::rulet::THIS;
     }
@@ -112,9 +108,9 @@ bool taint_parser(
       return true;
     }
 
-    rule.taint=taint;
-    rule.message=message;
-    rule.id=id;
+    rule.taint = taint_spec["taint"].value;
+    rule.message = taint_spec["message"].value;
+    rule.id = taint_spec["id"].value;
 
     dest.rules.push_back(rule);
   }

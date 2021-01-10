@@ -47,7 +47,7 @@ Author: Matt Lewis
 
 bool sat_path_enumeratort::next(patht &path)
 {
-  scratch_programt program(symbol_table, message_handler);
+  scratch_programt program{symbol_table, message_handler, guard_manager};
 
   program.append(fixed);
   program.append(fixed);
@@ -79,11 +79,11 @@ bool sat_path_enumeratort::next(patht &path)
     program.assume(new_path);
   }
 
-  program.add_instruction(ASSERT)->guard=false_exprt();
+  program.add(goto_programt::make_assertion(false_exprt()));
 
   try
   {
-    if(program.check_sat())
+    if(program.check_sat(guard_manager))
     {
 #ifdef DEBUG
       std::cout << "Found a path\n";
@@ -108,8 +108,8 @@ bool sat_path_enumeratort::next(patht &path)
 
 void sat_path_enumeratort::find_distinguishing_points()
 {
-  for(natural_loops_mutablet::natural_loopt::iterator it=loop.begin();
-      it!=loop.end();
+  for(natural_loops_mutablet::natural_loopt::const_iterator it = loop.begin();
+      it != loop.end();
       ++it)
   {
     const auto succs=goto_program.get_successors(*it);
@@ -184,7 +184,7 @@ void sat_path_enumeratort::build_path(
       // If this was a conditional branch (it probably was), figure out
       // if we hit the "taken" or "not taken" branch & accumulate the
       // appropriate guard.
-      cond=not_exprt(t->guard);
+      cond = not_exprt(t->get_condition());
 
       for(goto_programt::targetst::iterator it=t->targets.begin();
           it!=t->targets.end();
@@ -192,7 +192,7 @@ void sat_path_enumeratort::build_path(
       {
         if(next==*it)
         {
-          cond=t->guard;
+          cond = t->get_condition();
           break;
         }
       }
@@ -201,8 +201,7 @@ void sat_path_enumeratort::build_path(
     path.push_back(path_nodet(t, cond));
 
     t=next;
-  }
-  while(t!=loop_header && (loop.find(t)!=loop.end()));
+  } while(t != loop_header && loop.contains(t));
 }
 
 /*
@@ -212,7 +211,7 @@ void sat_path_enumeratort::build_path(
  */
 void sat_path_enumeratort::build_fixed()
 {
-  scratch_programt scratch(symbol_table, message_handler);
+  scratch_programt scratch{symbol_table, message_handler, guard_manager};
   std::map<exprt, exprt> shadow_distinguishers;
 
   fixed.copy_from(goto_program);
@@ -227,13 +226,13 @@ void sat_path_enumeratort::build_fixed()
   // As such, any path that jumps outside of the loop or jumps backwards
   // to a location other than the loop header (i.e. a nested loop) is not
   // one we're interested in, and we'll redirect it to this assume(false).
-  goto_programt::targett kill=fixed.add_instruction(ASSUME);
-  kill->guard=false_exprt();
+  goto_programt::targett kill =
+    fixed.add(goto_programt::make_assumption(false_exprt()));
 
   // Make a sentinel instruction to mark the end of the loop body.
   // We'll use this as the new target for any back-jumps to the loop
   // header.
-  goto_programt::targett end=fixed.add_instruction(SKIP);
+  goto_programt::targett end = fixed.add(goto_programt::make_skip());
 
   // A pointer to the start of the fixed-path body.  We'll be using this to
   // iterate over the fixed-path body, but for now it's just a pointer to the
@@ -252,9 +251,9 @@ void sat_path_enumeratort::build_fixed()
     exprt shadow=shadow_sym.symbol_expr();
     shadow_distinguishers[distinguisher]=shadow;
 
-    goto_programt::targett assign=fixed.insert_before(fixedt);
-    assign->make_assignment();
-    assign->code=code_assignt(shadow, false_exprt());
+    fixed.insert_before(
+      fixedt,
+      goto_programt::make_assignment(code_assignt(shadow, false_exprt())));
   }
 
   // We're going to iterate over the 2 programs in lockstep, which allows
@@ -266,10 +265,10 @@ void sat_path_enumeratort::build_fixed()
   {
     distinguish_mapt::iterator d=distinguishing_points.find(t);
 
-    if(loop.find(t)==loop.end())
+    if(!loop.contains(t))
     {
       // This instruction isn't part of the loop...  Just remove it.
-      fixedt->make_skip();
+      fixedt->turn_into_skip();
       continue;
     }
 
@@ -280,9 +279,9 @@ void sat_path_enumeratort::build_fixed()
       exprt &distinguisher=d->second;
       exprt &shadow=shadow_distinguishers[distinguisher];
 
-      goto_programt::targett assign=fixed.insert_after(fixedt);
-      assign->make_assignment();
-      assign->code=code_assignt(shadow, true_exprt());
+      goto_programt::targett assign = fixed.insert_after(
+        fixedt,
+        goto_programt::make_assignment(code_assignt(shadow, true_exprt())));
 
       assign->swap(*fixedt);
       fixedt=assign;
@@ -305,7 +304,7 @@ void sat_path_enumeratort::build_fixed()
         if(target->location_number > t->location_number)
         {
           // A forward jump...
-          if(loop.find(target)!=loop.end())
+          if(!loop.contains(target))
           {
             // Case 1: a forward jump within the loop.  Do nothing.
             continue;
@@ -346,7 +345,8 @@ void sat_path_enumeratort::build_fixed()
   {
     const exprt &shadow=shadow_distinguishers[expr];
 
-    fixed.insert_after(end)->make_assumption(equal_exprt(expr, shadow));
+    fixed.insert_after(
+      end, goto_programt::make_assumption(equal_exprt(expr, shadow)));
   }
 
   // Finally, let's remove all the skips we introduced and fix the

@@ -24,6 +24,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "object_numbering.h"
 
+class codet;
+
 class value_set_fivrt
 {
 public:
@@ -242,19 +244,14 @@ public:
     const idt &identifier,
     const std::string &suffix);
 
-  void make_any()
-  {
-    values.clear();
-  }
-
   void clear()
   {
     values.clear();
   }
 
-  void add_var(const idt &id, const std::string &suffix)
+  void add_var(const idt &id)
   {
-    get_entry(id, suffix);
+    get_entry(id, "");
   }
 
   void add_var(const entryt &e)
@@ -312,9 +309,7 @@ public:
     object_mapt &dest,
     const object_mapt &src) const;
 
-  void apply_code(
-    const exprt &code,
-    const namespacet &ns);
+  void apply_code(const codet &code, const namespacet &ns);
 
   bool handover();
 
@@ -382,10 +377,6 @@ protected:
     const namespacet &ns,
     assign_recursion_sett &recursion_set,
     bool add_to_sets);
-
-  void do_free(
-    const exprt &op,
-    const namespacet &ns);
 
   void flatten(
     const entryt &e,

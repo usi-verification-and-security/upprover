@@ -48,14 +48,14 @@ void _rw_set_loct::compute()
 {
   if(target->is_assign())
   {
-    assert(target->code.operands().size()==2);
-    assign(target->code.op0(), target->code.op1());
+    const auto &assignment = target->get_assign();
+    assign(assignment.lhs(), assignment.rhs());
   }
   else if(target->is_goto() ||
           target->is_assume() ||
           target->is_assert())
   {
-    read(target->guard);
+    read(target->get_condition());
   }
   else if(target->is_function_call())
   {
@@ -79,14 +79,15 @@ void _rw_set_loct::compute()
 void _rw_set_loct::assign(const exprt &lhs, const exprt &rhs)
 {
   read(rhs);
-  read_write_rec(lhs, false, true, "", guardt());
+  read_write_rec(lhs, false, true, "", exprt::operandst());
 }
 
 void _rw_set_loct::read_write_rec(
   const exprt &expr,
-  bool r, bool w,
+  bool r,
+  bool w,
   const std::string &suffix,
-  const guardt &guard)
+  const exprt::operandst &guard_conjuncts)
 {
   if(expr.id()==ID_symbol)
   {
@@ -96,42 +97,43 @@ void _rw_set_loct::read_write_rec(
 
     if(r)
     {
-      entryt &entry=r_entries[object];
-      entry.object=object;
-      entry.symbol_expr=symbol_expr;
-      entry.guard=guard.as_expr(); // should 'OR'
+      const auto &entry = r_entries.emplace(
+        object, entryt(symbol_expr, object, conjunction(guard_conjuncts)));
 
-      track_deref(entry, true);
+      track_deref(entry.first->second, true);
     }
 
     if(w)
     {
-      entryt &entry=w_entries[object];
-      entry.object=object;
-      entry.symbol_expr=symbol_expr;
-      entry.guard=guard.as_expr(); // should 'OR'
+      const auto &entry = w_entries.emplace(
+        object, entryt(symbol_expr, object, conjunction(guard_conjuncts)));
 
-      track_deref(entry, false);
+      track_deref(entry.first->second, false);
     }
   }
   else if(expr.id()==ID_member)
   {
-    assert(expr.operands().size()==1);
-    const std::string &component_name=expr.get_string(ID_component_name);
-    read_write_rec(expr.op0(), r, w, "."+component_name+suffix, guard);
+    const auto &member_expr = to_member_expr(expr);
+    const std::string &component_name =
+      id2string(member_expr.get_component_name());
+    read_write_rec(
+      member_expr.compound(),
+      r,
+      w,
+      "." + component_name + suffix,
+      guard_conjuncts);
   }
   else if(expr.id()==ID_index)
   {
     // we don't distinguish the array elements for now
-    assert(expr.operands().size()==2);
-    read_write_rec(expr.op0(), r, w, "[]"+suffix, guard);
-    read(expr.op1(), guard);
+    const auto &index_expr = to_index_expr(expr);
+    read_write_rec(index_expr.array(), r, w, "[]" + suffix, guard_conjuncts);
+    read(index_expr.index(), guard_conjuncts);
   }
   else if(expr.id()==ID_dereference)
   {
-    assert(expr.operands().size()==1);
     set_track_deref();
-    read(expr.op0(), guard);
+    read(to_dereference_expr(expr).pointer(), guard_conjuncts);
 
     exprt tmp=expr;
     #ifdef LOCAL_MAY
@@ -151,25 +153,24 @@ void _rw_set_loct::read_write_rec(
         entryt &entry=r_entries[object];
         entry.object=object;
         entry.symbol_expr=symbol_exprt(ID_unknown);
-        entry.guard=guard.as_expr(); // should 'OR'
+        entry.guard = conjunction(guard_conjuncts); // should 'OR'
 
         continue;
       }
       #endif
-      read_write_rec(*it, r, w, suffix, guard);
+      read_write_rec(*it, r, w, suffix, guard_conjuncts);
     }
     #else
-    dereference(target, tmp, ns, value_sets);
+    dereference(function_id, target, tmp, ns, value_sets);
 
-    read_write_rec(tmp, r, w, suffix, guard);
-    #endif
+    read_write_rec(tmp, r, w, suffix, guard_conjuncts);
+#endif
 
     reset_track_deref();
   }
   else if(expr.id()==ID_typecast)
   {
-    assert(expr.operands().size()==1);
-    read_write_rec(expr.op0(), r, w, suffix, guard);
+    read_write_rec(to_typecast_expr(expr).op(), r, w, suffix, guard_conjuncts);
   }
   else if(expr.id()==ID_address_of)
   {
@@ -177,21 +178,21 @@ void _rw_set_loct::read_write_rec(
   }
   else if(expr.id()==ID_if)
   {
-    assert(expr.operands().size()==3);
-    read(expr.op0(), guard);
+    const auto &if_expr = to_if_expr(expr);
+    read(if_expr.cond(), guard_conjuncts);
 
-    guardt true_guard(guard);
-    true_guard.add(expr.op0());
-    read_write_rec(expr.op1(), r, w, suffix, true_guard);
+    exprt::operandst true_guard = guard_conjuncts;
+    true_guard.push_back(if_expr.cond());
+    read_write_rec(if_expr.true_case(), r, w, suffix, true_guard);
 
-    guardt false_guard(guard);
-    false_guard.add(not_exprt(expr.op0()));
-    read_write_rec(expr.op2(), r, w, suffix, false_guard);
+    exprt::operandst false_guard = guard_conjuncts;
+    false_guard.push_back(not_exprt(if_expr.cond()));
+    read_write_rec(if_expr.false_case(), r, w, suffix, false_guard);
   }
   else
   {
     forall_operands(it, expr)
-      read_write_rec(*it, r, w, suffix, guard);
+      read_write_rec(*it, r, w, suffix, guard_conjuncts);
   }
 }
 
@@ -199,10 +200,10 @@ void rw_set_functiont::compute_rec(const exprt &function)
 {
   if(function.id()==ID_symbol)
   {
-    const irep_idt &id=to_symbol_expr(function).get_identifier();
+    const irep_idt &function_id = to_symbol_expr(function).get_identifier();
 
-    goto_functionst::function_mapt::const_iterator f_it=
-      goto_functions.function_map.find(id);
+    goto_functionst::function_mapt::const_iterator f_it =
+      goto_functions.function_map.find(function_id);
 
     if(f_it!=goto_functions.function_map.end())
     {
@@ -220,9 +221,14 @@ void rw_set_functiont::compute_rec(const exprt &function)
 
       forall_goto_program_instructions(i_it, body)
       {
-        *this+=rw_set_loct(ns, value_sets, i_it
+        *this += rw_set_loct(
+          ns,
+          value_sets,
+          function_id,
+          i_it
 #ifdef LOCAL_MAY
-        , local_may
+          ,
+          local_may
 #endif
         ); // NOLINT(whitespace/parens)
       }

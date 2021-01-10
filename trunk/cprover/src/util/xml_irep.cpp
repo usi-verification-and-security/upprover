@@ -14,7 +14,7 @@ Author: Daniel Kroening
 #include <string>
 
 #include "irep.h"
-#include "xml.h"
+#include "source_location.h"
 
 void convert(
   const irept &irep,
@@ -30,18 +30,20 @@ void convert(
   }
 
   forall_named_irep(it, irep.get_named_sub())
-  {
-    xmlt &x_nsub=xml.new_element("named_sub");
-    x_nsub.set_attribute("name", name2string(it->first));
-    convert(it->second, x_nsub);
-  }
+    if(!irept::is_comment(it->first))
+    {
+      xmlt &x_nsub = xml.new_element("named_sub");
+      x_nsub.set_attribute("name", name2string(it->first));
+      convert(it->second, x_nsub);
+    }
 
-  forall_named_irep(it, irep.get_comments())
-  {
-    xmlt &x_com = xml.new_element("comment");
-    x_com.set_attribute("name", name2string(it->first));
-    convert(it->second, x_com);
-  }
+  forall_named_irep(it, irep.get_named_sub())
+    if(!irept::is_comment(it->first))
+    {
+      xmlt &x_com = xml.new_element("comment");
+      x_com.set_attribute("name", name2string(it->first));
+      convert(it->second, x_com);
+    }
 }
 
 void convert(
@@ -84,4 +86,29 @@ void convert(
       std::cout << "\n";
     }
   }
+}
+
+xmlt xml(const source_locationt &location)
+{
+  xmlt result;
+
+  result.name = "location";
+
+  if(!location.get_working_directory().empty())
+    result.set_attribute(
+      "working-directory", id2string(location.get_working_directory()));
+
+  if(!location.get_file().empty())
+    result.set_attribute("file", id2string(location.get_file()));
+
+  if(!location.get_line().empty())
+    result.set_attribute("line", id2string(location.get_line()));
+
+  if(!location.get_column().empty())
+    result.set_attribute("column", id2string(location.get_column()));
+
+  if(!location.get_function().empty())
+    result.set_attribute("function", id2string(location.get_function()));
+
+  return result;
 }

@@ -231,7 +231,7 @@ void check_call_sequencet::operator()()
     {
       goto_programt::const_targett t=e.pc->get_target();
 
-      if(e.pc->guard.is_true())
+      if(e.pc->get_condition().is_true())
         e.pc=t;
       else
       {
@@ -258,10 +258,10 @@ void check_call_sequence(const goto_modelt &goto_model)
   std::string line;
   while(std::getline(std::cin, line))
   {
-    if(line!="" && line[line.size()-1]=='\r')
+    if(!line.empty() && line[line.size() - 1] == '\r')
       line.resize(line.size()-1);
 
-    if(line!="")
+    if(!line.empty())
       sequence.push_back(line);
   }
 
@@ -277,7 +277,7 @@ static void list_calls_and_arguments(
     if(!i_it->is_function_call())
       continue;
 
-    const code_function_callt call=to_code_function_call(i_it->code);
+    const code_function_callt &call = to_code_function_call(i_it->code);
 
     const exprt &f=call.function();
 

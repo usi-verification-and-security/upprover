@@ -13,9 +13,11 @@ Date: October 2012
 
 #include "concurrency.h"
 
-#include <util/std_expr.h>
 #include <util/find_symbols.h>
+#include <util/invariant.h>
+#include <util/optional.h>
 #include <util/replace_symbol.h>
+#include <util/std_expr.h>
 
 #include <analyses/is_threaded.h>
 
@@ -57,14 +59,14 @@ protected:
   {
   public:
     typet type;
-    symbol_exprt array_symbol, w_index_symbol;
+    optionalt<symbol_exprt> array_symbol, w_index_symbol;
   };
 
   class thread_local_vart
   {
   public:
     typet type;
-    symbol_exprt array_symbol;
+    optionalt<symbol_exprt> array_symbol;
   };
 
   typedef std::map<irep_idt, shared_vart> shared_varst;
@@ -76,33 +78,22 @@ protected:
 
 void concurrency_instrumentationt::instrument(exprt &expr)
 {
-  std::set<exprt> symbols;
-
-  find_symbols(expr, symbols);
-
   replace_symbolt replace_symbol;
 
-  for(std::set<exprt>::const_iterator
-      s_it=symbols.begin();
-      s_it!=symbols.end();
-      s_it++)
+  for(const symbol_exprt &s : find_symbols(expr))
   {
-    if(s_it->id()==ID_symbol)
+    shared_varst::const_iterator v_it = shared_vars.find(s.get_identifier());
+
+    if(v_it != shared_vars.end())
     {
-      const irep_idt identifier=
-        to_symbol_expr(*s_it).get_identifier();
+      UNIMPLEMENTED;
+      // not yet done: neither array_symbol nor w_index_symbol are actually
+      // initialized anywhere
+      const shared_vart &shared_var = v_it->second;
+      const index_exprt new_expr(
+        *shared_var.array_symbol, *shared_var.w_index_symbol);
 
-      shared_varst::const_iterator
-        v_it=shared_vars.find(identifier);
-
-      if(v_it!=shared_vars.end())
-      {
-        index_exprt new_expr;
-        // new_expr.array()=symbol_expr();
-        // new_expr.index()=symbol_expr();
-
-        replace_symbol.insert(identifier, new_expr);
-      }
+      replace_symbol.insert(s, new_expr);
     }
   }
 }
@@ -121,57 +112,48 @@ void concurrency_instrumentationt::instrument(
       instrument(code.rhs());
     }
     else if(it->is_assume() || it->is_assert() || it->is_goto())
-      instrument(it->guard);
+    {
+      exprt cond = it->get_condition();
+      instrument(cond);
+      it->set_condition(cond);
+    }
     else if(it->is_function_call())
     {
       code_function_callt &code=to_code_function_call(it->code);
       instrument(code.function());
 
       // instrument(code.lhs(), LHS);
-      Forall_expr(it, code.arguments())
-        instrument(*it);
+      for(auto &arg : code.arguments())
+        instrument(arg);
     }
   }
 }
 
 void concurrency_instrumentationt::collect(const exprt &expr)
 {
-  std::set<exprt> symbols;
-
-  find_symbols(expr, symbols);
-
-  for(std::set<exprt>::const_iterator
-      s_it=symbols.begin();
-      s_it!=symbols.end();
-      s_it++)
+  for(const auto &identifier : find_symbol_identifiers(expr))
   {
-    if(s_it->id()==ID_symbol)
+    namespacet ns(symbol_table);
+    const symbolt &symbol = ns.lookup(identifier);
+
+    if(!symbol.is_state_var)
+      continue;
+
+    if(symbol.is_thread_local)
     {
-      const irep_idt identifier=
-        to_symbol_expr(*s_it).get_identifier();
-
-      namespacet ns(symbol_table);
-      const symbolt &symbol=ns.lookup(identifier);
-
-      if(!symbol.is_state_var)
+      if(thread_local_vars.find(identifier) != thread_local_vars.end())
         continue;
 
-      if(symbol.is_thread_local)
-      {
-        if(thread_local_vars.find(identifier)!=thread_local_vars.end())
-          continue;
+      thread_local_vart &thread_local_var = thread_local_vars[identifier];
+      thread_local_var.type = symbol.type;
+    }
+    else
+    {
+      if(shared_vars.find(identifier) != shared_vars.end())
+        continue;
 
-        thread_local_vart &thread_local_var=thread_local_vars[identifier];
-        thread_local_var.type=symbol.type;
-      }
-      else
-      {
-        if(shared_vars.find(identifier)!=shared_vars.end())
-          continue;
-
-        shared_vart &shared_var=shared_vars[identifier];
-        shared_var.type=symbol.type;
-      }
+      shared_vart &shared_var = shared_vars[identifier];
+      shared_var.type = symbol.type;
     }
   }
 }
@@ -183,14 +165,7 @@ void concurrency_instrumentationt::collect(
   forall_goto_program_instructions(i_it, goto_program)
   {
     if(is_threaded(i_it))
-    {
-      if(i_it->is_assign())
-        collect(i_it->code);
-      else if(i_it->is_assume() || i_it->is_assert() || i_it->is_goto())
-        collect(i_it->guard);
-      else if(i_it->is_function_call())
-        collect(i_it->code);
-    }
+      i_it->apply([this](const exprt &e) { collect(e); });
   }
 }
 

@@ -14,6 +14,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "std_types.h"
 #include "std_expr.h"
 
+#include <algorithm>
+
 bool to_integer(const exprt &expr, mp_integer &int_value)
 {
   if(!expr.is_constant())
@@ -43,17 +45,20 @@ bool to_integer(const constant_exprt &expr, mp_integer &int_value)
   }
   else if(type_id==ID_unsignedbv)
   {
-    int_value=binary2integer(id2string(value), false);
+    const auto width = to_unsignedbv_type(type).get_width();
+    int_value = bvrep2integer(value, width, false);
     return false;
   }
   else if(type_id==ID_signedbv)
   {
-    int_value=binary2integer(id2string(value), true);
+    const auto width = to_signedbv_type(type).get_width();
+    int_value = bvrep2integer(value, width, true);
     return false;
   }
   else if(type_id==ID_c_bool)
   {
-    int_value=binary2integer(id2string(value), false);
+    const auto width = to_c_bool_type(type).get_width();
+    int_value = bvrep2integer(value, width, false);
     return false;
   }
   else if(type_id==ID_c_enum)
@@ -61,48 +66,41 @@ bool to_integer(const constant_exprt &expr, mp_integer &int_value)
     const typet &subtype=to_c_enum_type(type).subtype();
     if(subtype.id()==ID_signedbv)
     {
-      int_value=binary2integer(id2string(value), true);
+      const auto width = to_signedbv_type(type).get_width();
+      int_value = bvrep2integer(value, width, true);
       return false;
     }
     else if(subtype.id()==ID_unsignedbv)
     {
-      int_value=binary2integer(id2string(value), false);
+      const auto width = to_unsignedbv_type(type).get_width();
+      int_value = bvrep2integer(value, width, false);
       return false;
     }
   }
   else if(type_id==ID_c_bit_field)
   {
-    const typet &subtype=type.subtype();
+    const auto &c_bit_field_type = to_c_bit_field_type(type);
+    const auto width = c_bit_field_type.get_width();
+    const typet &subtype = c_bit_field_type.subtype();
+
     if(subtype.id()==ID_signedbv)
     {
-      int_value=binary2integer(id2string(value), true);
+      int_value = bvrep2integer(value, width, true);
       return false;
     }
     else if(subtype.id()==ID_unsignedbv)
     {
-      int_value=binary2integer(id2string(value), false);
+      int_value = bvrep2integer(value, width, false);
+      return false;
+    }
+    else if(subtype.id() == ID_c_bool)
+    {
+      int_value = bvrep2integer(value, width, false);
       return false;
     }
   }
 
   return true;
-}
-
-/// convert a positive integer expression to an unsigned int
-/// \par parameters: a constant expression and a reference to an unsigned int
-/// \return an error flag
-bool to_unsigned_integer(const constant_exprt &expr, unsigned &uint_value)
-{
-  mp_integer i;
-  if(to_integer(expr, i))
-    return true;
-  if(i<0)
-    return true;
-  else
-  {
-    uint_value=integer2unsigned(i);
-    return false;
-  }
 }
 
 constant_exprt from_integer(
@@ -113,76 +111,56 @@ constant_exprt from_integer(
 
   if(type_id==ID_integer)
   {
-    constant_exprt result(type);
-    result.set_value(integer2string(int_value));
-    return result;
+    return constant_exprt(integer2string(int_value), type);
   }
   else if(type_id==ID_natural)
   {
-    if(int_value<0)
-    {
-      constant_exprt r;
-      r.make_nil();
-      return r;
-    }
-    constant_exprt result(type);
-    result.set_value(integer2string(int_value));
-    return result;
+    PRECONDITION(int_value >= 0);
+    return constant_exprt(integer2string(int_value), type);
   }
   else if(type_id==ID_unsignedbv)
   {
     std::size_t width=to_unsignedbv_type(type).get_width();
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_bv)
   {
     std::size_t width=to_bv_type(type).get_width();
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_signedbv)
   {
     std::size_t width=to_signedbv_type(type).get_width();
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_c_enum)
   {
     const std::size_t width =
-      to_c_enum_type(type).subtype().get_size_t(ID_width);
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+      to_bitvector_type(to_c_enum_type(type).subtype()).get_width();
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_c_bool)
   {
     std::size_t width=to_c_bool_type(type).get_width();
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_bool)
   {
-    if(int_value==0)
+    PRECONDITION(int_value == 0 || int_value == 1);
+    if(int_value == 0)
       return false_exprt();
-    else if(int_value==1)
+    else
       return true_exprt();
   }
   else if(type_id==ID_pointer)
   {
-    if(int_value==0)
-      return null_pointer_exprt(to_pointer_type(type));
+    PRECONDITION(int_value == 0);
+    return null_pointer_exprt(to_pointer_type(type));
   }
   else if(type_id==ID_c_bit_field)
   {
     std::size_t width=to_c_bit_field_type(type).get_width();
-    constant_exprt result(type);
-    result.set_value(integer2binary(int_value, width));
-    return result;
+    return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_fixedbv)
   {
@@ -197,13 +175,8 @@ constant_exprt from_integer(
     ieee_float.from_integer(int_value);
     return ieee_float.to_expr();
   }
-
-  {
+  else
     PRECONDITION(false);
-    constant_exprt r;
-    r.make_nil();
-    return r;
-  }
 }
 
 /// ceil(log2(size))
@@ -241,7 +214,7 @@ mp_integer power(const mp_integer &base,
     case 2:
       {
         mp_integer result;
-        result.setPower2(exponent.to_ulong());
+        result.setPower2(numeric_cast_v<unsigned>(exponent));
         return result;
       }
     case 1: return 1;
@@ -286,4 +259,172 @@ void mp_max(mp_integer &a, const mp_integer &b)
 {
   if(b>a)
     a=b;
+}
+
+/// Get a bit with given index from bit-vector representation.
+/// \param src: the bitvector representation
+/// \param width: the number of bits in the bitvector
+/// \param bit_index: index (0 is the least significant)
+bool get_bvrep_bit(
+  const irep_idt &src,
+  std::size_t width,
+  std::size_t bit_index)
+{
+  PRECONDITION(bit_index < width);
+
+  // The representation is hex, i.e., four bits per letter,
+  // most significant nibble first, using uppercase letters.
+  // No lowercase, no leading zeros (other than for 'zero'),
+  // to ensure canonicity.
+  const auto nibble_index = bit_index / 4;
+
+  if(nibble_index >= src.size())
+    return false;
+
+  const char nibble = src[src.size() - 1 - nibble_index];
+
+  DATA_INVARIANT(
+    isdigit(nibble) || (nibble >= 'A' && nibble <= 'F'),
+    "bvrep is hexadecimal, upper-case");
+
+  const unsigned char nibble_value =
+    isdigit(nibble) ? nibble - '0' : nibble - 'A' + 10;
+
+  return ((nibble_value >> (bit_index % 4)) & 1) != 0;
+}
+
+/// turn a value 0...15 into '0'-'9', 'A'-'Z'
+static char nibble2hex(unsigned char nibble)
+{
+  PRECONDITION(nibble <= 0xf);
+
+  if(nibble >= 10)
+    return 'A' + nibble - 10;
+  else
+    return '0' + nibble;
+}
+
+/// construct a bit-vector representation from a functor
+/// \param width: the width of the bit-vector
+/// \param f: the functor -- the parameter is the bit index
+/// \return new bitvector representation
+irep_idt
+make_bvrep(const std::size_t width, const std::function<bool(std::size_t)> f)
+{
+  std::string result;
+  result.reserve((width + 3) / 4);
+  unsigned char nibble = 0;
+
+  for(std::size_t i = 0; i < width; i++)
+  {
+    const auto bit_in_nibble = i % 4;
+
+    nibble |= ((unsigned char)f(i)) << bit_in_nibble;
+
+    if(bit_in_nibble == 3)
+    {
+      result += nibble2hex(nibble);
+      nibble = 0;
+    }
+  }
+
+  if(nibble != 0)
+    result += nibble2hex(nibble);
+
+  // drop leading zeros
+  const std::size_t pos = result.find_last_not_of('0');
+
+  if(pos == std::string::npos)
+    return ID_0;
+  else
+  {
+    result.resize(pos + 1);
+
+    std::reverse(result.begin(), result.end());
+
+    return result;
+  }
+}
+
+/// perform a binary bit-wise operation, given as a functor,
+/// on a bit-vector representation
+/// \param a: the representation of the first bit vector
+/// \param b: the representation of the second bit vector
+/// \param width: the width of the bit-vector
+/// \param f: the functor
+/// \return new bitvector representation
+irep_idt bvrep_bitwise_op(
+  const irep_idt &a,
+  const irep_idt &b,
+  const std::size_t width,
+  const std::function<bool(bool, bool)> f)
+{
+  return make_bvrep(width, [&a, &b, &width, f](std::size_t i) {
+    return f(get_bvrep_bit(a, width, i), get_bvrep_bit(b, width, i));
+  });
+}
+
+/// perform a unary bit-wise operation, given as a functor,
+/// on a bit-vector representation
+/// \param a: the bit-vector representation
+/// \param width: the width of the bit-vector
+/// \param f: the functor
+/// \return new bitvector representation
+irep_idt bvrep_bitwise_op(
+  const irep_idt &a,
+  const std::size_t width,
+  const std::function<bool(bool)> f)
+{
+  return make_bvrep(width, [&a, &width, f](std::size_t i) {
+    return f(get_bvrep_bit(a, width, i));
+  });
+}
+
+/// convert an integer to bit-vector representation with given width
+/// This uses two's complement for negative numbers.
+/// If the value is out of range, it is 'wrapped around'.
+irep_idt integer2bvrep(const mp_integer &src, std::size_t width)
+{
+  const mp_integer p = power(2, width);
+
+  if(src.is_negative())
+  {
+    // do two's complement encoding of negative numbers
+    mp_integer tmp = src;
+    tmp.negate();
+    tmp %= p;
+    if(tmp != 0)
+      tmp = p - tmp;
+    return integer2string(tmp, 16);
+  }
+  else
+  {
+    // we 'wrap around' if 'src' is too large
+    return integer2string(src % p, 16);
+  }
+}
+
+/// convert a bit-vector representation (possibly signed) to integer
+mp_integer bvrep2integer(const irep_idt &src, std::size_t width, bool is_signed)
+{
+  if(is_signed)
+  {
+    PRECONDITION(width >= 1);
+    const auto tmp = string2integer(id2string(src), 16);
+    const auto p = power(2, width - 1);
+    if(tmp >= p)
+    {
+      const auto result = tmp - 2 * p;
+      PRECONDITION(result >= -p);
+      return result;
+    }
+    else
+      return tmp;
+  }
+  else
+  {
+    const auto result = string2integer(id2string(src), 16);
+    PRECONDITION(result < power(2, width));
+    return result;
+  }
 }

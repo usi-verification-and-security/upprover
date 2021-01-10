@@ -99,20 +99,10 @@ void value_set_analysis_fit::get_entries_rec(
   if(t.id()==ID_struct ||
      t.id()==ID_union)
   {
-    const struct_union_typet &struct_type=to_struct_union_type(t);
-
-    const struct_typet::componentst &c=struct_type.components();
-
-    for(struct_typet::componentst::const_iterator
-        it=c.begin();
-        it!=c.end();
-        it++)
+    for(const auto &c : to_struct_union_type(t).components())
     {
       get_entries_rec(
-        identifier,
-        suffix+"."+it->get_string(ID_name),
-        it->type(),
-        dest);
+        identifier, suffix + "." + id2string(c.get_name()), c.type(), dest);
     }
   }
   else if(t.id()==ID_array)
@@ -192,24 +182,30 @@ bool value_set_analysis_fit::check_type(const typet &type)
   else if(type.id()==ID_struct ||
           type.id()==ID_union)
   {
-    const struct_union_typet &struct_type=to_struct_union_type(type);
-
-    const struct_typet::componentst &components=
-      struct_type.components();
-
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &c : to_struct_union_type(type).components())
     {
-      if(check_type(it->type()))
+      if(check_type(c.type()))
         return true;
     }
   }
   else if(type.id()==ID_array)
     return check_type(type.subtype());
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_struct_tag || type.id() == ID_union_tag)
     return check_type(ns.follow(type));
 
   return false;
+}
+
+std::vector<exprt> value_set_analysis_fit::get_values(
+  const irep_idt &function_id,
+  flow_insensitive_analysis_baset::locationt l,
+  const exprt &expr)
+{
+  state.value_set.from_function =
+    state.value_set.function_numbering.number(function_id);
+  state.value_set.to_function =
+    state.value_set.function_numbering.number(function_id);
+  state.value_set.from_target_index = l->location_number;
+  state.value_set.to_target_index = l->location_number;
+  return state.value_set.get_value_set(expr, ns);
 }

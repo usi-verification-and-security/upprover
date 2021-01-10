@@ -27,7 +27,7 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
   try
   {
-    cpp_convert_plain_type(type);
+    cpp_convert_plain_type(type, get_message_handler());
   }
 
   catch(const char *err)
@@ -85,12 +85,12 @@ void cpp_typecheckt::typecheck_type(typet &type)
     typecheck_type(type.subtype());
 
     // Check if it is a pointer-to-member
-    if(type.find("to-member").is_not_nil())
+    if(type.find(ID_to_member).is_not_nil())
     {
       // these can point either to data members or member functions
       // of a class
 
-      typet &class_object=static_cast<typet &>(type.add("to-member"));
+      typet &class_object = static_cast<typet &>(type.add(ID_to_member));
 
       if(class_object.id()==ID_cpp_name)
       {
@@ -103,15 +103,15 @@ void cpp_typecheckt::typecheck_type(typet &type)
       // there may be parameters if this is a pointer to member function
       if(type.subtype().id()==ID_code)
       {
-        irept::subt &parameters=type.subtype().add(ID_parameters).get_sub();
+        code_typet::parameterst &parameters =
+          to_code_type(type.subtype()).parameters();
 
-        if(parameters.empty() ||
-           parameters.front().get(ID_C_base_name)!=ID_this)
+        if(parameters.empty() || !parameters.front().get_this())
         {
           // Add 'this' to the parameters
-          exprt a0(ID_parameter);
-          a0.set(ID_C_base_name, ID_this);
-          a0.type()=pointer_type(class_object);
+          code_typet::parametert a0(pointer_type(class_object));
+          a0.set_base_name(ID_this);
+          a0.set_this();
           parameters.insert(parameters.begin(), a0);
         }
       }
@@ -142,7 +142,11 @@ void cpp_typecheckt::typecheck_type(typet &type)
   }
   else if(type.id()==ID_vector)
   {
-    typecheck_vector_type(to_vector_type(type));
+    // already done
+  }
+  else if(type.id() == ID_frontend_vector)
+  {
+    typecheck_vector_type(type);
   }
   else if(type.id()==ID_code)
   {
@@ -178,15 +182,16 @@ void cpp_typecheckt::typecheck_type(typet &type)
   {
     typecheck_c_bit_field_type(to_c_bit_field_type(type));
   }
-  else if(type.id()==ID_unsignedbv ||
-          type.id()==ID_signedbv ||
-          type.id()==ID_bool ||
-          type.id()==ID_floatbv ||
-          type.id()==ID_fixedbv ||
-          type.id()==ID_empty)
+  else if(
+    type.id() == ID_unsignedbv || type.id() == ID_signedbv ||
+    type.id() == ID_bool || type.id() == ID_c_bool || type.id() == ID_floatbv ||
+    type.id() == ID_fixedbv || type.id() == ID_empty)
   {
   }
-  else if(type.id() == ID_symbol_type)
+  else if(type.id() == ID_struct_tag)
+  {
+  }
+  else if(type.id() == ID_union_tag)
   {
   }
   else if(type.id()==ID_constructor ||

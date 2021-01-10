@@ -16,26 +16,29 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/byte_operators.h>
 
-#ifndef HASH_CODE
-#include <util/irep_hash_container.h>
+#if !HASH_CODE
+#  include <util/irep_hash_container.h>
 #endif
 
 #include <solvers/prop/prop_conv.h>
 #include <solvers/flattening/boolbv_width.h>
 #include <solvers/flattening/pointer_logic.h>
 
+#include "letify.h"
+
 class typecast_exprt;
 class constant_exprt;
 class index_exprt;
 class member_exprt;
 
-class smt2_convt:public prop_convt
+class smt2_convt : public stack_decision_proceduret
 {
 public:
   enum class solvert
   {
     GENERIC,
     BOOLECTOR,
+    CPROVER_SMT2,
     CVC3,
     CVC4,
     MATHSAT,
@@ -49,85 +52,44 @@ public:
     const std::string &_notes,
     const std::string &_logic,
     solvert _solver,
-    std::ostream &_out):
-    prop_convt(_ns),
-    use_FPA_theory(false),
-    use_datatypes(false),
-    use_array_of_bool(false),
-    emit_set_logic(true),
-    out(_out),
-    benchmark(_benchmark),
-    notes(_notes),
-    logic(_logic),
-    solver(_solver),
-    boolbv_width(_ns),
-    let_id_count(0),
-    pointer_logic(_ns),
-    no_boolean_variables(0)
-  {
-    // We set some defaults differently
-    // for some solvers.
+    std::ostream &_out);
 
-    switch(solver)
-    {
-    case solvert::GENERIC:
-      break;
-
-    case solvert::BOOLECTOR:
-      break;
-
-    case solvert::CVC3:
-      break;
-
-    case solvert::CVC4:
-      break;
-
-    case solvert::MATHSAT:
-      break;
-
-    case solvert::YICES:
-      break;
-
-    case solvert::Z3:
-      use_array_of_bool=true;
-      emit_set_logic=false;
-      use_datatypes=true;
-      break;
-    }
-
-    write_header();
-  }
-
-  virtual ~smt2_convt() { }
-  virtual resultt dec_solve();
+  ~smt2_convt() override = default;
 
   bool use_FPA_theory;
   bool use_datatypes;
   bool use_array_of_bool;
   bool emit_set_logic;
 
-  // overloading interfaces
-  virtual literalt convert(const exprt &expr);
-  virtual void set_frozen(literalt) { /* not needed */ }
-  virtual void set_to(const exprt &expr, bool value);
-  virtual exprt get(const exprt &expr) const;
-  virtual std::string decision_procedure_text() const { return "SMT2"; }
-  virtual void print_assignment(std::ostream &out) const;
-  virtual tvt l_get(literalt l) const;
-  virtual void set_assumptions(const bvt &bv) { assumptions=bv; }
+  exprt handle(const exprt &expr) override;
+  void set_to(const exprt &expr, bool value) override;
+  exprt get(const exprt &expr) const override;
+  std::string decision_procedure_text() const override;
+  void print_assignment(std::ostream &out) const override;
 
-  // new stuff
-  void convert_expr(const exprt &);
-  void convert_type(const typet &);
-  void convert_literal(const literalt);
+  /// Unimplemented
+  void push() override;
+
+  /// Currently, only implements a single stack element (no nested contexts)
+  void push(const std::vector<exprt> &_assumptions) override;
+
+  /// Currently, only implements a single stack element (no nested contexts)
+  void pop() override;
+
+  std::size_t get_number_of_solver_calls() const override;
 
 protected:
+  const namespacet &ns;
   std::ostream &out;
   std::string benchmark, notes, logic;
   solvert solver;
 
-  bvt assumptions;
+  std::vector<exprt> assumptions;
   boolbv_widtht boolbv_width;
+
+  std::size_t number_of_solver_calls = 0;
+
+  resultt dec_solve() override;
 
   void write_header();
   void write_footer(std::ostream &);
@@ -135,18 +97,15 @@ protected:
   // tweaks for arrays
   bool use_array_theory(const exprt &);
   void flatten_array(const exprt &);
-  void unflatten_array(const exprt &);
 
   // specific expressions go here
-  void convert_byte_update(const byte_update_exprt &expr);
-  void convert_byte_extract(const byte_extract_exprt &expr);
   void convert_typecast(const typecast_exprt &expr);
   void convert_floatbv_typecast(const floatbv_typecast_exprt &expr);
   void convert_struct(const struct_exprt &expr);
   void convert_union(const union_exprt &expr);
   void convert_constant(const constant_exprt &expr);
-  void convert_relation(const exprt &expr);
-  void convert_is_dynamic_object(const exprt &expr);
+  void convert_relation(const binary_relation_exprt &);
+  void convert_is_dynamic_object(const unary_exprt &);
   void convert_plus(const plus_exprt &expr);
   void convert_minus(const minus_exprt &expr);
   void convert_div(const div_exprt &expr);
@@ -159,78 +118,32 @@ protected:
   void convert_mod(const mod_exprt &expr);
   void convert_index(const index_exprt &expr);
   void convert_member(const member_exprt &expr);
-  void convert_overflow(const exprt &expr);
+
   void convert_with(const with_exprt &expr);
   void convert_update(const exprt &expr);
 
   std::string convert_identifier(const irep_idt &identifier);
 
-  // introduces a let-expression for operands
-  exprt convert_operands(const exprt &);
+  void convert_expr(const exprt &);
+  void convert_type(const typet &);
+  void convert_literal(const literalt);
+
+  literalt convert(const exprt &expr);
+  tvt l_get(literalt l) const;
 
   // auxiliary methods
+  exprt prepare_for_convert_expr(const exprt &expr);
+  exprt lower_byte_operators(const exprt &expr);
   void find_symbols(const exprt &expr);
   void find_symbols(const typet &type);
   void find_symbols_rec(const typet &type, std::set<irep_idt> &recstack);
 
   // letification
-  struct let_count_idt
-  {
-    let_count_idt(std::size_t _count, const symbol_exprt &_let_symbol)
-      : count(_count), let_symbol(_let_symbol)
-    {
-    }
-
-    std::size_t count;
-    symbol_exprt let_symbol;
-  };
-
-#ifdef HASH_CODE
-  typedef std::unordered_map<exprt, let_count_idt, irep_hash> seen_expressionst;
-#else
-  typedef irep_hash_mapt<exprt, let_count_idt> seen_expressionst;
-#endif
-
-  std::size_t let_id_count;
-  static const std::size_t LET_COUNT = 2;
-
-  class let_visitort:public expr_visitort
-  {
-    const seen_expressionst &let_map;
-
-  public:
-    explicit let_visitort(const seen_expressionst &map):let_map(map) { }
-
-    void operator()(exprt &expr)
-    {
-      seen_expressionst::const_iterator it=let_map.find(expr);
-      if(it != let_map.end() && it->second.count >= LET_COUNT)
-      {
-        const symbol_exprt &symb = it->second.let_symbol;
-        expr=symb;
-      }
-    }
-  };
-
-  exprt letify(exprt &expr);
-  exprt letify_rec(
-    exprt &expr,
-    std::vector<exprt> &let_order,
-    const seen_expressionst &map,
-    std::size_t i);
-
-  void collect_bindings(
-    exprt &expr,
-    seen_expressionst &map,
-    std::vector<exprt> &let_order);
-
-  exprt substitute_let(
-    exprt &expr,
-    const seen_expressionst &map);
+  letifyt letify;
 
   // Parsing solver responses
   constant_exprt parse_literal(const irept &, const typet &type);
-  exprt parse_struct(const irept &s, const struct_typet &type);
+  struct_exprt parse_struct(const irept &s, const struct_typet &type);
   exprt parse_union(const irept &s, const union_typet &type);
   exprt parse_array(const irept &s, const array_typet &type);
   exprt parse_rec(const irept &s, const typet &type);
@@ -241,11 +154,11 @@ protected:
   std::string floatbv_suffix(const exprt &) const;
   std::set<irep_idt> bvfp_set; // already converted
 
-  class smt2_symbolt:public exprt
+  class smt2_symbolt : public nullary_exprt
   {
   public:
-    smt2_symbolt(const irep_idt &_identifier, const typet &_type):
-      exprt(ID_smt2_symbol, _type)
+    smt2_symbolt(const irep_idt &_identifier, const typet &_type)
+      : nullary_exprt(ID_smt2_symbol, _type)
     { set(ID_identifier, _identifier); }
 
     const irep_idt &get_identifier() const
@@ -278,10 +191,11 @@ protected:
   // keeps track of all non-Boolean symbols and their value
   struct identifiert
   {
+    bool is_bound;
     typet type;
     exprt value;
 
-    identifiert()
+    identifiert() : is_bound(false)
     {
       type.make_nil();
       value.make_nil();

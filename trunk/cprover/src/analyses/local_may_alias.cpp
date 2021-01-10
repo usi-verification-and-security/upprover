@@ -250,21 +250,25 @@ void local_may_aliast::get_rec(
   }
   else if(rhs.id()==ID_plus)
   {
-    if(rhs.operands().size()>=3)
+    const auto &plus_expr = to_plus_expr(rhs);
+
+    if(plus_expr.operands().size() >= 3)
     {
-      assert(rhs.op0().type().id()==ID_pointer);
-      get_rec(dest, rhs.op0(), loc_info_src);
+      DATA_INVARIANT(
+        plus_expr.op0().type().id() == ID_pointer,
+        "pointer in pointer-typed sum must be op0");
+      get_rec(dest, plus_expr.op0(), loc_info_src);
     }
-    else if(rhs.operands().size()==2)
+    else if(plus_expr.operands().size() == 2)
     {
       // one must be pointer, one an integer
-      if(rhs.op0().type().id()==ID_pointer)
+      if(plus_expr.op0().type().id() == ID_pointer)
       {
-        get_rec(dest, rhs.op0(), loc_info_src);
+        get_rec(dest, plus_expr.op0(), loc_info_src);
       }
-      else if(rhs.op1().type().id()==ID_pointer)
+      else if(plus_expr.op1().type().id() == ID_pointer)
       {
-        get_rec(dest, rhs.op1(), loc_info_src);
+        get_rec(dest, plus_expr.op1(), loc_info_src);
       }
       else
         dest.insert(unknown_object);
@@ -274,9 +278,11 @@ void local_may_aliast::get_rec(
   }
   else if(rhs.id()==ID_minus)
   {
-    if(rhs.op0().type().id()==ID_pointer)
+    const auto &op0 = to_minus_expr(rhs).op0();
+
+    if(op0.type().id() == ID_pointer)
     {
-      get_rec(dest, rhs.op0(), loc_info_src);
+      get_rec(dest, op0, loc_info_src);
     }
     else
       dest.insert(unknown_object);
@@ -328,7 +334,8 @@ void local_may_aliast::build(const goto_functiont &goto_function)
 
   loc_infos.resize(cfg.nodes.size());
 
-  #if 0
+  (void)goto_function; // unused parameter
+#if 0
   // feed in sufficiently bad defaults
   for(code_typet::parameterst::const_iterator
       it=goto_function.type.parameters().begin();
@@ -340,9 +347,9 @@ void local_may_aliast::build(const goto_functiont &goto_function)
       loc_infos[0].points_to[objects.number(identifier)].objects.insert(
         unknown_object);
   }
-  #endif
+#endif
 
-  #if 0
+#if 0
   for(localst::locals_mapt::const_iterator
       l_it=locals.locals_map.begin();
       l_it!=locals.locals_map.end();
@@ -352,7 +359,7 @@ void local_may_aliast::build(const goto_functiont &goto_function)
       loc_infos[0].aliases.make_union(
         objects.number(l_it->second), unknown_object);
   }
-  #endif
+#endif
 
   while(!work_queue.empty())
   {
@@ -367,60 +374,85 @@ void local_may_aliast::build(const goto_functiont &goto_function)
     switch(instruction.type)
     {
     case ASSIGN:
-      {
-        const code_assignt &code_assign=to_code_assign(instruction.code);
-        assign_lhs(
-          code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
-      }
+    {
+      const code_assignt &code_assign = to_code_assign(instruction.code);
+      assign_lhs(
+        code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
       break;
+    }
 
     case DECL:
-      {
-        const code_declt &code_decl=to_code_decl(instruction.code);
-        assign_lhs(
-          code_decl.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
-      }
+    {
+      const code_declt &code_decl = to_code_decl(instruction.code);
+      assign_lhs(code_decl.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
       break;
+    }
 
     case DEAD:
-      {
-        const code_deadt &code_dead=to_code_dead(instruction.code);
-        assign_lhs(
-          code_dead.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
-      }
+    {
+      const code_deadt &code_dead = to_code_dead(instruction.code);
+      assign_lhs(code_dead.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
       break;
+    }
 
     case FUNCTION_CALL:
+    {
+      const code_function_callt &code_function_call =
+        to_code_function_call(instruction.code);
+      if(code_function_call.lhs().is_not_nil())
+        assign_lhs(
+          code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
+
+      // this might invalidate all pointers that are
+      // a) local and dirty
+      // b) global
+      for(std::size_t i = 0; i < objects.size(); i++)
       {
-        const code_function_callt &code_function_call=
-          to_code_function_call(instruction.code);
-        if(code_function_call.lhs().is_not_nil())
-          assign_lhs(
-            code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
-
-        // this might invalidate all pointers that are
-        // a) local and dirty
-        // b) global
-        for(std::size_t i=0; i<objects.size(); i++)
+        if(objects[i].id() == ID_symbol)
         {
-          if(objects[i].id()==ID_symbol)
-          {
-            const irep_idt &identifier=
-              to_symbol_expr(objects[i]).get_identifier();
+          const irep_idt &identifier =
+            to_symbol_expr(objects[i]).get_identifier();
 
-            if(dirty(identifier) || !locals.is_local(identifier))
-            {
-              loc_info_dest.aliases.isolate(i);
-              loc_info_dest.aliases.make_union(i, unknown_object);
-            }
+          if(dirty(identifier) || !locals.is_local(identifier))
+          {
+            loc_info_dest.aliases.isolate(i);
+            loc_info_dest.aliases.make_union(i, unknown_object);
           }
         }
       }
       break;
+    }
 
-    default:
-      {
-      }
+    case CATCH:
+    case THROW:
+      DATA_INVARIANT(false, "Exceptions must be removed before analysis");
+      break;
+    case RETURN:
+#if 0
+      DATA_INVARIANT(false, "Returns must be removed before analysis");
+#endif
+      break;
+    case GOTO:         // Ignoring the guard is a valid over-approximation
+    case START_THREAD: // Require a concurrent analysis at higher level
+    case END_THREAD:   // Require a concurrent analysis at higher level
+    case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
+    case ATOMIC_END:   // Ignoring is a valid over-approximation
+    case LOCATION:     // No action required
+    case SKIP:         // No action required
+    case END_FUNCTION: // No action required
+    case ASSERT:       // No action required
+    case ASSUME:       // Ignoring is a valid over-approximation
+      break;
+    case OTHER:
+#if 0
+      DATA_INVARIANT(
+        false, "Unclear what is a safe over-approximation of OTHER");
+#endif
+      break;
+    case INCOMPLETE_GOTO:
+    case NO_INSTRUCTION_TYPE:
+      DATA_INVARIANT(false, "Only complete instructions can be analyzed");
+      break;
     }
 
     for(local_cfgt::successorst::const_iterator
@@ -457,7 +489,7 @@ void local_may_aliast::output(
           if(loc_info.aliases.find(j)==i)
           {
             assert(j<objects.size());
-            irep_idt identifier = "";
+            irep_idt identifier;
             if(objects[j].id() == ID_symbol)
               identifier = to_symbol_expr(objects[j]).get_identifier();
             out << ' ' << from_expr(ns, identifier, objects[j]);
@@ -469,7 +501,7 @@ void local_may_aliast::output(
     }
 
     out << "\n";
-    goto_function.body.output_instruction(ns, "", out, *i_it);
+    goto_function.body.output_instruction(ns, irep_idt(), out, *i_it);
     out << "\n";
 
     l++;

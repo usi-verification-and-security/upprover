@@ -53,23 +53,18 @@ code_function_callt function_to_call(
      to_code_type(s_it->second.type).parameters().size()!=1 ||
      to_code_type(s_it->second.type).parameters()[0].type().id()!=ID_pointer)
   {
-    std::string error="function `"+id2string(id)+"' has wrong signature";
+    std::string error = "function '" + id2string(id) + "' has wrong signature";
     throw error;
   }
 
   string_constantt function_id_string(argument);
 
-  code_function_callt call;
-  call.lhs().make_nil();
-  call.function()=
-    symbol_exprt(s_it->second.name, s_it->second.type);
-  call.arguments().resize(1);
-  call.arguments()[0]=
-    typecast_exprt(
+  code_function_callt call(
+    symbol_exprt(s_it->second.name, s_it->second.type),
+    {typecast_exprt(
       address_of_exprt(
-        index_exprt(
-          function_id_string, from_integer(0, index_type()))),
-      to_code_type(s_it->second.type).parameters()[0].type());
+        index_exprt(function_id_string, from_integer(0, index_type()))),
+      to_code_type(s_it->second.type).parameters()[0].type())});
 
   return call;
 }
@@ -92,11 +87,10 @@ void function_enter(
     // patch in a call to `id' at the entry point
     goto_programt &body=f_it->second.body;
 
-    goto_programt::targett t=
-      body.insert_before(body.instructions.begin());
-    t->make_function_call(
-      function_to_call(goto_model.symbol_table, id, f_it->first));
-    t->function=f_it->first;
+    body.insert_before(
+      body.instructions.begin(),
+      goto_programt::make_function_call(
+        function_to_call(goto_model.symbol_table, id, f_it->first)));
   }
 }
 
@@ -121,15 +115,15 @@ void function_exit(
     // make sure we have END_OF_FUNCTION
     if(body.instructions.empty() ||
        !body.instructions.back().is_end_function())
-      body.add_instruction(END_FUNCTION);
+    {
+      body.add(goto_programt::make_end_function());
+    }
 
     Forall_goto_program_instructions(i_it, body)
     {
       if(i_it->is_return())
       {
-        goto_programt::instructiont call;
-        call.function=f_it->first;
-        call.make_function_call(
+        goto_programt::instructiont call = goto_programt::make_function_call(
           function_to_call(goto_model.symbol_table, id, f_it->first));
         body.insert_before_swap(i_it, call);
 
@@ -156,10 +150,8 @@ void function_exit(
 
     if(!has_return)
     {
-      goto_programt::instructiont call;
-      call.make_function_call(
+      goto_programt::instructiont call = goto_programt::make_function_call(
         function_to_call(goto_model.symbol_table, id, f_it->first));
-      call.function=f_it->first;
       body.insert_before_swap(last, call);
     }
   }

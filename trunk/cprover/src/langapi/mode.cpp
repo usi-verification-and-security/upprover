@@ -76,7 +76,7 @@ get_mode_from_identifier(const namespacet &ns, const irep_idt &identifier)
 /// \param ns: a namespace
 /// \param identifier: an identifier
 /// \return the corresponding language if the mode is not `ID_unknown`, or
-///    the default language otherwise;
+///   the default language otherwise;
 /// Note: It is assumed as an invariant that languages of symbols in the symbol
 ///   table have been registered.
 std::unique_ptr<languaget>
@@ -89,7 +89,7 @@ get_language_from_identifier(const namespacet &ns, const irep_idt &identifier)
   std::unique_ptr<languaget> language = get_language_from_mode(mode);
   INVARIANT(
     language,
-    "symbol `" + id2string(identifier) + "' has unknown mode '" +
+    "symbol '" + id2string(identifier) + "' has unknown mode '" +
       id2string(mode) + "'");
   return language;
 }
@@ -109,7 +109,7 @@ std::unique_ptr<languaget> get_language_from_filename(
   std::string extension=
     std::string(filename, ext_pos+1, std::string::npos);
 
-  if(extension=="")
+  if(extension.empty())
     return nullptr;
 
   for(languagest::const_iterator

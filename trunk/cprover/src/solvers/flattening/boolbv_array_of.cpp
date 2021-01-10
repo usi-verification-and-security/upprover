@@ -9,14 +9,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "boolbv.h"
 
 #include <util/arith_tools.h>
+#include <util/invariant.h>
 #include <util/std_types.h>
 
+/// Flatten arrays constructed from a single element.
 bvt boolbvt::convert_array_of(const array_of_exprt &expr)
 {
-  if(expr.type().id()!=ID_array)
-    throw "array_of must be array-typed";
+  DATA_INVARIANT(
+    expr.type().id() == ID_array, "array_of expression shall have array type");
 
-  const array_typet &array_type=to_array_type(expr.type());
+  const array_typet &array_type = expr.type();
 
   if(is_unbounded_array(array_type))
     return conversion_failed(expr);
@@ -35,28 +37,32 @@ bvt boolbvt::convert_array_of(const array_of_exprt &expr)
 
   const exprt &array_size=array_type.size();
 
-  mp_integer size;
+  const auto size = numeric_cast<mp_integer>(array_size);
 
-  if(to_integer(array_size, size))
+  if(!size.has_value())
     return conversion_failed(expr);
 
-  const bvt &tmp=convert_bv(expr.op0());
+  const bvt &tmp = convert_bv(expr.what());
+
+  INVARIANT(
+    *size * tmp.size() == width,
+    "total array bit width shall equal the number of elements times the "
+    "element bit with");
 
   bvt bv;
   bv.resize(width);
 
-  if(size*tmp.size()!=width)
-    throw "convert_array_of: unexpected operand width";
+  auto b_it = tmp.begin();
 
-  std::size_t offset=0;
-
-  for(mp_integer i=0; i<size; i=i+1)
+  for(auto &b : bv)
   {
-    for(std::size_t j=0; j<tmp.size(); j++, offset++)
-      bv[offset]=tmp[j];
-  }
+    b = *b_it;
 
-  assert(offset==bv.size());
+    b_it++;
+
+    if(b_it == tmp.end())
+      b_it = tmp.begin();
+  }
 
   return bv;
 }

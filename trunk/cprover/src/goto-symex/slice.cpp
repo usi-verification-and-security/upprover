@@ -51,7 +51,7 @@ void symex_slicet::slice(symex_target_equationt &equation)
     slice(*it);
 }
 
-void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
+void symex_slicet::slice(SSA_stept &SSA_step)
 {
   get_symbols(SSA_step.guard);
 
@@ -104,15 +104,14 @@ void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
     // ignore for now
     break;
 
-  default:
+  case goto_trace_stept::typet::NONE:
     UNREACHABLE;
   }
 }
 
-void symex_slicet::slice_assignment(
-  symex_target_equationt::SSA_stept &SSA_step)
+void symex_slicet::slice_assignment(SSA_stept &SSA_step)
 {
-  assert(SSA_step.ssa_lhs.id()==ID_symbol);
+  PRECONDITION(SSA_step.ssa_lhs.id() == ID_symbol);
   const irep_idt &id=SSA_step.ssa_lhs.get_identifier();
 
   if(depends.find(id)==depends.end())
@@ -124,11 +123,9 @@ void symex_slicet::slice_assignment(
     get_symbols(SSA_step.ssa_rhs);
 }
 
-void symex_slicet::slice_decl(
-  symex_target_equationt::SSA_stept &SSA_step)
+void symex_slicet::slice_decl(SSA_stept &SSA_step)
 {
-  assert(SSA_step.ssa_lhs.id()==ID_symbol);
-  const irep_idt &id=SSA_step.ssa_lhs.get_identifier();
+  const irep_idt &id = to_symbol_expr(SSA_step.ssa_lhs).get_identifier();
 
   if(depends.find(id)==depends.end())
   {
@@ -153,7 +150,7 @@ void symex_slicet::collect_open_variables(
       it!=equation.SSA_steps.end();
       it++)
   {
-    const symex_target_equationt::SSA_stept &SSA_step=*it;
+    const SSA_stept &SSA_step = *it;
 
     get_symbols(SSA_step.guard);
 
@@ -195,7 +192,7 @@ void symex_slicet::collect_open_variables(
       // ignore for now
       break;
 
-    default:
+    case goto_trace_stept::typet::GOTO:
       UNREACHABLE;
     }
   }
@@ -227,7 +224,7 @@ void collect_open_variables(
 
 /// Slice the symex trace with respect to a list of expressions
 /// \param equation: symex trace to be sliced
-/// \param expression: list of expressions, targets for slicing
+/// \param expressions: list of expressions, targets for slicing
 /// \return None. But equation is modified as a side-effect.
 void slice(
   symex_target_equationt &equation,
@@ -261,5 +258,14 @@ void simple_slice(symex_target_equationt &equation)
         s_it!=equation.SSA_steps.end();
         s_it++)
       s_it->ignore=true;
+  }
+}
+
+void revert_slice(symex_target_equationt &equation)
+{
+  // set ignore to false
+  for(auto &step : equation.SSA_steps)
+  {
+    step.ignore = false;
   }
 }

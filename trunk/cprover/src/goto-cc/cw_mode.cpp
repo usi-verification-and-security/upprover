@@ -51,6 +51,9 @@ int cw_modet::doit()
 
   debug() << "CodeWarrior mode" << eom;
 
+  // model validation
+  compiler.validate_goto_model = cmdline.isset("validate-goto-model");
+
   // get configuration
   config.set(cmdline);
 
@@ -91,7 +94,7 @@ int cw_modet::doit()
   }
   else
   {
-    compiler.output_file_object="";
+    compiler.output_file_object.clear();
     compiler.output_file_executable="a.out";
   }
 

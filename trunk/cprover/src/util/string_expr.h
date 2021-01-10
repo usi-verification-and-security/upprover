@@ -16,146 +16,79 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 #include "refined_string_type.h"
 #include "std_expr.h"
 
-// Given an representation of strings as exprt that implements `length` and
-// `content` this provides additional useful methods.
-template <typename child_t>
-class string_exprt
+inline binary_relation_exprt greater_or_equal_to(exprt lhs, exprt rhs)
 {
-private:
-  exprt &length()
+  PRECONDITION(rhs.type() == lhs.type());
+  return binary_relation_exprt(std::move(lhs), ID_ge, std::move(rhs));
+}
+
+inline binary_relation_exprt greater_than(exprt lhs, exprt rhs)
+{
+  PRECONDITION(rhs.type() == lhs.type());
+  return binary_relation_exprt(std::move(rhs), ID_lt, std::move(lhs));
+}
+
+inline binary_relation_exprt greater_than(const exprt &lhs, mp_integer i)
+{
+  return binary_relation_exprt(from_integer(i, lhs.type()), ID_lt, lhs);
+}
+
+inline binary_relation_exprt less_than_or_equal_to(exprt lhs, exprt rhs)
+{
+  PRECONDITION(rhs.type() == lhs.type());
+  return binary_relation_exprt(std::move(lhs), ID_le, std::move(rhs));
+}
+
+inline binary_relation_exprt
+less_than_or_equal_to(const exprt &lhs, mp_integer i)
+{
+  return binary_relation_exprt(lhs, ID_le, from_integer(i, lhs.type()));
+}
+
+inline binary_relation_exprt less_than(exprt lhs, exprt rhs)
+{
+  PRECONDITION(rhs.type() == lhs.type());
+  return binary_relation_exprt(std::move(lhs), ID_lt, std::move(rhs));
+}
+
+inline equal_exprt equal_to(exprt lhs, exprt rhs)
+{
+  PRECONDITION(rhs.type() == lhs.type());
+  return equal_exprt(std::move(lhs), std::move(rhs));
+}
+
+inline equal_exprt equal_to(const exprt &lhs, mp_integer i)
+{
+  return equal_exprt(lhs, from_integer(i, lhs.type()));
+}
+
+// Representation of strings as arrays
+class array_string_exprt : public exprt
+{
+public:
+  const typet &length_type() const
   {
-    return static_cast<child_t *>(this)->length();
+    return to_array_type(type()).size().type();
   }
-  const exprt &length() const
-  {
-    return static_cast<const child_t *>(this)->length();
-  }
+
   exprt &content()
   {
-    return static_cast<child_t *>(this)->content();
+    return *this;
   }
+
   const exprt &content() const
   {
-    return static_cast<const child_t *>(this)->content();
+    return *this;
   }
 
-protected:
-  string_exprt() = default;
-
-public:
   exprt operator[](const exprt &i) const
   {
     return index_exprt(content(), i);
   }
 
-  index_exprt operator[] (int i) const
+  index_exprt operator[](int i) const
   {
-    return index_exprt(content(), from_integer(i, length().type()));
-  }
-
-  // Comparison on the length of the strings
-  binary_relation_exprt axiom_for_length_ge(
-    const string_exprt &rhs) const
-  {
-    return binary_relation_exprt(length(), ID_ge, rhs.length());
-  }
-
-  binary_relation_exprt axiom_for_length_ge(
-    const exprt &rhs) const
-  {
-    PRECONDITION(rhs.type() == length().type());
-    return binary_relation_exprt(length(), ID_ge, rhs);
-  }
-
-  binary_relation_exprt axiom_for_length_gt(
-    const exprt &rhs) const
-  {
-    PRECONDITION(rhs.type() == length().type());
-    return binary_relation_exprt(rhs, ID_lt, length());
-  }
-
-  binary_relation_exprt axiom_for_length_gt(
-    const string_exprt &rhs) const
-  {
-    return binary_relation_exprt(rhs.length(), ID_lt, length());
-  }
-
-  binary_relation_exprt axiom_for_length_gt(mp_integer i) const
-  {
-    return axiom_for_length_gt(from_integer(i, length().type()));
-  }
-
-  binary_relation_exprt axiom_for_length_le(
-    const string_exprt &rhs) const
-  {
-    return binary_relation_exprt(length(), ID_le, rhs.length());
-  }
-
-  binary_relation_exprt axiom_for_length_le(
-    const exprt &rhs) const
-  {
-    PRECONDITION(rhs.type() == length().type());
-    return binary_relation_exprt(length(), ID_le, rhs);
-  }
-
-  binary_relation_exprt axiom_for_length_le(mp_integer i) const
-  {
-    return axiom_for_length_le(from_integer(i, length().type()));
-  }
-
-  binary_relation_exprt axiom_for_length_lt(
-    const string_exprt &rhs) const
-  {
-    return binary_relation_exprt(length(), ID_lt, rhs.length());
-  }
-
-  binary_relation_exprt axiom_for_length_lt(
-    const exprt &rhs) const
-  {
-    PRECONDITION(rhs.type() == length().type());
-    return binary_relation_exprt(length(), ID_lt, rhs);
-  }
-
-  equal_exprt axiom_for_has_same_length_as(
-    const string_exprt &rhs) const
-  {
-    return equal_exprt(length(), rhs.length());
-  }
-
-  equal_exprt axiom_for_has_length(const exprt &rhs) const
-  {
-    PRECONDITION(rhs.type() == length().type());
-    return equal_exprt(length(), rhs);
-  }
-
-  equal_exprt axiom_for_has_length(mp_integer i) const
-  {
-    return axiom_for_has_length(from_integer(i, length().type()));
-  }
-};
-
-// Representation of strings as arrays
-class array_string_exprt : public string_exprt<array_string_exprt>, public exprt
-{
-public:
-  exprt &length()
-  {
-    return to_array_type(type()).size();
-  }
-
-  const exprt &length() const
-  {
-    return to_array_type(type()).size();
-  }
-
-  exprt &content()
-  {
-    return *this;
-  }
-
-  const exprt &content() const
-  {
-    return *this;
+    return index_exprt(content(), from_integer(i, length_type()));
   }
 };
 
@@ -172,33 +105,22 @@ inline const array_string_exprt &to_array_string_expr(const exprt &expr)
 }
 
 // Represent strings as a struct with a length field and a content field
-class refined_string_exprt : public struct_exprt,
-                             public string_exprt<refined_string_exprt>
+class refined_string_exprt : public struct_exprt
 {
 public:
-  refined_string_exprt() : struct_exprt()
-  {
-  }
-
-  explicit refined_string_exprt(const typet &type) : struct_exprt(type)
-  {
-    operands().resize(2);
-  }
-
   refined_string_exprt(
     const exprt &_length,
     const exprt &_content,
     const typet &type)
-    : struct_exprt(type)
+    : struct_exprt({_length, _content}, type)
   {
-    copy_to_operands(_length, _content);
   }
 
   refined_string_exprt(const exprt &_length, const exprt &_content)
     : refined_string_exprt(
         _length,
         _content,
-        refined_string_typet(_length.type(), _content.type()))
+        refined_string_typet(_length.type(), to_pointer_type(_content.type())))
   {
   }
 
@@ -222,8 +144,6 @@ public:
     return op1();
   }
 
-  static exprt within_bounds(const exprt &idx, const exprt &bound);
-
   friend inline refined_string_exprt &to_string_expr(exprt &expr);
 };
 
@@ -244,15 +164,17 @@ inline const refined_string_exprt &to_string_expr(const exprt &expr)
 template <>
 inline bool can_cast_expr<refined_string_exprt>(const exprt &base)
 {
-  return base.id() == ID_struct && base.operands().size() == 2;
+  return base.id() == ID_struct && base.operands().size() == 2 &&
+    is_refined_string_type(base.type());
 }
 
 inline void validate_expr(const refined_string_exprt &x)
 {
   INVARIANT(x.id() == ID_struct, "refined string exprs are struct");
   validate_operands(x, 2, "refined string expr has length and content fields");
-  INVARIANT(x.length().type().id() == ID_signedbv, "length is an unsigned int");
-  INVARIANT(x.content().type().id() == ID_array, "content is an array");
+  INVARIANT(
+    x.length().type().id() == ID_signedbv, "length should be a signed int");
+  INVARIANT(x.content().type().id() == ID_array, "content should be an array");
 }
 
 #endif

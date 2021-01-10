@@ -35,7 +35,7 @@ public:
     ireps_on_readt ireps_on_read;
 
     irep_full_hash_containert irep_full_hash_container;
-    typedef std::map<unsigned, size_t> ireps_on_writet;
+    typedef std::map<std::size_t, std::size_t> ireps_on_writet;
     ireps_on_writet ireps_on_write;
 
     typedef std::vector<bool> string_mapt;
@@ -61,10 +61,7 @@ public:
     clear();
   };
 
-  std::size_t insert_on_write(std::size_t h);
-  std::size_t insert_on_read(std::size_t id, const irept &);
-
-  void reference_convert(std::istream &, irept &irep);
+  const irept &reference_convert(std::istream &);
   void reference_convert(const irept &irep, std::ostream &);
 
   irep_idt read_string_ref(std::istream &);
@@ -80,7 +77,7 @@ private:
   std::vector<char> read_buffer;
 
   void write_irep(std::ostream &, const irept &irep);
-  void read_irep(std::istream &, irept &irep);
+  irept read_irep(std::istream &);
 };
 
 #endif // CPROVER_UTIL_IREP_SERIALIZATION_H

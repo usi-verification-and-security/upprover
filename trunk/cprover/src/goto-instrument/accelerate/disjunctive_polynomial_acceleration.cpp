@@ -50,7 +50,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
   path_acceleratort &accelerator)
 {
   std::map<exprt, polynomialt> polynomials;
-  scratch_programt program(symbol_table, message_handler);
+  scratch_programt program{symbol_table, message_handler, guard_manager};
 
   accelerator.clear();
 
@@ -62,7 +62,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
       it!=goto_program.instructions.end();
       ++it)
   {
-    if(loop.find(it)!=loop.end())
+    if(loop.contains(it))
     {
       goto_program.output_instruction(ns, "scratch", std::cout, *it);
     }
@@ -143,7 +143,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
   expr_sett dirty;
   utils.find_modified(accelerator.path, dirty);
   polynomial_acceleratort path_acceleration(
-    message_handler, symbol_table, goto_functions, loop_counter);
+    message_handler, symbol_table, goto_functions, loop_counter, guard_manager);
   goto_programt::instructionst assigns;
 
   for(patht::iterator it=accelerator.path.begin();
@@ -212,7 +212,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
       std::map<exprt, polynomialt> this_poly;
       this_poly[target]=poly;
 
-      if(utils.check_inductive(this_poly, accelerator.path))
+      if(utils.check_inductive(this_poly, accelerator.path, guard_manager))
       {
         polynomials[target]=poly;
         accelerator.changed_vars.insert(target);
@@ -245,7 +245,8 @@ bool disjunctive_polynomial_accelerationt::accelerate(
 
   try
   {
-    path_is_monotone=utils.do_assumptions(polynomials, path, guard);
+    path_is_monotone =
+      utils.do_assumptions(polynomials, path, guard, guard_manager);
   }
   catch(const std::string &s)
   {
@@ -301,7 +302,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
   // assume(guard);
   // assume(no overflows in previous code);
 
-  program.add_instruction(ASSUME)->guard=pre_guard;
+  program.add(goto_programt::make_assumption(pre_guard));
   program.assign(
     loop_counter,
     side_effect_expr_nondett(loop_counter.type(), source_locationt()));
@@ -315,14 +316,14 @@ bool disjunctive_polynomial_accelerationt::accelerate(
   }
 
   // Add in any array assignments we can do now.
-  if(!utils.do_arrays(assigns, polynomials, loop_counter, stashed, program))
+  if(!utils.do_arrays(assigns, polynomials, stashed, program))
   {
     // We couldn't model some of the array assignments with polynomials...
     // Unfortunately that means we just have to bail out.
     return false;
   }
 
-  program.add_instruction(ASSUME)->guard=guard;
+  program.add(goto_programt::make_assumption(guard));
   program.fix_types();
 
   if(path_is_monotone)
@@ -337,7 +338,7 @@ bool disjunctive_polynomial_accelerationt::accelerate(
 
 bool disjunctive_polynomial_accelerationt::find_path(patht &path)
 {
-  scratch_programt program(symbol_table, message_handler);
+  scratch_programt program{symbol_table, message_handler, guard_manager};
 
   program.append(fixed);
   program.append(fixed);
@@ -369,11 +370,11 @@ bool disjunctive_polynomial_accelerationt::find_path(patht &path)
     program.assume(new_path);
   }
 
-  program.add_instruction(ASSERT)->guard=false_exprt();
+  program.add(goto_programt::make_assertion(false_exprt()));
 
   try
   {
-    if(program.check_sat())
+    if(program.check_sat(guard_manager))
     {
 #ifdef DEBUG
       std::cout << "Found a path\n";
@@ -405,7 +406,7 @@ bool disjunctive_polynomial_accelerationt::fit_polynomial(
   std::vector<expr_listt> parameters;
   std::set<std::pair<expr_listt, exprt> > coefficients;
   expr_listt exprs;
-  scratch_programt program(symbol_table, message_handler);
+  scratch_programt program{symbol_table, message_handler, guard_manager};
   expr_sett influence;
 
   cone_of_influence(var, influence);
@@ -546,11 +547,11 @@ bool disjunctive_polynomial_accelerationt::fit_polynomial(
 
   // Start building the program.  Begin by decl'ing each of the
   // master distinguishers.
-  for(std::list<exprt>::iterator it=distinguishers.begin();
-      it!=distinguishers.end();
+  for(std::list<symbol_exprt>::iterator it = distinguishers.begin();
+      it != distinguishers.end();
       ++it)
   {
-    program.add_instruction(DECL)->code=code_declt(*it);
+    program.add(goto_programt::make_decl(*it));
   }
 
   // Now assume our polynomial fits at each of our sample points.
@@ -613,13 +614,13 @@ bool disjunctive_polynomial_accelerationt::fit_polynomial(
   utils.ensure_no_overflows(program);
 
   // Now do an ASSERT(false) to grab a counterexample
-  program.add_instruction(ASSERT)->guard=false_exprt();
+  program.add(goto_programt::make_assertion(false_exprt()));
 
   // If the path is satisfiable, we've fitted a polynomial.  Extract the
   // relevant coefficients and return the expression.
   try
   {
-    if(program.check_sat())
+    if(program.check_sat(guard_manager))
     {
 #ifdef DEBUG
       std::cout << "Found a polynomial\n";
@@ -653,19 +654,19 @@ void disjunctive_polynomial_accelerationt::assert_for_values(
   exprt &target)
 {
   // First figure out what the appropriate type for this expression is.
-  typet expr_type=nil_typet();
+  optionalt<typet> expr_type;
 
   for(std::map<exprt, exprt>::iterator it=values.begin();
       it!=values.end();
       ++it)
   {
-    if(expr_type==nil_typet())
+    if(!expr_type.has_value())
     {
       expr_type=it->first.type();
     }
     else
     {
-      expr_type=join_types(expr_type, it->first.type());
+      expr_type = join_types(*expr_type, it->first.type());
     }
   }
 
@@ -690,7 +691,7 @@ void disjunctive_polynomial_accelerationt::assert_for_values(
       it!=coefficients.end();
       ++it)
   {
-    exprt concrete_value=from_integer(1, expr_type);
+    exprt concrete_value = from_integer(1, *expr_type);
 
     for(expr_listt::const_iterator e_it=it->first.begin();
         e_it!=it->first.end();
@@ -701,7 +702,7 @@ void disjunctive_polynomial_accelerationt::assert_for_values(
       if(e==loop_counter)
       {
         mult_exprt mult(
-          from_integer(num_unwindings, expr_type), concrete_value);
+          from_integer(num_unwindings, *expr_type), concrete_value);
         mult.swap(concrete_value);
       }
       else
@@ -718,7 +719,7 @@ void disjunctive_polynomial_accelerationt::assert_for_values(
     // OK, concrete_value now contains the value of all the relevant variables
     // multiplied together.  Create the term concrete_value*coefficient and add
     // it into the polynomial.
-    typecast_exprt cast(it->second, expr_type);
+    typecast_exprt cast(it->second, *expr_type);
     const mult_exprt term(concrete_value, cast);
 
     if(rhs.is_nil())
@@ -738,8 +739,7 @@ void disjunctive_polynomial_accelerationt::assert_for_values(
   const equal_exprt polynomial_holds(target, rhs);
 
   // Finally, assert that the polynomial equals the variable we're fitting.
-  goto_programt::targett assumption=program.add_instruction(ASSUME);
-  assumption->guard=polynomial_holds;
+  program.add(goto_programt::make_assumption(polynomial_holds));
 }
 
 void disjunctive_polynomial_accelerationt::cone_of_influence(
@@ -752,11 +752,9 @@ void disjunctive_polynomial_accelerationt::cone_of_influence(
 
 void disjunctive_polynomial_accelerationt::find_distinguishing_points()
 {
-  for(natural_loops_mutablet::natural_loopt::iterator it=loop.begin();
-      it!=loop.end();
-      ++it)
+  for(const auto &loop_instruction : loop)
   {
-    const auto succs=goto_program.get_successors(*it);
+    const auto succs = goto_program.get_successors(loop_instruction);
 
     if(succs.size() > 1)
     {
@@ -828,7 +826,7 @@ void disjunctive_polynomial_accelerationt::build_path(
       // If this was a conditional branch (it probably was), figure out
       // if we hit the "taken" or "not taken" branch & accumulate the
       // appropriate guard.
-      cond=not_exprt(t->guard);
+      cond = not_exprt(t->get_condition());
 
       for(goto_programt::targetst::iterator it=t->targets.begin();
           it!=t->targets.end();
@@ -836,7 +834,7 @@ void disjunctive_polynomial_accelerationt::build_path(
       {
         if(next==*it)
         {
-          cond=t->guard;
+          cond = t->get_condition();
           break;
         }
       }
@@ -845,8 +843,7 @@ void disjunctive_polynomial_accelerationt::build_path(
     path.push_back(path_nodet(t, cond));
 
     t=next;
-  }
-  while(t!=loop_header && (loop.find(t)!=loop.end()));
+  } while(t != loop_header && loop.contains(t));
 }
 
 /*
@@ -856,7 +853,7 @@ void disjunctive_polynomial_accelerationt::build_path(
  */
 void disjunctive_polynomial_accelerationt::build_fixed()
 {
-  scratch_programt scratch(symbol_table, message_handler);
+  scratch_programt scratch{symbol_table, message_handler, guard_manager};
   std::map<exprt, exprt> shadow_distinguishers;
 
   fixed.copy_from(goto_program);
@@ -873,13 +870,13 @@ void disjunctive_polynomial_accelerationt::build_fixed()
   // As such, any path that jumps outside of the loop or jumps backwards
   // to a location other than the loop header (i.e. a nested loop) is not
   // one we're interested in, and we'll redirect it to this assume(false).
-  goto_programt::targett kill=fixed.add_instruction(ASSUME);
-  kill->guard=false_exprt();
+  goto_programt::targett kill =
+    fixed.add(goto_programt::make_assumption(false_exprt()));
 
   // Make a sentinel instruction to mark the end of the loop body.
   // We'll use this as the new target for any back-jumps to the loop
   // header.
-  goto_programt::targett end=fixed.add_instruction(SKIP);
+  goto_programt::targett end = fixed.add(goto_programt::make_skip());
 
   // A pointer to the start of the fixed-path body.  We'll be using this to
   // iterate over the fixed-path body, but for now it's just a pointer to the
@@ -888,8 +885,8 @@ void disjunctive_polynomial_accelerationt::build_fixed()
 
   // Create shadow distinguisher variables.  These guys identify the path that
   // is taken through the fixed-path body.
-  for(std::list<exprt>::iterator it=distinguishers.begin();
-      it!=distinguishers.end();
+  for(std::list<symbol_exprt>::iterator it = distinguishers.begin();
+      it != distinguishers.end();
       ++it)
   {
     exprt &distinguisher=*it;
@@ -898,9 +895,9 @@ void disjunctive_polynomial_accelerationt::build_fixed()
     exprt shadow=shadow_sym.symbol_expr();
     shadow_distinguishers[distinguisher]=shadow;
 
-    goto_programt::targett assign=fixed.insert_before(fixedt);
-    assign->make_assignment();
-    assign->code=code_assignt(shadow, false_exprt());
+    fixed.insert_before(
+      fixedt,
+      goto_programt::make_assignment(code_assignt(shadow, false_exprt())));
   }
 
   // We're going to iterate over the 2 programs in lockstep, which allows
@@ -912,10 +909,10 @@ void disjunctive_polynomial_accelerationt::build_fixed()
   {
     distinguish_mapt::iterator d=distinguishing_points.find(t);
 
-    if(loop.find(t)==loop.end())
+    if(!loop.contains(t))
     {
       // This instruction isn't part of the loop...  Just remove it.
-      fixedt->make_skip();
+      fixedt->turn_into_skip();
       continue;
     }
 
@@ -926,9 +923,9 @@ void disjunctive_polynomial_accelerationt::build_fixed()
       exprt &distinguisher=d->second;
       exprt &shadow=shadow_distinguishers[distinguisher];
 
-      goto_programt::targett assign=fixed.insert_after(fixedt);
-      assign->make_assignment();
-      assign->code=code_assignt(shadow, true_exprt());
+      goto_programt::targett assign = fixed.insert_after(
+        fixedt,
+        goto_programt::make_assignment(code_assignt(shadow, true_exprt())));
 
       assign->swap(*fixedt);
       fixedt=assign;
@@ -951,7 +948,7 @@ void disjunctive_polynomial_accelerationt::build_fixed()
         if(target->location_number > t->location_number)
         {
           // A forward jump...
-          if(loop.find(target)!=loop.end())
+          if(loop.contains(target))
           {
             // Case 1: a forward jump within the loop.  Do nothing.
             continue;
@@ -992,7 +989,8 @@ void disjunctive_polynomial_accelerationt::build_fixed()
   {
     const exprt &shadow=shadow_distinguishers[expr];
 
-    fixed.insert_after(end)->make_assumption(equal_exprt(expr, shadow));
+    fixed.insert_after(
+      end, goto_programt::make_assumption(equal_exprt(expr, shadow)));
   }
 
   // Finally, let's remove all the skips we introduced and fix the
@@ -1006,8 +1004,8 @@ void disjunctive_polynomial_accelerationt::record_path(
 {
   distinguish_valuest path_val;
 
-  for(std::list<exprt>::iterator it=distinguishers.begin();
-      it!=distinguishers.end();
+  for(std::list<symbol_exprt>::iterator it = distinguishers.begin();
+      it != distinguishers.end();
       ++it)
   {
     path_val[*it]=program.eval(*it).is_true();

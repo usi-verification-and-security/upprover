@@ -35,23 +35,20 @@ void thread_exit_instrumentation(goto_programt &goto_program)
   assert(end->is_end_function());
 
   source_locationt source_location=end->source_location;
-  irep_idt function=end->function;
 
   goto_program.insert_before_swap(end);
 
   const string_constantt mutex_locked_string("mutex-locked");
 
-  binary_exprt get_may("get_may");
-
   // NULL is any
-  get_may.op0()=null_pointer_exprt(pointer_type(empty_typet()));
-  get_may.op1()=address_of_exprt(mutex_locked_string);
+  binary_predicate_exprt get_may{
+    null_pointer_exprt(pointer_type(empty_typet())),
+    ID_get_may,
+    address_of_exprt(mutex_locked_string)};
 
-  end->make_assertion(not_exprt(get_may));
+  *end = goto_programt::make_assertion(not_exprt(get_may), source_location);
 
-  end->source_location=source_location;
   end->source_location.set_comment("mutexes must not be locked on thread exit");
-  end->function=function;
 }
 
 void thread_exit_instrumentation(goto_modelt &goto_model)
@@ -87,8 +84,8 @@ void mutex_init_instrumentation(
   goto_programt &goto_program,
   typet lock_type)
 {
-  symbol_tablet::symbolst::const_iterator f_it=
-    symbol_table.symbols.find("__CPROVER_set_must");
+  symbol_tablet::symbolst::const_iterator f_it =
+    symbol_table.symbols.find(CPROVER_PREFIX "set_must");
 
   if(f_it==symbol_table.symbols.end())
     return;
@@ -102,17 +99,13 @@ void mutex_init_instrumentation(
 
       if(code_assign.lhs().type()==lock_type)
       {
-        goto_programt::targett t=goto_program.insert_after(it);
+        const code_function_callt call(
+          f_it->second.symbol_expr(),
+          {address_of_exprt(code_assign.lhs()),
+           address_of_exprt(string_constantt("mutex-init"))});
 
-        code_function_callt call;
-
-        call.function()=f_it->second.symbol_expr();
-        call.arguments().resize(2);
-        call.arguments()[0]=address_of_exprt(code_assign.lhs());
-        call.arguments()[1]=address_of_exprt(string_constantt("mutex-init"));
-
-        t->make_function_call(call);
-        t->source_location=it->source_location;
+        goto_program.insert_after(
+          it, goto_programt::make_function_call(call, it->source_location));
       }
     }
   }
@@ -122,14 +115,14 @@ void mutex_init_instrumentation(goto_modelt &goto_model)
 {
   // get pthread_mutex_lock
 
-  symbol_tablet::symbolst::const_iterator f_it=
+  symbol_tablet::symbolst::const_iterator lock_entry =
     goto_model.symbol_table.symbols.find("pthread_mutex_lock");
 
-  if(f_it==goto_model.symbol_table.symbols.end())
+  if(lock_entry == goto_model.symbol_table.symbols.end())
     return;
 
   // get type of lock argument
-  code_typet code_type=to_code_type(to_code_type(f_it->second.type));
+  code_typet code_type = to_code_type(to_code_type(lock_entry->second.type));
   if(code_type.parameters().size()!=1)
     return;
 
@@ -140,5 +133,7 @@ void mutex_init_instrumentation(goto_modelt &goto_model)
 
   Forall_goto_functions(f_it, goto_model.goto_functions)
     mutex_init_instrumentation(
-      goto_model.symbol_table, f_it->second.body, lock_type.subtype());
+      goto_model.symbol_table,
+      f_it->second.body,
+      to_pointer_type(lock_type).subtype());
 }

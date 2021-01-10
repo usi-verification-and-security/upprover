@@ -35,10 +35,8 @@ void remove_calls_no_bodyt::remove_call_no_body(
   // pointer dereferencing or the like
   for(const exprt &argument : arguments)
   {
-    goto_programt::targett t = tmp.add_instruction();
-    t->make_other(code_expressiont(argument));
-    t->source_location = target->source_location;
-    t->function = target->function;
+    tmp.add(goto_programt::make_other(
+      code_expressiont(argument), target->source_location));
   }
 
   // return value
@@ -49,10 +47,7 @@ void remove_calls_no_bodyt::remove_call_no_body(
     code_assignt code(lhs, rhs);
     code.add_source_location() = target->source_location;
 
-    goto_programt::targett t = tmp.add_instruction(ASSIGN);
-    t->source_location = target->source_location;
-    t->function = target->function;
-    t->code.swap(code);
+    tmp.add(goto_programt::make_assignment(code, target->source_location));
   }
 
   // kill call
@@ -74,7 +69,7 @@ bool remove_calls_no_bodyt::is_opaque_function_call(
   if(!target->is_function_call())
     return false;
 
-  const code_function_callt &cfc = to_code_function_call(target->code);
+  const code_function_callt &cfc = target->get_function_call();
   const exprt &f = cfc.function();
 
   if(f.id() != ID_symbol)
@@ -108,7 +103,7 @@ operator()(goto_programt &goto_program, const goto_functionst &goto_functions)
   {
     if(is_opaque_function_call(it, goto_functions))
     {
-      const code_function_callt &cfc = to_code_function_call(it->code);
+      const code_function_callt &cfc = it->get_function_call();
       remove_call_no_body(goto_program, it, cfc.lhs(), cfc.arguments());
     }
     else

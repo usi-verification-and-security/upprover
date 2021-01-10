@@ -10,23 +10,20 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_SYMBOL_H
 #define CPROVER_UTIL_SYMBOL_H
 
-/*! \file util/symbol.h
- * \brief Symbol table entry
- *
- * \author Daniel Kroening <kroening@kroening.com>
- * \date   Sun Jul 31 21:54:44 BST 2011
-*/
+/// \file util/symbol.h
+/// \brief Symbol table entry
+/// \author Daniel Kroening <kroening@kroening.com>
+/// \date   Sun Jul 31 21:54:44 BST 2011
 
 #include <iosfwd>
 
 #include "expr.h"
+#include "invariant.h"
 
-/*! \brief Symbol table entry.
-    \ingroup gr_symbol_table
-
-    This is a symbol in the symbol table, stored in an
-    object of type symbol_tablet.
-*/
+/// \brief Symbol table entry.
+/// \ingroup gr_symbol_table
+/// This is a symbol in the symbol table, stored in an
+/// object of type symbol_tablet.
 class symbolt
 {
 public:
@@ -54,6 +51,7 @@ public:
   /// Language-specific display name
   irep_idt pretty_name;
 
+  /// Return language specific display name if present.
   const irep_idt &display_name() const
   {
     return pretty_name.empty()?name:pretty_name;
@@ -73,6 +71,7 @@ public:
     clear();
   }
 
+  /// Zero initialise a symbol object.
   void clear()
   {
     type.make_nil();
@@ -98,24 +97,51 @@ public:
     return !is_thread_local;
   }
 
-  bool is_procedure_local() const
-  {
-    return !is_static_lifetime;
-  }
-
   bool is_function() const
   {
     return !is_type && !is_macro && type.id()==ID_code;
   }
+
+  /// Returns true iff the the symbol's value has been compiled to a goto
+  /// program.
+  bool is_compiled() const
+  {
+    return type.id() == ID_code && value == exprt(ID_compiled);
+  }
+
+  /// Set the symbol's value to "compiled"; to be used once the code-typed value
+  /// has been converted to a goto program.
+  void set_compiled()
+  {
+    PRECONDITION(type.id() == ID_code);
+    value = exprt(ID_compiled);
+  }
+
+  /// Returns true iff the symbol is marked for internal use.
+  bool is_hidden() const
+  {
+    return is_auxiliary;
+  }
+
+  /// Mark a symbol for internal use. This is advisory and may be utilized,
+  /// e.g., to filter output.
+  void set_hidden()
+  {
+    is_auxiliary = true;
+  }
+
+  /// Check that a symbol is well formed.
+  bool is_well_formed() const;
+
+  bool operator==(const symbolt &other) const;
+  bool operator!=(const symbolt &other) const;
 };
 
 std::ostream &operator<<(std::ostream &out, const symbolt &symbol);
 
-/*! \brief Symbol table entry describing a data type
-    \ingroup gr_symbol_table
-
-    This is a symbol generated as part of type checking.
-*/
+/// \brief Symbol table entry describing a data type
+/// \ingroup gr_symbol_table
+/// This is a symbol generated as part of type checking.
 class type_symbolt:public symbolt
 {
 public:
@@ -126,12 +152,10 @@ public:
   }
 };
 
-/*! \brief Internally generated symbol table entry
-    \ingroup gr_symbol_table
-
-    This is a symbol generated as part of translation to or
-    modification of the intermediate representation.
-*/
+/// \brief Internally generated symbol table entry
+/// \ingroup gr_symbol_table
+/// This is a symbol generated as part of translation to or
+/// modification of the intermediate representation.
 class auxiliary_symbolt:public symbolt
 {
 public:
@@ -153,11 +177,9 @@ public:
   }
 };
 
-/*! \brief Symbol table entry of function parameter
-    \ingroup gr_symbol_table
-
-    This is a symbol generated as part of type checking.
-*/
+/// \brief Symbol table entry of function parameter
+/// \ingroup gr_symbol_table
+/// This is a symbol generated as part of type checking.
 class parameter_symbolt:public symbolt
 {
 public:

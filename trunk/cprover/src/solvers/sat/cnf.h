@@ -19,7 +19,10 @@ class cnft:public propt
 public:
   // For CNF, we don't use index 0 as a matter of principle,
   // so we'll start counting variables at 1.
-  cnft():_no_variables(1) { }
+  explicit cnft(message_handlert &message_handler)
+    : propt(message_handler), _no_variables(1)
+  {
+  }
   virtual ~cnft() { }
 
   virtual literalt land(literalt a, literalt b) override;
@@ -39,6 +42,7 @@ public:
   virtual void set_no_variables(size_t no) { _no_variables=no; }
   virtual size_t no_clauses() const=0;
 
+protected:
   void gate_and(literalt a, literalt b, literalt o);
   void gate_or(literalt a, literalt b, literalt o);
   void gate_xor(literalt a, literalt b, literalt o);
@@ -49,7 +53,6 @@ public:
 
   static bvt eliminate_duplicates(const bvt &);
 
-protected:
   size_t _no_variables;
 
   bool process_clause(const bvt &bv, bvt &dest);
@@ -66,7 +69,8 @@ protected:
 class cnf_solvert:public cnft
 {
 public:
-  cnf_solvert():status(statust::INIT), clause_counter(0)
+  explicit cnf_solvert(message_handlert &message_handler)
+    : cnft(message_handler), status(statust::INIT), clause_counter(0)
   {
   }
 

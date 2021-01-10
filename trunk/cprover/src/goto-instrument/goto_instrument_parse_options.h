@@ -12,22 +12,26 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 #define CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 
-#include <util/ui_message.h>
+#include <ansi-c/ansi_c_language.h>
+
 #include <util/parse_options.h>
 #include <util/timestamper.h>
+#include <util/ui_message.h>
+#include <util/validation_interface.h>
 
 #include <goto-programs/class_hierarchy.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/remove_calls_no_body.h>
 #include <goto-programs/remove_const_function_pointers.h>
-#include <goto-programs/replace_calls.h>
 #include <goto-programs/show_goto_functions.h>
 #include <goto-programs/show_properties.h>
 
 #include <analyses/goto_check.h>
 
-#include <goto-programs/generate_function_bodies.h>
 #include "aggressive_slicer.h"
+#include "generate_function_bodies.h"
+#include "insert_final_assert_false.h"
+#include "replace_calls.h"
 
 #include "count_eloc.h"
 
@@ -36,6 +40,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(all)" \
   "(document-claims-latex)(document-claims-html)" \
   "(document-properties-latex)(document-properties-html)" \
+  "(dump-c-type-header):" \
   "(dump-c)(dump-cpp)(no-system-headers)(use-all-headers)(dot)(xml)" \
   "(harness)" \
   OPT_GOTO_CHECK \
@@ -55,10 +60,12 @@ Author: Daniel Kroening, kroening@kroening.com
   "(max-var):(max-po-trans):(ignore-arrays)" \
   "(cfg-kill)(no-dependencies)(force-loop-duplication)" \
   "(call-graph)(reachable-call-graph)" \
+  OPT_INSERT_FINAL_ASSERT_FALSE \
   OPT_SHOW_CLASS_HIERARCHY \
   "(no-po-rendering)(render-cluster-file)(render-cluster-function)" \
   "(nondet-volatile)(isr):" \
   "(stack-depth):(nondet-static)" \
+  "(nondet-static-exclude):" \
   "(function-enter):(function-exit):(branch):" \
   OPT_SHOW_GOTO_FUNCTIONS \
   OPT_SHOW_PROPERTIES \
@@ -71,6 +78,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(show-struct-alignment)(interval-analysis)(show-intervals)" \
   "(show-uninitialized)(show-locations)" \
   "(full-slice)(reachability-slice)(slice-global-inits)" \
+  "(fp-reachability-slice):" \
   "(inline)(partial-inline)(function-inline):(log):(no-caching)" \
   OPT_REMOVE_CONST_FUNCTION_POINTERS \
   "(print-internal-representation)" \
@@ -79,7 +87,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(show-symbol-table)(show-points-to)(show-rw-set)" \
   "(cav11)" \
   OPT_TIMESTAMP \
-  "(show-natural-loops)(accelerate)(havoc-loops)" \
+  "(show-natural-loops)(show-lexical-loops)(accelerate)(havoc-loops)" \
   "(error-label):(string-abstraction)" \
   "(verbosity):(version)(xml-ui)(json-ui)(show-loops)" \
   "(accelerate)(constant-propagator)" \
@@ -99,32 +107,36 @@ Author: Daniel Kroening, kroening@kroening.com
   OPT_REPLACE_FUNCTION_BODY \
   OPT_GOTO_PROGRAM_STATS \
   "(show-local-safe-pointers)(show-safe-dereferences)" \
+  "(show-sese-regions)" \
   OPT_REPLACE_CALLS \
+  "(validate-goto-binary)" \
+  OPT_VALIDATE \
+  OPT_ANSI_C_LANGUAGE \
+  "(ensure-one-backedge-per-target)" \
   // empty last line
 
 // clang-format on
 
-class goto_instrument_parse_optionst:
-  public parse_options_baset,
-  public messaget
+class goto_instrument_parse_optionst : public parse_options_baset
 {
 public:
   virtual int doit();
   virtual void help();
 
-  goto_instrument_parse_optionst(int argc, const char **argv):
-    parse_options_baset(GOTO_INSTRUMENT_OPTIONS, argc, argv),
-    messaget(ui_message_handler),
-    ui_message_handler(cmdline, "goto-instrument"),
-    function_pointer_removal_done(false),
-    partial_inlining_done(false),
-    remove_returns_done(false)
+  goto_instrument_parse_optionst(int argc, const char **argv)
+    : parse_options_baset(
+        GOTO_INSTRUMENT_OPTIONS,
+        argc,
+        argv,
+        "goto-instrument"),
+      function_pointer_removal_done(false),
+      partial_inlining_done(false),
+      remove_returns_done(false)
   {
   }
 
 protected:
-  ui_message_handlert ui_message_handler;
-  virtual void register_languages();
+  void register_languages();
 
   void get_goto_program();
   void instrument_goto_program();
@@ -139,11 +151,6 @@ protected:
   bool remove_returns_done;
 
   goto_modelt goto_model;
-
-  ui_message_handlert::uit get_ui()
-  {
-    return ui_message_handler.get_ui();
-  }
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H

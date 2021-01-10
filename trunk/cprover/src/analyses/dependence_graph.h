@@ -68,10 +68,8 @@ class dep_graph_domaint:public ai_domain_baset
 public:
   typedef grapht<dep_nodet>::node_indext node_indext;
 
-  dep_graph_domaint()
-    : has_values(false),
-      node_id(std::numeric_limits<node_indext>::max()),
-      has_changed(false)
+  explicit dep_graph_domaint(node_indext id)
+    : has_values(false), node_id(id), has_changed(false)
   {
   }
 
@@ -81,7 +79,9 @@ public:
     goto_programt::const_targett to);
 
   void transform(
+    const irep_idt &function_from,
     goto_programt::const_targett from,
+    const irep_idt &function_to,
     goto_programt::const_targett to,
     ai_baset &ai,
     const namespacet &ns) final override;
@@ -161,11 +161,6 @@ public:
     return has_values.is_false();
   }
 
-  void set_node_id(node_indext id)
-  {
-    node_id=id;
-  }
-
   node_indext get_node_id() const
   {
     assert(node_id!=std::numeric_limits<node_indext>::max());
@@ -201,16 +196,20 @@ private:
     dependence_graph_test_get_data_deps(const dep_graph_domaint &);
 
   void control_dependencies(
+    const irep_idt &function_id,
     goto_programt::const_targett from,
     goto_programt::const_targett to,
     dependence_grapht &dep_graph);
 
   void data_dependencies(
     goto_programt::const_targett from,
+    const irep_idt &function_to,
     goto_programt::const_targett to,
     dependence_grapht &dep_graph,
     const namespacet &ns);
 };
+
+class dep_graph_domain_factoryt;
 
 class dependence_grapht:
   public ait<dep_graph_domaint>,
@@ -222,11 +221,7 @@ public:
 
   typedef std::map<irep_idt, cfg_post_dominatorst> post_dominators_mapt;
 
-  explicit dependence_grapht(const namespacet &_ns):
-    ns(_ns),
-    rd(ns)
-  {
-  }
+  explicit dependence_grapht(const namespacet &_ns);
 
   void initialize(const goto_functionst &goto_functions)
   {
@@ -234,23 +229,28 @@ public:
     rd(goto_functions, ns);
   }
 
-  void initialize(const goto_programt &goto_program)
+  void initialize(const irep_idt &function, const goto_programt &goto_program)
   {
-    ait<dep_graph_domaint>::initialize(goto_program);
+    ait<dep_graph_domaint>::initialize(function, goto_program);
+
+    // The dependency graph requires that all nodes are explicitly created
+    forall_goto_program_instructions(i_it, goto_program)
+      get_state(i_it).make_bottom();
 
     if(!goto_program.empty())
     {
-      const irep_idt id=goto_programt::get_function_id(goto_program);
-      cfg_post_dominatorst &pd=post_dominators[id];
+      cfg_post_dominatorst &pd = post_dominators[function];
       pd(goto_program);
     }
   }
 
   void finalize()
   {
-    for(const auto &location_state : state_map)
+    for(const auto &location_state :
+        static_cast<location_sensitive_storaget &>(*storage).internal())
     {
-      location_state.second.populate_dep_graph(*this, location_state.first);
+      std::static_pointer_cast<dep_graph_domaint>(location_state.second)
+        ->populate_dep_graph(*this, location_state.first);
     }
   }
 
@@ -269,22 +269,9 @@ public:
     return rd;
   }
 
-  virtual statet &get_state(goto_programt::const_targett l)
-  {
-    std::pair<state_mapt::iterator, bool> entry=
-      state_map.insert(std::make_pair(l, dep_graph_domaint()));
-
-    if(entry.second)
-    {
-      const node_indext node_id=add_node();
-      entry.first->second.set_node_id(node_id);
-      nodes[node_id].PC=l;
-    }
-
-    return entry.first->second;
-  }
-
 protected:
+  friend dep_graph_domain_factoryt;
+  friend dep_graph_domaint;
   const namespacet &ns;
 
   post_dominators_mapt post_dominators;

@@ -16,8 +16,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #endif
 
+#include <util/expr_util.h>
 #include <util/std_expr.h>
 #include <util/string_utils.h>
+
 #include <goto-programs/goto_functions.h>
 
 #include "loop_utils.h"
@@ -46,8 +48,9 @@ void goto_unwindt::copy_segment(
 
   for(goto_programt::const_targett t=start; t!=end; t++)
   {
-    goto_programt::targett t_new=goto_program.add_instruction();
-    *t_new=*t;
+    // copy the instruction
+    goto_programt::targett t_new =
+      goto_program.add(goto_programt::instructiont(*t));
     unwind_log.insert(t_new, t->location_number);
     target_vector.push_back(t_new); // store copied instruction
   }
@@ -55,9 +58,10 @@ void goto_unwindt::copy_segment(
   assert(goto_program.instructions.size()==target_vector.size());
 
   // adjust intra-segment gotos
-  for(std::size_t i=0; i<target_vector.size(); i++)
+  for(std::size_t target_index = 0; target_index < target_vector.size();
+      target_index++)
   {
-    goto_programt::targett t=target_vector[i];
+    goto_programt::targett t = target_vector[target_index];
 
     if(!t->is_goto())
       continue;
@@ -77,6 +81,7 @@ void goto_unwindt::copy_segment(
 }
 
 void goto_unwindt::unwind(
+  const irep_idt &function_id,
   goto_programt &goto_program,
   const goto_programt::const_targett loop_head,
   const goto_programt::const_targett loop_exit,
@@ -84,11 +89,18 @@ void goto_unwindt::unwind(
   const unwind_strategyt unwind_strategy)
 {
   std::vector<goto_programt::targett> iteration_points;
-  unwind(goto_program, loop_head, loop_exit, k, unwind_strategy,
-         iteration_points);
+  unwind(
+    function_id,
+    goto_program,
+    loop_head,
+    loop_exit,
+    k,
+    unwind_strategy,
+    iteration_points);
 }
 
 void goto_unwindt::unwind(
+  const irep_idt &function_id,
   goto_programt &goto_program,
   const goto_programt::const_targett loop_head,
   const goto_programt::const_targett loop_exit,
@@ -104,13 +116,12 @@ void goto_unwindt::unwind(
 
   if(unwind_strategy==unwind_strategyt::PARTIAL)
   {
-    goto_programt::targett t=rest_program.add_instruction();
-    unwind_log.insert(t, loop_head->location_number);
+    goto_programt::targett t =
+      rest_program.add(goto_programt::make_skip(loop_head->source_location));
 
-    t->make_skip();
-    t->source_location=loop_head->source_location;
-    t->function=loop_head->function;
     t->location_number=loop_head->location_number;
+
+    unwind_log.insert(t, loop_head->location_number);
   }
   else if(unwind_strategy==unwind_strategyt::CONTINUE)
   {
@@ -122,31 +133,32 @@ void goto_unwindt::unwind(
     t--;
     assert(t->is_backwards_goto());
 
-    exprt exit_cond;
-    exit_cond.make_false(); // default is false
+    exprt exit_cond = false_exprt(); // default is false
 
-    if(!t->guard.is_true()) // cond in backedge
+    if(!t->get_condition().is_true()) // cond in backedge
     {
-      exit_cond=t->guard;
-      exit_cond.make_not();
+      exit_cond = boolean_negate(t->get_condition());
     }
     else if(loop_head->is_goto())
     {
       if(loop_head->get_target()==loop_exit) // cond in forward edge
-        exit_cond=loop_head->guard;
+        exit_cond = loop_head->get_condition();
     }
 
-    goto_programt::targett new_t=rest_program.add_instruction();
+    goto_programt::targett new_t;
 
     if(unwind_strategy==unwind_strategyt::ASSERT)
-      new_t->make_assertion(exit_cond);
+    {
+      new_t = rest_program.add(goto_programt::make_assertion(exit_cond));
+    }
     else if(unwind_strategy==unwind_strategyt::ASSUME)
-      new_t->make_assumption(exit_cond);
+    {
+      new_t = rest_program.add(goto_programt::make_assumption(exit_cond));
+    }
     else
       UNREACHABLE;
 
     new_t->source_location=loop_head->source_location;
-    new_t->function=loop_head->function;
     new_t->location_number=loop_head->location_number;
     unwind_log.insert(new_t, loop_head->location_number);
   }
@@ -165,27 +177,26 @@ void goto_unwindt::unwind(
     goto_programt::const_targett t_before=loop_exit;
     t_before--;
 
-    if(!t_before->is_goto() || !t_before->guard.is_true())
+    if(!t_before->is_goto() || !t_before->get_condition().is_true())
     {
-      goto_programt::targett t_goto=goto_program.insert_before(loop_exit);
-      unwind_log.insert(t_goto, loop_exit->location_number);
-
-      t_goto->make_goto(goto_program.const_cast_target(loop_exit));
-      t_goto->source_location=loop_exit->source_location;
-      t_goto->function=loop_exit->function;
-      t_goto->guard=true_exprt();
+      goto_programt::targett t_goto = goto_program.insert_before(
+        loop_exit,
+        goto_programt::make_goto(
+          goto_program.const_cast_target(loop_exit),
+          true_exprt(),
+          loop_exit->source_location));
       t_goto->location_number=loop_exit->location_number;
+
+      unwind_log.insert(t_goto, loop_exit->location_number);
     }
 
     // add a skip before the loop exit
 
-    goto_programt::targett t_skip=goto_program.insert_before(loop_exit);
-    unwind_log.insert(t_skip, loop_exit->location_number);
-
-    t_skip->make_skip();
-    t_skip->source_location=loop_head->source_location;
-    t_skip->function=loop_head->function;
+    goto_programt::targett t_skip = goto_program.insert_before(
+      loop_exit, goto_programt::make_skip(loop_head->source_location));
     t_skip->location_number=loop_head->location_number;
+
+    unwind_log.insert(t_skip, loop_exit->location_number);
 
     // where to go for the next iteration
     goto_programt::targett loop_iter=t_skip;
@@ -222,13 +233,11 @@ void goto_unwindt::unwind(
   {
     // insert skip for loop body
 
-    goto_programt::targett t_skip=goto_program.insert_before(loop_head);
-    unwind_log.insert(t_skip, loop_head->location_number);
-
-    t_skip->make_skip();
-    t_skip->source_location=loop_head->source_location;
-    t_skip->function=loop_head->function;
+    goto_programt::targett t_skip = goto_program.insert_before(
+      loop_head, goto_programt::make_skip(loop_head->source_location));
     t_skip->location_number=loop_head->location_number;
+
+    unwind_log.insert(t_skip, loop_head->location_number);
 
     // redirect gotos into loop body
     Forall_goto_program_instructions(i_it, goto_program)
@@ -257,6 +266,7 @@ void goto_unwindt::unwind(
 }
 
 void goto_unwindt::unwind(
+  const irep_idt &function_id,
   goto_programt &goto_program,
   const unwindsett &unwindset,
   const unwind_strategyt unwind_strategy)
@@ -268,7 +278,7 @@ void goto_unwindt::unwind(
     symbol_tablet st;
     namespacet ns(st);
     std::cout << "Instruction:\n";
-    goto_program.output_instruction(ns, "", std::cout, *i_it);
+    goto_program.output_instruction(ns, function_id, std::cout, *i_it);
 #endif
 
     if(!i_it->is_backwards_goto())
@@ -277,11 +287,8 @@ void goto_unwindt::unwind(
       continue;
     }
 
-    const irep_idt func=i_it->function;
-    assert(!func.empty());
-
-    const irep_idt loop_id=
-      id2string(func) + "." + std::to_string(i_it->loop_number);
+    PRECONDITION(!function_id.empty());
+    const irep_idt loop_id = goto_programt::loop_id(function_id, *i_it);
 
     auto limit=unwindset.get_limit(loop_id, 0);
 
@@ -297,7 +304,8 @@ void goto_unwindt::unwind(
     loop_exit++;
     assert(loop_exit!=goto_program.instructions.end());
 
-    unwind(goto_program, loop_head, loop_exit, *limit, unwind_strategy);
+    unwind(
+      function_id, goto_program, loop_head, loop_exit, *limit, unwind_strategy);
 
     // necessary as we change the goto program in the previous line
     i_it=loop_exit;
@@ -322,7 +330,7 @@ void goto_unwindt::operator()(
 
     goto_programt &goto_program=goto_function.body;
 
-    unwind(goto_program, unwindset, unwind_strategy);
+    unwind(it->first, goto_program, unwindset, unwind_strategy);
   }
 }
 
@@ -335,16 +343,16 @@ jsont goto_unwindt::unwind_logt::output_log_json() const
   for(location_mapt::const_iterator it=location_map.begin();
       it!=location_map.end(); it++)
   {
-    json_objectt &object=json_unwound.push_back().make_object();
-
     goto_programt::const_targett target=it->first;
     unsigned location_number=it->second;
 
-    object["originalLocationNumber"]=json_numbert(std::to_string(
-      location_number));
-    object["newLocationNumber"]=json_numbert(std::to_string(
-      target->location_number));
+    json_objectt object{
+      {"originalLocationNumber", json_numbert(std::to_string(location_number))},
+      {"newLocationNumber",
+       json_numbert(std::to_string(target->location_number))}};
+
+    json_unwound.push_back(std::move(object));
   }
 
-  return json_result;
+  return std::move(json_result);
 }

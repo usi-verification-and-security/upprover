@@ -137,48 +137,28 @@ bool rename_symbolt::rename(typet &dest) const
      dest.id()==ID_union)
   {
     struct_union_typet &struct_union_type=to_struct_union_type(dest);
-    struct_union_typet::componentst &components=
-      struct_union_type.components();
 
-    for(struct_union_typet::componentst::iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
-      if(!rename(*it))
+    for(auto &c : struct_union_type.components())
+      if(!rename(c))
         result=false;
   }
   else if(dest.id()==ID_code)
   {
     code_typet &code_type=to_code_type(dest);
     rename(code_type.return_type());
-    code_typet::parameterst &parameters=code_type.parameters();
 
-    for(code_typet::parameterst::iterator it = parameters.begin();
-        it!=parameters.end();
-        it++)
+    for(auto &p : code_type.parameters())
     {
-      if(!rename(it->type()))
+      if(!rename(p.type()))
         result=false;
 
-      expr_mapt::const_iterator e_it=
-        expr_map.find(it->get_identifier());
+      expr_mapt::const_iterator e_it = expr_map.find(p.get_identifier());
 
       if(e_it!=expr_map.end())
       {
-        it->set_identifier(e_it->second);
+        p.set_identifier(e_it->second);
         result=false;
       }
-    }
-  }
-  else if(dest.id() == ID_symbol_type)
-  {
-    type_mapt::const_iterator it=
-      type_map.find(to_symbol_type(dest).get_identifier());
-
-    if(it!=type_map.end())
-    {
-      to_symbol_type(dest).set_identifier(it->second);
-      result=false;
     }
   }
   else if(dest.id()==ID_c_enum_tag ||
@@ -223,14 +203,8 @@ bool rename_symbolt::have_to_rename(const typet &dest) const
     const struct_union_typet &struct_union_type=
       to_struct_union_type(dest);
 
-    const struct_union_typet::componentst &components=
-      struct_union_type.components();
-
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
-      if(have_to_rename(*it))
+    for(const auto &c : struct_union_type.components())
+      if(have_to_rename(c))
         return true;
   }
   else if(dest.id()==ID_code)
@@ -239,24 +213,14 @@ bool rename_symbolt::have_to_rename(const typet &dest) const
     if(have_to_rename(code_type.return_type()))
       return true;
 
-    const code_typet::parameterst &parameters=code_type.parameters();
-
-    for(code_typet::parameterst::const_iterator
-        it=parameters.begin();
-        it!=parameters.end();
-        it++)
+    for(const auto &p : code_type.parameters())
     {
-      if(have_to_rename(it->type()))
+      if(have_to_rename(p.type()))
         return true;
 
-      if(expr_map.find(it->get_identifier())!=expr_map.end())
+      if(expr_map.find(p.get_identifier()) != expr_map.end())
         return true;
     }
-  }
-  else if(dest.id() == ID_symbol_type)
-  {
-    const irep_idt &identifier = to_symbol_type(dest).get_identifier();
-    return type_map.find(identifier) != type_map.end();
   }
   else if(dest.id()==ID_c_enum_tag ||
           dest.id()==ID_struct_tag ||

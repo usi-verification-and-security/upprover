@@ -57,7 +57,9 @@ void interval_domaint::output(
 }
 
 void interval_domaint::transform(
+  const irep_idt &,
   locationt from,
+  const irep_idt &,
   locationt to,
   ai_baset &,
   const namespacet &ns)
@@ -78,37 +80,59 @@ void interval_domaint::transform(
     break;
 
   case GOTO:
+  {
+    // Comparing iterators is safe as the target must be within the same list
+    // of instructions because this is a GOTO.
+    locationt next = from;
+    next++;
+    if(from->get_target() != next) // If equal then a skip
     {
-      // Comparing iterators is safe as the target must be within the same list
-      // of instructions because this is a GOTO.
-      locationt next=from;
-      next++;
-      if(from->get_target() != next) // If equal then a skip
-      {
-        if(next == to)
-          assume(not_exprt(instruction.guard), ns);
-        else
-          assume(instruction.guard, ns);
-      }
+      if(next == to)
+        assume(not_exprt(instruction.get_condition()), ns);
+      else
+        assume(instruction.get_condition(), ns);
     }
     break;
+  }
 
   case ASSUME:
-    assume(instruction.guard, ns);
+    assume(instruction.get_condition(), ns);
     break;
 
   case FUNCTION_CALL:
-    {
-      const code_function_callt &code_function_call=
-        to_code_function_call(instruction.code);
-      if(code_function_call.lhs().is_not_nil())
-        havoc_rec(code_function_call.lhs());
-    }
+  {
+    const code_function_callt &code_function_call =
+      to_code_function_call(instruction.code);
+    if(code_function_call.lhs().is_not_nil())
+      havoc_rec(code_function_call.lhs());
     break;
+  }
 
-  default:
-    {
-    }
+  case CATCH:
+  case THROW:
+    DATA_INVARIANT(false, "Exceptions must be removed before analysis");
+    break;
+  case RETURN:
+    DATA_INVARIANT(false, "Returns must be removed before analysis");
+    break;
+  case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
+  case ATOMIC_END:   // Ignoring is a valid over-approximation
+  case END_FUNCTION: // No action required
+  case START_THREAD: // Require a concurrent analysis at higher level
+  case END_THREAD:   // Require a concurrent analysis at higher level
+  case ASSERT:       // No action required
+  case LOCATION:     // No action required
+  case SKIP:         // No action required
+    break;
+  case OTHER:
+#if 0
+    DATA_INVARIANT(false, "Unclear what is a safe over-approximation of OTHER");
+#endif
+    break;
+  case INCOMPLETE_GOTO:
+  case NO_INSTRUCTION_TYPE:
+    DATA_INVARIANT(false, "Only complete instructions can be analyzed");
+    break;
   }
 }
 
@@ -252,8 +276,7 @@ void interval_domaint::assume_rec(
 
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
-      mp_integer tmp;
-      to_integer(rhs, tmp);
+      mp_integer tmp = numeric_cast_v<mp_integer>(to_constant_expr(rhs));
       if(id==ID_lt)
         --tmp;
       integer_intervalt &ii=int_map[lhs_identifier];
@@ -278,8 +301,7 @@ void interval_domaint::assume_rec(
 
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
-      mp_integer tmp;
-      to_integer(lhs, tmp);
+      mp_integer tmp = numeric_cast_v<mp_integer>(to_constant_expr(lhs));
       if(id==ID_lt)
         ++tmp;
       integer_intervalt &ii=int_map[rhs_identifier];
@@ -339,25 +361,25 @@ void interval_domaint::assume_rec(
      cond.id()==ID_gt || cond.id()==ID_ge ||
      cond.id()==ID_equal || cond.id()==ID_notequal)
   {
-    assert(cond.operands().size()==2);
+    const auto &rel = to_binary_relation_expr(cond);
 
     if(negation) // !x<y  ---> x>=y
     {
-      if(cond.id()==ID_lt)
-        assume_rec(cond.op0(), ID_ge, cond.op1());
-      else if(cond.id()==ID_le)
-        assume_rec(cond.op0(), ID_gt, cond.op1());
-      else if(cond.id()==ID_gt)
-        assume_rec(cond.op0(), ID_le, cond.op1());
-      else if(cond.id()==ID_ge)
-        assume_rec(cond.op0(), ID_lt, cond.op1());
-      else if(cond.id()==ID_equal)
-        assume_rec(cond.op0(), ID_notequal, cond.op1());
-      else if(cond.id()==ID_notequal)
-        assume_rec(cond.op0(), ID_equal, cond.op1());
+      if(rel.id() == ID_lt)
+        assume_rec(rel.op0(), ID_ge, rel.op1());
+      else if(rel.id() == ID_le)
+        assume_rec(rel.op0(), ID_gt, rel.op1());
+      else if(rel.id() == ID_gt)
+        assume_rec(rel.op0(), ID_le, rel.op1());
+      else if(rel.id() == ID_ge)
+        assume_rec(rel.op0(), ID_lt, rel.op1());
+      else if(rel.id() == ID_equal)
+        assume_rec(rel.op0(), ID_notequal, rel.op1());
+      else if(rel.id() == ID_notequal)
+        assume_rec(rel.op0(), ID_equal, rel.op1());
     }
     else
-      assume_rec(cond.op0(), cond.id(), cond.op1());
+      assume_rec(rel.op0(), rel.id(), rel.op1());
   }
   else if(cond.id()==ID_not)
   {
@@ -474,7 +496,7 @@ bool interval_domaint::ai_simplify(
     if(!a.join(d))                        // If d (this) is included in a...
     {                                     // Then the condition is always true
       unchanged=condition.is_true();
-      condition.make_true();
+      condition = true_exprt();
     }
   }
   else if(condition.id()==ID_symbol)
@@ -487,7 +509,7 @@ bool interval_domaint::ai_simplify(
     if(d.is_bottom())                     // If there there are none...
     {                                     // Then the condition is always true
       unchanged=condition.is_true();
-      condition.make_true();
+      condition = true_exprt();
     }
   }
 

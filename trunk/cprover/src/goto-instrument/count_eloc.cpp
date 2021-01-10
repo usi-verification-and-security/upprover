@@ -106,10 +106,10 @@ void print_path_lengths(const goto_modelt &goto_model)
 
   const goto_programt &start_program=start->second.body;
 
-  const cfgt::entryt &start_node=
-    cfg.entry_map[start_program.instructions.begin()];
-  const cfgt::entryt &last_node=
-    cfg.entry_map[--start_program.instructions.end()];
+  const cfgt::entryt &start_node =
+    cfg.get_node_index(start_program.instructions.begin());
+  const cfgt::entryt &last_node =
+    cfg.get_node_index(--start_program.instructions.end());
 
   cfgt::patht shortest_path;
   cfg.shortest_path(start_node, last_node, shortest_path);
@@ -123,7 +123,7 @@ void print_path_lengths(const goto_modelt &goto_model)
       if(i_it->is_backwards_goto() ||
          i_it==gf_it->second.body.instructions.begin())
       {
-        const cfgt::entryt &node=cfg.entry_map[i_it];
+        const cfgt::entryt &node = cfg.get_node_index(i_it);
         cfgt::patht loop;
         cfg.shortest_loop(node, loop);
 
@@ -164,7 +164,7 @@ void print_global_state_size(const goto_modelt &goto_model)
     {
       if(ins.is_assign())
       {
-        const code_assignt &code_assign = to_code_assign(ins.code);
+        const code_assignt &code_assign = ins.get_assign();
         object_descriptor_exprt ode;
         ode.build(code_assign.lhs(), ns);
 
@@ -191,9 +191,9 @@ void print_global_state_size(const goto_modelt &goto_model)
       continue;
     }
 
-    const mp_integer bits = pointer_offset_bits(symbol.type, ns);
-    if(bits > 0)
-      total_size += bits;
+    const auto bits = pointer_offset_bits(symbol.type, ns);
+    if(bits.has_value() && bits.value() > 0)
+      total_size += bits.value();
   }
 
   std::cout << "Total size of global objects: " << total_size << " bits\n";

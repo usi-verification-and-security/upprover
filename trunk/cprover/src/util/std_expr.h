@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module:
+Module: API to expression classes
 
 Author: Daniel Kroening, kroening@kroening.com
 
@@ -10,114 +10,97 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_STD_EXPR_H
 #define CPROVER_UTIL_STD_EXPR_H
 
-/*! \file util/std_expr.h
- * \brief API to expression classes
- *
- * \author Daniel Kroening <kroening@kroening.com>
- * \date   Sun Jul 31 21:54:44 BST 2011
-*/
+/// \file util/std_expr.h
+/// API to expression classes
 
-#include "invariant.h"
-#include "std_types.h"
+#include "as_const.h"
 #include "expr_cast.h"
+#include "invariant.h"
+#include "narrow.h"
+#include "std_types.h"
 
-
-/*! \brief A transition system, consisting of
-           state invariant, initial state predicate,
-           and transition predicate
-*/
-class transt:public exprt
+/// An expression without operands
+class nullary_exprt : public expr_protectedt
 {
 public:
-  transt()
+  nullary_exprt(const irep_idt &_id, typet _type)
+    : expr_protectedt(_id, std::move(_type))
   {
-    id(ID_trans);
-    operands().resize(3);
   }
 
-  exprt &invar() { return op0(); }
-  exprt &init()  { return op1(); }
-  exprt &trans() { return op2(); }
+  /// remove all operand methods
+  operandst &operands() = delete;
+  const operandst &operands() const = delete;
 
-  const exprt &invar() const { return op0(); }
-  const exprt &init()  const { return op1(); }
-  const exprt &trans() const { return op2(); }
+  const exprt &op0() const = delete;
+  exprt &op0() = delete;
+  const exprt &op1() const = delete;
+  exprt &op1() = delete;
+  const exprt &op2() const = delete;
+  exprt &op2() = delete;
+  const exprt &op3() const = delete;
+  exprt &op3() = delete;
+
+  void move_to_operands(exprt &) = delete;
+  void move_to_operands(exprt &, exprt &) = delete;
+  void move_to_operands(exprt &, exprt &, exprt &) = delete;
+
+  void copy_to_operands(const exprt &expr) = delete;
+  void copy_to_operands(const exprt &, const exprt &) = delete;
+  void copy_to_operands(const exprt &, const exprt &, const exprt &) = delete;
 };
 
-/*! \brief Cast a generic exprt to a \ref transt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * transt.
- *
- * \param expr Source expression
- * \return Object of type \ref transt
- *
-
-*/
-inline const transt &to_trans_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_trans);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Transition systems must have three operands");
-  return static_cast<const transt &>(expr);
-}
-
-/*! \copydoc to_trans(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline transt &to_trans_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_trans);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Transition systems must have three operands");
-  return static_cast<transt &>(expr);
-}
-
-template<> inline bool can_cast_expr<transt>(const exprt &base)
-{
-  return base.id()==ID_trans;
-}
-inline void validate_expr(const transt &value)
-{
-  validate_operands(value, 3, "Transition systems must have three operands");
-}
-
-
-/*! \brief Expression to hold a symbol (variable)
-*/
-class symbol_exprt:public exprt
+/// An expression with three operands
+class ternary_exprt : public expr_protectedt
 {
 public:
-  symbol_exprt():exprt(ID_symbol)
+  // constructor
+  ternary_exprt(
+    const irep_idt &_id,
+    exprt _op0,
+    exprt _op1,
+    exprt _op2,
+    typet _type)
+    : expr_protectedt(
+        _id,
+        std::move(_type),
+        {std::move(_op0), std::move(_op1), std::move(_op2)})
   {
   }
 
-  /*! \brief Constructor
-   * \param identifier Name of symbol
-  */
-  explicit symbol_exprt(const irep_idt &identifier):exprt(ID_symbol)
+  // make op0 to op2 public
+  using exprt::op0;
+  using exprt::op1;
+  using exprt::op2;
+
+  const exprt &op3() const = delete;
+  exprt &op3() = delete;
+};
+
+/// Expression to hold a symbol (variable)
+class symbol_exprt : public nullary_exprt
+{
+public:
+  /// \param type: Type of symbol
+  explicit symbol_exprt(typet type) : nullary_exprt(ID_symbol, std::move(type))
+  {
+  }
+
+  /// \param identifier: Name of symbol
+  /// \param type: Type of symbol
+  symbol_exprt(const irep_idt &identifier, typet type)
+    : nullary_exprt(ID_symbol, std::move(type))
   {
     set_identifier(identifier);
   }
 
-  /*! \brief Constructor
-   * \param  type Type of symbol
-  */
-  explicit symbol_exprt(const typet &type):exprt(ID_symbol, type)
+  /// Generate a symbol_exprt without a proper type. Use if, and only if, the
+  /// type either cannot be determined just yet (such as during type checking)
+  /// or when the type truly is immaterial. The latter case may better be dealt
+  /// with by using just an irep_idt, and not a symbol_exprt.
+  static symbol_exprt typeless(const irep_idt &id)
   {
-  }
-
-  /*! \brief Constructor
-   * \param identifier Name of symbol
-   * \param  type Type of symbol
-  */
-  symbol_exprt(
-    const irep_idt &identifier,
-    const typet &type):exprt(ID_symbol, type)
-  {
-    set_identifier(identifier);
+    return symbol_exprt(id, typet());
   }
 
   void set_identifier(const irep_idt &identifier)
@@ -131,38 +114,15 @@ public:
   }
 };
 
-/*! \brief Expression to hold a symbol (variable)
-*/
+/// Expression to hold a symbol (variable) with extra accessors to
+/// ID_c_static_lifetime and ID_C_thread_local
 class decorated_symbol_exprt:public symbol_exprt
 {
 public:
-  decorated_symbol_exprt()
-  {
-  }
-
-  /*! \brief Constructor
-   * \param identifier Name of symbol
-  */
-  explicit decorated_symbol_exprt(const irep_idt &identifier):
-    symbol_exprt(identifier)
-  {
-  }
-
-  /*! \brief Constructor
-   * \param  type Type of symbol
-  */
-  explicit decorated_symbol_exprt(const typet &type):
-    symbol_exprt(type)
-  {
-  }
-
-  /*! \brief Constructor
-   * \param identifier Name of symbol
-   * \param  type Type of symbol
-  */
-  decorated_symbol_exprt(
-    const irep_idt &identifier,
-    const typet &type):symbol_exprt(identifier, type)
+  /// \param identifier: Name of symbol
+  /// \param type: Type of symbol
+  decorated_symbol_exprt(const irep_idt &identifier, typet type)
+    : symbol_exprt(identifier, std::move(type))
   {
   }
 
@@ -197,57 +157,64 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref symbol_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * symbol_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref symbol_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const symbol_exprt &to_symbol_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<symbol_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_symbol);
-  DATA_INVARIANT(!expr.has_operands(), "Symbols must not have operands");
-  return static_cast<const symbol_exprt &>(expr);
+  return base.id() == ID_symbol;
 }
 
-/*! \copydoc to_symbol_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline symbol_exprt &to_symbol_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_symbol);
-  DATA_INVARIANT(!expr.has_operands(), "Symbols must not have operands");
-  return static_cast<symbol_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<symbol_exprt>(const exprt &base)
-{
-  return base.id()==ID_symbol;
-}
 inline void validate_expr(const symbol_exprt &value)
 {
   validate_operands(value, 0, "Symbols must not have operands");
 }
 
+/// \brief Cast an exprt to a \ref symbol_exprt
+///
+/// \a expr must be known to be \ref symbol_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref symbol_exprt
+inline const symbol_exprt &to_symbol_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_symbol);
+  const symbol_exprt &ret = static_cast<const symbol_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Expression to hold a nondeterministic choice
-*/
-class nondet_symbol_exprt:public exprt
+/// \copydoc to_symbol_expr(const exprt &)
+inline symbol_exprt &to_symbol_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_symbol);
+  symbol_exprt &ret = static_cast<symbol_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Expression to hold a nondeterministic choice
+class nondet_symbol_exprt : public nullary_exprt
 {
 public:
-  /*! \brief Constructor
-   * \param identifier Name of symbol
-   * \param  type Type of symbol
-  */
-  nondet_symbol_exprt(
-    const irep_idt &identifier,
-    const typet &type):exprt(ID_nondet_symbol, type)
+  /// \param identifier: Name of symbol
+  /// \param type: Type of symbol
+  nondet_symbol_exprt(const irep_idt &identifier, typet type)
+    : nullary_exprt(ID_nondet_symbol, std::move(type))
   {
     set_identifier(identifier);
+  }
+
+  /// \param identifier: name of symbol
+  /// \param type: type of symbol
+  /// \param location: location from which the symbol originate
+  nondet_symbol_exprt(
+    irep_idt identifier,
+    typet type,
+    source_locationt location)
+    : nullary_exprt(ID_nondet_symbol, std::move(type))
+  {
+    set_identifier(std::move(identifier));
+    add_source_location() = std::move(location);
   }
 
   void set_identifier(const irep_idt &identifier)
@@ -261,80 +228,54 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref nondet_symbol_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * nondet_symbol_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref nondet_symbol_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const nondet_symbol_exprt &to_nondet_symbol_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<nondet_symbol_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_nondet_symbol);
-  DATA_INVARIANT(!expr.has_operands(), "Symbols must not have operands");
-  return static_cast<const nondet_symbol_exprt &>(expr);
+  return base.id() == ID_nondet_symbol;
 }
 
-/*! \copydoc to_nondet_symbol_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline nondet_symbol_exprt &to_nondet_symbol_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_symbol);
-  DATA_INVARIANT(!expr.has_operands(), "Symbols must not have operands");
-  return static_cast<nondet_symbol_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<nondet_symbol_exprt>(const exprt &base)
-{
-  return base.id()==ID_nondet_symbol;
-}
 inline void validate_expr(const nondet_symbol_exprt &value)
 {
   validate_operands(value, 0, "Symbols must not have operands");
 }
 
+/// \brief Cast an exprt to a \ref nondet_symbol_exprt
+///
+/// \a expr must be known to be \ref nondet_symbol_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref nondet_symbol_exprt
+inline const nondet_symbol_exprt &to_nondet_symbol_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_nondet_symbol);
+  const nondet_symbol_exprt &ret =
+    static_cast<const nondet_symbol_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Generic base class for unary expressions
-*/
-class unary_exprt:public exprt
+/// \copydoc to_nondet_symbol_expr(const exprt &)
+inline nondet_symbol_exprt &to_nondet_symbol_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_symbol);
+  nondet_symbol_exprt &ret = static_cast<nondet_symbol_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Generic base class for unary expressions
+class unary_exprt : public expr_protectedt
 {
 public:
-  unary_exprt()
+  unary_exprt(const irep_idt &_id, const exprt &_op)
+    : expr_protectedt(_id, _op.type(), {_op})
   {
-    operands().resize(1);
   }
 
-  explicit unary_exprt(const irep_idt &_id):exprt(_id)
+  unary_exprt(const irep_idt &_id, exprt _op, typet _type)
+    : expr_protectedt(_id, std::move(_type), {std::move(_op)})
   {
-    operands().resize(1);
-  }
-
-  unary_exprt(
-    const irep_idt &_id,
-    const exprt &_op):
-    exprt(_id, _op.type())
-  {
-    copy_to_operands(_op);
-  }
-
-  unary_exprt(
-    const irep_idt &_id,
-    const typet &_type):exprt(_id, _type)
-  {
-    operands().resize(1);
-  }
-
-  unary_exprt(
-    const irep_idt &_id,
-    const exprt &_op,
-    const typet &_type):
-    exprt(_id, _type)
-  {
-    copy_to_operands(_op);
   }
 
   const exprt &op() const
@@ -346,174 +287,197 @@ public:
   {
     return op0();
   }
+
+  const exprt &op1() const = delete;
+  exprt &op1() = delete;
+  const exprt &op2() const = delete;
+  exprt &op2() = delete;
+  const exprt &op3() const = delete;
+  exprt &op3() = delete;
 };
 
-/*! \brief Cast a generic exprt to a \ref unary_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * unary_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref unary_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<unary_exprt>(const exprt &base)
+{
+  return base.operands().size() == 1;
+}
+
+inline void validate_expr(const unary_exprt &value)
+{
+  validate_operands(value, 1, "Unary expressions must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref unary_exprt
+///
+/// \a expr must be known to be \ref unary_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref unary_exprt
 inline const unary_exprt &to_unary_expr(const exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Unary expressions must have one operand");
-  return static_cast<const unary_exprt &>(expr);
+  const unary_exprt &ret = static_cast<const unary_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_unary_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_unary_expr(const exprt &)
 inline unary_exprt &to_unary_expr(exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Unary expressions must have one operand");
-  return static_cast<unary_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<unary_exprt>(const exprt &base)
-{
-  return base.operands().size()==1;
+  unary_exprt &ret = static_cast<unary_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
 
-/*! \brief absolute value
-*/
+/// \brief Absolute value
 class abs_exprt:public unary_exprt
 {
 public:
-  abs_exprt()
-  {
-  }
-
-  explicit abs_exprt(const exprt &_op):
-    unary_exprt(ID_abs, _op, _op.type())
+  explicit abs_exprt(exprt _op) : unary_exprt(ID_abs, std::move(_op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref abs_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * abs_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref abs_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const abs_exprt &to_abs_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<abs_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_abs);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Absolute value must have one operand");
-  return static_cast<const abs_exprt &>(expr);
+  return base.id() == ID_abs;
 }
 
-/*! \copydoc to_abs_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline abs_exprt &to_abs_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_abs);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Absolute value must have one operand");
-  return static_cast<abs_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<abs_exprt>(const exprt &base)
-{
-  return base.id()==ID_abs;
-}
 inline void validate_expr(const abs_exprt &value)
 {
   validate_operands(value, 1, "Absolute value must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref abs_exprt
+///
+/// \a expr must be known to be \ref abs_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref abs_exprt
+inline const abs_exprt &to_abs_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_abs);
+  const abs_exprt &ret = static_cast<const abs_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief The unary minus expression
-*/
+/// \copydoc to_abs_expr(const exprt &)
+inline abs_exprt &to_abs_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_abs);
+  abs_exprt &ret = static_cast<abs_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief The unary minus expression
 class unary_minus_exprt:public unary_exprt
 {
 public:
-  unary_minus_exprt():unary_exprt(ID_unary_minus)
+  unary_minus_exprt(exprt _op, typet _type)
+    : unary_exprt(ID_unary_minus, std::move(_op), std::move(_type))
   {
   }
 
-  unary_minus_exprt(
-    const exprt &_op,
-    const typet &_type):
-    unary_exprt(ID_unary_minus, _op, _type)
-  {
-  }
-
-  explicit unary_minus_exprt(const exprt &_op):
-    unary_exprt(ID_unary_minus, _op, _op.type())
+  explicit unary_minus_exprt(exprt _op)
+    : unary_exprt(ID_unary_minus, std::move(_op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref unary_minus_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * unary_minus_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref unary_minus_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const unary_minus_exprt &to_unary_minus_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<unary_minus_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_unary_minus);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Unary minus must have one operand");
-  return static_cast<const unary_minus_exprt &>(expr);
+  return base.id() == ID_unary_minus;
 }
 
-/*! \copydoc to_unary_minus_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline unary_minus_exprt &to_unary_minus_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_unary_minus);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Unary minus must have one operand");
-  return static_cast<unary_minus_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<unary_minus_exprt>(const exprt &base)
-{
-  return base.id()==ID_unary_minus;
-}
 inline void validate_expr(const unary_minus_exprt &value)
 {
   validate_operands(value, 1, "Unary minus must have one operand");
 }
 
-/*! \brief The byte swap expression
-*/
+/// \brief Cast an exprt to a \ref unary_minus_exprt
+///
+/// \a expr must be known to be \ref unary_minus_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref unary_minus_exprt
+inline const unary_minus_exprt &to_unary_minus_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_unary_minus);
+  const unary_minus_exprt &ret = static_cast<const unary_minus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_unary_minus_expr(const exprt &)
+inline unary_minus_exprt &to_unary_minus_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_unary_minus);
+  unary_minus_exprt &ret = static_cast<unary_minus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief The unary plus expression
+class unary_plus_exprt : public unary_exprt
+{
+public:
+  explicit unary_plus_exprt(exprt op)
+    : unary_exprt(ID_unary_plus, std::move(op))
+  {
+  }
+};
+
+template <>
+inline bool can_cast_expr<unary_plus_exprt>(const exprt &base)
+{
+  return base.id() == ID_unary_plus;
+}
+
+inline void validate_expr(const unary_plus_exprt &value)
+{
+  validate_operands(value, 1, "unary plus must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref unary_plus_exprt
+///
+/// \a expr must be known to be \ref unary_plus_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref unary_plus_exprt
+inline const unary_plus_exprt &to_unary_plus_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_unary_plus);
+  const unary_plus_exprt &ret = static_cast<const unary_plus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_unary_minus_expr(const exprt &)
+inline unary_plus_exprt &to_unary_plus_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_unary_plus);
+  unary_plus_exprt &ret = static_cast<unary_plus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief The byte swap expression
 class bswap_exprt: public unary_exprt
 {
 public:
-  bswap_exprt(const exprt &_op, std::size_t bits_per_byte, const typet &_type)
-    : unary_exprt(ID_bswap, _op, _type)
+  bswap_exprt(exprt _op, std::size_t bits_per_byte, typet _type)
+    : unary_exprt(ID_bswap, std::move(_op), std::move(_type))
   {
     set_bits_per_byte(bits_per_byte);
   }
 
-  bswap_exprt(const exprt &_op, std::size_t bits_per_byte)
-    : unary_exprt(ID_bswap, _op, _op.type())
+  bswap_exprt(exprt _op, std::size_t bits_per_byte)
+    : unary_exprt(ID_bswap, std::move(_op))
   {
     set_bits_per_byte(bits_per_byte);
   }
@@ -525,46 +489,16 @@ public:
 
   void set_bits_per_byte(std::size_t bits_per_byte)
   {
-    set(ID_bits_per_byte, bits_per_byte);
+    set(ID_bits_per_byte, narrow_cast<long long>(bits_per_byte));
   }
 };
-
-/*! \brief Cast a generic exprt to a \ref bswap_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * bswap_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref bswap_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const bswap_exprt &to_bswap_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id() == ID_bswap);
-  DATA_INVARIANT(expr.operands().size() == 1, "bswap must have one operand");
-  DATA_INVARIANT(
-    expr.op0().type() == expr.type(), "bswap type must match operand type");
-  return static_cast<const bswap_exprt &>(expr);
-}
-
-/*! \copydoc to_bswap_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline bswap_exprt &to_bswap_expr(exprt &expr)
-{
-  PRECONDITION(expr.id() == ID_bswap);
-  DATA_INVARIANT(expr.operands().size() == 1, "bswap must have one operand");
-  DATA_INVARIANT(
-    expr.op0().type() == expr.type(), "bswap type must match operand type");
-  return static_cast<bswap_exprt &>(expr);
-}
 
 template <>
 inline bool can_cast_expr<bswap_exprt>(const exprt &base)
 {
   return base.id() == ID_bswap;
 }
+
 inline void validate_expr(const bswap_exprt &value)
 {
   validate_operands(value, 1, "bswap must have one operand");
@@ -572,914 +506,809 @@ inline void validate_expr(const bswap_exprt &value)
     value.op().type() == value.type(), "bswap type must match operand type");
 }
 
-/*! \brief A generic base class for expressions that are predicates,
-           i.e., boolean-typed.
-*/
-class predicate_exprt:public exprt
+/// \brief Cast an exprt to a \ref bswap_exprt
+///
+/// \a expr must be known to be \ref bswap_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref bswap_exprt
+inline const bswap_exprt &to_bswap_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_bswap);
+  const bswap_exprt &ret = static_cast<const bswap_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_bswap_expr(const exprt &)
+inline bswap_exprt &to_bswap_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_bswap);
+  bswap_exprt &ret = static_cast<bswap_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief A base class for expressions that are predicates,
+///   i.e., Boolean-typed.
+class predicate_exprt : public expr_protectedt
 {
 public:
-  predicate_exprt():exprt(irep_idt(), bool_typet())
+  explicit predicate_exprt(const irep_idt &_id)
+    : expr_protectedt(_id, bool_typet())
   {
-  }
-
-  explicit predicate_exprt(const irep_idt &_id):
-    exprt(_id, bool_typet())
-  {
-  }
-
-  predicate_exprt(
-    const irep_idt &_id,
-    const exprt &_op):exprt(_id, bool_typet())
-  {
-    copy_to_operands(_op);
-  }
-
-  predicate_exprt(
-    const irep_idt &_id,
-    const exprt &_op0,
-    const exprt &_op1):exprt(_id, bool_typet())
-  {
-    copy_to_operands(_op0, _op1);
   }
 };
 
-/*! \brief A generic base class for expressions that are predicates,
-           i.e., boolean-typed, and that take exactly one argument.
-*/
+/// \brief A base class for expressions that are predicates,
+///   i.e., Boolean-typed, and that take exactly one argument.
 class unary_predicate_exprt:public unary_exprt
 {
 public:
-  unary_predicate_exprt():unary_exprt(irep_idt(), bool_typet())
+  unary_predicate_exprt(const irep_idt &_id, exprt _op)
+    : unary_exprt(_id, std::move(_op), bool_typet())
   {
   }
-
-  explicit unary_predicate_exprt(const irep_idt &_id):
-    unary_exprt(_id, bool_typet())
-  {
-  }
-
-  unary_predicate_exprt(
-    const irep_idt &_id,
-    const exprt &_op):unary_exprt(_id, _op, bool_typet())
-  {
-  }
-
-protected:
-  using exprt::op1; // hide
-  using exprt::op2; // hide
 };
 
-/*! \brief sign of an expression
-*/
+/// \brief Sign of an expression
+/// Predicate is true if \a _op is negative, false otherwise.
 class sign_exprt:public unary_predicate_exprt
 {
 public:
-  sign_exprt()
-  {
-  }
-
-  explicit sign_exprt(const exprt &_op):
-    unary_predicate_exprt(ID_sign, _op)
+  explicit sign_exprt(exprt _op)
+    : unary_predicate_exprt(ID_sign, std::move(_op))
   {
   }
 };
 
-/*! \brief A generic base class for binary expressions
-*/
-class binary_exprt:public exprt
+template <>
+inline bool can_cast_expr<sign_exprt>(const exprt &base)
 {
-public:
-  binary_exprt()
-  {
-    operands().resize(2);
-  }
-
-  explicit binary_exprt(const irep_idt &_id):exprt(_id)
-  {
-    operands().resize(2);
-  }
-
-  binary_exprt(
-    const irep_idt &_id,
-    const typet &_type):exprt(_id, _type)
-  {
-    operands().resize(2);
-  }
-
-  binary_exprt(
-    const exprt &_lhs,
-    const irep_idt &_id,
-    const exprt &_rhs):
-    exprt(_id, _lhs.type())
-  {
-    copy_to_operands(_lhs, _rhs);
-  }
-
-  binary_exprt(
-    const exprt &_lhs,
-    const irep_idt &_id,
-    const exprt &_rhs,
-    const typet &_type):
-    exprt(_id, _type)
-  {
-    copy_to_operands(_lhs, _rhs);
-  }
-
-protected:
-  using exprt::op2; // hide
-};
-
-/*! \brief Cast a generic exprt to a \ref binary_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * binary_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref binary_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const binary_exprt &to_binary_expr(const exprt &expr)
-{
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Binary expressions must have two operands");
-  return static_cast<const binary_exprt &>(expr);
+  return base.id() == ID_sign;
 }
 
-/*! \copydoc to_binary_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline binary_exprt &to_binary_expr(exprt &expr)
+inline void validate_expr(const sign_exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Binary expressions must have two operands");
-  return static_cast<binary_exprt &>(expr);
+  validate_operands(expr, 1, "sign expression must have one operand");
 }
 
-template<> inline bool can_cast_expr<binary_exprt>(const exprt &base)
+/// \brief Cast an exprt to a \ref sign_exprt
+///
+/// \a expr must be known to be a \ref sign_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref sign_exprt
+inline const sign_exprt &to_sign_expr(const exprt &expr)
 {
-  return base.operands().size()==2;
+  PRECONDITION(expr.id() == ID_sign);
+  const sign_exprt &ret = static_cast<const sign_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
+/// \copydoc to_sign_expr(const exprt &)
+inline sign_exprt &to_sign_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_sign);
+  sign_exprt &ret = static_cast<sign_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief A generic base class for expressions that are predicates,
-           i.e., boolean-typed, and that take exactly two arguments.
-*/
-class binary_predicate_exprt:public binary_exprt
+/// \brief A base class for binary expressions
+class binary_exprt : public expr_protectedt
 {
 public:
-  binary_predicate_exprt():binary_exprt(irep_idt(), bool_typet())
+  binary_exprt(const exprt &_lhs, const irep_idt &_id, exprt _rhs)
+    : expr_protectedt(_id, _lhs.type(), {_lhs, std::move(_rhs)})
   {
   }
 
-  explicit binary_predicate_exprt(const irep_idt &_id):
-    binary_exprt(_id, bool_typet())
+  binary_exprt(exprt _lhs, const irep_idt &_id, exprt _rhs, typet _type)
+    : expr_protectedt(_id, std::move(_type), {std::move(_lhs), std::move(_rhs)})
   {
   }
 
-  binary_predicate_exprt(
-    const exprt &_op0,
-    const irep_idt &_id,
-    const exprt &_op1):binary_exprt(_op0, _id, _op1, bool_typet())
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
   {
-  }
-};
-
-/*! \brief A generic base class for relations, i.e., binary predicates
-*/
-class binary_relation_exprt:public binary_predicate_exprt
-{
-public:
-  binary_relation_exprt()
-  {
+    DATA_CHECK(
+      vm,
+      expr.operands().size() == 2,
+      "binary expression must have two operands");
   }
 
-  explicit binary_relation_exprt(const irep_idt &id):
-    binary_predicate_exprt(id)
+  static void validate(
+    const exprt &expr,
+    const namespacet &,
+    const validation_modet vm = validation_modet::INVARIANT)
   {
-  }
-
-  binary_relation_exprt(
-    const exprt &_lhs,
-    const irep_idt &_id,
-    const exprt &_rhs):
-    binary_predicate_exprt(_lhs, _id, _rhs)
-  {
+    check(expr, vm);
   }
 
   exprt &lhs()
   {
-    return op0();
+    return exprt::op0();
   }
 
   const exprt &lhs() const
   {
-    return op0();
+    return exprt::op0();
   }
 
   exprt &rhs()
   {
-    return op1();
+    return exprt::op1();
   }
 
   const exprt &rhs() const
   {
-    return op1();
+    return exprt::op1();
+  }
+
+  // make op0 and op1 public
+  using exprt::op0;
+  using exprt::op1;
+
+  const exprt &op2() const = delete;
+  exprt &op2() = delete;
+  const exprt &op3() const = delete;
+  exprt &op3() = delete;
+};
+
+template <>
+inline bool can_cast_expr<binary_exprt>(const exprt &base)
+{
+  return base.operands().size() == 2;
+}
+
+inline void validate_expr(const binary_exprt &value)
+{
+  binary_exprt::check(value);
+}
+
+/// \brief Cast an exprt to a \ref binary_exprt
+///
+/// \a expr must be known to be \ref binary_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref binary_exprt
+inline const binary_exprt &to_binary_expr(const exprt &expr)
+{
+  binary_exprt::check(expr);
+  return static_cast<const binary_exprt &>(expr);
+}
+
+/// \copydoc to_binary_expr(const exprt &)
+inline binary_exprt &to_binary_expr(exprt &expr)
+{
+  binary_exprt::check(expr);
+  return static_cast<binary_exprt &>(expr);
+}
+
+/// \brief A base class for expressions that are predicates,
+///   i.e., Boolean-typed, and that take exactly two arguments.
+class binary_predicate_exprt:public binary_exprt
+{
+public:
+  binary_predicate_exprt(exprt _op0, const irep_idt &_id, exprt _op1)
+    : binary_exprt(std::move(_op0), _id, std::move(_op1), bool_typet())
+  {
+  }
+
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    binary_exprt::check(expr, vm);
+  }
+
+  static void validate(
+    const exprt &expr,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    binary_exprt::validate(expr, ns, vm);
+
+    DATA_CHECK(
+      vm,
+      expr.type().id() == ID_bool,
+      "result of binary predicate expression should be of type bool");
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref binary_relation_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * binary_relation_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref binary_relation_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const binary_relation_exprt &to_binary_relation_expr(const exprt &expr)
+/// \brief A base class for relations, i.e., binary predicates whose
+/// two operands have the same type
+class binary_relation_exprt:public binary_predicate_exprt
 {
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Binary relations must have two operands");
-  return static_cast<const binary_relation_exprt &>(expr);
-}
+public:
+  binary_relation_exprt(exprt _lhs, const irep_idt &_id, exprt _rhs)
+    : binary_predicate_exprt(std::move(_lhs), _id, std::move(_rhs))
+  {
+  }
 
-/*! \copydoc to_binary_relation_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline binary_relation_exprt &to_binary_relation_expr(exprt &expr)
-{
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Binary relations must have two operands");
-  return static_cast<binary_relation_exprt &>(expr);
-}
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    binary_predicate_exprt::check(expr, vm);
+  }
 
-template<> inline bool can_cast_expr<binary_relation_exprt>(const exprt &base)
+  static void validate(
+    const exprt &expr,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    binary_predicate_exprt::validate(expr, ns, vm);
+
+    // we now can safely assume that 'expr' is a binary predicate
+    const auto &expr_binary = static_cast<const binary_predicate_exprt &>(expr);
+
+    // check that the types of the operands are the same
+    DATA_CHECK(
+      vm,
+      expr_binary.op0().type() == expr_binary.op1().type(),
+      "lhs and rhs of binary relation expression should have same type");
+  }
+};
+
+template <>
+inline bool can_cast_expr<binary_relation_exprt>(const exprt &base)
 {
   return can_cast_expr<binary_exprt>(base);
 }
 
+inline void validate_expr(const binary_relation_exprt &value)
+{
+  binary_relation_exprt::check(value);
+}
 
-/*! \brief A generic base class for multi-ary expressions
-*/
-class multi_ary_exprt:public exprt
+/// \brief Cast an exprt to a \ref binary_relation_exprt
+///
+/// \a expr must be known to be \ref binary_relation_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref binary_relation_exprt
+inline const binary_relation_exprt &to_binary_relation_expr(const exprt &expr)
+{
+  binary_relation_exprt::check(expr);
+  return static_cast<const binary_relation_exprt &>(expr);
+}
+
+/// \copydoc to_binary_relation_expr(const exprt &)
+inline binary_relation_exprt &to_binary_relation_expr(exprt &expr)
+{
+  binary_relation_exprt::check(expr);
+  return static_cast<binary_relation_exprt &>(expr);
+}
+
+
+/// \brief A base class for multi-ary expressions
+/// Associativity is not specified.
+class multi_ary_exprt : public expr_protectedt
 {
 public:
-  multi_ary_exprt()
+  DEPRECATED(SINCE(2018, 12, 7, "use multi_ary_exprt(id, op, type) instead"))
+  multi_ary_exprt(const irep_idt &_id, const typet &_type)
+    : expr_protectedt(_id, _type)
   {
   }
 
-  explicit multi_ary_exprt(const irep_idt &_id):exprt(_id)
+  multi_ary_exprt(const irep_idt &_id, operandst _operands, typet _type)
+    : expr_protectedt(_id, std::move(_type))
+  {
+    operands() = std::move(_operands);
+  }
+
+  multi_ary_exprt(const exprt &_lhs, const irep_idt &_id, exprt _rhs)
+    : expr_protectedt(_id, _lhs.type(), {_lhs, std::move(_rhs)})
   {
   }
 
-  multi_ary_exprt(
-    const irep_idt &_id,
-    const typet &_type):exprt(_id, _type)
+  multi_ary_exprt(exprt _lhs, const irep_idt &_id, exprt _rhs, typet _type)
+    : expr_protectedt(_id, std::move(_type), {std::move(_lhs), std::move(_rhs)})
   {
   }
 
-  multi_ary_exprt(
-    const exprt &_lhs,
-    const irep_idt &_id,
-    const exprt &_rhs):
-    exprt(_id, _lhs.type())
+  // In contrast to exprt::opX, the methods
+  // below check the size.
+  exprt &op0()
   {
-    copy_to_operands(_lhs, _rhs);
+    PRECONDITION(operands().size() >= 1);
+    return operands().front();
   }
 
-  multi_ary_exprt(
-    const exprt &_lhs,
-    const irep_idt &_id,
-    const exprt &_rhs,
-    const typet &_type):
-    exprt(_id, _type)
+  exprt &op1()
   {
-    copy_to_operands(_lhs, _rhs);
+    PRECONDITION(operands().size() >= 2);
+    return operands()[1];
+  }
+
+  exprt &op2()
+  {
+    PRECONDITION(operands().size() >= 3);
+    return operands()[2];
+  }
+
+  exprt &op3()
+  {
+    PRECONDITION(operands().size() >= 4);
+    return operands()[3];
+  }
+
+  const exprt &op0() const
+  {
+    PRECONDITION(operands().size() >= 1);
+    return operands().front();
+  }
+
+  const exprt &op1() const
+  {
+    PRECONDITION(operands().size() >= 2);
+    return operands()[1];
+  }
+
+  const exprt &op2() const
+  {
+    PRECONDITION(operands().size() >= 3);
+    return operands()[2];
+  }
+
+  const exprt &op3() const
+  {
+    PRECONDITION(operands().size() >= 4);
+    return operands()[3];
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref multi_ary_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * multi_ary_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref multi_ary_exprt
- *
- * \ingroup gr_std_expr
-*/
+/// \brief Cast an exprt to a \ref multi_ary_exprt
+///
+/// \a expr must be known to be \ref multi_ary_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref multi_ary_exprt
 inline const multi_ary_exprt &to_multi_ary_expr(const exprt &expr)
 {
   return static_cast<const multi_ary_exprt &>(expr);
 }
 
-/*! \copydoc to_multi_ary_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_multi_ary_expr(const exprt &)
 inline multi_ary_exprt &to_multi_ary_expr(exprt &expr)
 {
   return static_cast<multi_ary_exprt &>(expr);
 }
 
 
-/*! \brief The plus expression
-*/
+/// \brief The plus expression
+/// Associativity is not specified.
 class plus_exprt:public multi_ary_exprt
 {
 public:
-  plus_exprt():multi_ary_exprt(ID_plus)
+  plus_exprt(exprt _lhs, exprt _rhs)
+    : multi_ary_exprt(std::move(_lhs), ID_plus, std::move(_rhs))
   {
   }
 
-  plus_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    multi_ary_exprt(_lhs, ID_plus, _rhs)
+  plus_exprt(exprt _lhs, exprt _rhs, typet _type)
+    : multi_ary_exprt(
+        std::move(_lhs),
+        ID_plus,
+        std::move(_rhs),
+        std::move(_type))
   {
   }
 
-  plus_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs,
-    const typet &_type):
-    multi_ary_exprt(_lhs, ID_plus, _rhs, _type)
+  plus_exprt(operandst _operands, typet _type)
+    : multi_ary_exprt(ID_plus, std::move(_operands), std::move(_type))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref plus_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * plus_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref plus_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const plus_exprt &to_plus_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<plus_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_plus);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Plus must have two or more operands");
-  return static_cast<const plus_exprt &>(expr);
+  return base.id() == ID_plus;
 }
 
-/*! \copydoc to_plus_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline plus_exprt &to_plus_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_plus);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Plus must have two or more operands");
-  return static_cast<plus_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<plus_exprt>(const exprt &base)
-{
-  return base.id()==ID_plus;
-}
 inline void validate_expr(const plus_exprt &value)
 {
   validate_operands(value, 2, "Plus must have two or more operands", true);
 }
 
+/// \brief Cast an exprt to a \ref plus_exprt
+///
+/// \a expr must be known to be \ref plus_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref plus_exprt
+inline const plus_exprt &to_plus_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_plus);
+  const plus_exprt &ret = static_cast<const plus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief binary minus
-*/
+/// \copydoc to_plus_expr(const exprt &)
+inline plus_exprt &to_plus_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_plus);
+  plus_exprt &ret = static_cast<plus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Binary minus
 class minus_exprt:public binary_exprt
 {
 public:
-  minus_exprt():binary_exprt(ID_minus)
-  {
-  }
-
-  minus_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    binary_exprt(_lhs, ID_minus, _rhs)
+  minus_exprt(exprt _lhs, exprt _rhs)
+    : binary_exprt(std::move(_lhs), ID_minus, std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref minus_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * minus_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref minus_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const minus_exprt &to_minus_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<minus_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_minus);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Minus must have two or more operands");
-  return static_cast<const minus_exprt &>(expr);
+  return base.id() == ID_minus;
 }
 
-/*! \copydoc to_minus_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline minus_exprt &to_minus_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_minus);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Minus must have two or more operands");
-  return static_cast<minus_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<minus_exprt>(const exprt &base)
-{
-  return base.id()==ID_minus;
-}
 inline void validate_expr(const minus_exprt &value)
 {
   validate_operands(value, 2, "Minus must have two or more operands", true);
 }
 
+/// \brief Cast an exprt to a \ref minus_exprt
+///
+/// \a expr must be known to be \ref minus_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref minus_exprt
+inline const minus_exprt &to_minus_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_minus);
+  const minus_exprt &ret = static_cast<const minus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief binary multiplication
-*/
+/// \copydoc to_minus_expr(const exprt &)
+inline minus_exprt &to_minus_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_minus);
+  minus_exprt &ret = static_cast<minus_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Binary multiplication
+/// Associativity is not specified.
 class mult_exprt:public multi_ary_exprt
 {
 public:
-  mult_exprt():multi_ary_exprt(ID_mult)
-  {
-  }
-
-  mult_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    multi_ary_exprt(_lhs, ID_mult, _rhs)
+  mult_exprt(exprt _lhs, exprt _rhs)
+    : multi_ary_exprt(std::move(_lhs), ID_mult, std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref mult_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * mult_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref mult_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const mult_exprt &to_mult_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<mult_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_mult);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Multiply must have two or more operands");
-  return static_cast<const mult_exprt &>(expr);
+  return base.id() == ID_mult;
 }
 
-/*! \copydoc to_mult_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline mult_exprt &to_mult_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_mult);
-  DATA_INVARIANT(
-    expr.operands().size()>=2,
-    "Multiply must have two or more operands");
-  return static_cast<mult_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<mult_exprt>(const exprt &base)
-{
-  return base.id()==ID_mult;
-}
 inline void validate_expr(const mult_exprt &value)
 {
   validate_operands(value, 2, "Multiply must have two or more operands", true);
 }
 
+/// \brief Cast an exprt to a \ref mult_exprt
+///
+/// \a expr must be known to be \ref mult_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref mult_exprt
+inline const mult_exprt &to_mult_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_mult);
+  const mult_exprt &ret = static_cast<const mult_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief division (integer and real)
-*/
+/// \copydoc to_mult_expr(const exprt &)
+inline mult_exprt &to_mult_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_mult);
+  mult_exprt &ret = static_cast<mult_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Division
 class div_exprt:public binary_exprt
 {
 public:
-  div_exprt():binary_exprt(ID_div)
+  div_exprt(exprt _lhs, exprt _rhs)
+    : binary_exprt(std::move(_lhs), ID_div, std::move(_rhs))
   {
   }
 
-  div_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    binary_exprt(_lhs, ID_div, _rhs)
+  /// The dividend of a division is the number that is being divided
+  exprt &dividend()
   {
+    return op0();
+  }
+
+  /// The dividend of a division is the number that is being divided
+  const exprt &dividend() const
+  {
+    return op0();
+  }
+
+  /// The divisor of a division is the number the dividend is being divided by
+  exprt &divisor()
+  {
+    return op1();
+  }
+
+  /// The divisor of a division is the number the dividend is being divided by
+  const exprt &divisor() const
+  {
+    return op1();
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref div_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * div_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref div_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const div_exprt &to_div_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<div_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_div);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Divide must have two operands");
-  return static_cast<const div_exprt &>(expr);
+  return base.id() == ID_div;
 }
 
-/*! \copydoc to_div_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline div_exprt &to_div_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_div);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Divide must have two operands");
-  return static_cast<div_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<div_exprt>(const exprt &base)
-{
-  return base.id()==ID_div;
-}
 inline void validate_expr(const div_exprt &value)
 {
   validate_operands(value, 2, "Divide must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref div_exprt
+///
+/// \a expr must be known to be \ref div_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref div_exprt
+inline const div_exprt &to_div_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_div);
+  const div_exprt &ret = static_cast<const div_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief binary modulo
-*/
+/// \copydoc to_div_expr(const exprt &)
+inline div_exprt &to_div_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_div);
+  div_exprt &ret = static_cast<div_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Modulo
 class mod_exprt:public binary_exprt
 {
 public:
-  mod_exprt():binary_exprt(ID_mod)
-  {
-  }
-
-  mod_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    binary_exprt(_lhs, ID_mod, _rhs)
+  mod_exprt(exprt _lhs, exprt _rhs)
+    : binary_exprt(std::move(_lhs), ID_mod, std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref mod_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * mod_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref mod_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const mod_exprt &to_mod_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<mod_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_mod);
-  DATA_INVARIANT(expr.operands().size()==2, "Modulo must have two operands");
-  return static_cast<const mod_exprt &>(expr);
+  return base.id() == ID_mod;
 }
 
-/*! \copydoc to_mod_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline mod_exprt &to_mod_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_mod);
-  DATA_INVARIANT(expr.operands().size()==2, "Modulo must have two operands");
-  return static_cast<mod_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<mod_exprt>(const exprt &base)
-{
-  return base.id()==ID_mod;
-}
 inline void validate_expr(const mod_exprt &value)
 {
   validate_operands(value, 2, "Modulo must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref mod_exprt
+///
+/// \a expr must be known to be \ref mod_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref mod_exprt
+inline const mod_exprt &to_mod_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_mod);
+  const mod_exprt &ret = static_cast<const mod_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief remainder of division
-*/
+/// \copydoc to_mod_expr(const exprt &)
+inline mod_exprt &to_mod_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_mod);
+  mod_exprt &ret = static_cast<mod_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Remainder of division
 class rem_exprt:public binary_exprt
 {
 public:
-  rem_exprt():binary_exprt(ID_rem)
-  {
-  }
-
-  rem_exprt(
-    const exprt &_lhs,
-    const exprt &_rhs):
-    binary_exprt(_lhs, ID_rem, _rhs)
+  rem_exprt(exprt _lhs, exprt _rhs)
+    : binary_exprt(std::move(_lhs), ID_rem, std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref rem_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * rem_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref rem_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const rem_exprt &to_rem_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<rem_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_rem);
-  DATA_INVARIANT(expr.operands().size()==2, "Remainder must have two operands");
-  return static_cast<const rem_exprt &>(expr);
+  return base.id() == ID_rem;
 }
 
-/*! \copydoc to_rem_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline rem_exprt &to_rem_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_rem);
-  DATA_INVARIANT(expr.operands().size()==2, "Remainder must have two operands");
-  return static_cast<rem_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<rem_exprt>(const exprt &base)
-{
-  return base.id()==ID_rem;
-}
 inline void validate_expr(const rem_exprt &value)
 {
   validate_operands(value, 2, "Remainder must have two operands");
 }
 
-
-/*! \brief exponentiation
- */
-class power_exprt:public binary_exprt
+/// \brief Cast an exprt to a \ref rem_exprt
+///
+/// \a expr must be known to be \ref rem_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref rem_exprt
+inline const rem_exprt &to_rem_expr(const exprt &expr)
 {
- public:
-  power_exprt():binary_exprt(ID_power)
-  {
-  }
-
-  power_exprt(
-    const exprt &_base,
-    const exprt &_exp):
-    binary_exprt(_base, ID_power, _exp)
-  {
-  }
-};
-
-/*! \brief Cast a generic exprt to a \ref power_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * power_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref power_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const power_exprt &to_power_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_power);
-  DATA_INVARIANT(expr.operands().size()==2, "Power must have two operands");
-  return static_cast<const power_exprt &>(expr);
+  PRECONDITION(expr.id()==ID_rem);
+  const rem_exprt &ret = static_cast<const rem_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_power_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline power_exprt &to_power_expr(exprt &expr)
+/// \copydoc to_rem_expr(const exprt &)
+inline rem_exprt &to_rem_expr(exprt &expr)
 {
-  PRECONDITION(expr.id()==ID_power);
-  DATA_INVARIANT(expr.operands().size()==2, "Power must have two operands");
-  return static_cast<power_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<power_exprt>(const exprt &base)
-{
-  return base.id()==ID_power;
-}
-inline void validate_expr(const power_exprt &value)
-{
-  validate_operands(value, 2, "Power must have two operands");
+  PRECONDITION(expr.id()==ID_rem);
+  rem_exprt &ret = static_cast<rem_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
 
-/*! \brief falling factorial power
- */
-class factorial_power_exprt:public binary_exprt
-{
- public:
-  factorial_power_exprt():binary_exprt(ID_factorial_power)
-  {
-  }
-
-  factorial_power_exprt(
-    const exprt &_base,
-    const exprt &_exp):
-    binary_exprt(_base, ID_factorial_power, _exp)
-  {
-  }
-};
-
-/*! \brief Cast a generic exprt to a \ref factorial_power_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * factorial_power_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref factorial_power_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const factorial_power_exprt &to_factorial_power_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_factorial_power);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Factorial power must have two operands");
-  return static_cast<const factorial_power_exprt &>(expr);
-}
-
-/*! \copydoc to_factorial_power_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline factorial_power_exprt &to_factorial_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_factorial_power);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Factorial power must have two operands");
-  return static_cast<factorial_power_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<factorial_power_exprt>(
-  const exprt &base)
-{
-  return base.id()==ID_factorial_power;
-}
-inline void validate_expr(const factorial_power_exprt &value)
-{
-  validate_operands(value, 2, "Factorial power must have two operands");
-}
-
-
-/*! \brief equality
-*/
+/// \brief Equality
 class equal_exprt:public binary_relation_exprt
 {
 public:
-  equal_exprt():binary_relation_exprt(ID_equal)
+  equal_exprt(exprt _lhs, exprt _rhs)
+    : binary_relation_exprt(std::move(_lhs), ID_equal, std::move(_rhs))
   {
   }
 
-  equal_exprt(const exprt &_lhs, const exprt &_rhs):
-    binary_relation_exprt(_lhs, ID_equal, _rhs)
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
   {
+    binary_relation_exprt::check(expr, vm);
+  }
+
+  static void validate(
+    const exprt &expr,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    binary_relation_exprt::validate(expr, ns, vm);
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref equal_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * equal_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref equal_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<equal_exprt>(const exprt &base)
+{
+  return base.id() == ID_equal;
+}
+
+inline void validate_expr(const equal_exprt &value)
+{
+  equal_exprt::check(value);
+}
+
+/// \brief Cast an exprt to an \ref equal_exprt
+///
+/// \a expr must be known to be \ref equal_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref equal_exprt
 inline const equal_exprt &to_equal_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_equal);
-  DATA_INVARIANT(expr.operands().size()==2, "Equality must have two operands");
+  equal_exprt::check(expr);
   return static_cast<const equal_exprt &>(expr);
 }
 
-/*! \copydoc to_equal_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_equal_expr(const exprt &)
 inline equal_exprt &to_equal_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_equal);
-  DATA_INVARIANT(expr.operands().size()==2, "Equality must have two operands");
+  equal_exprt::check(expr);
   return static_cast<equal_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<equal_exprt>(const exprt &base)
-{
-  return base.id()==ID_equal;
-}
-inline void validate_expr(const equal_exprt &value)
-{
-  validate_operands(value, 2, "Equality must have two operands");
-}
 
-
-/*! \brief inequality
-*/
+/// \brief Disequality
 class notequal_exprt:public binary_relation_exprt
 {
 public:
-  notequal_exprt():binary_relation_exprt(ID_notequal)
-  {
-  }
-
-  notequal_exprt(const exprt &_lhs, const exprt &_rhs):
-    binary_relation_exprt(_lhs, ID_notequal, _rhs)
+  notequal_exprt(exprt _lhs, exprt _rhs)
+    : binary_relation_exprt(std::move(_lhs), ID_notequal, std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref notequal_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * notequal_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref notequal_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const notequal_exprt &to_notequal_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<notequal_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_notequal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Inequality must have two operands");
-  return static_cast<const notequal_exprt &>(expr);
+  return base.id() == ID_notequal;
 }
 
-/*! \copydoc to_notequal_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline notequal_exprt &to_notequal_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_notequal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Inequality must have two operands");
-  return static_cast<notequal_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<notequal_exprt>(const exprt &base)
-{
-  return base.id()==ID_notequal;
-}
 inline void validate_expr(const notequal_exprt &value)
 {
   validate_operands(value, 2, "Inequality must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref notequal_exprt
+///
+/// \a expr must be known to be \ref notequal_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref notequal_exprt
+inline const notequal_exprt &to_notequal_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_notequal);
+  const notequal_exprt &ret = static_cast<const notequal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief array index operator
-*/
+/// \copydoc to_notequal_expr(const exprt &)
+inline notequal_exprt &to_notequal_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_notequal);
+  notequal_exprt &ret = static_cast<notequal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Array index operator
 class index_exprt:public binary_exprt
 {
 public:
-  index_exprt():binary_exprt(ID_index)
+  index_exprt(const exprt &_array, exprt _index)
+    : binary_exprt(_array, ID_index, std::move(_index), _array.type().subtype())
   {
   }
 
-  explicit index_exprt(const typet &_type):binary_exprt(ID_index, _type)
-  {
-  }
-
-  index_exprt(const exprt &_array, const exprt &_index):
-    binary_exprt(_array, ID_index, _index, _array.type().subtype())
-  {
-  }
-
-  index_exprt(
-    const exprt &_array,
-    const exprt &_index,
-    const typet &_type):
-    binary_exprt(_array, ID_index, _index, _type)
+  index_exprt(exprt _array, exprt _index, typet _type)
+    : binary_exprt(
+        std::move(_array),
+        ID_index,
+        std::move(_index),
+        std::move(_type))
   {
   }
 
@@ -1504,60 +1333,58 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref index_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * index_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref index_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const index_exprt &to_index_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<index_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_index);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Array index must have two operands");
-  return static_cast<const index_exprt &>(expr);
+  return base.id() == ID_index;
 }
 
-/*! \copydoc to_index_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline index_exprt &to_index_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_index);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Array index must have two operands");
-  return static_cast<index_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<index_exprt>(const exprt &base)
-{
-  return base.id()==ID_index;
-}
 inline void validate_expr(const index_exprt &value)
 {
   validate_operands(value, 2, "Array index must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref index_exprt
+///
+/// \a expr must be known to be \ref index_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref index_exprt
+inline const index_exprt &to_index_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_index);
+  const index_exprt &ret = static_cast<const index_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief array constructor from single element
-*/
+/// \copydoc to_index_expr(const exprt &)
+inline index_exprt &to_index_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_index);
+  index_exprt &ret = static_cast<index_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Array constructor from single element
 class array_of_exprt:public unary_exprt
 {
 public:
-  array_of_exprt():unary_exprt(ID_array_of)
+  explicit array_of_exprt(exprt _what, array_typet _type)
+    : unary_exprt(ID_array_of, std::move(_what), std::move(_type))
   {
   }
 
-  explicit array_of_exprt(
-    const exprt &_what, const array_typet &_type):
-    unary_exprt(ID_array_of, _what, _type)
+  const array_typet &type() const
   {
+    return static_cast<const array_typet &>(unary_exprt::type());
+  }
+
+  array_typet &type()
+  {
+    return static_cast<array_typet &>(unary_exprt::type());
   }
 
   exprt &what()
@@ -1571,100 +1398,116 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref array_of_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * array_of_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref array_of_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const array_of_exprt &to_array_of_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<array_of_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_array_of);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "'Array of' must have one operand");
-  return static_cast<const array_of_exprt &>(expr);
+  return base.id() == ID_array_of;
 }
 
-/*! \copydoc to_array_of_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline array_of_exprt &to_array_of_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_array_of);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "'Array of' must have one operand");
-  return static_cast<array_of_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<array_of_exprt>(const exprt &base)
-{
-  return base.id()==ID_array_of;
-}
 inline void validate_expr(const array_of_exprt &value)
 {
   validate_operands(value, 1, "'Array of' must have one operand");
 }
 
+/// \brief Cast an exprt to an \ref array_of_exprt
+///
+/// \a expr must be known to be \ref array_of_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref array_of_exprt
+inline const array_of_exprt &to_array_of_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_array_of);
+  const array_of_exprt &ret = static_cast<const array_of_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief array constructor from list of elements
-*/
-class array_exprt:public exprt
+/// \copydoc to_array_of_expr(const exprt &)
+inline array_of_exprt &to_array_of_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_array_of);
+  array_of_exprt &ret = static_cast<array_of_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Array constructor from list of elements
+class array_exprt : public multi_ary_exprt
 {
 public:
-  array_exprt():exprt(ID_array)
+  DEPRECATED(SINCE(2019, 1, 12, "use array_exprt(operands, type) instead"))
+  explicit array_exprt(const array_typet &_type)
+    : multi_ary_exprt(ID_array, _type)
   {
   }
 
-  explicit array_exprt(const array_typet &_type):
-    exprt(ID_array, _type)
+  array_exprt(operandst _operands, array_typet _type)
+    : multi_ary_exprt(ID_array, std::move(_operands), std::move(_type))
   {
+  }
+
+  const array_typet &type() const
+  {
+    return static_cast<const array_typet &>(multi_ary_exprt::type());
+  }
+
+  array_typet &type()
+  {
+    return static_cast<array_typet &>(multi_ary_exprt::type());
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref array_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * array_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref array_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<array_exprt>(const exprt &base)
+{
+  return base.id() == ID_array;
+}
+
+/// \brief Cast an exprt to an \ref array_exprt
+///
+/// \a expr must be known to be \ref array_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref array_exprt
 inline const array_exprt &to_array_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_array);
   return static_cast<const array_exprt &>(expr);
 }
 
-/*! \copydoc to_array_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_array_expr(const exprt &)
 inline array_exprt &to_array_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_array);
   return static_cast<array_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<array_exprt>(const exprt &base)
-{
-  return base.id()==ID_array;
-}
-
 /// Array constructor from a list of index-element pairs
 /// Operands are index/value pairs, alternating.
-class array_list_exprt : public exprt
+class array_list_exprt : public multi_ary_exprt
 {
 public:
-  explicit array_list_exprt(const array_typet &_type)
-    : exprt(ID_array_list, _type)
+  array_list_exprt(operandst _operands, array_typet _type)
+    : multi_ary_exprt(ID_array_list, std::move(_operands), std::move(_type))
   {
+  }
+
+  const array_typet &type() const
+  {
+    return static_cast<const array_typet &>(multi_ary_exprt::type());
+  }
+
+  array_typet &type()
+  {
+    return static_cast<array_typet &>(multi_ary_exprt::type());
+  }
+
+  /// add an index/value pair
+  void add(exprt index, exprt value)
+  {
+    add_to_operands(std::move(index), std::move(value));
   }
 };
 
@@ -1679,71 +1522,64 @@ inline void validate_expr(const array_list_exprt &value)
   PRECONDITION(value.operands().size() % 2 == 0);
 }
 
-/*! \brief vector constructor from list of elements
-*/
-class vector_exprt:public exprt
+inline const array_list_exprt &to_array_list_expr(const exprt &expr)
+{
+  PRECONDITION(can_cast_expr<array_list_exprt>(expr));
+  auto &ret = static_cast<const array_list_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+inline array_list_exprt &to_array_list_expr(exprt &expr)
+{
+  PRECONDITION(can_cast_expr<array_list_exprt>(expr));
+  auto &ret = static_cast<array_list_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Vector constructor from list of elements
+class vector_exprt : public multi_ary_exprt
 {
 public:
-  vector_exprt():exprt(ID_vector)
-  {
-  }
-
-  explicit vector_exprt(const vector_typet &_type):
-    exprt(ID_vector, _type)
+  vector_exprt(operandst _operands, vector_typet _type)
+    : multi_ary_exprt(ID_vector, std::move(_operands), std::move(_type))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref vector_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * vector_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref vector_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<vector_exprt>(const exprt &base)
+{
+  return base.id() == ID_vector;
+}
+
+/// \brief Cast an exprt to an \ref vector_exprt
+///
+/// \a expr must be known to be \ref vector_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref vector_exprt
 inline const vector_exprt &to_vector_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_vector);
   return static_cast<const vector_exprt &>(expr);
 }
 
-/*! \copydoc to_vector_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_vector_expr(const exprt &)
 inline vector_exprt &to_vector_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_vector);
   return static_cast<vector_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<vector_exprt>(const exprt &base)
-{
-  return base.id()==ID_vector;
-}
 
-
-/*! \brief union constructor from single element
-*/
+/// \brief Union constructor from single element
 class union_exprt:public unary_exprt
 {
 public:
-  union_exprt():unary_exprt(ID_union)
-  {
-  }
-
-  explicit union_exprt(const typet &_type):
-    unary_exprt(ID_union, _type)
-  {
-  }
-
-  explicit union_exprt(
-    const irep_idt &_component_name,
-    const exprt &_value,
-    const typet &_type):
-    unary_exprt(ID_union, _value, _type)
+  union_exprt(const irep_idt &_component_name, exprt _value, typet _type)
+    : unary_exprt(ID_union, std::move(_value), std::move(_type))
   {
     set_component_name(_component_name);
   }
@@ -1765,62 +1601,56 @@ public:
 
   void set_component_number(std::size_t component_number)
   {
-    set(ID_component_number, component_number);
+    set(ID_component_number, narrow_cast<long long>(component_number));
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref union_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * union_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref union_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const union_exprt &to_union_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<union_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_union);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Union constructor must have one operand");
-  return static_cast<const union_exprt &>(expr);
+  return base.id() == ID_union;
 }
 
-/*! \copydoc to_union_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline union_exprt &to_union_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_union);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Union constructor must have one operand");
-  return static_cast<union_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<union_exprt>(const exprt &base)
-{
-  return base.id()==ID_union;
-}
 inline void validate_expr(const union_exprt &value)
 {
   validate_operands(value, 1, "Union constructor must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref union_exprt
+///
+/// \a expr must be known to be \ref union_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref union_exprt
+inline const union_exprt &to_union_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_union);
+  const union_exprt &ret = static_cast<const union_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief struct constructor from list of elements
-*/
-class struct_exprt:public exprt
+/// \copydoc to_union_expr(const exprt &)
+inline union_exprt &to_union_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_union);
+  union_exprt &ret = static_cast<union_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Struct constructor from list of elements
+class struct_exprt : public multi_ary_exprt
 {
 public:
-  struct_exprt():exprt(ID_struct)
+  DEPRECATED(SINCE(2019, 1, 12, "use struct_exprt(operands, type) instead"))
+  explicit struct_exprt(const typet &_type) : multi_ary_exprt(ID_struct, _type)
   {
   }
 
-  explicit struct_exprt(const typet &_type):
-    exprt(ID_struct, _type)
+  struct_exprt(operandst _operands, typet _type)
+    : multi_ary_exprt(ID_struct, std::move(_operands), std::move(_type))
   {
   }
 
@@ -1828,54 +1658,42 @@ public:
   const exprt &component(const irep_idt &name, const namespacet &ns) const;
 };
 
-/*! \brief Cast a generic exprt to a \ref struct_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * struct_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref struct_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<struct_exprt>(const exprt &base)
+{
+  return base.id() == ID_struct;
+}
+
+/// \brief Cast an exprt to a \ref struct_exprt
+///
+/// \a expr must be known to be \ref struct_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref struct_exprt
 inline const struct_exprt &to_struct_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_struct);
   return static_cast<const struct_exprt &>(expr);
 }
 
-/*! \copydoc to_struct_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_struct_expr(const exprt &)
 inline struct_exprt &to_struct_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_struct);
   return static_cast<struct_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<struct_exprt>(const exprt &base)
-{
-  return base.id()==ID_struct;
-}
 
-
-/*! \brief complex constructor from a pair of numbers
-*/
+/// \brief Complex constructor from a pair of numbers
 class complex_exprt:public binary_exprt
 {
 public:
-  complex_exprt():binary_exprt(ID_complex)
-  {
-  }
-
-  explicit complex_exprt(const complex_typet &_type):
-    binary_exprt(ID_complex, _type)
-  {
-  }
-
-  explicit complex_exprt(
-    const exprt &_real, const exprt &_imag, const complex_typet &_type):
-    binary_exprt(_real, ID_complex, _imag, _type)
+  complex_exprt(exprt _real, exprt _imag, complex_typet _type)
+    : binary_exprt(
+        std::move(_real),
+        ID_complex,
+        std::move(_imag),
+        std::move(_type))
   {
   }
 
@@ -1900,60 +1718,158 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref complex_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * complex_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref complex_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const complex_exprt &to_complex_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<complex_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_complex);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Complex constructor must have two operands");
-  return static_cast<const complex_exprt &>(expr);
+  return base.id() == ID_complex;
 }
 
-/*! \copydoc to_complex_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline complex_exprt &to_complex_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_complex);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Complex constructor must have two operands");
-  return static_cast<complex_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<complex_exprt>(const exprt &base)
-{
-  return base.id()==ID_complex;
-}
 inline void validate_expr(const complex_exprt &value)
 {
   validate_operands(value, 2, "Complex constructor must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref complex_exprt
+///
+/// \a expr must be known to be \ref complex_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref complex_exprt
+inline const complex_exprt &to_complex_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_complex);
+  const complex_exprt &ret = static_cast<const complex_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_complex_expr(const exprt &)
+inline complex_exprt &to_complex_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_complex);
+  complex_exprt &ret = static_cast<complex_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Real part of the expression describing a complex number.
+class complex_real_exprt : public unary_exprt
+{
+public:
+  explicit complex_real_exprt(const exprt &op)
+    : unary_exprt(ID_complex_real, op, to_complex_type(op.type()).subtype())
+  {
+  }
+};
+
+template <>
+inline bool can_cast_expr<complex_real_exprt>(const exprt &base)
+{
+  return base.id() == ID_complex_real;
+}
+
+inline void validate_expr(const complex_real_exprt &expr)
+{
+  validate_operands(
+    expr, 1, "real part retrieval operation must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref complex_real_exprt
+///
+/// \a expr must be known to be a \ref complex_real_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref complex_real_exprt
+inline const complex_real_exprt &to_complex_real_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_complex_real);
+  const complex_real_exprt &ret = static_cast<const complex_real_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_complex_real_expr(const exprt &)
+inline complex_real_exprt &to_complex_real_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_complex_real);
+  complex_real_exprt &ret = static_cast<complex_real_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Imaginary part of the expression describing a complex number.
+class complex_imag_exprt : public unary_exprt
+{
+public:
+  explicit complex_imag_exprt(const exprt &op)
+    : unary_exprt(ID_complex_imag, op, to_complex_type(op.type()).subtype())
+  {
+  }
+};
+
+template <>
+inline bool can_cast_expr<complex_imag_exprt>(const exprt &base)
+{
+  return base.id() == ID_complex_imag;
+}
+
+inline void validate_expr(const complex_imag_exprt &expr)
+{
+  validate_operands(
+    expr, 1, "imaginary part retrieval operation must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref complex_imag_exprt
+///
+/// \a expr must be known to be a \ref complex_imag_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref complex_imag_exprt
+inline const complex_imag_exprt &to_complex_imag_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_complex_imag);
+  const complex_imag_exprt &ret = static_cast<const complex_imag_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_complex_imag_expr(const exprt &)
+inline complex_imag_exprt &to_complex_imag_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_complex_imag);
+  complex_imag_exprt &ret = static_cast<complex_imag_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
 class namespacet;
 
-/*! \brief split an expression into a base object and a (byte) offset
-*/
+/// \brief Split an expression into a base object and a (byte) offset
 class object_descriptor_exprt:public binary_exprt
 {
 public:
-  object_descriptor_exprt():binary_exprt(ID_object_descriptor)
+  object_descriptor_exprt()
+    : binary_exprt(
+        exprt(ID_unknown),
+        ID_object_descriptor,
+        exprt(ID_unknown),
+        typet())
   {
-    op0().id(ID_unknown);
-    op1().id(ID_unknown);
   }
 
+  explicit object_descriptor_exprt(exprt _object)
+    : binary_exprt(
+        std::move(_object),
+        ID_object_descriptor,
+        exprt(ID_unknown),
+        typet())
+  {
+  }
+
+  /// Given an expression \p expr, attempt to find the underlying object it
+  /// represents by skipping over type casts and removing balanced
+  /// dereference/address_of operations; that object will then be available
+  /// as root_object().
   void build(const exprt &expr, const namespacet &ns);
 
   exprt &object()
@@ -1966,18 +1882,7 @@ public:
     return op0();
   }
 
-  const exprt &root_object() const
-  {
-    const exprt *p=&object();
-
-    while(p->id()==ID_member || p->id()==ID_index)
-    {
-      assert(!p->operands().empty());
-      p=&p->op0();
-    }
-
-    return *p;
-  }
+  const exprt &root_object() const;
 
   exprt &offset()
   {
@@ -1990,65 +1895,60 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref object_descriptor_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * object_descriptor_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref object_descriptor_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const object_descriptor_exprt &to_object_descriptor_expr(
-  const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_object_descriptor);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Object descriptor must have two operands");
-  return static_cast<const object_descriptor_exprt &>(expr);
-}
-
-/*! \copydoc to_object_descriptor_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline object_descriptor_exprt &to_object_descriptor_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_object_descriptor);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Object descriptor must have two operands");
-  return static_cast<object_descriptor_exprt &>(expr);
-}
-
-template<>
+template <>
 inline bool can_cast_expr<object_descriptor_exprt>(const exprt &base)
 {
-  return base.id()==ID_object_descriptor;
+  return base.id() == ID_object_descriptor;
 }
+
 inline void validate_expr(const object_descriptor_exprt &value)
 {
   validate_operands(value, 2, "Object descriptor must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref object_descriptor_exprt
+///
+/// \a expr must be known to be \ref object_descriptor_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref object_descriptor_exprt
+inline const object_descriptor_exprt &to_object_descriptor_expr(
+  const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_object_descriptor);
+  const object_descriptor_exprt &ret =
+    static_cast<const object_descriptor_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief TO_BE_DOCUMENTED
-*/
+/// \copydoc to_object_descriptor_expr(const exprt &)
+inline object_descriptor_exprt &to_object_descriptor_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_object_descriptor);
+  object_descriptor_exprt &ret = static_cast<object_descriptor_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// Representation of heap-allocated objects
 class dynamic_object_exprt:public binary_exprt
 {
 public:
-  dynamic_object_exprt():binary_exprt(ID_dynamic_object)
+  DEPRECATED(SINCE(2019, 2, 11, "use dynamic_object_exprt(type) instead"))
+  dynamic_object_exprt()
+    : binary_exprt(exprt(ID_unknown), ID_dynamic_object, exprt(ID_unknown))
   {
-    op0().id(ID_unknown);
-    op1().id(ID_unknown);
   }
 
-  explicit dynamic_object_exprt(const typet &type):
-    binary_exprt(ID_dynamic_object, type)
+  explicit dynamic_object_exprt(typet type)
+    : binary_exprt(
+        exprt(ID_unknown),
+        ID_dynamic_object,
+        exprt(ID_unknown),
+        std::move(type))
   {
-    op0().id(ID_unknown);
-    op1().id(ID_unknown);
   }
 
   void set_instance(unsigned int instance);
@@ -2066,41 +1966,10 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref dynamic_object_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * dynamic_object_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref dynamic_object_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const dynamic_object_exprt &to_dynamic_object_expr(
-  const exprt &expr)
+template <>
+inline bool can_cast_expr<dynamic_object_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_dynamic_object);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Dynamic object must have two operands");
-  return static_cast<const dynamic_object_exprt &>(expr);
-}
-
-/*! \copydoc to_dynamic_object_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline dynamic_object_exprt &to_dynamic_object_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_dynamic_object);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Dynamic object must have two operands");
-  return static_cast<dynamic_object_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<dynamic_object_exprt>(const exprt &base)
-{
-  return base.id()==ID_dynamic_object;
+  return base.id() == ID_dynamic_object;
 }
 
 inline void validate_expr(const dynamic_object_exprt &value)
@@ -2108,18 +1977,72 @@ inline void validate_expr(const dynamic_object_exprt &value)
   validate_operands(value, 2, "Dynamic object must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref dynamic_object_exprt
+///
+/// \a expr must be known to be \ref dynamic_object_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref dynamic_object_exprt
+inline const dynamic_object_exprt &to_dynamic_object_expr(
+  const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_dynamic_object);
+  const dynamic_object_exprt &ret =
+    static_cast<const dynamic_object_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief semantic type conversion
-*/
-class typecast_exprt:public unary_exprt
+/// \copydoc to_dynamic_object_expr(const exprt &)
+inline dynamic_object_exprt &to_dynamic_object_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_dynamic_object);
+  dynamic_object_exprt &ret = static_cast<dynamic_object_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// Evaluates to true if the operand is a pointer to a dynamic object.
+class is_dynamic_object_exprt : public unary_predicate_exprt
 {
 public:
-  explicit typecast_exprt(const typet &_type):unary_exprt(ID_typecast, _type)
+  DEPRECATED(SINCE(2019, 11, 8, "use is_dynamic_object(op) instead"))
+  is_dynamic_object_exprt()
+    : unary_predicate_exprt(ID_is_dynamic_object, exprt())
   {
   }
 
-  typecast_exprt(const exprt &op, const typet &_type):
-    unary_exprt(ID_typecast, op, _type)
+  explicit is_dynamic_object_exprt(const exprt &op)
+    : unary_predicate_exprt(ID_is_dynamic_object, op)
+  {
+  }
+};
+
+inline const is_dynamic_object_exprt &
+to_is_dynamic_object_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_is_dynamic_object);
+  DATA_INVARIANT(
+    expr.operands().size() == 1, "is_dynamic_object must have one operand");
+  return static_cast<const is_dynamic_object_exprt &>(expr);
+}
+
+/// \copydoc to_is_dynamic_object_expr(const exprt &)
+/// \ingroup gr_std_expr
+inline is_dynamic_object_exprt &to_is_dynamic_object_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_is_dynamic_object);
+  DATA_INVARIANT(
+    expr.operands().size() == 1, "is_dynamic_object must have one operand");
+  return static_cast<is_dynamic_object_exprt &>(expr);
+}
+
+/// \brief Semantic type conversion
+class typecast_exprt:public unary_exprt
+{
+public:
+  typecast_exprt(exprt op, typet _type)
+    : unary_exprt(ID_typecast, std::move(op), std::move(_type))
   {
   }
 
@@ -2133,60 +2056,51 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref typecast_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * typecast_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref typecast_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const typecast_exprt &to_typecast_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<typecast_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_typecast);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Typecast must have one operand");
-  return static_cast<const typecast_exprt &>(expr);
+  return base.id() == ID_typecast;
 }
 
-/*! \copydoc to_typecast_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline typecast_exprt &to_typecast_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_typecast);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Typecast must have one operand");
-  return static_cast<typecast_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<typecast_exprt>(const exprt &base)
-{
-  return base.id()==ID_typecast;
-}
 inline void validate_expr(const typecast_exprt &value)
 {
   validate_operands(value, 1, "Typecast must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref typecast_exprt
+///
+/// \a expr must be known to be \ref typecast_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref typecast_exprt
+inline const typecast_exprt &to_typecast_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_typecast);
+  const typecast_exprt &ret = static_cast<const typecast_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief semantic type conversion from/to floating-point formats
-*/
+/// \copydoc to_typecast_expr(const exprt &)
+inline typecast_exprt &to_typecast_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_typecast);
+  typecast_exprt &ret = static_cast<typecast_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Semantic type conversion from/to floating-point formats
 class floatbv_typecast_exprt:public binary_exprt
 {
 public:
-  floatbv_typecast_exprt():binary_exprt(ID_floatbv_typecast)
-  {
-  }
-
-  floatbv_typecast_exprt(
-    const exprt &op,
-    const exprt &rounding,
-    const typet &_type):binary_exprt(op, ID_floatbv_typecast, rounding, _type)
+  floatbv_typecast_exprt(exprt op, exprt rounding, typet _type)
+    : binary_exprt(
+        std::move(op),
+        ID_floatbv_typecast,
+        std::move(rounding),
+        std::move(_type))
   {
   }
 
@@ -2211,581 +2125,411 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref floatbv_typecast_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * floatbv_typecast_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref floatbv_typecast_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const floatbv_typecast_exprt &to_floatbv_typecast_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_floatbv_typecast);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Float typecast must have two operands");
-  return static_cast<const floatbv_typecast_exprt &>(expr);
-}
-
-/*! \copydoc to_floatbv_typecast_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline floatbv_typecast_exprt &to_floatbv_typecast_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_floatbv_typecast);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Float typecast must have two operands");
-  return static_cast<floatbv_typecast_exprt &>(expr);
-}
-
-template<>
+template <>
 inline bool can_cast_expr<floatbv_typecast_exprt>(const exprt &base)
 {
-  return base.id()==ID_floatbv_typecast;
+  return base.id() == ID_floatbv_typecast;
 }
+
 inline void validate_expr(const floatbv_typecast_exprt &value)
 {
   validate_operands(value, 2, "Float typecast must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref floatbv_typecast_exprt
+///
+/// \a expr must be known to be \ref floatbv_typecast_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref floatbv_typecast_exprt
+inline const floatbv_typecast_exprt &to_floatbv_typecast_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_floatbv_typecast);
+  const floatbv_typecast_exprt &ret =
+    static_cast<const floatbv_typecast_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief boolean AND
-*/
+/// \copydoc to_floatbv_typecast_expr(const exprt &)
+inline floatbv_typecast_exprt &to_floatbv_typecast_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_floatbv_typecast);
+  floatbv_typecast_exprt &ret = static_cast<floatbv_typecast_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Boolean AND
 class and_exprt:public multi_ary_exprt
 {
 public:
-  and_exprt():multi_ary_exprt(ID_and, bool_typet())
+  and_exprt(exprt op0, exprt op1)
+    : multi_ary_exprt(std::move(op0), ID_and, std::move(op1), bool_typet())
   {
   }
 
-  and_exprt(const exprt &op0, const exprt &op1):
-    multi_ary_exprt(op0, ID_and, op1, bool_typet())
+  and_exprt(exprt op0, exprt op1, exprt op2)
+    : multi_ary_exprt(
+        ID_and,
+        {std::move(op0), std::move(op1), std::move(op2)},
+        bool_typet())
   {
   }
 
-  and_exprt(const exprt &op0, const exprt &op1, const exprt &op2):
-    multi_ary_exprt(ID_and, bool_typet())
+  and_exprt(exprt op0, exprt op1, exprt op2, exprt op3)
+    : multi_ary_exprt(
+        ID_and,
+        {std::move(op0), std::move(op1), std::move(op2), std::move(op3)},
+        bool_typet())
   {
-    copy_to_operands(op0, op1, op2);
   }
 
-  and_exprt(
-    const exprt &op0,
-    const exprt &op1,
-    const exprt &op2,
-    const exprt &op3):
-    multi_ary_exprt(ID_and, bool_typet())
+  explicit and_exprt(exprt::operandst _operands)
+    : multi_ary_exprt(ID_and, std::move(_operands), bool_typet())
   {
-    exprt::operandst &op=operands();
-    op.resize(4);
-    op[0]=op0;
-    op[1]=op1;
-    op[2]=op2;
-    op[3]=op3;
   }
 };
 
-/*! 1) generates a conjunction for two or more operands
- *  2) for one operand, returns the operand
- *  3) returns true otherwise
-*/
+/// 1) generates a conjunction for two or more operands
+/// 2) for one operand, returns the operand
+/// 3) returns true otherwise
 
 exprt conjunction(const exprt::operandst &);
 
-/*! \brief Cast a generic exprt to a \ref and_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * and_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref and_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<and_exprt>(const exprt &base)
+{
+  return base.id() == ID_and;
+}
+
+/// \brief Cast an exprt to a \ref and_exprt
+///
+/// \a expr must be known to be \ref and_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref and_exprt
 inline const and_exprt &to_and_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_and);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "And must have two or more operands");
   return static_cast<const and_exprt &>(expr);
 }
 
-/*! \copydoc to_and_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_and_expr(const exprt &)
 inline and_exprt &to_and_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_and);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "And must have two or more operands");
   return static_cast<and_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<and_exprt>(const exprt &base)
-{
-  return base.id()==ID_and;
-}
-// inline void validate_expr(const and_exprt &value)
-// {
-//   validate_operands(value, 2, "And must have two or more operands", true);
-// }
 
-
-/*! \brief boolean implication
-*/
+/// \brief Boolean implication
 class implies_exprt:public binary_exprt
 {
 public:
-  implies_exprt():binary_exprt(ID_implies, bool_typet())
-  {
-  }
-
-  implies_exprt(const exprt &op0, const exprt &op1):
-    binary_exprt(op0, ID_implies, op1, bool_typet())
+  implies_exprt(exprt op0, exprt op1)
+    : binary_exprt(std::move(op0), ID_implies, std::move(op1), bool_typet())
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref implies_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * implies_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref implies_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const implies_exprt &to_implies_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<implies_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_implies);
-  DATA_INVARIANT(expr.operands().size()==2, "Implies must have two operands");
-  return static_cast<const implies_exprt &>(expr);
+  return base.id() == ID_implies;
 }
 
-/*! \copydoc to_implies_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline implies_exprt &to_implies_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_implies);
-  DATA_INVARIANT(expr.operands().size()==2, "Implies must have two operands");
-  return static_cast<implies_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<implies_exprt>(const exprt &base)
-{
-  return base.id()==ID_implies;
-}
 inline void validate_expr(const implies_exprt &value)
 {
   validate_operands(value, 2, "Implies must have two operands");
 }
 
+/// \brief Cast an exprt to a \ref implies_exprt
+///
+/// \a expr must be known to be \ref implies_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref implies_exprt
+inline const implies_exprt &to_implies_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_implies);
+  const implies_exprt &ret = static_cast<const implies_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief boolean OR
-*/
+/// \copydoc to_implies_expr(const exprt &)
+inline implies_exprt &to_implies_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_implies);
+  implies_exprt &ret = static_cast<implies_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Boolean OR
 class or_exprt:public multi_ary_exprt
 {
 public:
-  or_exprt():multi_ary_exprt(ID_or, bool_typet())
+  or_exprt(exprt op0, exprt op1)
+    : multi_ary_exprt(std::move(op0), ID_or, std::move(op1), bool_typet())
   {
   }
 
-  or_exprt(const exprt &op0, const exprt &op1):
-    multi_ary_exprt(op0, ID_or, op1, bool_typet())
+  or_exprt(exprt op0, exprt op1, exprt op2)
+    : multi_ary_exprt(
+        ID_or,
+        {std::move(op0), std::move(op1), std::move(op2)},
+        bool_typet())
   {
   }
 
-  or_exprt(const exprt &op0, const exprt &op1, const exprt &op2):
-    multi_ary_exprt(ID_or, bool_typet())
+  or_exprt(exprt op0, exprt op1, exprt op2, exprt op3)
+    : multi_ary_exprt(
+        ID_or,
+        {std::move(op0), std::move(op1), std::move(op2), std::move(op3)},
+        bool_typet())
   {
-    copy_to_operands(op0, op1, op2);
   }
 
-  or_exprt(
-    const exprt &op0,
-    const exprt &op1,
-    const exprt &op2,
-    const exprt &op3):
-    multi_ary_exprt(ID_or, bool_typet())
+  explicit or_exprt(exprt::operandst _operands)
+    : multi_ary_exprt(ID_or, std::move(_operands), bool_typet())
   {
-    exprt::operandst &op=operands();
-    op.resize(4);
-    op[0]=op0;
-    op[1]=op1;
-    op[2]=op2;
-    op[3]=op3;
   }
 };
 
-/*! 1) generates a disjunction for two or more operands
- *  2) for one operand, returns the operand
- *  3) returns false otherwise
-*/
+/// 1) generates a disjunction for two or more operands
+/// 2) for one operand, returns the operand
+/// 3) returns false otherwise
 
 exprt disjunction(const exprt::operandst &);
 
-/*! \brief Cast a generic exprt to a \ref or_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * or_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref or_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<or_exprt>(const exprt &base)
+{
+  return base.id() == ID_or;
+}
+
+/// \brief Cast an exprt to a \ref or_exprt
+///
+/// \a expr must be known to be \ref or_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref or_exprt
 inline const or_exprt &to_or_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_or);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Or must have two or more operands");
   return static_cast<const or_exprt &>(expr);
 }
 
-/*! \copydoc to_or_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_or_expr(const exprt &)
 inline or_exprt &to_or_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_or);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Or must have two or more operands");
   return static_cast<or_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<or_exprt>(const exprt &base)
-{
-  return base.id()==ID_or;
-}
-// inline void validate_expr(const or_exprt &value)
-// {
-//   validate_operands(value, 2, "Or must have two or more operands", true);
-// }
 
-
-/*! \brief Boolean XOR
-*/
+/// \brief Boolean XOR
 class xor_exprt:public multi_ary_exprt
 {
 public:
-  xor_exprt():multi_ary_exprt(ID_bitxor, bool_typet())
-  {
-  }
-
-  xor_exprt(const exprt &_op0, const exprt &_op1):
-    multi_ary_exprt(_op0, ID_xor, _op1, bool_typet())
+  xor_exprt(exprt _op0, exprt _op1)
+    : multi_ary_exprt(std::move(_op0), ID_xor, std::move(_op1), bool_typet())
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref xor_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * xor_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref xor_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<xor_exprt>(const exprt &base)
+{
+  return base.id() == ID_xor;
+}
+
+/// \brief Cast an exprt to a \ref xor_exprt
+///
+/// \a expr must be known to be \ref xor_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref xor_exprt
 inline const xor_exprt &to_xor_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_xor);
   return static_cast<const xor_exprt &>(expr);
 }
 
-/*! \copydoc to_bitxor_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_bitxor_expr(const exprt &)
 inline xor_exprt &to_xor_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_xor);
   return static_cast<xor_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<xor_exprt>(const exprt &base)
-{
-  return base.id()==ID_xor;
-}
-// inline void validate_expr(const bitxor_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     2,
-//     "Bit-wise xor must have two or more operands",
-//     true);
-// }
 
-
-/*! \brief Bit-wise negation of bit-vectors
-*/
+/// \brief Bit-wise negation of bit-vectors
 class bitnot_exprt:public unary_exprt
 {
 public:
-  bitnot_exprt():unary_exprt(ID_bitnot)
-  {
-  }
-
-  explicit bitnot_exprt(const exprt &op):
-    unary_exprt(ID_bitnot, op)
+  explicit bitnot_exprt(exprt op) : unary_exprt(ID_bitnot, std::move(op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref bitnot_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * bitnot_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref bitnot_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<bitnot_exprt>(const exprt &base)
+{
+  return base.id() == ID_bitnot;
+}
+
+inline void validate_expr(const bitnot_exprt &value)
+{
+  validate_operands(value, 1, "Bit-wise not must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref bitnot_exprt
+///
+/// \a expr must be known to be \ref bitnot_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref bitnot_exprt
 inline const bitnot_exprt &to_bitnot_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitnot);
-  // DATA_INVARIANT(expr.operands().size()==1,
-  //                "Bit-wise not must have one operand");
-  return static_cast<const bitnot_exprt &>(expr);
+  const bitnot_exprt &ret = static_cast<const bitnot_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_bitnot_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_bitnot_expr(const exprt &)
 inline bitnot_exprt &to_bitnot_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitnot);
-  // DATA_INVARIANT(expr.operands().size()==1,
-  //                "Bit-wise not must have one operand");
-  return static_cast<bitnot_exprt &>(expr);
+  bitnot_exprt &ret = static_cast<bitnot_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-template<> inline bool can_cast_expr<bitnot_exprt>(const exprt &base)
-{
-  return base.id()==ID_bitnot;
-}
-// inline void validate_expr(const bitnot_exprt &value)
-// {
-//   validate_operands(value, 1, "Bit-wise not must have one operand");
-// }
 
-
-/*! \brief Bit-wise OR
-*/
+/// \brief Bit-wise OR
 class bitor_exprt:public multi_ary_exprt
 {
 public:
-  bitor_exprt():multi_ary_exprt(ID_bitor)
+  bitor_exprt(const exprt &_op0, exprt _op1)
+    : multi_ary_exprt(_op0, ID_bitor, std::move(_op1), _op0.type())
   {
-  }
-
-  bitor_exprt(const exprt &_op0, const exprt &_op1):
-    multi_ary_exprt(ID_bitor, _op0.type())
-  {
-    copy_to_operands(_op0, _op1);
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref bitor_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * bitor_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref bitor_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<bitor_exprt>(const exprt &base)
+{
+  return base.id() == ID_bitor;
+}
+
+/// \brief Cast an exprt to a \ref bitor_exprt
+///
+/// \a expr must be known to be \ref bitor_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref bitor_exprt
 inline const bitor_exprt &to_bitor_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitor);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise or must have two or more operands");
   return static_cast<const bitor_exprt &>(expr);
 }
 
-/*! \copydoc to_bitor_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_bitor_expr(const exprt &)
 inline bitor_exprt &to_bitor_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitor);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise or must have two or more operands");
   return static_cast<bitor_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<bitor_exprt>(const exprt &base)
-{
-  return base.id()==ID_bitor;
-}
-// inline void validate_expr(const bitor_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     2,
-//     "Bit-wise or must have two or more operands",
-//     true);
-// }
 
-
-/*! \brief Bit-wise XOR
-*/
+/// \brief Bit-wise XOR
 class bitxor_exprt:public multi_ary_exprt
 {
 public:
-  bitxor_exprt():multi_ary_exprt(ID_bitxor)
-  {
-  }
-
-  bitxor_exprt(const exprt &_op0, const exprt &_op1):
-    multi_ary_exprt(_op0, ID_bitxor, _op1, _op0.type())
+  bitxor_exprt(exprt _op0, exprt _op1)
+    : multi_ary_exprt(std::move(_op0), ID_bitxor, std::move(_op1))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref bitxor_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * bitxor_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref bitxor_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<bitxor_exprt>(const exprt &base)
+{
+  return base.id() == ID_bitxor;
+}
+
+/// \brief Cast an exprt to a \ref bitxor_exprt
+///
+/// \a expr must be known to be \ref bitxor_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref bitxor_exprt
 inline const bitxor_exprt &to_bitxor_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitxor);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise xor must have two or more operands");
   return static_cast<const bitxor_exprt &>(expr);
 }
 
-/*! \copydoc to_bitxor_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_bitxor_expr(const exprt &)
 inline bitxor_exprt &to_bitxor_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitxor);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise xor must have two or more operands");
   return static_cast<bitxor_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<bitxor_exprt>(const exprt &base)
-{
-  return base.id()==ID_bitxor;
-}
-// inline void validate_expr(const bitxor_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     2,
-//     "Bit-wise xor must have two or more operands",
-//     true);
-// }
 
-
-/*! \brief Bit-wise AND
-*/
+/// \brief Bit-wise AND
 class bitand_exprt:public multi_ary_exprt
 {
 public:
-  bitand_exprt():multi_ary_exprt(ID_bitand)
+  bitand_exprt(const exprt &_op0, exprt _op1)
+    : multi_ary_exprt(_op0, ID_bitand, std::move(_op1), _op0.type())
   {
-  }
-
-  bitand_exprt(const exprt &_op0, const exprt &_op1):
-    multi_ary_exprt(ID_bitand, _op0.type())
-  {
-    copy_to_operands(_op0, _op1);
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref bitand_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * bitand_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref bitand_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<bitand_exprt>(const exprt &base)
+{
+  return base.id() == ID_bitand;
+}
+
+/// \brief Cast an exprt to a \ref bitand_exprt
+///
+/// \a expr must be known to be \ref bitand_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref bitand_exprt
 inline const bitand_exprt &to_bitand_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitand);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise and must have two or more operands");
   return static_cast<const bitand_exprt &>(expr);
 }
 
-/*! \copydoc to_bitand_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_bitand_expr(const exprt &)
 inline bitand_exprt &to_bitand_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_bitand);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Bit-wise and must have two or more operands");
   return static_cast<bitand_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<bitand_exprt>(const exprt &base)
-{
-  return base.id()==ID_bitand;
-}
-// inline void validate_expr(const bitand_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     2,
-//     "Bit-wise and must have two or more operands",
-//     true);
-// }
 
-
-/*! \brief A base class for shift operators
-*/
+/// \brief A base class for shift operators
 class shift_exprt:public binary_exprt
 {
 public:
-  explicit shift_exprt(const irep_idt &_id):binary_exprt(_id)
+  shift_exprt(exprt _src, const irep_idt &_id, exprt _distance)
+    : binary_exprt(std::move(_src), _id, std::move(_distance))
   {
   }
 
-  shift_exprt(const irep_idt &_id, const typet &_type):
-    binary_exprt(_id, _type)
-  {
-  }
-
-  shift_exprt(const exprt &_src, const irep_idt &_id, const exprt &_distance):
-    binary_exprt(_src, _id, _distance)
-  {
-  }
-
-  shift_exprt(
-    const exprt &_src,
-    const irep_idt &_id,
-    const std::size_t _distance);
+  shift_exprt(exprt _src, const irep_idt &_id, const std::size_t _distance);
 
   exprt &op()
   {
@@ -2808,203 +2552,118 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref shift_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * shift_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref shift_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<shift_exprt>(const exprt &base)
+{
+  return base.id() == ID_shl || base.id() == ID_ashr || base.id() == ID_lshr;
+}
+
+inline void validate_expr(const shift_exprt &value)
+{
+  validate_operands(value, 2, "Shifts must have two operands");
+}
+
+/// \brief Cast an exprt to a \ref shift_exprt
+///
+/// \a expr must be known to be \ref shift_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref shift_exprt
 inline const shift_exprt &to_shift_expr(const exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Shifts must have two operands");
-  return static_cast<const shift_exprt &>(expr);
+  const shift_exprt &ret = static_cast<const shift_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_shift_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_shift_expr(const exprt &)
 inline shift_exprt &to_shift_expr(exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Shifts must have two operands");
-  return static_cast<shift_exprt &>(expr);
+  shift_exprt &ret = static_cast<shift_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-// The to_*_expr function for this type doesn't do any checks before casting,
-// therefore the implementation is essentially a static_cast.
-// Enabling expr_dynamic_cast would hide this; instead use static_cast directly.
-// inline void validate_expr(const shift_exprt &value)
-// {
-//   validate_operands(value, 2, "Shifts must have two operands");
-// }
 
-
-/*! \brief Left shift
-*/
+/// \brief Left shift
 class shl_exprt:public shift_exprt
 {
 public:
-  shl_exprt():shift_exprt(ID_shl)
+  shl_exprt(exprt _src, exprt _distance)
+    : shift_exprt(std::move(_src), ID_shl, std::move(_distance))
   {
   }
 
-  shl_exprt(const exprt &_src, const exprt &_distance):
-    shift_exprt(_src, ID_shl, _distance)
-  {
-  }
-
-  shl_exprt(const exprt &_src, const std::size_t _distance):
-    shift_exprt(_src, ID_shl, _distance)
+  shl_exprt(exprt _src, const std::size_t _distance)
+    : shift_exprt(std::move(_src), ID_shl, _distance)
   {
   }
 };
 
-/*! \brief Arithmetic right shift
-*/
+/// \brief Cast an exprt to a \ref shl_exprt
+///
+/// \a expr must be known to be \ref shl_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref shl_exprt
+inline const shl_exprt &to_shl_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_shl);
+  const shl_exprt &ret = static_cast<const shl_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_shl_expr(const exprt &)
+inline shl_exprt &to_shl_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_shl);
+  shl_exprt &ret = static_cast<shl_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Arithmetic right shift
 class ashr_exprt:public shift_exprt
 {
 public:
-  ashr_exprt():shift_exprt(ID_ashr)
+  ashr_exprt(exprt _src, exprt _distance)
+    : shift_exprt(std::move(_src), ID_ashr, std::move(_distance))
   {
   }
 
-  ashr_exprt(const exprt &_src, const exprt &_distance):
-    shift_exprt(_src, ID_ashr, _distance)
-  {
-  }
-
-  ashr_exprt(const exprt &_src, const std::size_t _distance):
-    shift_exprt(_src, ID_ashr, _distance)
+  ashr_exprt(exprt _src, const std::size_t _distance)
+    : shift_exprt(std::move(_src), ID_ashr, _distance)
   {
   }
 };
 
-/*! \brief Logical right shift
-*/
+/// \brief Logical right shift
 class lshr_exprt:public shift_exprt
 {
 public:
-  lshr_exprt():shift_exprt(ID_lshr)
+  lshr_exprt(exprt _src, exprt _distance)
+    : shift_exprt(std::move(_src), ID_lshr, std::move(_distance))
   {
   }
 
-  lshr_exprt(const exprt &_src, const exprt &_distance):
-    shift_exprt(_src, ID_lshr, _distance)
-  {
-  }
-
-  lshr_exprt(const exprt &_src, const std::size_t _distance):
-    shift_exprt(_src, ID_lshr, _distance)
+  lshr_exprt(exprt _src, const std::size_t _distance)
+    : shift_exprt(std::move(_src), ID_lshr, std::move(_distance))
   {
   }
 };
 
-/*! \brief Bit-vector replication
-*/
-class replication_exprt:public binary_exprt
-{
-public:
-  replication_exprt():binary_exprt(ID_replication)
-  {
-  }
-
-  explicit replication_exprt(const typet &_type):
-    binary_exprt(ID_replication, _type)
-  {
-  }
-
-  replication_exprt(const exprt &_times, const exprt &_src):
-    binary_exprt(_times, ID_replication, _src)
-  {
-  }
-
-  exprt &times()
-  {
-    return op0();
-  }
-
-  const exprt &times() const
-  {
-    return op0();
-  }
-
-  exprt &op()
-  {
-    return op1();
-  }
-
-  const exprt &op() const
-  {
-    return op1();
-  }
-};
-
-/*! \brief Cast a generic exprt to a \ref replication_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * replication_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref replication_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const replication_exprt &to_replication_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_replication);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Bit-wise replication must have two operands");
-  return static_cast<const replication_exprt &>(expr);
-}
-
-/*! \copydoc to_replication_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline replication_exprt &to_replication_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_replication);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Bit-wise replication must have two operands");
-  return static_cast<replication_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<replication_exprt>(const exprt &base)
-{
-  return base.id()==ID_replication;
-}
-inline void validate_expr(const replication_exprt &value)
-{
-  validate_operands(value, 2, "Bit-wise replication must have two operands");
-}
-
-
-/*! \brief Extracts a single bit of a bit-vector operand
-*/
+/// \brief Extracts a single bit of a bit-vector operand
 class extractbit_exprt:public binary_predicate_exprt
 {
 public:
-  extractbit_exprt():binary_predicate_exprt(ID_extractbit)
+  /// Extract the \p _index-th least significant bit from \p _src.
+  extractbit_exprt(exprt _src, exprt _index)
+    : binary_predicate_exprt(std::move(_src), ID_extractbit, std::move(_index))
   {
   }
 
-  extractbit_exprt(
-    const exprt &_src,
-    const exprt &_index):binary_predicate_exprt(_src, ID_extractbit, _index)
-  {
-  }
-
-  extractbit_exprt(
-    const exprt &_src,
-    const std::size_t _index);
+  extractbit_exprt(exprt _src, const std::size_t _index);
 
   exprt &src()
   {
@@ -3027,72 +2686,63 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref extractbit_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * extractbit_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref extractbit_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const extractbit_exprt &to_extractbit_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<extractbit_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_extractbit);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Extract bit must have two operands");
-  return static_cast<const extractbit_exprt &>(expr);
+  return base.id() == ID_extractbit;
 }
 
-/*! \copydoc to_extractbit_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline extractbit_exprt &to_extractbit_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_extractbit);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Extract bit must have two operands");
-  return static_cast<extractbit_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<extractbit_exprt>(const exprt &base)
-{
-  return base.id()==ID_extractbit;
-}
 inline void validate_expr(const extractbit_exprt &value)
 {
   validate_operands(value, 2, "Extract bit must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref extractbit_exprt
+///
+/// \a expr must be known to be \ref extractbit_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref extractbit_exprt
+inline const extractbit_exprt &to_extractbit_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_extractbit);
+  const extractbit_exprt &ret = static_cast<const extractbit_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Extracts a sub-range of a bit-vector operand
-*/
-class extractbits_exprt:public exprt
+/// \copydoc to_extractbit_expr(const exprt &)
+inline extractbit_exprt &to_extractbit_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_extractbit);
+  extractbit_exprt &ret = static_cast<extractbit_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Extracts a sub-range of a bit-vector operand
+class extractbits_exprt : public expr_protectedt
 {
 public:
-  extractbits_exprt():exprt(ID_extractbits)
+  /// Extract the bits [\p _lower .. \p _upper] from \p _src to produce a result
+  /// of type \p _type. Note that this specifies a closed interval, i.e., both
+  /// bits \p _lower and \p _upper are included. Indices count from the
+  /// least-significant bit, and are not affected by endianness.
+  /// The ordering upper-lower matches what SMT-LIB uses.
+  extractbits_exprt(exprt _src, exprt _upper, exprt _lower, typet _type)
+    : expr_protectedt(
+        ID_extractbits,
+        std::move(_type),
+        {std::move(_src), std::move(_upper), std::move(_lower)})
   {
-    operands().resize(3);
-  }
-
-  // the ordering upper-lower matches the SMT-LIB
-  extractbits_exprt(
-    const exprt &_src,
-    const exprt &_upper,
-    const exprt &_lower,
-    const typet &_type):exprt(ID_extractbits, _type)
-  {
-    copy_to_operands(_src, _upper, _lower);
   }
 
   extractbits_exprt(
-    const exprt &_src,
+    exprt _src,
     const std::size_t _upper,
     const std::size_t _lower,
-    const typet &_type);
+    typet _type);
 
   exprt &src()
   {
@@ -3125,56 +2775,49 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref extractbits_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * extractbits_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref extractbits_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const extractbits_exprt &to_extractbits_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<extractbits_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_extractbits);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Extract bits must have three operands");
-  return static_cast<const extractbits_exprt &>(expr);
+  return base.id() == ID_extractbits;
 }
 
-/*! \copydoc to_extractbits_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline extractbits_exprt &to_extractbits_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_extractbits);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Extract bits must have three operands");
-  return static_cast<extractbits_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<extractbits_exprt>(const exprt &base)
-{
-  return base.id()==ID_extractbits;
-}
 inline void validate_expr(const extractbits_exprt &value)
 {
   validate_operands(value, 3, "Extract bits must have three operands");
 }
 
+/// \brief Cast an exprt to an \ref extractbits_exprt
+///
+/// \a expr must be known to be \ref extractbits_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref extractbits_exprt
+inline const extractbits_exprt &to_extractbits_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_extractbits);
+  const extractbits_exprt &ret = static_cast<const extractbits_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Operator to return the address of an object
-*/
+/// \copydoc to_extractbits_expr(const exprt &)
+inline extractbits_exprt &to_extractbits_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_extractbits);
+  extractbits_exprt &ret = static_cast<extractbits_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Operator to return the address of an object
 class address_of_exprt:public unary_exprt
 {
 public:
   explicit address_of_exprt(const exprt &op);
 
-  address_of_exprt(const exprt &op, const pointer_typet &_type):
-    unary_exprt(ID_address_of, op, _type)
+  address_of_exprt(exprt op, pointer_typet _type)
+    : unary_exprt(ID_address_of, std::move(op), std::move(_type))
   {
   }
 
@@ -3189,89 +2832,55 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref address_of_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * address_of_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref address_of_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const address_of_exprt &to_address_of_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<address_of_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_address_of);
-  DATA_INVARIANT(expr.operands().size()==1, "Address of must have one operand");
-  return static_cast<const address_of_exprt &>(expr);
+  return base.id() == ID_address_of;
 }
 
-/*! \copydoc to_address_of_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline address_of_exprt &to_address_of_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_address_of);
-  DATA_INVARIANT(expr.operands().size()==1, "Address of must have one operand");
-  return static_cast<address_of_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<address_of_exprt>(const exprt &base)
-{
-  return base.id()==ID_address_of;
-}
 inline void validate_expr(const address_of_exprt &value)
 {
   validate_operands(value, 1, "Address of must have one operand");
 }
 
+/// \brief Cast an exprt to an \ref address_of_exprt
+///
+/// \a expr must be known to be \ref address_of_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref address_of_exprt
+inline const address_of_exprt &to_address_of_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_address_of);
+  const address_of_exprt &ret = static_cast<const address_of_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Boolean negation
-*/
+/// \copydoc to_address_of_expr(const exprt &)
+inline address_of_exprt &to_address_of_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_address_of);
+  address_of_exprt &ret = static_cast<address_of_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Boolean negation
 class not_exprt:public unary_exprt
 {
 public:
-  explicit not_exprt(const exprt &op):
-    unary_exprt(ID_not, op) // type from op.type()
+  explicit not_exprt(exprt _op) : unary_exprt(ID_not, std::move(_op))
   {
-    PRECONDITION(op.type().id()==ID_bool);
-  }
-
-  not_exprt():unary_exprt(ID_not, bool_typet())
-  {
+    PRECONDITION(as_const(*this).op().type().id() == ID_bool);
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref not_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * not_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref not_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const not_exprt &to_not_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<not_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_not);
-  DATA_INVARIANT(expr.operands().size()==1, "Not must have one operand");
-  return static_cast<const not_exprt &>(expr);
-}
-
-/*! \copydoc to_not_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline not_exprt &to_not_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_not);
-  DATA_INVARIANT(expr.operands().size()==1, "Not must have one operand");
-  return static_cast<not_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<not_exprt>(const exprt &base)
-{
-  return base.id()==ID_not;
+  return base.id() == ID_not;
 }
 
 inline void validate_expr(const not_exprt &value)
@@ -3279,29 +2888,42 @@ inline void validate_expr(const not_exprt &value)
   validate_operands(value, 1, "Not must have one operand");
 }
 
+/// \brief Cast an exprt to an \ref not_exprt
+///
+/// \a expr must be known to be \ref not_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref not_exprt
+inline const not_exprt &to_not_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_not);
+  const not_exprt &ret = static_cast<const not_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Operator to dereference a pointer
-*/
+/// \copydoc to_not_expr(const exprt &)
+inline not_exprt &to_not_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_not);
+  not_exprt &ret = static_cast<not_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Operator to dereference a pointer
 class dereference_exprt:public unary_exprt
 {
 public:
-  dereference_exprt():unary_exprt(ID_dereference)
-  {
-  }
-
-  explicit dereference_exprt(const typet &type):
-    unary_exprt(ID_dereference, type)
-  {
-  }
-
   explicit dereference_exprt(const exprt &op):
     unary_exprt(ID_dereference, op, op.type().subtype())
   {
     PRECONDITION(op.type().id()==ID_pointer);
   }
 
-  dereference_exprt(const exprt &op, const typet &type):
-    unary_exprt(ID_dereference, op, type)
+  dereference_exprt(exprt op, typet type)
+    : unary_exprt(ID_dereference, std::move(op), std::move(type))
   {
   }
 
@@ -3314,73 +2936,75 @@ public:
   {
     return op0();
   }
+
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    DATA_CHECK(
+      vm,
+      expr.operands().size() == 1,
+      "dereference expression must have one operand");
+  }
+
+  static void validate(
+    const exprt &expr,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT);
 };
 
-/*! \brief Cast a generic exprt to a \ref dereference_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * dereference_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref dereference_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const dereference_exprt &to_dereference_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<dereference_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_dereference);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Dereference must have one operand");
-  return static_cast<const dereference_exprt &>(expr);
+  return base.id() == ID_dereference;
 }
 
-/*! \copydoc to_dereference_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline dereference_exprt &to_dereference_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_dereference);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Dereference must have one operand");
-  return static_cast<dereference_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<dereference_exprt>(const exprt &base)
-{
-  return base.id()==ID_dereference;
-}
 inline void validate_expr(const dereference_exprt &value)
 {
   validate_operands(value, 1, "Dereference must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref dereference_exprt
+///
+/// \a expr must be known to be \ref dereference_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref dereference_exprt
+inline const dereference_exprt &to_dereference_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_dereference);
+  const dereference_exprt &ret = static_cast<const dereference_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief The trinary if-then-else operator
-*/
-class if_exprt:public exprt
+/// \copydoc to_dereference_expr(const exprt &)
+inline dereference_exprt &to_dereference_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_dereference);
+  dereference_exprt &ret = static_cast<dereference_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief The trinary if-then-else operator
+class if_exprt : public ternary_exprt
 {
 public:
-  if_exprt(const exprt &cond, const exprt &t, const exprt &f):
-    exprt(ID_if, t.type())
+  if_exprt(exprt cond, const exprt &t, exprt f)
+    : ternary_exprt(ID_if, std::move(cond), t, std::move(f), t.type())
   {
-    copy_to_operands(cond, t, f);
   }
 
-  if_exprt(
-    const exprt &cond,
-    const exprt &t,
-    const exprt &f,
-    const typet &type):
-    exprt(ID_if, type)
+  if_exprt(exprt cond, exprt t, exprt f, typet type)
+    : ternary_exprt(
+        ID_if,
+        std::move(cond),
+        std::move(t),
+        std::move(f),
+        std::move(type))
   {
-    copy_to_operands(cond, t, f);
-  }
-
-  if_exprt():exprt(ID_if)
-  {
-    operands().resize(3);
   }
 
   exprt &cond()
@@ -3414,66 +3038,52 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref if_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * if_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref if_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const if_exprt &to_if_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<if_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_if);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "If-then-else must have three operands");
-  return static_cast<const if_exprt &>(expr);
+  return base.id() == ID_if;
 }
 
-/*! \copydoc to_if_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline if_exprt &to_if_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_if);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "If-then-else must have three operands");
-  return static_cast<if_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<if_exprt>(const exprt &base)
-{
-  return base.id()==ID_if;
-}
 inline void validate_expr(const if_exprt &value)
 {
   validate_operands(value, 3, "If-then-else must have three operands");
 }
 
+/// \brief Cast an exprt to an \ref if_exprt
+///
+/// \a expr must be known to be \ref if_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref if_exprt
+inline const if_exprt &to_if_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_if);
+  const if_exprt &ret = static_cast<const if_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Operator to update elements in structs and arrays
-    \remark This expression will eventually be replaced by separate
-            array and struct update operators.
-*/
-class with_exprt:public exprt
+/// \copydoc to_if_expr(const exprt &)
+inline if_exprt &to_if_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_if);
+  if_exprt &ret = static_cast<if_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Operator to update elements in structs and arrays
+/// \remark This expression will eventually be replaced by separate
+///   array and struct update operators.
+class with_exprt : public expr_protectedt
 {
 public:
-  with_exprt(
-    const exprt &_old,
-    const exprt &_where,
-    const exprt &_new_value):
-    exprt(ID_with, _old.type())
+  with_exprt(const exprt &_old, exprt _where, exprt _new_value)
+    : expr_protectedt(
+        ID_with,
+        _old.type(),
+        {_old, std::move(_where), std::move(_new_value)})
   {
-    copy_to_operands(_old, _where, _new_value);
-  }
-
-  with_exprt():exprt(ID_with)
-  {
-    operands().resize(3);
   }
 
   exprt &old()
@@ -3507,57 +3117,50 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref with_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * with_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref with_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const with_exprt &to_with_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<with_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_with);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array/structure update must have three operands");
-  return static_cast<const with_exprt &>(expr);
+  return base.id() == ID_with;
 }
 
-/*! \copydoc to_with_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline with_exprt &to_with_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_with);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array/structure update must have three operands");
-  return static_cast<with_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<with_exprt>(const exprt &base)
-{
-  return base.id()==ID_with;
-}
 inline void validate_expr(const with_exprt &value)
 {
   validate_operands(
-    value,
-    3,
-    "Array/structure update must have three operands");
+    value, 3, "array/structure update must have at least 3 operands", true);
+  DATA_INVARIANT(
+    value.operands().size() % 2 == 1,
+    "array/structure update must have an odd number of operands");
 }
 
+/// \brief Cast an exprt to a \ref with_exprt
+///
+/// \a expr must be known to be \ref with_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref with_exprt
+inline const with_exprt &to_with_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_with);
+  const with_exprt &ret = static_cast<const with_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-class index_designatort:public exprt
+/// \copydoc to_with_expr(const exprt &)
+inline with_exprt &to_with_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_with);
+  with_exprt &ret = static_cast<with_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+class index_designatort : public expr_protectedt
 {
 public:
-  explicit index_designatort(const exprt &_index):
-    exprt(ID_index_designator)
+  explicit index_designatort(exprt _index)
+    : expr_protectedt(ID_index_designator, typet(), {std::move(_index)})
   {
-    copy_to_operands(_index);
   }
 
   const exprt &index() const
@@ -3571,52 +3174,45 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref index_designatort
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * index_designatort.
- *
- * \param expr Source expression
- * \return Object of type \ref index_designatort
- *
- * \ingroup gr_std_expr
-*/
-inline const index_designatort &to_index_designator(const exprt &expr)
+template <>
+inline bool can_cast_expr<index_designatort>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_index_designator);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Index designator must have one operand");
-  return static_cast<const index_designatort &>(expr);
+  return base.id() == ID_index_designator;
 }
 
-/*! \copydoc to_index_designator(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline index_designatort &to_index_designator(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_index_designator);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Index designator must have one operand");
-  return static_cast<index_designatort &>(expr);
-}
-
-template<> inline bool can_cast_expr<index_designatort>(const exprt &base)
-{
-  return base.id()==ID_index_designator;
-}
 inline void validate_expr(const index_designatort &value)
 {
   validate_operands(value, 1, "Index designator must have one operand");
 }
 
+/// \brief Cast an exprt to an \ref index_designatort
+///
+/// \a expr must be known to be \ref index_designatort.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref index_designatort
+inline const index_designatort &to_index_designator(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_index_designator);
+  const index_designatort &ret = static_cast<const index_designatort &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-class member_designatort:public exprt
+/// \copydoc to_index_designator(const exprt &)
+inline index_designatort &to_index_designator(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_index_designator);
+  index_designatort &ret = static_cast<index_designatort &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+class member_designatort : public expr_protectedt
 {
 public:
-  explicit member_designatort(const irep_idt &_component_name):
-    exprt(ID_member_designator)
+  explicit member_designatort(const irep_idt &_component_name)
+    : expr_protectedt(ID_member_designator, typet())
   {
     set(ID_component_name, _component_name);
   }
@@ -3627,71 +3223,53 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref member_designatort
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * member_designatort.
- *
- * \param expr Source expression
- * \return Object of type \ref member_designatort
- *
- * \ingroup gr_std_expr
-*/
-inline const member_designatort &to_member_designator(const exprt &expr)
+template <>
+inline bool can_cast_expr<member_designatort>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_member_designator);
-  DATA_INVARIANT(
-    !expr.has_operands(),
-    "Member designator must not have operands");
-  return static_cast<const member_designatort &>(expr);
+  return base.id() == ID_member_designator;
 }
 
-/*! \copydoc to_member_designator(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline member_designatort &to_member_designator(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_member_designator);
-  DATA_INVARIANT(
-    !expr.has_operands(),
-    "Member designator must not have operands");
-  return static_cast<member_designatort &>(expr);
-}
-
-template<> inline bool can_cast_expr<member_designatort>(const exprt &base)
-{
-  return base.id()==ID_member_designator;
-}
 inline void validate_expr(const member_designatort &value)
 {
   validate_operands(value, 0, "Member designator must not have operands");
 }
 
+/// \brief Cast an exprt to an \ref member_designatort
+///
+/// \a expr must be known to be \ref member_designatort.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref member_designatort
+inline const member_designatort &to_member_designator(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_member_designator);
+  const member_designatort &ret = static_cast<const member_designatort &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Operator to update elements in structs and arrays
-*/
-class update_exprt:public exprt
+/// \copydoc to_member_designator(const exprt &)
+inline member_designatort &to_member_designator(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_member_designator);
+  member_designatort &ret = static_cast<member_designatort &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Operator to update elements in structs and arrays
+class update_exprt : public ternary_exprt
 {
 public:
-  update_exprt(
-    const exprt &_old,
-    const exprt &_designator,
-    const exprt &_new_value):
-    exprt(ID_update, _old.type())
+  update_exprt(const exprt &_old, exprt _designator, exprt _new_value)
+    : ternary_exprt(
+        ID_update,
+        _old,
+        std::move(_designator),
+        std::move(_new_value),
+        _old.type())
   {
-    copy_to_operands(_old, _designator, _new_value);
-  }
-
-  explicit update_exprt(const typet &_type):
-    exprt(ID_update, _type)
-  {
-    operands().resize(3);
-  }
-
-  update_exprt():exprt(ID_update)
-  {
-    operands().resize(3);
-    op1().id(ID_designator);
   }
 
   exprt &old()
@@ -3729,54 +3307,45 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref update_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * update_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref update_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const update_exprt &to_update_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<update_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_update);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array/structure update must have three operands");
-  return static_cast<const update_exprt &>(expr);
+  return base.id() == ID_update;
 }
 
-/*! \copydoc to_update_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline update_exprt &to_update_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_update);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array/structure update must have three operands");
-  return static_cast<update_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<update_exprt>(const exprt &base)
-{
-  return base.id()==ID_update;
-}
 inline void validate_expr(const update_exprt &value)
 {
   validate_operands(
-    value,
-    3,
-    "Array/structure update must have three operands");
+    value, 3, "Array/structure update must have three operands");
+}
+
+/// \brief Cast an exprt to an \ref update_exprt
+///
+/// \a expr must be known to be \ref update_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref update_exprt
+inline const update_exprt &to_update_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_update);
+  const update_exprt &ret = static_cast<const update_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_update_expr(const exprt &)
+inline update_exprt &to_update_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_update);
+  update_exprt &ret = static_cast<update_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
 
 #if 0
-/*! \brief update of one element of an array
-*/
-class array_update_exprt:public exprt
+/// \brief Update of one element of an array
+class array_update_exprt:public expr_protectedt
 {
 public:
   array_update_exprt(
@@ -3785,10 +3354,10 @@ public:
     const exprt &_new_value):
     exprt(ID_array_update, _array.type())
   {
-    copy_to_operands(_array, _index, _new_value);
+    add_to_operands(_array, _index, _new_value);
   }
 
-  array_update_exprt():exprt(ID_array_update)
+  array_update_exprt():expr_protectedt(ID_array_update)
   {
     operands().resize(3);
   }
@@ -3824,73 +3393,56 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref array_update_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * array_update_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref array_update_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const array_update_exprt &to_array_update_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_array_update);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array update must have three operands");
-  return static_cast<const array_update_exprt &>(expr);
-}
-
-/*! \copydoc to_array_update_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline array_update_exprt &to_array_update_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_array_update);
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "Array update must have three operands");
-  return static_cast<array_update_exprt &>(expr);
-}
-
 template<> inline bool can_cast_expr<array_update_exprt>(const exprt &base)
 {
   return base.id()==ID_array_update;
 }
+
 inline void validate_expr(const array_update_exprt &value)
 {
   validate_operands(value, 3, "Array update must have three operands");
 }
 
+/// \brief Cast an exprt to an \ref array_update_exprt
+///
+/// \a expr must be known to be \ref array_update_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref array_update_exprt
+inline const array_update_exprt &to_array_update_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_array_update);
+  const array_update_exprt &ret = static_cast<const array_update_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_array_update_expr(const exprt &)
+inline array_update_exprt &to_array_update_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_array_update);
+  array_update_exprt &ret = static_cast<array_update_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
 #endif
 
 
-/*! \brief Extract member of struct or union
-*/
+/// \brief Extract member of struct or union
 class member_exprt:public unary_exprt
 {
 public:
-  member_exprt(
-    const exprt &op,
-    const irep_idt &component_name,
-    const typet &_type):
-    unary_exprt(ID_member, op, _type)
+  member_exprt(exprt op, const irep_idt &component_name, typet _type)
+    : unary_exprt(ID_member, std::move(op), std::move(_type))
   {
     set_component_name(component_name);
   }
 
-  member_exprt(
-    const exprt &op,
-    const struct_typet::componentt &c):
-    unary_exprt(ID_member, op, c.type())
+  member_exprt(exprt op, const struct_typet::componentt &c)
+    : unary_exprt(ID_member, std::move(op), c.type())
   {
     set_component_name(c.get_name());
-  }
-
-  member_exprt():unary_exprt(ID_member)
-  {
   }
 
   irep_idt get_component_name() const
@@ -3930,406 +3482,349 @@ public:
     return op0();
   }
 
-  // Retrieves the object(symbol) this member corresponds to
-  inline const symbol_exprt &symbol() const
+  static void check(
+    const exprt &expr,
+    const validation_modet vm = validation_modet::INVARIANT)
   {
-    const exprt &op=op0();
-    if(op.id()==ID_member)
-    {
-      return static_cast<const member_exprt &>(op).symbol();
-    }
-
-    return to_symbol_expr(op);
+    DATA_CHECK(
+      vm,
+      expr.operands().size() == 1,
+      "member expression must have one operand");
   }
+
+  static void validate(
+    const exprt &expr,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT);
 };
 
-/*! \brief Cast a generic exprt to a \ref member_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * member_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref member_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const member_exprt &to_member_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<member_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_member);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Extract member must have one operand");
-  return static_cast<const member_exprt &>(expr);
+  return base.id() == ID_member;
 }
 
-/*! \copydoc to_member_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline member_exprt &to_member_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_member);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Extract member must have one operand");
-  return static_cast<member_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<member_exprt>(const exprt &base)
-{
-  return base.id()==ID_member;
-}
 inline void validate_expr(const member_exprt &value)
 {
   validate_operands(value, 1, "Extract member must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref member_exprt
+///
+/// \a expr must be known to be \ref member_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref member_exprt
+inline const member_exprt &to_member_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_member);
+  const member_exprt &ret = static_cast<const member_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Evaluates to true if the operand is NaN
-*/
+/// \copydoc to_member_expr(const exprt &)
+inline member_exprt &to_member_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_member);
+  member_exprt &ret = static_cast<member_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Evaluates to true if the operand is NaN
 class isnan_exprt:public unary_predicate_exprt
 {
 public:
-  explicit isnan_exprt(const exprt &op):
-    unary_predicate_exprt(ID_isnan, op)
-  {
-  }
-
-  isnan_exprt():unary_predicate_exprt(ID_isnan)
+  explicit isnan_exprt(exprt op)
+    : unary_predicate_exprt(ID_isnan, std::move(op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref isnan_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * isnan_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref isnan_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const isnan_exprt &to_isnan_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<isnan_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_isnan);
-  DATA_INVARIANT(expr.operands().size()==1, "Is NaN must have one operand");
-  return static_cast<const isnan_exprt &>(expr);
+  return base.id() == ID_isnan;
 }
 
-/*! \copydoc to_isnan_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline isnan_exprt &to_isnan_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_isnan);
-  DATA_INVARIANT(expr.operands().size()==1, "Is NaN must have one operand");
-  return static_cast<isnan_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<isnan_exprt>(const exprt &base)
-{
-  return base.id()==ID_isnan;
-}
 inline void validate_expr(const isnan_exprt &value)
 {
   validate_operands(value, 1, "Is NaN must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref isnan_exprt
+///
+/// \a expr must be known to be \ref isnan_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref isnan_exprt
+inline const isnan_exprt &to_isnan_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isnan);
+  const isnan_exprt &ret = static_cast<const isnan_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Evaluates to true if the operand is infinite
-*/
+/// \copydoc to_isnan_expr(const exprt &)
+inline isnan_exprt &to_isnan_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isnan);
+  isnan_exprt &ret = static_cast<isnan_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Evaluates to true if the operand is infinite
 class isinf_exprt:public unary_predicate_exprt
 {
 public:
-  explicit isinf_exprt(const exprt &op):
-    unary_predicate_exprt(ID_isinf, op)
-  {
-  }
-
-  isinf_exprt():unary_predicate_exprt(ID_isinf)
+  explicit isinf_exprt(exprt op)
+    : unary_predicate_exprt(ID_isinf, std::move(op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref isinf_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * isinf_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref isinf_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const isinf_exprt &to_isinf_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<isinf_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_isinf);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Is infinite must have one operand");
-  return static_cast<const isinf_exprt &>(expr);
+  return base.id() == ID_isinf;
 }
 
-/*! \copydoc to_isinf_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline isinf_exprt &to_isinf_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_isinf);
-  DATA_INVARIANT(
-    expr.operands().size()==1,
-    "Is infinite must have one operand");
-  return static_cast<isinf_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<isinf_exprt>(const exprt &base)
-{
-  return base.id()==ID_isinf;
-}
 inline void validate_expr(const isinf_exprt &value)
 {
   validate_operands(value, 1, "Is infinite must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref isinf_exprt
+///
+/// \a expr must be known to be \ref isinf_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref isinf_exprt
+inline const isinf_exprt &to_isinf_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isinf);
+  const isinf_exprt &ret = static_cast<const isinf_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Evaluates to true if the operand is finite
-*/
+/// \copydoc to_isinf_expr(const exprt &)
+inline isinf_exprt &to_isinf_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isinf);
+  isinf_exprt &ret = static_cast<isinf_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Evaluates to true if the operand is finite
 class isfinite_exprt:public unary_predicate_exprt
 {
 public:
-  explicit isfinite_exprt(const exprt &op):
-    unary_predicate_exprt(ID_isfinite, op)
-  {
-  }
-
-  isfinite_exprt():unary_predicate_exprt(ID_isfinite)
+  explicit isfinite_exprt(exprt op)
+    : unary_predicate_exprt(ID_isfinite, std::move(op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref isfinite_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * isfinite_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref isfinite_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const isfinite_exprt &to_isfinite_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<isfinite_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_isfinite);
-  DATA_INVARIANT(expr.operands().size()==1, "Is finite must have one operand");
-  return static_cast<const isfinite_exprt &>(expr);
+  return base.id() == ID_isfinite;
 }
 
-/*! \copydoc to_isfinite_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline isfinite_exprt &to_isfinite_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_isfinite);
-  DATA_INVARIANT(expr.operands().size()==1, "Is finite must have one operand");
-  return static_cast<isfinite_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<isfinite_exprt>(const exprt &base)
-{
-  return base.id()==ID_isfinite;
-}
 inline void validate_expr(const isfinite_exprt &value)
 {
   validate_operands(value, 1, "Is finite must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref isfinite_exprt
+///
+/// \a expr must be known to be \ref isfinite_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref isfinite_exprt
+inline const isfinite_exprt &to_isfinite_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isfinite);
+  const isfinite_exprt &ret = static_cast<const isfinite_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Evaluates to true if the operand is a normal number
-*/
+/// \copydoc to_isfinite_expr(const exprt &)
+inline isfinite_exprt &to_isfinite_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isfinite);
+  isfinite_exprt &ret = static_cast<isfinite_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief Evaluates to true if the operand is a normal number
 class isnormal_exprt:public unary_predicate_exprt
 {
 public:
-  explicit isnormal_exprt(const exprt &op):
-    unary_predicate_exprt(ID_isnormal, op)
-  {
-  }
-
-  isnormal_exprt():unary_predicate_exprt(ID_isnormal)
+  explicit isnormal_exprt(exprt op)
+    : unary_predicate_exprt(ID_isnormal, std::move(op))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref isnormal_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * isnormal_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref isnormal_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const isnormal_exprt &to_isnormal_expr(const exprt &expr)
+template <>
+inline bool can_cast_expr<isnormal_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_isnormal);
-  DATA_INVARIANT(expr.operands().size()==1, "Is normal must have one operand");
-  return static_cast<const isnormal_exprt &>(expr);
+  return base.id() == ID_isnormal;
 }
 
-/*! \copydoc to_isnormal_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline isnormal_exprt &to_isnormal_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_isnormal);
-  DATA_INVARIANT(expr.operands().size()==1, "Is normal must have one operand");
-  return static_cast<isnormal_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<isnormal_exprt>(const exprt &base)
-{
-  return base.id()==ID_isnormal;
-}
 inline void validate_expr(const isnormal_exprt &value)
 {
   validate_operands(value, 1, "Is normal must have one operand");
 }
 
+/// \brief Cast an exprt to a \ref isnormal_exprt
+///
+/// \a expr must be known to be \ref isnormal_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref isnormal_exprt
+inline const isnormal_exprt &to_isnormal_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isnormal);
+  const isnormal_exprt &ret = static_cast<const isnormal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief IEEE-floating-point equality
-*/
+/// \copydoc to_isnormal_expr(const exprt &)
+inline isnormal_exprt &to_isnormal_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_isnormal);
+  isnormal_exprt &ret = static_cast<isnormal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief IEEE-floating-point equality
 class ieee_float_equal_exprt:public binary_relation_exprt
 {
 public:
-  ieee_float_equal_exprt():binary_relation_exprt(ID_ieee_float_equal)
-  {
-  }
-
-  ieee_float_equal_exprt(const exprt &_lhs, const exprt &_rhs):
-    binary_relation_exprt(_lhs, ID_ieee_float_equal, _rhs)
+  ieee_float_equal_exprt(exprt _lhs, exprt _rhs)
+    : binary_relation_exprt(
+        std::move(_lhs),
+        ID_ieee_float_equal,
+        std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref ieee_float_equal_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * ieee_float_equal_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref ieee_float_equal_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const ieee_float_equal_exprt &to_ieee_float_equal_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_ieee_float_equal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "IEEE equality must have two operands");
-  return static_cast<const ieee_float_equal_exprt &>(expr);
-}
-
-/*! \copydoc to_ieee_float_equal_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline ieee_float_equal_exprt &to_ieee_float_equal_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_ieee_float_equal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "IEEE equality must have two operands");
-  return static_cast<ieee_float_equal_exprt &>(expr);
-}
-
-template<>
+template <>
 inline bool can_cast_expr<ieee_float_equal_exprt>(const exprt &base)
 {
-  return base.id()==ID_ieee_float_equal;
+  return base.id() == ID_ieee_float_equal;
 }
+
 inline void validate_expr(const ieee_float_equal_exprt &value)
 {
   validate_operands(value, 2, "IEEE equality must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref ieee_float_equal_exprt
+///
+/// \a expr must be known to be \ref ieee_float_equal_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref ieee_float_equal_exprt
+inline const ieee_float_equal_exprt &to_ieee_float_equal_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_ieee_float_equal);
+  const ieee_float_equal_exprt &ret =
+    static_cast<const ieee_float_equal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief IEEE floating-point disequality
-*/
+/// \copydoc to_ieee_float_equal_expr(const exprt &)
+inline ieee_float_equal_exprt &to_ieee_float_equal_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_ieee_float_equal);
+  ieee_float_equal_exprt &ret = static_cast<ieee_float_equal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+
+/// \brief IEEE floating-point disequality
 class ieee_float_notequal_exprt:public binary_relation_exprt
 {
 public:
-  ieee_float_notequal_exprt():
-    binary_relation_exprt(ID_ieee_float_notequal)
-  {
-  }
-
-  ieee_float_notequal_exprt(const exprt &_lhs, const exprt &_rhs):
-    binary_relation_exprt(_lhs, ID_ieee_float_notequal, _rhs)
+  ieee_float_notequal_exprt(exprt _lhs, exprt _rhs)
+    : binary_relation_exprt(
+        std::move(_lhs),
+        ID_ieee_float_notequal,
+        std::move(_rhs))
   {
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref ieee_float_notequal_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * ieee_float_notequal_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref ieee_float_notequal_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const ieee_float_notequal_exprt &to_ieee_float_notequal_expr(
-  const exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_ieee_float_notequal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "IEEE inequality must have two operands");
-  return static_cast<const ieee_float_notequal_exprt &>(expr);
-}
-
-/*! \copydoc to_ieee_float_notequal_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline ieee_float_notequal_exprt &to_ieee_float_notequal_expr(exprt &expr)
-{
-  PRECONDITION(expr.id()==ID_ieee_float_notequal);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "IEEE inequality must have two operands");
-  return static_cast<ieee_float_notequal_exprt &>(expr);
-}
-
-template<>
+template <>
 inline bool can_cast_expr<ieee_float_notequal_exprt>(const exprt &base)
 {
-  return base.id()==ID_ieee_float_notequal;
+  return base.id() == ID_ieee_float_notequal;
 }
+
 inline void validate_expr(const ieee_float_notequal_exprt &value)
 {
   validate_operands(value, 2, "IEEE inequality must have two operands");
 }
 
+/// \brief Cast an exprt to an \ref ieee_float_notequal_exprt
+///
+/// \a expr must be known to be \ref ieee_float_notequal_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref ieee_float_notequal_exprt
+inline const ieee_float_notequal_exprt &to_ieee_float_notequal_expr(
+  const exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_ieee_float_notequal);
+  const ieee_float_notequal_exprt &ret =
+    static_cast<const ieee_float_notequal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief IEEE floating-point operations
-*/
-class ieee_float_op_exprt:public exprt
+/// \copydoc to_ieee_float_notequal_expr(const exprt &)
+inline ieee_float_notequal_exprt &to_ieee_float_notequal_expr(exprt &expr)
+{
+  PRECONDITION(expr.id()==ID_ieee_float_notequal);
+  ieee_float_notequal_exprt &ret =
+    static_cast<ieee_float_notequal_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief IEEE floating-point operations
+/// These have two data operands (op0 and op1) and one rounding mode (op2).
+/// The type of the result is that of the data operands.
+class ieee_float_op_exprt : public ternary_exprt
 {
 public:
-  ieee_float_op_exprt()
-  {
-    operands().resize(3);
-  }
-
   ieee_float_op_exprt(
     const exprt &_lhs,
     const irep_idt &_id,
-    const exprt &_rhs,
-    const exprt &_rm):
-    exprt(_id)
+    exprt _rhs,
+    exprt _rm)
+    : ternary_exprt(_id, _lhs, std::move(_rhs), std::move(_rm), _lhs.type())
   {
-    copy_to_operands(_lhs, _rhs, _rm);
   }
 
   exprt &lhs()
@@ -4363,78 +3858,84 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to an \ref ieee_float_op_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * ieee_float_op_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref ieee_float_op_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<ieee_float_op_exprt>(const exprt &base)
+{
+  return base.id() == ID_floatbv_plus || base.id() == ID_floatbv_minus ||
+         base.id() == ID_floatbv_div || base.id() == ID_floatbv_mult;
+}
+
+inline void validate_expr(const ieee_float_op_exprt &value)
+{
+  validate_operands(
+    value, 3, "IEEE float operations must have three arguments");
+}
+
+/// \brief Cast an exprt to an \ref ieee_float_op_exprt
+///
+/// \a expr must be known to be \ref ieee_float_op_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref ieee_float_op_exprt
 inline const ieee_float_op_exprt &to_ieee_float_op_expr(const exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "IEEE float operations must have three arguments");
-  return static_cast<const ieee_float_op_exprt &>(expr);
+  const ieee_float_op_exprt &ret =
+    static_cast<const ieee_float_op_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_ieee_float_op_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_ieee_float_op_expr(const exprt &)
 inline ieee_float_op_exprt &to_ieee_float_op_expr(exprt &expr)
 {
-  DATA_INVARIANT(
-    expr.operands().size()==3,
-    "IEEE float operations must have three arguments");
-  return static_cast<ieee_float_op_exprt &>(expr);
+  ieee_float_op_exprt &ret = static_cast<ieee_float_op_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-// The to_*_expr function for this type doesn't do any checks before casting,
-// therefore the implementation is essentially a static_cast.
-// Enabling expr_dynamic_cast would hide this; instead use static_cast directly.
-// template<>
-// inline void validate_expr<ieee_float_op_exprt>(
-//   const ieee_float_op_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     3,
-//     "IEEE float operations must have three arguments");
-// }
 
-
-/*! \brief An expression denoting a type
-*/
-class type_exprt:public exprt
+/// \brief An expression denoting a type
+class type_exprt : public nullary_exprt
 {
 public:
-  type_exprt():exprt(ID_type)
-  {
-  }
-
-  explicit type_exprt(const typet &type):exprt(ID_type, type)
+  explicit type_exprt(typet type) : nullary_exprt(ID_type, std::move(type))
   {
   }
 };
 
-/*! \brief A constant literal expression
-*/
-class constant_exprt:public exprt
+template <>
+inline bool can_cast_expr<type_exprt>(const exprt &base)
+{
+  return base.id() == ID_type;
+}
+
+/// \brief Cast an exprt to an \ref type_exprt
+///
+/// \a expr must be known to be \ref type_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref type_exprt
+inline const type_exprt &to_type_expr(const exprt &expr)
+{
+  PRECONDITION(can_cast_expr<type_exprt>(expr));
+  const type_exprt &ret = static_cast<const type_exprt &>(expr);
+  return ret;
+}
+
+/// \copydoc to_type_expr(const exprt &)
+inline type_exprt &to_type_expr(exprt &expr)
+{
+  PRECONDITION(can_cast_expr<type_exprt>(expr));
+  type_exprt &ret = static_cast<type_exprt &>(expr);
+  return ret;
+}
+
+/// \brief A constant literal expression
+class constant_exprt : public expr_protectedt
 {
 public:
-  constant_exprt():exprt(ID_constant)
-  {
-  }
-
-  explicit constant_exprt(const typet &type):exprt(ID_constant, type)
-  {
-  }
-
-  constant_exprt(const irep_idt &_value, const typet &_type):
-    exprt(ID_constant, _type)
+  constant_exprt(const irep_idt &_value, typet _type)
+    : expr_protectedt(ID_constant, std::move(_type))
   {
     set_value(_value);
   }
@@ -4452,451 +3953,391 @@ public:
   bool value_is_zero_string() const;
 };
 
+template <>
+inline bool can_cast_expr<constant_exprt>(const exprt &base)
+{
+  return base.id() == ID_constant;
+}
 
-/*! \brief Cast a generic exprt to a \ref constant_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * constant_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref constant_exprt
- *
- * \ingroup gr_std_expr
-*/
+/// \brief Cast an exprt to a \ref constant_exprt
+///
+/// \a expr must be known to be \ref constant_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref constant_exprt
 inline const constant_exprt &to_constant_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_constant);
   return static_cast<const constant_exprt &>(expr);
 }
 
-/*! \copydoc to_constant_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_constant_expr(const exprt &)
 inline constant_exprt &to_constant_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_constant);
   return static_cast<constant_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<constant_exprt>(const exprt &base)
-{
-  return base.id()==ID_constant;
-}
 
-
-/*! \brief The boolean constant true
-*/
+/// \brief The Boolean constant true
 class true_exprt:public constant_exprt
 {
 public:
-  true_exprt():constant_exprt(bool_typet())
+  true_exprt() : constant_exprt(ID_true, bool_typet())
   {
-    set_value(ID_true);
   }
 };
 
-/*! \brief The boolean constant false
-*/
+/// \brief The Boolean constant false
 class false_exprt:public constant_exprt
 {
 public:
-  false_exprt():constant_exprt(bool_typet())
+  false_exprt() : constant_exprt(ID_false, bool_typet())
   {
-    set_value(ID_false);
   }
 };
 
-/*! \brief The NIL expression
-*/
-class nil_exprt:public exprt
+/// \brief The NIL expression
+class nil_exprt : public nullary_exprt
 {
 public:
-  nil_exprt():exprt(static_cast<const exprt &>(get_nil_irep()))
+  nil_exprt()
+    : nullary_exprt(static_cast<const nullary_exprt &>(get_nil_irep()))
   {
   }
 };
 
-/*! \brief The null pointer constant
-*/
+template <>
+inline bool can_cast_expr<nil_exprt>(const exprt &base)
+{
+  return base.id() == ID_nil;
+}
+
+/// \brief The null pointer constant
 class null_pointer_exprt:public constant_exprt
 {
 public:
-  explicit null_pointer_exprt(const pointer_typet &type):constant_exprt(type)
+  explicit null_pointer_exprt(pointer_typet type)
+    : constant_exprt(ID_NULL, std::move(type))
   {
-    set_value(ID_NULL);
   }
 };
 
-/*! \brief application of (mathematical) function
-*/
-class function_application_exprt:public binary_exprt
+/// \brief Bit-vector replication
+class replication_exprt : public binary_exprt
 {
 public:
-  function_application_exprt():binary_exprt(ID_function_application)
+  replication_exprt(const constant_exprt &_times, const exprt &_src)
+    : binary_exprt(_times, ID_replication, _src)
   {
-    op0()=symbol_exprt();
   }
 
-  explicit function_application_exprt(const typet &_type):
-    binary_exprt(ID_function_application, _type)
+  constant_exprt &times()
   {
-    op0()=symbol_exprt();
+    return static_cast<constant_exprt &>(op0());
   }
 
-  function_application_exprt(
-    const symbol_exprt &_function, const typet &_type):
-      function_application_exprt(_type) // NOLINT(runtime/explicit)
+  const constant_exprt &times() const
   {
-    function()=_function;
+    return static_cast<const constant_exprt &>(op0());
   }
 
-  symbol_exprt &function()
+  exprt &op()
   {
-    return static_cast<symbol_exprt &>(op0());
+    return op1();
   }
 
-  const symbol_exprt &function() const
+  const exprt &op() const
   {
-    return static_cast<const symbol_exprt &>(op0());
-  }
-
-  typedef exprt::operandst argumentst;
-
-  argumentst &arguments()
-  {
-    return op1().operands();
-  }
-
-  const argumentst &arguments() const
-  {
-    return op1().operands();
+    return op1();
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref function_application_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * function_application_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref function_application_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const function_application_exprt &to_function_application_expr(
-  const exprt &expr)
+template <>
+inline bool can_cast_expr<replication_exprt>(const exprt &base)
 {
-  PRECONDITION(expr.id()==ID_function_application);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Function application must have two operands");
-  return static_cast<const function_application_exprt &>(expr);
+  return base.id() == ID_replication;
 }
 
-/*! \copydoc to_function_application_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline function_application_exprt &to_function_application_expr(exprt &expr)
+inline void validate_expr(const replication_exprt &value)
 {
-  PRECONDITION(expr.id()==ID_function_application);
-  DATA_INVARIANT(
-    expr.operands().size()==2,
-    "Function application must have two operands");
-  return static_cast<function_application_exprt &>(expr);
+  validate_operands(value, 2, "Bit-wise replication must have two operands");
 }
 
-template<>
-inline bool can_cast_expr<function_application_exprt>(const exprt &base)
+/// \brief Cast an exprt to a \ref replication_exprt
+///
+/// \a expr must be known to be \ref replication_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref replication_exprt
+inline const replication_exprt &to_replication_expr(const exprt &expr)
 {
-  return base.id()==ID_function_application;
-}
-inline void validate_expr(const function_application_exprt &value)
-{
-  validate_operands(value, 2, "Function application must have two operands");
+  PRECONDITION(expr.id() == ID_replication);
+  const replication_exprt &ret = static_cast<const replication_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
+/// \copydoc to_replication_expr(const exprt &)
+inline replication_exprt &to_replication_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_replication);
+  replication_exprt &ret = static_cast<replication_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
 
-/*! \brief Concatenation of bit-vector operands
- *
- * This expression takes any number of operands
- * (a restriction to make this binary will happen in the future).
- * The ordering of the operands is the same as in the _new_ SMT 1.x standard,
- * i.e., most-significant operands come first.
-*/
-class concatenation_exprt:public exprt
+/// \brief Concatenation of bit-vector operands
+///
+/// This expression takes any number of operands
+/// The ordering of the operands is the same as in the SMT-LIB 2 standard,
+/// i.e., most-significant operands come first.
+class concatenation_exprt : public multi_ary_exprt
 {
 public:
-  concatenation_exprt():exprt(ID_concatenation)
+  concatenation_exprt(operandst _operands, typet _type)
+    : multi_ary_exprt(ID_concatenation, std::move(_operands), std::move(_type))
   {
   }
 
-  explicit concatenation_exprt(const typet &_type):
-    exprt(ID_concatenation, _type)
+  concatenation_exprt(exprt _op0, exprt _op1, typet _type)
+    : multi_ary_exprt(
+        ID_concatenation,
+        {std::move(_op0), std::move(_op1)},
+        std::move(_type))
   {
-  }
-
-  explicit concatenation_exprt(
-    const exprt &_op0, const exprt &_op1, const typet &_type):
-    exprt(ID_concatenation, _type)
-  {
-    copy_to_operands(_op0, _op1);
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref concatenation_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * concatenation_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref concatenation_exprt
- *
- * \ingroup gr_std_expr
-*/
+template <>
+inline bool can_cast_expr<concatenation_exprt>(const exprt &base)
+{
+  return base.id() == ID_concatenation;
+}
+
+/// \brief Cast an exprt to a \ref concatenation_exprt
+///
+/// \a expr must be known to be \ref concatenation_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref concatenation_exprt
 inline const concatenation_exprt &to_concatenation_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_concatenation);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Concatenation must have two or more operands");
   return static_cast<const concatenation_exprt &>(expr);
 }
 
-/*! \copydoc to_concatenation_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_concatenation_expr(const exprt &)
 inline concatenation_exprt &to_concatenation_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_concatenation);
-  // DATA_INVARIANT(
-  //   expr.operands().size()>=2,
-  //   "Concatenation must have two or more operands");
   return static_cast<concatenation_exprt &>(expr);
 }
 
-template<> inline bool can_cast_expr<concatenation_exprt>(const exprt &base)
-{
-  return base.id()==ID_concatenation;
-}
-// template<>
-// inline void validate_expr<concatenation_exprt>(
-//   const concatenation_exprt &value)
-// {
-//   validate_operands(
-//     value,
-//     2,
-//     "Concatenation must have two or more operands",
-//     true);
-// }
 
-
-/*! \brief An expression denoting infinity
-*/
-class infinity_exprt:public exprt
+/// \brief An expression denoting infinity
+class infinity_exprt : public nullary_exprt
 {
 public:
-  explicit infinity_exprt(const typet &_type):
-    exprt(ID_infinity, _type)
+  explicit infinity_exprt(typet _type)
+    : nullary_exprt(ID_infinity, std::move(_type))
   {
   }
 };
 
-/*! \brief A let expression
-*/
-class let_exprt:public exprt
+/// \brief A base class for variable bindings (quantifiers, let, lambda)
+class binding_exprt : public binary_exprt
 {
 public:
-  let_exprt():exprt(ID_let)
+  using variablest = std::vector<symbol_exprt>;
+
+  /// construct the binding expression
+  binding_exprt(
+    irep_idt _id,
+    const variablest &_variables,
+    exprt _where,
+    typet _type)
+    : binary_exprt(
+        multi_ary_exprt(
+          ID_tuple,
+          (const operandst &)_variables,
+          typet(ID_tuple)),
+        _id,
+        std::move(_where),
+        std::move(_type))
   {
-    operands().resize(3);
-    op0()=symbol_exprt();
   }
 
-  symbol_exprt &symbol()
+  variablest &variables()
   {
-    return static_cast<symbol_exprt &>(op0());
+    return (variablest &)to_multi_ary_expr(op0()).operands();
   }
 
-  const symbol_exprt &symbol() const
+  const variablest &variables() const
   {
-    return static_cast<const symbol_exprt &>(op0());
-  }
-
-  exprt &value()
-  {
-    return op1();
-  }
-
-  const exprt &value() const
-  {
-    return op1();
+    return (variablest &)to_multi_ary_expr(op0()).operands();
   }
 
   exprt &where()
   {
-    return op2();
+    return op1();
   }
 
   const exprt &where() const
   {
-    return op2();
+    return op1();
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref let_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * let_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref let_exprt
- *
- * \ingroup gr_std_expr
-*/
+/// \brief A let expression
+class let_exprt : public binary_exprt
+{
+public:
+  let_exprt(
+    binding_exprt::variablest variables,
+    operandst values,
+    const exprt &where)
+    : binary_exprt(
+        binding_exprt(
+          ID_let_binding,
+          std::move(variables),
+          where,
+          where.type()),
+        ID_let,
+        multi_ary_exprt(irep_idt(), std::move(values), typet(ID_tuple)),
+        where.type())
+  {
+    PRECONDITION(this->variables().size() == this->values().size());
+  }
+
+  /// convenience constructor for the case of a single binding
+  let_exprt(symbol_exprt symbol, exprt value, const exprt &where)
+    : let_exprt(
+        binding_exprt::variablest{std::move(symbol)},
+        operandst{std::move(value)},
+        where)
+  {
+  }
+
+  binding_exprt &binding()
+  {
+    return static_cast<binding_exprt &>(op0());
+  }
+
+  const binding_exprt &binding() const
+  {
+    return static_cast<const binding_exprt &>(op0());
+  }
+
+  /// convenience accessor for the symbol of a single binding
+  symbol_exprt &symbol()
+  {
+    auto &variables = binding().variables();
+    PRECONDITION(variables.size() == 1);
+    return variables.front();
+  }
+
+  /// convenience accessor for the symbol of a single binding
+  const symbol_exprt &symbol() const
+  {
+    const auto &variables = binding().variables();
+    PRECONDITION(variables.size() == 1);
+    return variables.front();
+  }
+
+  /// convenience accessor for the value of a single binding
+  exprt &value()
+  {
+    auto &values = this->values();
+    PRECONDITION(values.size() == 1);
+    return values.front();
+  }
+
+  /// convenience accessor for the value of a single binding
+  const exprt &value() const
+  {
+    const auto &values = this->values();
+    PRECONDITION(values.size() == 1);
+    return values.front();
+  }
+
+  operandst &values()
+  {
+    return static_cast<multi_ary_exprt &>(op1()).operands();
+  }
+
+  const operandst &values() const
+  {
+    return static_cast<const multi_ary_exprt &>(op1()).operands();
+  }
+
+  /// convenience accessor for binding().variables()
+  binding_exprt::variablest &variables()
+  {
+    return binding().variables();
+  }
+
+  /// convenience accessor for binding().variables()
+  const binding_exprt::variablest &variables() const
+  {
+    return binding().variables();
+  }
+
+  /// convenience accessor for binding().where()
+  exprt &where()
+  {
+    return binding().where();
+  }
+
+  /// convenience accessor for binding().where()
+  const exprt &where() const
+  {
+    return binding().where();
+  }
+
+  static void validate(const exprt &, validation_modet);
+};
+
+template <>
+inline bool can_cast_expr<let_exprt>(const exprt &base)
+{
+  return base.id() == ID_let;
+}
+
+inline void validate_expr(const let_exprt &let_expr)
+{
+  validate_operands(let_expr, 2, "Let must have two operands");
+}
+
+/// \brief Cast an exprt to a \ref let_exprt
+///
+/// \a expr must be known to be \ref let_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref let_exprt
 inline const let_exprt &to_let_expr(const exprt &expr)
 {
   PRECONDITION(expr.id()==ID_let);
-  DATA_INVARIANT(expr.operands().size()==3, "Let must have three operands");
-  return static_cast<const let_exprt &>(expr);
+  const let_exprt &ret = static_cast<const let_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-/*! \copydoc to_let_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
+/// \copydoc to_let_expr(const exprt &)
 inline let_exprt &to_let_expr(exprt &expr)
 {
   PRECONDITION(expr.id()==ID_let);
-  DATA_INVARIANT(expr.operands().size()==3, "Let must have three operands");
-  return static_cast<let_exprt &>(expr);
+  let_exprt &ret = static_cast<let_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
 }
 
-template<> inline bool can_cast_expr<let_exprt>(const exprt &base)
-{
-  return base.id()==ID_let;
-}
-inline void validate_expr(const let_exprt &value)
-{
-  validate_operands(value, 3, "Let must have three operands");
-}
-
-/*! \brief A base class for quantifier expressions
-*/
-class quantifier_exprt:public binary_predicate_exprt
-{
-public:
-  explicit quantifier_exprt(const irep_idt &_id):binary_predicate_exprt(_id)
-  {
-    op0()=symbol_exprt();
-  }
-
-  quantifier_exprt(
-    const irep_idt &_id,
-    const symbol_exprt &_symbol,
-    const exprt &_where)
-    : binary_predicate_exprt(_symbol, _id, _where)
-  {
-  }
-
-  symbol_exprt &symbol()
-  {
-    return static_cast<symbol_exprt &>(op0());
-  }
-
-  const symbol_exprt &symbol() const
-  {
-    return static_cast<const symbol_exprt &>(op0());
-  }
-
-  exprt &where()
-  {
-    return op1();
-  }
-
-  const exprt &where() const
-  {
-    return op1();
-  }
-};
-
-/*! \brief Cast a generic exprt to a \ref quantifier_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * quantifier_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref quantifier_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const quantifier_exprt &to_quantifier_expr(const exprt &expr)
-{
-  DATA_INVARIANT(expr.operands().size()==2,
-                 "quantifier expressions must have two operands");
-  return static_cast<const quantifier_exprt &>(expr);
-}
-
-/*! \copydoc to_quantifier_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline quantifier_exprt &to_quantifier_expr(exprt &expr)
-{
-  DATA_INVARIANT(expr.operands().size()==2,
-                 "quantifier expressions must have two operands");
-  return static_cast<quantifier_exprt &>(expr);
-}
-
-template<> inline bool can_cast_expr<quantifier_exprt>(const exprt &base)
-{
-  return base.id() == ID_forall || base.id() == ID_exists;
-}
-
-inline void validate_expr(const quantifier_exprt &value)
-{
-  validate_operands(value, 2,
-    "quantifier expressions must have two operands");
-}
-
-/*! \brief A forall expression
-*/
-class forall_exprt:public quantifier_exprt
-{
-public:
-  forall_exprt():quantifier_exprt(ID_forall)
-  {
-  }
-
-  forall_exprt(const symbol_exprt &_symbol, const exprt &_where)
-    : quantifier_exprt(ID_forall, _symbol, _where)
-  {
-  }
-};
-
-/*! \brief An exists expression
-*/
-class exists_exprt:public quantifier_exprt
-{
-public:
-  exists_exprt():quantifier_exprt(ID_exists)
-  {
-  }
-
-  exists_exprt(const symbol_exprt &_symbol, const exprt &_where)
-    : quantifier_exprt(ID_exists, _symbol, _where)
-  {
-  }
-};
-
-/*! \brief The popcount (counting the number of bits set to 1) expression
-*/
+/// \brief The popcount (counting the number of bits set to 1) expression
 class popcount_exprt: public unary_exprt
 {
 public:
-  popcount_exprt(): unary_exprt(ID_popcount)
-  {
-  }
-
-  popcount_exprt(const exprt &_op, const typet &_type)
-    : unary_exprt(ID_popcount, _op, _type)
+  popcount_exprt(exprt _op, typet _type)
+    : unary_exprt(ID_popcount, std::move(_op), std::move(_type))
   {
   }
 
@@ -4906,41 +4347,296 @@ public:
   }
 };
 
-/*! \brief Cast a generic exprt to a \ref popcount_exprt
- *
- * This is an unchecked conversion. \a expr must be known to be \ref
- * popcount_exprt.
- *
- * \param expr Source expression
- * \return Object of type \ref popcount_exprt
- *
- * \ingroup gr_std_expr
-*/
-inline const popcount_exprt &to_popcount_expr(const exprt &expr)
-{
-  PRECONDITION(expr.id() == ID_popcount);
-  DATA_INVARIANT(expr.operands().size() == 1, "popcount must have one operand");
-  return static_cast<const popcount_exprt &>(expr);
-}
-
-/*! \copydoc to_popcount_expr(const exprt &)
- * \ingroup gr_std_expr
-*/
-inline popcount_exprt &to_popcount_expr(exprt &expr)
-{
-  PRECONDITION(expr.id() == ID_popcount);
-  DATA_INVARIANT(expr.operands().size() == 1, "popcount must have one operand");
-  return static_cast<popcount_exprt &>(expr);
-}
-
 template <>
 inline bool can_cast_expr<popcount_exprt>(const exprt &base)
 {
   return base.id() == ID_popcount;
 }
+
 inline void validate_expr(const popcount_exprt &value)
 {
   validate_operands(value, 1, "popcount must have one operand");
+}
+
+/// \brief Cast an exprt to a \ref popcount_exprt
+///
+/// \a expr must be known to be \ref popcount_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref popcount_exprt
+inline const popcount_exprt &to_popcount_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_popcount);
+  const popcount_exprt &ret = static_cast<const popcount_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_popcount_expr(const exprt &)
+inline popcount_exprt &to_popcount_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_popcount);
+  popcount_exprt &ret = static_cast<popcount_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// this is a parametric version of an if-expression: it returns
+/// the value of the first case (using the ordering of the operands)
+/// whose condition evaluates to true.
+class cond_exprt : public multi_ary_exprt
+{
+public:
+  cond_exprt(operandst _operands, typet _type)
+    : multi_ary_exprt(ID_cond, std::move(_operands), std::move(_type))
+  {
+  }
+
+  /// adds a case to a cond expression
+  /// \param condition: the condition for the case
+  /// \param value: the value for the case
+  void add_case(const exprt &condition, const exprt &value)
+  {
+    PRECONDITION(condition.type().id() == ID_bool);
+    operands().reserve(operands().size() + 2);
+    operands().push_back(condition);
+    operands().push_back(value);
+  }
+};
+
+template <>
+inline bool can_cast_expr<cond_exprt>(const exprt &base)
+{
+  return base.id() == ID_cond;
+}
+
+inline void validate_expr(const cond_exprt &value)
+{
+  DATA_INVARIANT(
+    value.operands().size() % 2 == 0, "cond must have even number of operands");
+}
+
+/// \brief Cast an exprt to a \ref cond_exprt
+///
+/// \a expr must be known to be \ref cond_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref cond_exprt
+inline const cond_exprt &to_cond_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_cond);
+  const cond_exprt &ret = static_cast<const cond_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_popcount_expr(const exprt &)
+inline cond_exprt &to_cond_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_cond);
+  cond_exprt &ret = static_cast<cond_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \brief Expression to define a mapping from an argument (index) to elements.
+/// This enables constructing an array via an anonymous function.
+/// Not all kinds of array comprehension can be expressed, only those of the
+/// form `[f(x) | x in {0, 1, ... array_size-1}]`.
+/// The LHS and RHS are the argument (`x`) and body (`f(x)`) of the anonymous
+/// function, respectively. The range is given by the type of the expression,
+/// which has to be an \ref array_typet (which includes a value for
+/// `array_size`).
+class array_comprehension_exprt : public binary_exprt
+{
+public:
+  explicit array_comprehension_exprt(
+    symbol_exprt arg,
+    exprt body,
+    array_typet _type)
+    : binary_exprt(
+        std::move(arg),
+        ID_array_comprehension,
+        std::move(body),
+        std::move(_type))
+  {
+  }
+
+  const array_typet &type() const
+  {
+    return static_cast<const array_typet &>(binary_exprt::type());
+  }
+
+  array_typet &type()
+  {
+    return static_cast<array_typet &>(binary_exprt::type());
+  }
+
+  const symbol_exprt &arg() const
+  {
+    return static_cast<const symbol_exprt &>(op0());
+  }
+
+  symbol_exprt &arg()
+  {
+    return static_cast<symbol_exprt &>(op0());
+  }
+
+  const exprt &body() const
+  {
+    return op1();
+  }
+
+  exprt &body()
+  {
+    return op1();
+  }
+};
+
+template <>
+inline bool can_cast_expr<array_comprehension_exprt>(const exprt &base)
+{
+  return base.id() == ID_array_comprehension;
+}
+
+inline void validate_expr(const array_comprehension_exprt &value)
+{
+  validate_operands(value, 2, "'Array comprehension' must have two operands");
+}
+
+/// \brief Cast an exprt to a \ref array_comprehension_exprt
+///
+/// \a expr must be known to be \ref array_comprehension_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref array_comprehension_exprt
+inline const array_comprehension_exprt &
+to_array_comprehension_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_array_comprehension);
+  const array_comprehension_exprt &ret =
+    static_cast<const array_comprehension_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+/// \copydoc to_array_comprehension_expr(const exprt &)
+inline array_comprehension_exprt &to_array_comprehension_expr(exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_array_comprehension);
+  array_comprehension_exprt &ret =
+    static_cast<array_comprehension_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+inline void validate_expr(const class class_method_descriptor_exprt &value);
+
+/// An expression describing a method on a class
+class class_method_descriptor_exprt : public nullary_exprt
+{
+public:
+  /// \param _type: The type of the method which this expression refers to.
+  /// \param class_id: Unique identifier in the symbol table, of the compile
+  ///   time type of the class which this expression is applied to. For example
+  ///   this could be - `java::java.lang.Object`.
+  /// \param base_method_name: The name of the method to which this expression
+  ///   is applied as would be seen in the source code. For example this could
+  ///   be - `toString`.
+  /// \param mangled_method_name: The method name after mangling it by
+  ///   combining it with the descriptor. The mangled name is distinguished from
+  ///   other overloads of the method with different counts of or types of
+  ///   parameters. It is not distinguished between different implementations
+  ///   within a class hierarchy. For example if the overall expression refers
+  ///   to the `java.lang.Object.toString` method, then the mangled_method_name
+  ///   would be `toString:()Ljava/lang/String;`
+  explicit class_method_descriptor_exprt(
+    typet _type,
+    irep_idt mangled_method_name,
+    irep_idt class_id,
+    irep_idt base_method_name)
+    : nullary_exprt(ID_virtual_function, std::move(_type))
+  {
+    irep_idt id = id2string(class_id) + "." + id2string(mangled_method_name);
+    set(ID_component_name, std::move(mangled_method_name));
+    set(ID_C_class, std::move(class_id));
+    set(ID_C_base_name, std::move(base_method_name));
+    set(ID_identifier, std::move(id));
+    validate_expr(*this);
+  }
+
+  /// The method name after mangling it by combining it with the descriptor.
+  /// The mangled name is distinguished from other overloads of the method with
+  /// different counts of or types of parameters. It is not distinguished
+  /// between different implementations within a class hierarchy. For example if
+  /// the overall expression refers to the `java.lang.Object.toString` method,
+  /// then the mangled_method_name would be `toString:()Ljava/lang/String;`
+  const irep_idt &mangled_method_name() const
+  {
+    return get(ID_component_name);
+  }
+
+  /// Unique identifier in the symbol table, of the compile time type of the
+  /// class which this expression is applied to. For example this could be -
+  /// `java::java.lang.Object`.
+  const irep_idt &class_id() const
+  {
+    return get(ID_C_class);
+  }
+
+  /// The name of the method to which this expression is applied as would be
+  /// seen in the source code. For example this could be - `toString`.
+  const irep_idt &base_method_name() const
+  {
+    return get(ID_C_base_name);
+  }
+
+  /// A unique identifier of the combination of class and method overload to
+  /// which this expression refers. For example this could be -
+  /// `java::java.lang.Object.toString:()Ljava/lang/String;`.
+  const irep_idt &get_identifier() const
+  {
+    return get(ID_identifier);
+  }
+};
+
+inline void validate_expr(const class class_method_descriptor_exprt &value)
+{
+  validate_operands(value, 0, "class method descriptor must not have operands");
+  DATA_INVARIANT(
+    !value.mangled_method_name().empty(),
+    "class method descriptor must have a mangled method name.");
+  DATA_INVARIANT(
+    !value.class_id().empty(), "class method descriptor must have a class id.");
+  DATA_INVARIANT(
+    !value.base_method_name().empty(),
+    "class method descriptor must have a base method name.");
+  DATA_INVARIANT(
+    value.get_identifier() == id2string(value.class_id()) + "." +
+                                id2string(value.mangled_method_name()),
+    "class method descriptor must have an identifier in the expected format.");
+}
+
+/// \brief Cast an exprt to a \ref class_method_descriptor_exprt
+///
+/// \a expr must be known to be \ref class_method_descriptor_exprt.
+///
+/// \param expr: Source expression
+/// \return Object of type \ref class_method_descriptor_exprt
+inline const class_method_descriptor_exprt &
+to_class_method_descriptor_expr(const exprt &expr)
+{
+  PRECONDITION(expr.id() == ID_virtual_function);
+  const class_method_descriptor_exprt &ret =
+    static_cast<const class_method_descriptor_exprt &>(expr);
+  validate_expr(ret);
+  return ret;
+}
+
+template <>
+inline bool can_cast_expr<class_method_descriptor_exprt>(const exprt &base)
+{
+  return base.id() == ID_virtual_function;
 }
 
 #endif // CPROVER_UTIL_STD_EXPR_H

@@ -6,6 +6,14 @@
 
 %{
 
+#if defined _MSC_VER
+// signed/unsigned mismatch
+#pragma warning(disable:4365)
+// macro re-definition: flex conditonally defines INT32_MAX et al. and thus
+// they are set before library headers get to define them
+#pragma warning(disable:4005)
+#endif
+
 #include <util/expr.h>
 
 #include <ansi-c/literals/convert_float_literal.h>
@@ -19,7 +27,7 @@
 // extern int yyjsildebug;
 
 #define loc() \
-  { newstack(yyjsillval); PARSER.set_source_location(stack(yyjsillval)); }
+  { newstack(yyjsillval); PARSER.set_source_location(parser_stack(yyjsillval)); }
 
 static int make_identifier()
 {
@@ -28,9 +36,9 @@ static int make_identifier()
   // this hashes the identifier
   irep_idt base_name=yytext;
   
-  stack(yyjsillval).id(ID_symbol);
-  stack(yyjsillval).set(ID_C_base_name, base_name);
-  stack(yyjsillval).set(ID_identifier, base_name);
+  parser_stack(yyjsillval).id(ID_symbol);
+  parser_stack(yyjsillval).set(ID_C_base_name, base_name);
+  parser_stack(yyjsillval).set(ID_identifier, base_name);
   return TOK_IDENTIFIER;
 }
 
@@ -113,7 +121,7 @@ void jsil_scanner_init()
                   PARSER.string_literal.clear();
                   PARSER.string_literal.append(yytext);
                   newstack(yyjsillval);
-                  PARSER.set_source_location(stack(yyjsillval));
+                  PARSER.set_source_location(parser_stack(yyjsillval));
                   // String literals can be continued
                   yy_push_state(STRING_LITERAL);
                 }
@@ -124,9 +132,9 @@ void jsil_scanner_init()
   {whitespace}  { } /* ignore */
   "/*"          { yy_push_state(STRING_LITERAL_COMMENT); } /* C comment, ignore */
   {newline}|.   { // anything else: back to normal
-                  source_locationt l=stack(yyjsillval).source_location();
-                  stack(yyjsillval)=convert_string_literal(PARSER.string_literal);
-                  stack(yyjsillval).add_source_location().swap(l);
+                  source_locationt l=parser_stack(yyjsillval).source_location();
+                  parser_stack(yyjsillval)=convert_string_literal(PARSER.string_literal);
+                  parser_stack(yyjsillval).add_source_location().swap(l);
                   yy_pop_state(); // back to normal
                   yyless(0); // put back
                   return TOK_STRING;
@@ -282,8 +290,8 @@ void jsil_scanner_init()
 
   {float}|{integer}  {
                        newstack(yyjsillval); 
-                       stack(yyjsillval)=convert_float_literal(yytext);
-                       PARSER.set_source_location(stack(yyjsillval));
+                       parser_stack(yyjsillval)=convert_float_literal(yytext);
+                       PARSER.set_source_location(parser_stack(yyjsillval));
                        return TOK_FLOATING;
                      }
 

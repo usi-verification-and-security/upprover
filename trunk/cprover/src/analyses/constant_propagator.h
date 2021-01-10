@@ -34,7 +34,9 @@ class constant_propagator_domaint:public ai_domain_baset
 {
 public:
   virtual void transform(
+    const irep_idt &function_from,
     locationt from,
+    const irep_idt &function_to,
     locationt to,
     ai_baset &ai_base,
     const namespacet &ns) final override;
@@ -81,7 +83,7 @@ public:
   struct valuest
   {
     // maps variables to constants
-    replace_symbolt replace_const;
+    address_of_aware_replace_symbolt replace_const;
     bool is_bottom = true;
 
     bool merge(const valuest &src);
@@ -111,31 +113,19 @@ public:
       return !is_bottom && replace_const.empty();
     }
 
-    // set single identifier
-
-    void set_to(const irep_idt &lhs, const exprt &rhs)
+    void set_to(const symbol_exprt &lhs, const exprt &rhs)
     {
-      replace_const.get_expr_map()[lhs] = rhs;
+      replace_const.set(lhs, rhs);
       is_bottom=false;
     }
 
-    void set_to(const symbol_exprt &lhs, const exprt &rhs)
-    {
-      set_to(lhs.get_identifier(), rhs);
-    }
-
-    bool set_to_top(const symbol_exprt &expr)
-    {
-      return set_to_top(expr.get_identifier());
-    }
-
-    bool set_to_top(const irep_idt &id);
+    bool set_to_top(const symbol_exprt &expr);
 
     void set_dirty_to_top(const dirtyt &dirty, const namespacet &ns);
 
     bool is_constant(const exprt &expr) const;
-    bool is_array_constant(const exprt &expr) const;
-    bool is_constant_address_of(const exprt &expr) const;
+
+    bool is_constant(const irep_idt &id) const;
 
     bool is_empty() const
     {
@@ -147,26 +137,34 @@ public:
 
   valuest values;
 
-  bool partial_evaluate(exprt &expr, const namespacet &ns) const;
+  static bool partial_evaluate(
+    const valuest &known_values,
+    exprt &expr,
+    const namespacet &ns);
 
 protected:
-  void assign_rec(
-    valuest &values,
+  static void assign_rec(
+    valuest &dest_values,
     const exprt &lhs,
     const exprt &rhs,
     const namespacet &ns,
-    const constant_propagator_ait *cp);
+    const constant_propagator_ait *cp,
+    bool is_assignment);
 
   bool two_way_propagate_rec(
     const exprt &expr,
     const namespacet &ns,
     const constant_propagator_ait *cp);
 
-  bool partial_evaluate_with_all_rounding_modes(
+  static bool partial_evaluate_with_all_rounding_modes(
+    const valuest &known_values,
     exprt &expr,
-    const namespacet &ns) const;
+    const namespacet &ns);
 
-  bool replace_constants_and_simplify(exprt &expr, const namespacet &ns) const;
+  static bool replace_constants_and_simplify(
+    const valuest &known_values,
+    exprt &expr,
+    const namespacet &ns);
 };
 
 class constant_propagator_ait:public ait<constant_propagator_domaint>
@@ -208,13 +206,13 @@ public:
   }
 
   constant_propagator_ait(
+    const irep_idt &function_identifier,
     goto_functionst::goto_functiont &goto_function,
     const namespacet &ns,
-    should_track_valuet should_track_value = track_all_values):
-    dirty(goto_function),
-    should_track_value(should_track_value)
+    should_track_valuet should_track_value = track_all_values)
+    : dirty(goto_function), should_track_value(should_track_value)
   {
-    operator()(goto_function, ns);
+    operator()(function_identifier, goto_function, ns);
     replace(goto_function, ns);
   }
 

@@ -11,7 +11,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "options.h"
 
+#include "constructor_of.h"
+#include "json.h"
+#include "range.h"
 #include "string2int.h"
+#include "xml.h"
 
 void optionst::set_option(const std::string &option,
                           const std::string &value)
@@ -27,14 +31,12 @@ void optionst::set_option(const std::string &option,
   set_option(option, std::string(value?"1":"0"));
 }
 
-void optionst::set_option(const std::string &option,
-                          const signed int value)
+void optionst::set_option(const std::string &option, const int value)
 {
   set_option(option, std::to_string(value));
 }
 
-void optionst::set_option(const std::string &option,
-                          const unsigned int value)
+void optionst::set_option(const std::string &option, const unsigned value)
 {
   set_option(option, std::to_string(value));
 }
@@ -67,8 +69,8 @@ const std::string optionst::get_option(const std::string &option) const
   option_mapt::const_iterator it=
     option_map.find(option);
 
-  if(it==option_map.end())    //not found
-    return std::string();     //Constructs an empty string, with a length of zero characters
+  if(it==option_map.end())
+    return std::string();
   else if(it->second.empty())
     return std::string();
   else
@@ -85,4 +87,51 @@ const optionst::value_listt &optionst::get_list_option(
     return empty_list;
   else
     return it->second;
+}
+
+/// Returns the options as JSON key value pairs
+json_objectt optionst::to_json() const
+{
+  return make_range(option_map)
+    .map([](const std::pair<std::string, value_listt> &option_pair) {
+      return std::pair<std::string, json_arrayt>{
+        option_pair.first,
+        make_range(option_pair.second).map(constructor_of<json_stringt>())};
+    });
+}
+
+/// Returns the options in XML format
+xmlt optionst::to_xml() const
+{
+  xmlt xml_options("options");
+  for(const auto &option_pair : option_map)
+  {
+    xmlt &xml_option = xml_options.new_element("option");
+    xml_option.set_attribute("name", option_pair.first);
+    for(const auto &value : option_pair.second)
+    {
+      xmlt &xml_value = xml_option.new_element("value");
+      xml_value.data = value;
+    }
+  }
+  return xml_options;
+}
+
+/// Outputs the options to `out`
+void optionst::output(std::ostream &out) const
+{
+  for(const auto &option_pair : option_map)
+  {
+    out << option_pair.first << ": ";
+    bool first = true;
+    for(const auto &value : option_pair.second)
+    {
+      if(first)
+        first = false;
+      else
+        out << ", ";
+      out << '"' << value << '"';
+    }
+    out << "\n";
+  }
 }

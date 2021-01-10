@@ -26,6 +26,13 @@ void value_sets_to_xml(
   const goto_programt &goto_program,
   xmlt &dest);
 
+/// This template class implements a data-flow analysis which keeps track of
+/// what values different variables might have at different points in the
+/// program. It is used through the alias `value_set_analysist`, so `VSDT` is
+/// `value_set_domain_templatet<value_sett>`.
+///
+/// Note: it is currently based on `static_analysist`, which is obsolete. It
+/// should be moved onto `ait`.
 template<class VSDT>
 class value_set_analysis_templatet:
   public value_setst,
@@ -58,12 +65,21 @@ public:
 
 public:
   // interface value_sets
-  virtual void get_values(
+  DEPRECATED(SINCE(2019, 05, 22, "use list returning version instead"))
+  void get_values(
+    const irep_idt &,
     locationt l,
     const exprt &expr,
-    value_setst::valuest &dest)
+    value_setst::valuest &dest) override
   {
     (*this)[l].value_set.get_value_set(expr, dest, baset::ns);
+  }
+
+  // interface value_sets
+  std::vector<exprt>
+  get_values(const irep_idt &, locationt l, const exprt &expr) override
+  {
+    return (*this)[l].value_set.get_value_set(expr, baset::ns);
   }
 };
 

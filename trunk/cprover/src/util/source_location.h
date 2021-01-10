@@ -10,8 +10,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_SOURCE_LOCATION_H
 #define CPROVER_UTIL_SOURCE_LOCATION_H
 
+#include "invariant.h"
 #include "irep.h"
-#include "prefix.h"
+#include "optional.h"
+
+#include <string>
 
 class source_locationt:public irept
 {
@@ -85,6 +88,11 @@ public:
     return get(ID_basic_block_covered_lines);
   }
 
+  const irep_idt &get_basic_block_source_lines() const
+  {
+    return get(ID_basic_block_source_lines);
+  }
+
   void set_file(const irep_idt &file)
   {
     set(ID_file, file);
@@ -151,6 +159,11 @@ public:
     return set(ID_basic_block_covered_lines, covered_lines);
   }
 
+  void set_basic_block_source_lines(const irep_idt &source_lines)
+  {
+    return set(ID_basic_block_source_lines, source_lines);
+  }
+
   void set_hide()
   {
     set(ID_hide, true);
@@ -161,12 +174,7 @@ public:
     return get_bool(ID_hide);
   }
 
-  static bool is_built_in(const std::string &s)
-  {
-    std::string built_in1="<built-in-"; // "<built-in-additions>";
-    std::string built_in2="<builtin-"; // "<builtin-architecture-strings>";
-    return has_prefix(s, built_in1) || has_prefix(s, built_in2);
-  }
+  static bool is_built_in(const std::string &s);
 
   bool is_built_in() const
   {
@@ -182,10 +190,32 @@ public:
     return static_cast<const source_locationt &>(get_nil_irep());
   }
 
+  optionalt<std::string> full_path() const;
+
+  void add_pragma(const irep_idt &pragma)
+  {
+    add(ID_pragma).add(pragma);
+  }
+
+  const irept::named_subt &get_pragmas() const
+  {
+    return find(ID_pragma).get_named_sub();
+  }
+
 protected:
   std::string as_string(bool print_cwd) const;
 };
 
 std::ostream &operator <<(std::ostream &, const source_locationt &);
+
+template <>
+struct diagnostics_helpert<source_locationt>
+{
+  static std::string
+  diagnostics_as_string(const source_locationt &source_location)
+  {
+    return "source location: " + source_location.as_string();
+  }
+};
 
 #endif // CPROVER_UTIL_SOURCE_LOCATION_H

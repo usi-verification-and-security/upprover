@@ -68,6 +68,7 @@ void event_grapht::print_graph()
 
 /// copies the segment
 /// \param begin: top of the subgraph
+/// \param explored: set of segments which have already been explored
 /// \param end: bottom of the subgraph
 void event_grapht::explore_copy_segment(std::set<event_idt> &explored,
   event_idt begin, event_idt end) const
@@ -93,10 +94,10 @@ event_idt event_grapht::copy_segment(event_idt begin, event_idt end)
   const abstract_eventt &end_event=operator[](end);
 
   /* not sure -- we should allow cross function cycles */
-  if(begin_event.source_location.get_file()!=end_event.source_location
-    .get_file()
-    || begin_event.source_location.get_function()!=end_event.source_location
-    .get_function())
+  if(
+    begin_event.source_location.get_file() !=
+      end_event.source_location.get_file() ||
+    begin_event.function_id != end_event.function_id)
     return end;
 
   if(duplicated_bodies.find(std::make_pair(begin_event, end_event))

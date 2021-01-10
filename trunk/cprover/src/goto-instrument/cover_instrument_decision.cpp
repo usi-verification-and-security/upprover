@@ -16,12 +16,13 @@ Author: Daniel Kroening
 #include "cover_util.h"
 
 void cover_decision_instrumentert::instrument(
+  const irep_idt &function_id,
   goto_programt &goto_program,
   goto_programt::targett &i_it,
   const cover_blocks_baset &) const
 {
   if(is_non_cover_assertion(i_it))
-    i_it->make_skip();
+    i_it->turn_into_skip();
 
   // Decisions are maximal Boolean combinations of conditions.
   if(!i_it->source_location.is_built_in())
@@ -32,20 +33,17 @@ void cover_decision_instrumentert::instrument(
 
     for(const auto &d : decisions)
     {
-      const std::string d_string = from_expr(ns, i_it->function, d);
+      const std::string d_string = from_expr(ns, function_id, d);
 
-      const std::string comment_t = "decision `" + d_string + "' true";
-      const irep_idt function = i_it->function;
+      const std::string comment_t = "decision '" + d_string + "' true";
       goto_program.insert_before_swap(i_it);
-      i_it->make_assertion(d);
-      i_it->source_location = source_location;
-      initialize_source_location(i_it, comment_t, function);
+      *i_it = goto_programt::make_assertion(d, source_location);
+      initialize_source_location(i_it, comment_t, function_id);
 
-      const std::string comment_f = "decision `" + d_string + "' false";
+      const std::string comment_f = "decision '" + d_string + "' false";
       goto_program.insert_before_swap(i_it);
-      i_it->make_assertion(not_exprt(d));
-      i_it->source_location = source_location;
-      initialize_source_location(i_it, comment_f, function);
+      *i_it = goto_programt::make_assertion(not_exprt(d), source_location);
+      initialize_source_location(i_it, comment_f, function_id);
     }
 
     // advance iterator beyond the inserted instructions

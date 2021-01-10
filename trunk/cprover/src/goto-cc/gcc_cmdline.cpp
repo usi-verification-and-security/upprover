@@ -27,6 +27,7 @@ const char *goto_cc_options_with_separated_argument[]=
   "--native-compiler",
   "--native-linker",
   "--print-rejected-preprocessed-source",
+  "--mangle-suffix",
   nullptr
 };
 
@@ -49,7 +50,9 @@ const char *goto_cc_options_without_argument[]=
   "--big-endian",
   "--no-arch",
   "--partial-inlining",
+  "--validate-goto-model",
   "-?",
+  "--export-function-local-symbols",
   nullptr
 };
 
@@ -79,6 +82,7 @@ const char *gcc_options_with_argument[]=
 const char *gcc_options_with_separated_argument[]=
 {
   "-aux-info",
+  "-arch", // Apple only
   "--param", // Apple only
   "-imacros",
   "-iprefix",
@@ -221,13 +225,13 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
   assert(argc>0);
   add_arg(argv[0]);
 
-  argst args;
-  args.reserve(argc-1);
+  argst current_args;
+  current_args.reserve(argc - 1);
 
   for(int i=1; i<argc; i++)
-    args.push_back(argv[i]);
+    current_args.push_back(argv[i]);
 
-  bool result=parse_arguments(args, false);
+  bool result = parse_arguments(current_args, false);
 
   parse_specs();
 
@@ -235,11 +239,11 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
 }
 
 bool gcc_cmdlinet::parse_arguments(
-  const argst &args,
+  const argst &args_to_parse,
   bool in_spec_file)
 {
-  for(argst::const_iterator it=args.begin();
-      it!=args.end();
+  for(argst::const_iterator it = args_to_parse.begin();
+      it != args_to_parse.end();
       ++it)
   {
     const std::string &argv_i=*it;
@@ -292,7 +296,7 @@ bool gcc_cmdlinet::parse_arguments(
         if(argv_i==*o) // separated
         {
           found=true;
-          if(next!=args.end())
+          if(next != args_to_parse.end())
           {
             set(argv_i, *next);
             ++it;
@@ -364,7 +368,7 @@ bool gcc_cmdlinet::parse_arguments(
         if(argv_i==*o) // separated
         {
           found=true;
-          if(next!=args.end())
+          if(next != args_to_parse.end())
           {
             set(argv_i, *next);
             if(!in_spec_file)
@@ -390,7 +394,7 @@ bool gcc_cmdlinet::parse_arguments(
         if(argv_i==*o) // separated
         {
           found=true;
-          if(next!=args.end())
+          if(next != args_to_parse.end())
           {
             set(argv_i, *next);
             if(!in_spec_file)
@@ -438,17 +442,17 @@ void gcc_cmdlinet::parse_specs_line(const std::string &line, bool in_spec_file)
   assert(!line.empty());
   assert(line[0]!=' ' && line[0]!='\t');
 
-  argst args;
+  argst args_from_specs;
 
   for(std::string::size_type arg_start=0, arg_end=0;
       arg_end!=std::string::npos;
       arg_start=line.find_first_not_of("\t ", arg_end))
   {
     arg_end=line.find_first_of("\t ", arg_start);
-    args.push_back(line.substr(arg_start, arg_end-arg_start));
+    args_from_specs.push_back(line.substr(arg_start, arg_end - arg_start));
   }
 
-  parse_arguments(args, in_spec_file);
+  parse_arguments(args_from_specs, in_spec_file);
 }
 
 /// Parse GCC spec files https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html

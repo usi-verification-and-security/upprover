@@ -64,12 +64,15 @@ public:
   {
   }
 
-  void extract_polynomial(scratch_programt &program,
-                          std::set<std::pair<expr_listt, exprt> > &coefficients,
-                          polynomialt &polynomial);
+  void extract_polynomial(
+    scratch_programt &program,
+    std::set<std::pair<expr_listt, exprt>> &coefficients,
+    polynomialt &polynomial);
 
-  bool check_inductive(std::map<exprt, polynomialt> polynomials,
-                       patht &path);
+  bool check_inductive(
+    std::map<exprt, polynomialt> polynomials,
+    patht &path,
+    guard_managert &guard_manager);
   void stash_variables(scratch_programt &program,
                        expr_sett modified,
                        substitutiont &substitution);
@@ -82,9 +85,11 @@ public:
   void abstract_arrays(exprt &expr, expr_mapt &abstractions);
   void push_nondet(exprt &expr);
 
-  bool do_assumptions(std::map<exprt, polynomialt> polynomials,
-                      patht &body,
-                      exprt &guard);
+  bool do_assumptions(
+    std::map<exprt, polynomialt> polynomials,
+    patht &body,
+    exprt &guard,
+    guard_managert &guard_manager);
 
   typedef std::pair<exprt, exprt> expr_pairt;
   typedef std::vector<expr_pairt> expr_pairst;
@@ -101,7 +106,6 @@ public:
 
   bool do_arrays(goto_programt::instructionst &loop_body,
                  std::map<exprt, polynomialt> &polynomials,
-                 exprt &loop_counter,
                  substitutiont &substitution,
                  scratch_programt &program);
   expr_pairst gather_array_assignments(
@@ -120,14 +124,12 @@ public:
   bool do_nonrecursive(
     goto_programt::instructionst &loop_body,
     std::map<exprt, polynomialt> &polynomials,
-    exprt &loop_counter,
     substitutiont &substitution,
     expr_sett &nonrecursive,
     scratch_programt &program);
   bool assign_array(
-    const exprt &lhs,
+    const index_exprt &lhs,
     const exprt &rhs,
-    const exprt &loop_counter,
     scratch_programt &program);
 
   void gather_array_accesses(const exprt &expr, expr_sett &arrays);
@@ -157,8 +159,6 @@ public:
   const goto_functionst &goto_functions;
   exprt &loop_counter;
   nil_exprt nil;
-
-  static int num_symbols;
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_ACCELERATION_UTILS_H

@@ -19,8 +19,11 @@
 class symbol_tablet : public symbol_table_baset
 {
 private:
+  /// Value referenced by \ref symbol_table_baset::symbols.
   symbolst internal_symbols;
+  /// Value referenced by \ref symbol_table_baset::symbol_base_map.
   symbol_base_mapt internal_symbol_base_map;
+  /// Value referenced by \ref symbol_table_baset::symbol_module_map.
   symbol_module_mapt internal_symbol_module_map;
 
 public:
@@ -32,6 +35,7 @@ public:
   {
   }
 
+  /// Copy constructor.
   symbol_tablet(const symbol_tablet &other)
     : symbol_table_baset(
         internal_symbols,
@@ -43,12 +47,14 @@ public:
   {
   }
 
+  /// Copy assignment operator.
   symbol_tablet &operator=(const symbol_tablet &other)
   {
     // Copy to temp and then call move assignment
     return *this=symbol_tablet(other);
   }
 
+  /// Move constructor.
   symbol_tablet(symbol_tablet &&other)
     : symbol_table_baset(
         internal_symbols,
@@ -60,6 +66,7 @@ public:
   {
   }
 
+  /// Move assignment operator.
   symbol_tablet &operator=(symbol_tablet &&other)
   {
     internal_symbols = std::move(other.internal_symbols);
@@ -68,6 +75,8 @@ public:
     return *this;
   }
 
+  /// Swap symbol maps between two symbol tables.
+  /// \param other: The second symbol table to swap values with.
   void swap(symbol_tablet &other)
   {
     internal_symbols.swap(other.internal_symbols);
@@ -83,7 +92,7 @@ public:
 
   /// Find a symbol in the symbol table for read-write access.
   /// \param name: The name of the symbol to look for
-  /// \return a pointer to the found symbol if it exists, nullptr otherwise.
+  /// \return A pointer to the found symbol if it exists, nullptr otherwise.
   virtual symbolt *get_writeable(const irep_idt &name) override
   {
     symbolst::iterator it = internal_symbols.find(name);
@@ -94,6 +103,7 @@ public:
   virtual bool move(symbolt &symbol, symbolt *&new_symbol) override;
 
   virtual void erase(const symbolst::const_iterator &entry) override;
+  /// Wipe internal state of the symbol table.
   virtual void clear() override
   {
     internal_symbols.clear();
@@ -109,6 +119,23 @@ public:
   {
     return iteratort(internal_symbols.end());
   }
+
+  typedef symbolst::const_iterator const_iteratort;
+
+  virtual const_iteratort begin() const
+  {
+    return internal_symbols.begin();
+  }
+
+  virtual const_iteratort end() const
+  {
+    return internal_symbols.end();
+  }
+
+  /// Check that the symbol table is well-formed
+  void validate(const validation_modet vm = validation_modet::INVARIANT) const;
+
+  bool operator==(const symbol_tablet &other) const;
 };
 
 #endif // CPROVER_UTIL_SYMBOL_TABLE_H

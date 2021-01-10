@@ -8,9 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "byte_operators.h"
 
-#include <cassert>
-
-#include "invariant.h"
 #include "config.h"
 
 irep_idt byte_extract_id()
@@ -23,9 +20,11 @@ irep_idt byte_extract_id()
   case configt::ansi_ct::endiannesst::IS_BIG_ENDIAN:
     return ID_byte_extract_big_endian;
 
-  default:
+  case configt::ansi_ct::endiannesst::NO_ENDIANNESS:
     UNREACHABLE;
   }
+
+  UNREACHABLE;
 }
 
 irep_idt byte_update_id()
@@ -38,7 +37,9 @@ irep_idt byte_update_id()
   case configt::ansi_ct::endiannesst::IS_BIG_ENDIAN:
     return ID_byte_update_big_endian;
 
-  default:
+  case configt::ansi_ct::endiannesst::NO_ENDIANNESS:
     UNREACHABLE;
   }
+
+  UNREACHABLE;
 }

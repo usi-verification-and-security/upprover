@@ -27,13 +27,20 @@ public:
   typedef std::list<xmlt> elementst;
   typedef std::map<std::string, std::string> attributest;
 
+  xmlt(std::string &&_name, attributest &&_attributes, elementst &&_elements)
+    : name(std::move(_name)),
+      attributes(std::move(_attributes)),
+      elements(std::move(_elements))
+  {
+  }
+
   std::string name, data;
 
   attributest attributes;
   elementst elements;
 
-  elementst::const_iterator find(const std::string &name) const;
-  elementst::iterator find(const std::string &name);
+  elementst::const_iterator find(const std::string &key) const;
+  elementst::iterator find(const std::string &key);
 
   void set_attribute(
     const std::string &attribute,
@@ -83,10 +90,10 @@ public:
     return "";
   }
 
-  xmlt &new_element(const std::string &name)
+  xmlt &new_element(const std::string &key)
   {
     elements.push_back(xmlt());
-    elements.back().name=name;
+    elements.back().name = key;
     return elements.back();
   }
 

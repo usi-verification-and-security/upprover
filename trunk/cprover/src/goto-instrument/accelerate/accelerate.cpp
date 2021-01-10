@@ -34,20 +34,16 @@ Author: Matt Lewis
 goto_programt::targett acceleratet::find_back_jump(
   goto_programt::targett loop_header)
 {
-  natural_loops_mutablet::natural_loopt &loop=
-    natural_loops.loop_map[loop_header];
+  natural_loops_mutablet::natural_loopt &loop =
+    natural_loops.loop_map.at(loop_header);
   goto_programt::targett back_jump=loop_header;
 
-  for(natural_loops_mutablet::natural_loopt::iterator it=loop.begin();
-      it!=loop.end();
-      ++it)
+  for(const auto &t : loop)
   {
-    goto_programt::targett t=*it;
-    if(t->is_goto() &&
-        t->guard.is_true() &&
-        t->targets.size()==1 &&
-        t->targets.front()==loop_header &&
-        t->location_number > back_jump->location_number)
+    if(
+      t->is_goto() && t->get_condition().is_true() && t->targets.size() == 1 &&
+      t->targets.front() == loop_header &&
+      t->location_number > back_jump->location_number)
     {
       back_jump=t;
     }
@@ -58,15 +54,11 @@ goto_programt::targett acceleratet::find_back_jump(
 
 bool acceleratet::contains_nested_loops(goto_programt::targett &loop_header)
 {
-  natural_loops_mutablet::natural_loopt &loop=
-    natural_loops.loop_map[loop_header];
+  natural_loops_mutablet::natural_loopt &loop =
+    natural_loops.loop_map.at(loop_header);
 
-  for(natural_loops_mutablet::natural_loopt::iterator it=loop.begin();
-      it!=loop.end();
-      ++it)
+  for(const auto &t : loop)
   {
-    const goto_programt::targett &t=*it;
-
     if(t->is_backwards_goto())
     {
       if(t->targets.size()!=1 ||
@@ -76,8 +68,8 @@ bool acceleratet::contains_nested_loops(goto_programt::targett &loop_header)
       }
     }
 
-    if(t!=loop_header &&
-       natural_loops.loop_map.find(t)!=natural_loops.loop_map.end())
+    // Header of some other loop?
+    if(t != loop_header && natural_loops.is_loop_header(t))
     {
       return true;
     }
@@ -93,7 +85,7 @@ int acceleratet::accelerate_loop(goto_programt::targett &loop_header)
   int num_accelerated=0;
   std::list<path_acceleratort> accelerators;
   natural_loops_mutablet::natural_loopt &loop =
-    natural_loops.loop_map[loop_header];
+    natural_loops.loop_map.at(loop_header);
 
   if(contains_nested_loops(loop_header))
   {
@@ -116,7 +108,8 @@ int acceleratet::accelerate_loop(goto_programt::targett &loop_header)
     program,
     loop,
     loop_header,
-    accelerate_limit);
+    accelerate_limit,
+    guard_manager);
 #else
   disjunctive_polynomial_accelerationt
     acceleration(symbol_table, goto_functions, program, loop, loop_header);
@@ -159,8 +152,7 @@ int acceleratet::accelerate_loop(goto_programt::targett &loop_header)
   goto_programt::targett new_inst=loop_header;
   ++new_inst;
 
-  loop.insert(new_inst);
-
+  loop.insert_instruction(new_inst);
 
   std::cout << "Overflow loc is " << overflow_loc->location_number << '\n';
   std::cout << "Back jump is " << back_jump->location_number << '\n';
@@ -183,15 +175,18 @@ void acceleratet::insert_accelerator(
   goto_programt::targett &loop_header,
   goto_programt::targett &back_jump,
   path_acceleratort &accelerator,
-  subsumed_patht &subsumed)
+  subsumed_patht &subsumed_path)
 {
   insert_looping_path(
-    loop_header, back_jump, accelerator.pure_accelerator, subsumed.accelerator);
+    loop_header,
+    back_jump,
+    accelerator.pure_accelerator,
+    subsumed_path.accelerator);
 
   if(!accelerator.overflow_path.instructions.empty())
   {
     insert_looping_path(
-      loop_header, back_jump, accelerator.overflow_path, subsumed.residue);
+      loop_header, back_jump, accelerator.overflow_path, subsumed_path.residue);
   }
 }
 
@@ -211,15 +206,17 @@ void acceleratet::insert_looping_path(
   goto_programt::targett loop_body=loop_header;
   ++loop_body;
 
-  goto_programt::targett jump=program.insert_before(loop_body);
-  jump->make_goto(
+  goto_programt::targett jump = program.insert_before(
     loop_body,
-    side_effect_expr_nondett(bool_typet(), loop_body->source_location));
+    goto_programt::make_goto(
+      loop_body,
+      side_effect_expr_nondett(bool_typet(), loop_body->source_location),
+      loop_body->source_location));
 
   program.destructive_insert(loop_body, looping_path);
 
-  jump=program.insert_before(loop_body);
-  jump->make_goto(back_jump, true_exprt());
+  jump = program.insert_before(
+    loop_body, goto_programt::make_goto(back_jump, true_exprt()));
 
   for(goto_programt::targett t=loop_header;
       t!=loop_body;
@@ -239,41 +236,35 @@ void acceleratet::make_overflow_loc(
   symbolt overflow_sym=utils.fresh_symbol("accelerate::overflow", bool_typet());
   const exprt &overflow_var=overflow_sym.symbol_expr();
   natural_loops_mutablet::natural_loopt &loop =
-    natural_loops.loop_map[loop_header];
+    natural_loops.loop_map.at(loop_header);
   overflow_instrumentert instrumenter(program, overflow_var, symbol_table);
 
-  for(natural_loops_mutablet::natural_loopt::iterator it=loop.begin();
-      it!=loop.end();
-      ++it)
+  for(const auto &loop_instruction : loop)
   {
-    overflow_locs[*it]=goto_programt::targetst();
-    goto_programt::targetst &added=overflow_locs[*it];
+    overflow_locs[loop_instruction] = goto_programt::targetst();
+    goto_programt::targetst &added = overflow_locs[loop_instruction];
 
-    instrumenter.add_overflow_checks(*it, added);
-    loop.insert(added.begin(), added.end());
+    instrumenter.add_overflow_checks(loop_instruction, added);
+    for(const auto &new_instruction : added)
+      loop.insert_instruction(new_instruction);
   }
 
-  goto_programt::targett t=program.insert_after(loop_header);
-  t->make_assignment();
-  t->code=code_assignt(overflow_var, false_exprt());
+  goto_programt::targett t = program.insert_after(
+    loop_header,
+    goto_programt::make_assignment(code_assignt(overflow_var, false_exprt())));
   t->swap(*loop_header);
-  loop.insert(t);
+  loop.insert_instruction(t);
   overflow_locs[loop_header].push_back(t);
 
-  goto_programt::instructiont s(SKIP);
-  overflow_loc=program.insert_after(loop_end);
-  *overflow_loc=s;
+  overflow_loc = program.insert_after(loop_end, goto_programt::make_skip());
   overflow_loc->swap(*loop_end);
-  loop.insert(overflow_loc);
+  loop.insert_instruction(overflow_loc);
 
-  goto_programt::instructiont g(GOTO);
-  g.guard=not_exprt(overflow_var);
-  g.targets.push_back(overflow_loc);
-  goto_programt::targett t2=program.insert_after(loop_end);
-  *t2=g;
+  goto_programt::targett t2 = program.insert_after(
+    loop_end, goto_programt::make_goto(overflow_loc, not_exprt(overflow_var)));
   t2->swap(*loop_end);
   overflow_locs[overflow_loc].push_back(t2);
-  loop.insert(t2);
+  loop.insert_instruction(t2);
 
   goto_programt::targett tmp=overflow_loc;
   overflow_loc=loop_end;
@@ -331,7 +322,7 @@ void acceleratet::set_dirty_vars(path_acceleratort &accelerator)
 
     if(jt==dirty_vars_map.end())
     {
-      scratch_programt scratch(symbol_table, message_handler);
+      scratch_programt scratch(symbol_table, message_handler, guard_manager);
       symbolt new_sym=utils.fresh_symbol("accelerate::dirty", bool_typet());
       dirty_var=new_sym.symbol_expr();
       dirty_vars_map[*it]=dirty_var;
@@ -346,8 +337,8 @@ void acceleratet::set_dirty_vars(path_acceleratort &accelerator)
       << " for " << expr2c(*it, ns) << '\n';
 #endif
 
-    accelerator.pure_accelerator.add_instruction(ASSIGN)->code =
-      code_assignt(dirty_var, true_exprt());
+    accelerator.pure_accelerator.add(
+      goto_programt::make_assignment(code_assignt(dirty_var, true_exprt())));
   }
 }
 
@@ -357,8 +348,8 @@ void acceleratet::add_dirty_checks()
       it!=dirty_vars_map.end();
       ++it)
   {
-    goto_programt::instructiont assign(ASSIGN);
-    assign.code=code_assignt(it->second, false_exprt());
+    goto_programt::instructiont assign =
+      goto_programt::make_assignment(code_assignt(it->second, false_exprt()));
     program.insert_before_swap(program.instructions.begin(), assign);
   }
 
@@ -376,13 +367,13 @@ void acceleratet::add_dirty_checks()
     // variables is clean _before_ clearing any dirty flags.
     if(it->is_assign())
     {
-      exprt &lhs=it->code.op0();
+      const exprt &lhs = it->get_assign().lhs();
       expr_mapt::iterator dirty_var=dirty_vars_map.find(lhs);
 
       if(dirty_var!=dirty_vars_map.end())
       {
-        goto_programt::instructiont clear_flag(ASSIGN);
-        clear_flag.code=code_assignt(dirty_var->second, false_exprt());
+        goto_programt::instructiont clear_flag = goto_programt::make_assignment(
+          code_assignt(dirty_var->second, false_exprt()));
         program.insert_before_swap(it, clear_flag);
       }
     }
@@ -391,11 +382,12 @@ void acceleratet::add_dirty_checks()
     // the right hand side of an assignment.  Assume each is not dirty.
     find_symbols_sett read;
 
-    find_symbols(it->guard, read);
+    if(it->has_condition())
+      find_symbols_or_nexts(it->get_condition(), read);
 
     if(it->is_assign())
     {
-      find_symbols(it->code.op1(), read);
+      find_symbols_or_nexts(it->get_assign().rhs(), read);
     }
 
     for(find_symbols_sett::iterator jt=read.begin();
@@ -410,8 +402,8 @@ void acceleratet::add_dirty_checks()
         continue;
       }
 
-      goto_programt::instructiont not_dirty(ASSUME);
-      not_dirty.guard=not_exprt(dirty_var->second);
+      goto_programt::instructiont not_dirty =
+        goto_programt::make_assumption(not_exprt(dirty_var->second));
       program.insert_before_swap(it, not_dirty);
     }
   }
@@ -426,7 +418,7 @@ bool acceleratet::is_underapproximate(path_acceleratort &accelerator)
     if(it->id()==ID_symbol && it->type() == bool_typet())
     {
       const irep_idt &id=to_symbol_expr(*it).get_identifier();
-      const symbolt &sym=*symbol_table.lookup(id);
+      const symbolt &sym = symbol_table.lookup_ref(id);
 
       if(sym.module=="scratch")
       {
@@ -472,11 +464,8 @@ void acceleratet::decl(symbol_exprt &sym, goto_programt::targett t, exprt init)
 {
   decl(sym, t);
 
-  goto_programt::targett assign=program.insert_before(t);
-  code_assignt code(sym, init);
-
-  assign->make_assignment();
-  assign->code=code;
+  program.insert_before(
+    t, goto_programt::make_assignment(code_assignt(sym, init)));
 }
 
 void acceleratet::insert_automaton(trace_automatont &automaton)
@@ -510,7 +499,8 @@ void acceleratet::insert_automaton(trace_automatont &automaton)
   // machine.
   for(const auto &sym : automaton.alphabet)
   {
-    scratch_programt state_machine(symbol_table, message_handler);
+    scratch_programt state_machine{
+      symbol_table, message_handler, guard_manager};
     trace_automatont::sym_range_pairt p=transitions.equal_range(sym);
 
     build_state_machine(p.first, p.second, accept_states, state, next_state,
@@ -649,13 +639,14 @@ int acceleratet::accelerate_loops()
 void accelerate_functions(
   goto_modelt &goto_model,
   message_handlert &message_handler,
-  bool use_z3)
+  bool use_z3,
+  guard_managert &guard_manager)
 {
   Forall_goto_functions(it, goto_model.goto_functions)
   {
     std::cout << "Accelerating function " << it->first << '\n';
     acceleratet accelerate(
-      it->second.body, goto_model, message_handler, use_z3);
+      it->second.body, goto_model, message_handler, use_z3, guard_manager);
 
     int num_accelerated=accelerate.accelerate_loops();
 

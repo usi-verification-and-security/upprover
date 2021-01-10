@@ -1,9 +1,9 @@
 /*******************************************************************\
 
- Module: typedef for optional class template. To be replaced with
- std::optional once C++17 support is enabled
+Module: typedef for optional class template. To be replaced with
+        std::optional once C++17 support is enabled
 
- Author: Diffblue Ltd.
+Author: Diffblue Ltd.
 
 \*******************************************************************/
 
@@ -35,5 +35,24 @@ template<typename T>
 using optionalt=nonstd::optional<T>; // NOLINT template typedef
 
 typedef nonstd::bad_optional_access bad_optional_accesst;
+
+using nonstd::nullopt;
+
+/// Similar to optionalt::value but in case of empty optional, generates an
+/// invariant failure instead of throwing an exception.
+template <typename T>
+T &get_value_or_abort(optionalt<T> &opt)
+{
+  PRECONDITION(opt.has_value());
+  return opt.value();
+}
+
+/// \copydoc get_value_or_abort(optionalt<T> &)
+template <typename T>
+const T &get_value_or_abort(const optionalt<T> &opt)
+{
+  PRECONDITION(opt.has_value());
+  return opt.value();
+}
 
 #endif // CPROVER_UTIL_OPTIONAL_H

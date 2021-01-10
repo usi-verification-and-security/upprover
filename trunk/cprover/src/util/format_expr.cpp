@@ -12,12 +12,14 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "format_expr.h"
 
 #include "arith_tools.h"
+#include "byte_operators.h"
 #include "expr.h"
 #include "expr_iterator.h"
 #include "fixedbv.h"
 #include "format_type.h"
 #include "ieee_float.h"
 #include "invariant.h"
+#include "mathematical_expr.h"
 #include "mp_arith.h"
 #include "rational.h"
 #include "rational_tools.h"
@@ -26,8 +28,32 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "string2int.h"
 #include "string_utils.h"
 
+#include <map>
 #include <ostream>
 #include <stack>
+
+// expressions that are rendered with infix operators
+struct infix_opt
+{
+  const char *rep;
+};
+
+const std::map<irep_idt, infix_opt> infix_map = {
+  {ID_plus, {"+"}},
+  {ID_minus, {"-"}},
+  {ID_mult, {"*"}},
+  {ID_div, {"/"}},
+  {ID_equal, {"="}},
+  {ID_notequal, {u8"\u2260"}}, // /=, U+2260
+  {ID_and, {u8"\u2227"}},      // wedge, U+2227
+  {ID_or, {u8"\u2228"}},       // vee, U+2228
+  {ID_xor, {u8"\u2295"}},      // + in circle, U+2295
+  {ID_implies, {u8"\u21d2"}},  // =>, U+21D2
+  {ID_le, {u8"\u2264"}},       // <=, U+2264
+  {ID_ge, {u8"\u2265"}},       // >=, U+2265
+  {ID_lt, {"<"}},
+  {ID_gt, {">"}},
+};
 
 /// We use the precendences that most readers expect
 /// (i.e., the ones you learn in primary school),
@@ -37,6 +63,10 @@ static bool bracket_subexpression(const exprt &sub_expr, const exprt &expr)
   // no need for parentheses whenever the subexpression
   // doesn't have operands
   if(!sub_expr.has_operands())
+    return false;
+
+  // no need if subexpression isn't an infix operator
+  if(infix_map.find(sub_expr.id()) == infix_map.end())
     return false;
 
   // * and / bind stronger than + and -
@@ -53,6 +83,16 @@ static bool bracket_subexpression(const exprt &sub_expr, const exprt &expr)
     (expr.id() == ID_and || expr.id() == ID_or))
     return false;
 
+  // +, -, *, / bind stronger than ==, !=, <, <=, >, >=
+  if(
+    (sub_expr.id() == ID_plus || sub_expr.id() == ID_minus ||
+     sub_expr.id() == ID_mult || sub_expr.id() == ID_div) &&
+    (expr.id() == ID_equal || expr.id() == ID_notequal || expr.id() == ID_lt ||
+     expr.id() == ID_gt || expr.id() == ID_le || expr.id() == ID_ge))
+  {
+    return false;
+  }
+
   return true;
 }
 
@@ -62,12 +102,25 @@ static std::ostream &format_rec(std::ostream &os, const multi_ary_exprt &src)
 {
   bool first = true;
 
+  std::string operator_str = id2string(src.id()); // default
+
+  if(src.id() == ID_equal && to_equal_expr(src).op0().type().id() == ID_bool)
+  {
+    operator_str = u8"\u21d4"; // <=>, U+21D4
+  }
+  else
+  {
+    auto infix_map_it = infix_map.find(src.id());
+    if(infix_map_it != infix_map.end())
+      operator_str = infix_map_it->second.rep;
+  }
+
   for(const auto &op : src.operands())
   {
     if(first)
       first = false;
     else
-      os << ' ' << src.id() << ' ';
+      os << ' ' << operator_str << ' ';
 
     const bool need_parentheses = bracket_subexpression(op, src);
 
@@ -95,16 +148,16 @@ static std::ostream &format_rec(std::ostream &os, const binary_exprt &src)
 static std::ostream &format_rec(std::ostream &os, const unary_exprt &src)
 {
   if(src.id() == ID_not)
-    os << '!';
+    os << u8"\u00ac"; // neg, U+00AC
   else if(src.id() == ID_unary_minus)
     os << '-';
   else
     return os << src.pretty();
 
-  if(src.op0().has_operands())
-    return os << '(' << format(src.op0()) << ')';
+  if(src.op().has_operands())
+    return os << '(' << format(src.op()) << ')';
   else
-    return os << format(src.op0());
+    return os << format(src.op());
 }
 
 /// This formats a constant
@@ -171,12 +224,18 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
 {
   const auto &id = expr.id();
 
-  if(id == ID_plus || id == ID_mult || id == ID_and || id == ID_or)
+  if(
+    id == ID_plus || id == ID_mult || id == ID_and || id == ID_or ||
+    id == ID_xor)
+  {
     return format_rec(os, to_multi_ary_expr(expr));
+  }
   else if(
-    id == ID_lt || id == ID_gt || id == ID_ge || id == ID_le ||
+    id == ID_lt || id == ID_gt || id == ID_ge || id == ID_le || id == ID_div ||
     id == ID_minus || id == ID_implies || id == ID_equal || id == ID_notequal)
+  {
     return format_rec(os, to_binary_expr(expr));
+  }
   else if(id == ID_not || id == ID_unary_minus)
     return format_rec(os, to_unary_expr(expr));
   else if(id == ID_constant)
@@ -184,6 +243,22 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
   else if(id == ID_typecast)
     return os << "cast(" << format(to_typecast_expr(expr).op()) << ", "
               << format(expr.type()) << ')';
+  else if(
+    id == ID_byte_extract_little_endian || id == ID_byte_extract_big_endian)
+  {
+    const auto &byte_extract_expr = to_byte_extract_expr(expr);
+    return os << id << '(' << format(byte_extract_expr.op()) << ", "
+              << format(byte_extract_expr.offset()) << ", "
+              << format(byte_extract_expr.type()) << ')';
+  }
+  else if(id == ID_byte_update_little_endian || id == ID_byte_update_big_endian)
+  {
+    const auto &byte_update_expr = to_byte_update_expr(expr);
+    return os << id << '(' << format(byte_update_expr.op()) << ", "
+              << format(byte_update_expr.offset()) << ", "
+              << format(byte_update_expr.value()) << ", "
+              << format(byte_update_expr.type()) << ')';
+  }
   else if(id == ID_member)
     return os << format(to_member_expr(expr).op()) << '.'
               << to_member_expr(expr).get_component_name();
@@ -197,10 +272,14 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
   }
   else if(id == ID_type)
     return format_rec(os, expr.type());
-  else if(id == ID_forall || id == ID_exists)
-    return os << id << ' ' << format(to_quantifier_expr(expr).symbol()) << " : "
-              << format(to_quantifier_expr(expr).symbol().type()) << " . "
-              << format(to_quantifier_expr(expr).where());
+  else if(id == ID_forall)
+    return os << u8"\u2200 " << format(to_quantifier_expr(expr).symbol())
+              << " : " << format(to_quantifier_expr(expr).symbol().type())
+              << " . " << format(to_quantifier_expr(expr).where());
+  else if(id == ID_exists)
+    return os << u8"\u2203 " << format(to_quantifier_expr(expr).symbol())
+              << " : " << format(to_quantifier_expr(expr).symbol().type())
+              << " . " << format(to_quantifier_expr(expr).where());
   else if(id == ID_let)
     return os << "LET " << format(to_let_expr(expr).symbol()) << " = "
               << format(to_let_expr(expr).value()) << " IN "
@@ -221,13 +300,14 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
       os << format(op);
     }
 
-    return os << '}';
+    return os << " }";
   }
   else if(id == ID_if)
   {
     const auto &if_expr = to_if_expr(expr);
-    return os << format(if_expr.cond()) << '?' << format(if_expr.true_case())
-              << ':' << format(if_expr.false_case());
+    return os << '(' << format(if_expr.cond()) << " ? "
+              << format(if_expr.true_case()) << " : "
+              << format(if_expr.false_case()) << ')';
   }
   else if(id == ID_code)
   {
@@ -240,9 +320,34 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
     else if(statement == ID_block)
     {
       os << '{';
-      for(const auto &s : to_code_block(code).operands())
+      for(const auto &s : to_code_block(code).statements())
         os << ' ' << format(s);
       return os << " }";
+    }
+    else if(statement == ID_dead)
+    {
+      return os << "dead " << format(to_code_dead(code).symbol()) << ";";
+    }
+    else if(statement == ID_decl)
+    {
+      const auto &declaration_symb = to_code_decl(code).symbol();
+      return os << "decl " << format(declaration_symb.type()) << " "
+                << format(declaration_symb) << ";";
+    }
+    else if(statement == ID_function_call)
+    {
+      const auto &func_call = to_code_function_call(code);
+      os << to_symbol_expr(func_call.function()).get_identifier() << "(";
+
+      // Join all our arguments together.
+      join_strings(
+        os,
+        func_call.arguments().begin(),
+        func_call.arguments().end(),
+        ", ",
+        [](const exprt &expr) { return format(expr); });
+
+      return os << ");";
     }
     else
       return fallback_format_rec(os, expr);

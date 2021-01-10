@@ -11,16 +11,30 @@ Author: Daniel Kroening
 
 #include "graphml_witness.h"
 
-#include <util/base_type.h>
+#include <util/arith_tools.h>
 #include <util/byte_operators.h>
 #include <util/c_types.h>
-#include <util/arith_tools.h>
+#include <util/cprover_prefix.h>
+#include <util/pointer_predicates.h>
 #include <util/prefix.h>
 #include <util/ssa_expr.h>
+#include <util/string_container.h>
 
 #include <langapi/language_util.h>
+#include <langapi/mode.h>
+
+#include <ansi-c/expr2c.h>
 
 #include "goto_program.h"
+
+static std::string
+expr_to_string(const namespacet &ns, const irep_idt &id, const exprt &expr)
+{
+  if(get_mode_from_identifier(ns, id) == ID_C)
+    return expr2c(expr, ns, expr2c_configurationt::clean_configuration);
+  else
+    return from_expr(ns, id, expr);
+}
 
 void graphml_witnesst::remove_l0_l1(exprt &expr)
 {
@@ -52,12 +66,34 @@ std::string graphml_witnesst::convert_assign_rec(
   const irep_idt &identifier,
   const code_assignt &assign)
 {
+#ifdef USE_DSTRING
+  const auto cit = cache.find({identifier.get_no(), &assign.read()});
+#else
+  const auto cit =
+    cache.find({get_string_container()[id2string(identifier)], &assign.read()});
+#endif
+  if(cit != cache.end())
+    return cit->second;
+
   std::string result;
 
-  if(assign.rhs().id()==ID_array)
+  if(assign.rhs().id() == ID_array_list)
   {
-    const array_typet &type=
-      to_array_type(ns.follow(assign.rhs().type()));
+    const array_list_exprt &array_list = to_array_list_expr(assign.rhs());
+    const auto &ops = array_list.operands();
+
+    for(std::size_t listidx = 0; listidx != ops.size(); listidx += 2)
+    {
+      const index_exprt index{assign.lhs(), ops[listidx]};
+      if(!result.empty())
+        result += ' ';
+      result +=
+        convert_assign_rec(identifier, code_assignt{index, ops[listidx + 1]});
+    }
+  }
+  else if(assign.rhs().id() == ID_array)
+  {
+    const array_typet &type = to_array_type(assign.rhs().type());
 
     unsigned i=0;
     forall_operands(it, assign.rhs())
@@ -76,8 +112,9 @@ std::string graphml_witnesst::convert_assign_rec(
   {
     // dereferencing may have resulted in an lhs that is the first
     // struct member; undo this
-    if(assign.lhs().id()==ID_member &&
-       !base_type_eq(assign.lhs().type(), assign.rhs().type(), ns))
+    if(
+      assign.lhs().id() == ID_member &&
+      assign.lhs().type() != assign.rhs().type())
     {
       code_assignt tmp=assign;
       tmp.lhs()=to_member_expr(assign.lhs()).struct_op();
@@ -108,7 +145,8 @@ std::string graphml_witnesst::convert_assign_rec(
          has_prefix(id2string(comp.get_name()), "$pad"))
         continue;
 
-      assert(it!=assign.rhs().operands().end());
+      INVARIANT(
+        it != assign.rhs().operands().end(), "expression must have operands");
 
       member_exprt member(
         assign.lhs(),
@@ -124,18 +162,57 @@ std::string graphml_witnesst::convert_assign_rec(
         break;
     }
   }
+  else if(assign.rhs().id() == ID_with)
+  {
+    const with_exprt &with_expr = to_with_expr(assign.rhs());
+    const auto &ops = with_expr.operands();
+
+    for(std::size_t i = 1; i < ops.size(); i += 2)
+    {
+      if(!result.empty())
+        result += ' ';
+
+      if(ops[i].id() == ID_member_name)
+      {
+        const member_exprt member{
+          assign.lhs(), ops[i].get(ID_component_name), ops[i + 1].type()};
+        result +=
+          convert_assign_rec(identifier, code_assignt(member, ops[i + 1]));
+      }
+      else
+      {
+        const index_exprt index{assign.lhs(), ops[i]};
+        result +=
+          convert_assign_rec(identifier, code_assignt(index, ops[i + 1]));
+      }
+    }
+  }
   else
   {
     exprt clean_rhs=assign.rhs();
     remove_l0_l1(clean_rhs);
 
-    std::string lhs=from_expr(ns, identifier, assign.lhs());
-    if(lhs.find('$')!=std::string::npos)
-      lhs="\\result";
+    exprt clean_lhs = assign.lhs();
+    remove_l0_l1(clean_lhs);
+    std::string lhs = expr_to_string(ns, identifier, clean_lhs);
 
-    result=lhs+" = "+from_expr(ns, identifier, clean_rhs)+";";
+    if(
+      lhs.find("#return_value") != std::string::npos ||
+      (lhs.find('$') != std::string::npos &&
+       has_prefix(lhs, "return_value___VERIFIER_nondet_")))
+    {
+      lhs="\\result";
+    }
+
+    result = lhs + " = " + expr_to_string(ns, identifier, clean_rhs) + ";";
   }
 
+#ifdef USE_DSTRING
+  cache.insert({{identifier.get_no(), &assign.read()}, result});
+#else
+  cache.insert(
+    {{get_string_container()[id2string(identifier)], &assign.read()}, result});
+#endif
   return result;
 }
 
@@ -144,10 +221,10 @@ static bool filter_out(
   const goto_tracet::stepst::const_iterator &prev_it,
   goto_tracet::stepst::const_iterator &it)
 {
-  if(it->hidden &&
-     (!it->pc->is_assign() ||
-      to_code_assign(it->pc->code).rhs().id()!=ID_side_effect ||
-      to_code_assign(it->pc->code).rhs().get(ID_statement)!=ID_nondet))
+  if(
+    it->hidden && (!it->pc->is_assign() ||
+                   it->pc->get_assign().rhs().id() != ID_side_effect ||
+                   it->pc->get_assign().rhs().get(ID_statement) != ID_nondet))
     return true;
 
   if(!it->is_assignment() && !it->is_goto() && !it->is_assert())
@@ -160,7 +237,7 @@ static bool filter_out(
      prev_it->pc->source_location==it->pc->source_location)
     return true;
 
-  if(it->is_goto() && it->pc->guard.is_true())
+  if(it->is_goto() && it->pc->get_condition().is_true())
     return true;
 
   const source_locationt &source_location=it->pc->source_location;
@@ -169,21 +246,92 @@ static bool filter_out(
      source_location.get_file().empty() ||
      source_location.is_built_in() ||
      source_location.get_line().empty())
-    return true;
+  {
+    const irep_idt id = source_location.get_function();
+    // Do not filter out assertions in functions the name of which starts with
+    // CPROVER_PREFIX, because we need to maintain those as violation nodes:
+    // these are assertions generated, for examples, for memory leaks.
+    if(!has_prefix(id2string(id), CPROVER_PREFIX) || !it->is_assert())
+      return true;
+  }
 
+  return false;
+}
+
+static bool contains_symbol_prefix(const exprt &expr, const std::string &prefix)
+{
+  if(
+    expr.id() == ID_symbol &&
+    has_prefix(id2string(to_symbol_expr(expr).get_identifier()), prefix))
+  {
+    return true;
+  }
+
+  forall_operands(it, expr)
+  {
+    if(contains_symbol_prefix(*it, prefix))
+      return true;
+  }
   return false;
 }
 
 /// counterexample witness
 void graphml_witnesst::operator()(const goto_tracet &goto_trace)
 {
+  unsigned int max_thread_idx = 0;
+  bool trace_has_violation = false;
+  for(goto_tracet::stepst::const_iterator it = goto_trace.steps.begin();
+      it != goto_trace.steps.end();
+      ++it)
+  {
+    if(it->thread_nr > max_thread_idx)
+      max_thread_idx = it->thread_nr;
+    if(it->is_assert() && !it->cond_value)
+      trace_has_violation = true;
+  }
+
   graphml.key_values["sourcecodelang"]="C";
 
   const graphmlt::node_indext sink=graphml.add_node();
   graphml[sink].node_name="sink";
-  graphml[sink].thread_nr=0;
   graphml[sink].is_violation=false;
   graphml[sink].has_invariant=false;
+
+  if(max_thread_idx > 0 && trace_has_violation)
+  {
+    std::vector<graphmlt::node_indext> nodes;
+
+    for(unsigned int i = 0; i <= max_thread_idx + 1; ++i)
+    {
+      nodes.push_back(graphml.add_node());
+      graphml[nodes.back()].node_name = "N" + std::to_string(i);
+      graphml[nodes.back()].is_violation = i == max_thread_idx + 1;
+      graphml[nodes.back()].has_invariant = false;
+    }
+
+    for(auto it = nodes.cbegin(); std::next(it) != nodes.cend(); ++it)
+    {
+      xmlt edge("edge");
+      edge.set_attribute("source", graphml[*it].node_name);
+      edge.set_attribute("target", graphml[*std::next(it)].node_name);
+      const auto thread_id = std::distance(nodes.cbegin(), it);
+      xmlt &data = edge.new_element("data");
+      data.set_attribute("key", "createThread");
+      data.data = std::to_string(thread_id);
+      if(thread_id == 0)
+      {
+        xmlt &data = edge.new_element("data");
+        data.set_attribute("key", "enterFunction");
+        data.data = "main";
+      }
+      graphml[*std::next(it)].in[*it].xml_node = edge;
+      graphml[*it].out[*std::next(it)].xml_node = edge;
+    }
+
+    // we do not provide any further details as CPAchecker does not seem to
+    // handle more detailed concurrency witnesses
+    return;
+  }
 
   // step numbers start at 1
   std::vector<std::size_t> step_to_node(goto_trace.steps.size()+1, 0);
@@ -223,13 +371,14 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
       std::to_string(it->pc->location_number)+"."+std::to_string(it->step_nr);
     graphml[node].file=source_location.get_file();
     graphml[node].line=source_location.get_line();
-    graphml[node].thread_nr=it->thread_nr;
     graphml[node].is_violation=
       it->type==goto_trace_stept::typet::ASSERT && !it->cond_value;
     graphml[node].has_invariant=false;
 
     step_to_node[it->step_nr]=node;
   }
+
+  unsigned thread_id = 0;
 
   // build edges
   for(goto_tracet::stepst::const_iterator
@@ -239,7 +388,8 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
   {
     const std::size_t from=step_to_node[it->step_nr];
 
-    if(from==sink)
+    // no outgoing edges from sinks or violation nodes
+    if(from == sink || graphml[from].is_violation)
     {
       ++it;
       continue;
@@ -262,78 +412,87 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
     case goto_trace_stept::typet::ASSIGNMENT:
     case goto_trace_stept::typet::ASSERT:
     case goto_trace_stept::typet::GOTO:
+    case goto_trace_stept::typet::SPAWN:
+    {
+      xmlt edge(
+        "edge",
+        {{"source", graphml[from].node_name},
+         {"target", graphml[to].node_name}},
+        {});
+
       {
-        xmlt edge("edge");
-        edge.set_attribute("source", graphml[from].node_name);
-        edge.set_attribute("target", graphml[to].node_name);
+        xmlt &data_f = edge.new_element("data");
+        data_f.set_attribute("key", "originfile");
+        data_f.data = id2string(graphml[from].file);
 
+        xmlt &data_l = edge.new_element("data");
+        data_l.set_attribute("key", "startline");
+        data_l.data = id2string(graphml[from].line);
+
+        xmlt &data_t = edge.new_element("data");
+        data_t.set_attribute("key", "threadId");
+        data_t.data = std::to_string(it->thread_nr);
+      }
+
+      const auto lhs_object = it->get_lhs_object();
+      if(
+        it->type == goto_trace_stept::typet::ASSIGNMENT &&
+        lhs_object.has_value())
+      {
+        const std::string &lhs_id = id2string(lhs_object->get_identifier());
+        if(lhs_id.find("pthread_create::thread") != std::string::npos)
         {
-          xmlt &data_f=edge.new_element("data");
-          data_f.set_attribute("key", "originfile");
-          data_f.data=id2string(graphml[from].file);
-
-          xmlt &data_l=edge.new_element("data");
-          data_l.set_attribute("key", "startline");
-          data_l.data=id2string(graphml[from].line);
+          xmlt &data_t = edge.new_element("data");
+          data_t.set_attribute("key", "createThread");
+          data_t.data = std::to_string(++thread_id);
         }
-
-        if(it->type==goto_trace_stept::typet::ASSIGNMENT &&
-           it->lhs_object_value.is_not_nil() &&
-           it->full_lhs.is_not_nil())
+        else if(
+          !contains_symbol_prefix(
+            it->full_lhs_value, SYMEX_DYNAMIC_PREFIX "dynamic_object") &&
+          !contains_symbol_prefix(
+            it->full_lhs, SYMEX_DYNAMIC_PREFIX "dynamic_object") &&
+          lhs_id.find("thread") == std::string::npos &&
+          lhs_id.find("mutex") == std::string::npos &&
+          (!it->full_lhs_value.is_constant() ||
+           !it->full_lhs_value.has_operands() ||
+           !has_prefix(
+             id2string(
+               to_multi_ary_expr(it->full_lhs_value).op0().get(ID_value)),
+             "INVALID-")))
         {
-          if(!it->lhs_object_value.is_constant() ||
-             !it->lhs_object_value.has_operands() ||
-             !has_prefix(id2string(it->lhs_object_value.op0().get(ID_value)),
-                         "INVALID-"))
-          {
-            xmlt &val=edge.new_element("data");
-            val.set_attribute("key", "assumption");
-            code_assignt assign(it->lhs_object, it->lhs_object_value);
-            irep_idt identifier=it->lhs_object.get_identifier();
-            val.data=convert_assign_rec(identifier, assign);
+          xmlt &val = edge.new_element("data");
+          val.set_attribute("key", "assumption");
 
-            xmlt &val_s=edge.new_element("data");
-            val_s.set_attribute("key", "assumption.scope");
-            val_s.data=id2string(it->pc->source_location.get_function());
+          code_assignt assign{it->full_lhs, it->full_lhs_value};
+          val.data = convert_assign_rec(lhs_id, assign);
+
+          xmlt &val_s = edge.new_element("data");
+          val_s.set_attribute("key", "assumption.scope");
+          irep_idt function_id = it->function_id;
+          const symbolt *symbol_ptr = nullptr;
+          if(!ns.lookup(lhs_id, symbol_ptr) && symbol_ptr->is_parameter)
+          {
+            function_id = lhs_id.substr(0, lhs_id.find("::"));
+          }
+          val_s.data = id2string(function_id);
+
+          if(has_prefix(val.data, "\\result ="))
+          {
+            xmlt &val_f = edge.new_element("data");
+            val_f.set_attribute("key", "assumption.resultfunction");
+            val_f.data = id2string(it->function_id);
           }
         }
-        else if(it->type==goto_trace_stept::typet::GOTO &&
-                it->pc->is_goto())
-        {
-          xmlt &val=edge.new_element("data");
-          val.set_attribute("key", "sourcecode");
-          const std::string cond =
-            from_expr(ns, it->pc->function, it->cond_expr);
-          const std::string neg_cond=
-            from_expr(ns, it->pc->function, not_exprt(it->cond_expr));
-          val.data="["+(it->cond_value ? cond : neg_cond)+"]";
-
-          #if 0
-          xmlt edge2("edge");
-          edge2.set_attribute("source", graphml[from].node_name);
-          edge2.set_attribute("target", graphml[sink].node_name);
-
-          xmlt &data_f2=edge2.new_element("data");
-          data_f2.set_attribute("key", "originfile");
-          data_f2.data=id2string(graphml[from].file);
-
-          xmlt &data_l2=edge2.new_element("data");
-          data_l2.set_attribute("key", "startline");
-          data_l2.data=id2string(graphml[from].line);
-
-          xmlt &val2=edge2.new_element("data");
-          val2.set_attribute("key", "sourcecode");
-          val2.data="["+(it->cond_value ? neg_cond : cond)+"]";
-
-          graphml[sink].in[from].xml_node=edge2;
-          graphml[from].out[sink].xml_node=edge2;
-          #endif
-        }
-
-        graphml[to].in[from].xml_node=edge;
-        graphml[from].out[to].xml_node=edge;
       }
+      else if(it->type == goto_trace_stept::typet::GOTO && it->pc->is_goto())
+      {
+      }
+
+      graphml[to].in[from].xml_node = edge;
+      graphml[from].out[to].xml_node = edge;
+
       break;
+    }
 
     case goto_trace_stept::typet::DECL:
     case goto_trace_stept::typet::FUNCTION_CALL:
@@ -344,7 +503,6 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
     case goto_trace_stept::typet::OUTPUT:
     case goto_trace_stept::typet::SHARED_READ:
     case goto_trace_stept::typet::SHARED_WRITE:
-    case goto_trace_stept::typet::SPAWN:
     case goto_trace_stept::typet::MEMORY_BARRIER:
     case goto_trace_stept::typet::ATOMIC_BEGIN:
     case goto_trace_stept::typet::ATOMIC_END:
@@ -366,7 +524,6 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
 
   const graphmlt::node_indext sink=graphml.add_node();
   graphml[sink].node_name="sink";
-  graphml[sink].thread_nr=0;
   graphml[sink].is_violation=false;
   graphml[sink].has_invariant=false;
 
@@ -381,12 +538,12 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
   {
     const source_locationt &source_location=it->source.pc->source_location;
 
-    if(it->hidden ||
-       (!it->is_assignment() && !it->is_goto() && !it->is_assert()) ||
-       (it->is_goto() && it->source.pc->guard.is_true()) ||
-       source_location.is_nil() ||
-       source_location.is_built_in() ||
-       source_location.get_line().empty())
+    if(
+      it->hidden ||
+      (!it->is_assignment() && !it->is_goto() && !it->is_assert()) ||
+      (it->is_goto() && it->source.pc->get_condition().is_true()) ||
+      source_location.is_nil() || source_location.is_built_in() ||
+      source_location.get_line().empty())
     {
       step_to_node[step_nr]=sink;
 
@@ -412,7 +569,6 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
       std::to_string(step_nr);
     graphml[node].file=source_location.get_file();
     graphml[node].line=source_location.get_line();
-    graphml[node].thread_nr=it->source.thread_nr;
     graphml[node].is_violation=false;
     graphml[node].has_invariant=false;
 
@@ -453,48 +609,41 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
     case goto_trace_stept::typet::ASSIGNMENT:
     case goto_trace_stept::typet::ASSERT:
     case goto_trace_stept::typet::GOTO:
+    case goto_trace_stept::typet::SPAWN:
+    {
+      xmlt edge(
+        "edge",
+        {{"source", graphml[from].node_name},
+         {"target", graphml[to].node_name}},
+        {});
+
       {
-        xmlt edge("edge");
-        edge.set_attribute("source", graphml[from].node_name);
-        edge.set_attribute("target", graphml[to].node_name);
+        xmlt &data_f = edge.new_element("data");
+        data_f.set_attribute("key", "originfile");
+        data_f.data = id2string(graphml[from].file);
 
-        {
-          xmlt &data_f=edge.new_element("data");
-          data_f.set_attribute("key", "originfile");
-          data_f.data=id2string(graphml[from].file);
-
-          xmlt &data_l=edge.new_element("data");
-          data_l.set_attribute("key", "startline");
-          data_l.data=id2string(graphml[from].line);
-        }
-
-        if((it->is_assignment() ||
-            it->is_decl()) &&
-           it->ssa_rhs.is_not_nil() &&
-           it->ssa_full_lhs.is_not_nil())
-        {
-          irep_idt identifier=it->ssa_lhs.get_object_name();
-
-          graphml[to].has_invariant=true;
-          code_assignt assign(it->ssa_full_lhs, it->ssa_rhs);
-          graphml[to].invariant=convert_assign_rec(identifier, assign);
-          graphml[to].invariant_scope=
-            id2string(it->source.pc->source_location.get_function());
-        }
-        else if(it->is_goto() &&
-                it->source.pc->is_goto())
-        {
-          xmlt &val=edge.new_element("data");
-          val.set_attribute("key", "sourcecode");
-          const std::string cond =
-            from_expr(ns, it->source.pc->function, it->cond_expr);
-          val.data="["+cond+"]";
-        }
-
-        graphml[to].in[from].xml_node=edge;
-        graphml[from].out[to].xml_node=edge;
+        xmlt &data_l = edge.new_element("data");
+        data_l.set_attribute("key", "startline");
+        data_l.data = id2string(graphml[from].line);
       }
+
+      if(
+        (it->is_assignment() || it->is_decl()) && it->ssa_rhs.is_not_nil() &&
+        it->ssa_full_lhs.is_not_nil())
+      {
+        irep_idt identifier = it->ssa_lhs.get_object_name();
+
+        graphml[to].has_invariant = true;
+        code_assignt assign(it->ssa_lhs, it->ssa_rhs);
+        graphml[to].invariant = convert_assign_rec(identifier, assign);
+        graphml[to].invariant_scope = id2string(it->source.function_id);
+      }
+
+      graphml[to].in[from].xml_node = edge;
+      graphml[from].out[to].xml_node = edge;
+
       break;
+    }
 
     case goto_trace_stept::typet::DECL:
     case goto_trace_stept::typet::FUNCTION_CALL:
@@ -505,7 +654,6 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
     case goto_trace_stept::typet::OUTPUT:
     case goto_trace_stept::typet::SHARED_READ:
     case goto_trace_stept::typet::SHARED_WRITE:
-    case goto_trace_stept::typet::SPAWN:
     case goto_trace_stept::typet::MEMORY_BARRIER:
     case goto_trace_stept::typet::ATOMIC_BEGIN:
     case goto_trace_stept::typet::ATOMIC_END:

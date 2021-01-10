@@ -13,22 +13,23 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/base_exceptions.h>
-#include <util/symbol_table.h>
-#include <util/namespace.h>
 #include <util/arith_tools.h>
-#include <util/std_expr.h>
-#include <util/simplify_expr.h>
-#include <util/base_type.h>
-#include <util/std_types.h>
-
+#include <util/base_exceptions.h>
+#include <util/byte_operators.h>
 #include <util/c_types.h>
+#include <util/expr_util.h>
+#include <util/namespace.h>
+#include <util/simplify_expr.h>
+#include <util/std_expr.h>
+#include <util/std_types.h>
+#include <util/symbol_table.h>
+
 #include <langapi/language_util.h>
 
 void inv_object_storet::output(std::ostream &out) const
 {
   for(std::size_t i=0; i<entries.size(); i++)
-    out << "STORE " << i << ": " << to_string(i, "") << '\n';
+    out << "STORE " << i << ": " << map[i] << '\n';
 }
 
 bool inv_object_storet::get(const exprt &expr, unsigned &n)
@@ -63,8 +64,7 @@ bool inv_object_storet::get(const exprt &expr, unsigned &n)
 unsigned inv_object_storet::add(const exprt &expr)
 {
   std::string s=build_string(expr);
-
-  assert(s!="");
+  CHECK_RETURN(!s.empty());
 
   mapt::number_type n=map.number(s);
 
@@ -95,21 +95,26 @@ std::string inv_object_storet::build_string(const exprt &expr) const
   // we ignore some casts
   if(expr.id()==ID_typecast)
   {
-    assert(expr.operands().size()==1);
+    const auto &typecast_expr = to_typecast_expr(expr);
 
-    if(expr.type().id()==ID_signedbv ||
-       expr.type().id()==ID_unsignedbv)
+    if(
+      typecast_expr.type().id() == ID_signedbv ||
+      typecast_expr.type().id() == ID_unsignedbv)
     {
-      if(expr.op0().type().id()==ID_signedbv ||
-         expr.op0().type().id()==ID_unsignedbv)
+      const typet &op_type = typecast_expr.op().type();
+
+      if(op_type.id() == ID_signedbv || op_type.id() == ID_unsignedbv)
       {
-        if(to_bitvector_type(expr.type()).get_width()>=
-           to_bitvector_type(expr.op0().type()).get_width())
-          return build_string(expr.op0());
+        if(
+          to_bitvector_type(typecast_expr.type()).get_width() >=
+          to_bitvector_type(op_type).get_width())
+        {
+          return build_string(typecast_expr.op());
+        }
       }
-      else if(expr.op0().type().id()==ID_bool)
+      else if(op_type.id() == ID_bool)
       {
-        return build_string(expr.op0());
+        return build_string(typecast_expr.op());
       }
     }
   }
@@ -123,23 +128,21 @@ std::string inv_object_storet::build_string(const exprt &expr) const
       if(expr.get(ID_value)==ID_NULL)
         return "0";
 
-    mp_integer i;
-
-    if(!to_integer(expr, i))
-      return integer2string(i);
+    const auto i = numeric_cast<mp_integer>(expr);
+    if(i.has_value())
+      return integer2string(*i);
   }
 
-  // we also like "address_of" and "reference_to"
-  // if the object is constant
+  // we also like "address_of" if the object is constant
   // we don't know what mode (language) we are in, so we rely on the default
   // language to be reasonable for from_expr
   if(is_constant_address(expr))
-    return from_expr(ns, "", expr);
+    return from_expr(ns, irep_idt(), expr);
 
   if(expr.id()==ID_member)
   {
-    assert(expr.operands().size()==1);
-    return build_string(expr.op0())+"."+expr.get_string(ID_component_name);
+    return build_string(to_member_expr(expr).compound()) + "." +
+           expr.get_string(ID_component_name);
   }
 
   if(expr.id()==ID_symbol)
@@ -152,15 +155,13 @@ bool invariant_sett::get_object(
   const exprt &expr,
   unsigned &n) const
 {
-  PRECONDITION(object_store!=nullptr);
-  return object_store->get(expr, n);
+  return object_store.get(expr, n);
 }
 
 bool inv_object_storet::is_constant_address(const exprt &expr)
 {
   if(expr.id()==ID_address_of)
-    if(expr.operands().size()==1)
-      return is_constant_address_rec(expr.op0());
+    return is_constant_address_rec(to_address_of_expr(expr).object());
 
   return false;
 }
@@ -170,15 +171,12 @@ bool inv_object_storet::is_constant_address_rec(const exprt &expr)
   if(expr.id()==ID_symbol)
     return true;
   else if(expr.id()==ID_member)
-  {
-    assert(expr.operands().size()==1);
-    return is_constant_address_rec(expr.op0());
-  }
+    return is_constant_address_rec(to_member_expr(expr).compound());
   else if(expr.id()==ID_index)
   {
-    assert(expr.operands().size()==2);
-    if(expr.op1().is_constant())
-      return is_constant_address_rec(expr.op0());
+    const auto &index_expr = to_index_expr(expr);
+    if(index_expr.index().is_constant())
+      return is_constant_address_rec(index_expr.array());
   }
 
   return false;
@@ -220,7 +218,7 @@ void invariant_sett::add_eq(const std::pair<unsigned, unsigned> &p)
   {
     if(eq_set.find(i)==r)
     {
-      if(object_store->is_constant(i))
+      if(object_store.is_constant(i))
       {
         if(constant_seen)
         {
@@ -313,18 +311,13 @@ tvt invariant_sett::is_le(std::pair<unsigned, unsigned> p) const
   return tvt::unknown();
 }
 
-void invariant_sett::output(
-  const irep_idt &identifier,
-  std::ostream &out) const
+void invariant_sett::output(std::ostream &out) const
 {
   if(is_false)
   {
     out << "FALSE\n";
     return;
   }
-
-  INVARIANT_STRUCTURED(
-    object_store!=nullptr, nullptr_exceptiont, "Object store is null");
 
   for(std::size_t i=0; i<eq_set.size(); i++)
     if(eq_set.is_root(i) &&
@@ -339,7 +332,7 @@ void invariant_sett::output(
           else
             out << " = ";
 
-          out << to_string(j, identifier);
+          out << to_string(j);
         }
 
       out << '\n';
@@ -347,23 +340,17 @@ void invariant_sett::output(
 
   for(const auto &bounds : bounds_map)
   {
-    out << to_string(bounds.first, identifier)
-        << " in " << bounds.second
-        << '\n';
+    out << to_string(bounds.first) << " in " << bounds.second << '\n';
   }
 
   for(const auto &le : le_set)
   {
-    out << to_string(le.first, identifier)
-        << " <= " << to_string(le.second, identifier)
-        << '\n';
+    out << to_string(le.first) << " <= " << to_string(le.second) << '\n';
   }
 
   for(const auto &ne : ne_set)
   {
-    out << to_string(ne.first, identifier)
-        << " != " << to_string(ne.second, identifier)
-        << '\n';
+    out << to_string(ne.first) << " != " << to_string(ne.second) << '\n';
   }
 }
 
@@ -400,8 +387,8 @@ void invariant_sett::strengthen_rec(const exprt &expr)
     throw "non-Boolean argument to strengthen()";
 
   #if 0
-  std::cout << "S: " << from_expr(*ns, "", expr) << '\n';
-  #endif
+  std::cout << "S: " << from_expr(*ns, irep_idt(), expr) << '\n';
+#endif
 
   if(is_false)
   {
@@ -430,18 +417,18 @@ void invariant_sett::strengthen_rec(const exprt &expr)
   else if(expr.id()==ID_le ||
           expr.id()==ID_lt)
   {
-    assert(expr.operands().size()==2);
+    const auto &rel = to_binary_relation_expr(expr);
 
     // special rule: x <= (a & b)
     // implies:      x<=a && x<=b
 
-    if(expr.op1().id()==ID_bitand)
+    if(rel.rhs().id() == ID_bitand)
     {
-      const exprt &bitand_op=expr.op1();
+      const exprt &bitand_op = rel.op1();
 
       forall_operands(it, bitand_op)
       {
-        exprt tmp(expr);
+        auto tmp(rel);
         tmp.op1()=*it;
         strengthen_rec(tmp);
       }
@@ -451,29 +438,27 @@ void invariant_sett::strengthen_rec(const exprt &expr)
 
     std::pair<unsigned, unsigned> p;
 
-    if(get_object(expr.op0(), p.first) ||
-       get_object(expr.op1(), p.second))
+    if(get_object(rel.op0(), p.first) || get_object(rel.op1(), p.second))
       return;
 
-    mp_integer i0, i1;
-    bool have_i0=!to_integer(expr.op0(), i0);
-    bool have_i1=!to_integer(expr.op1(), i1);
+    const auto i0 = numeric_cast<mp_integer>(rel.op0());
+    const auto i1 = numeric_cast<mp_integer>(rel.op1());
 
     if(expr.id()==ID_le)
     {
-      if(have_i0)
-        add_bounds(p.second, lower_interval(i0));
-      else if(have_i1)
-        add_bounds(p.first, upper_interval(i1));
+      if(i0.has_value())
+        add_bounds(p.second, lower_interval(*i0));
+      else if(i1.has_value())
+        add_bounds(p.first, upper_interval(*i1));
       else
         add_le(p);
     }
     else if(expr.id()==ID_lt)
     {
-      if(have_i0)
-        add_bounds(p.second, lower_interval(i0+1));
-      else if(have_i1)
-        add_bounds(p.first, upper_interval(i1-1));
+      if(i0.has_value())
+        add_bounds(p.second, lower_interval(*i0 + 1));
+      else if(i1.has_value())
+        add_bounds(p.first, upper_interval(*i1 - 1));
       else
       {
         add_le(p);
@@ -485,21 +470,20 @@ void invariant_sett::strengthen_rec(const exprt &expr)
   }
   else if(expr.id()==ID_equal)
   {
-    assert(expr.operands().size()==2);
+    const auto &equal_expr = to_equal_expr(expr);
 
-    const typet &op_type=ns->follow(expr.op0().type());
+    const typet &op_type = equal_expr.op0().type();
 
-    if(op_type.id()==ID_struct)
+    if(op_type.id() == ID_struct || op_type.id() == ID_struct_tag)
     {
-      const struct_typet &struct_type=to_struct_type(op_type);
-
+      const struct_typet &struct_type = to_struct_type(ns.follow(op_type));
 
       for(const auto &comp : struct_type.components())
       {
         const member_exprt lhs_member_expr(
-          expr.op0(), comp.get_name(), comp.type());
+          equal_expr.op0(), comp.get_name(), comp.type());
         const member_exprt rhs_member_expr(
-          expr.op1(), comp.get_name(), comp.type());
+          equal_expr.op1(), comp.get_name(), comp.type());
 
         const equal_exprt equality(lhs_member_expr, rhs_member_expr);
 
@@ -513,13 +497,13 @@ void invariant_sett::strengthen_rec(const exprt &expr)
     // special rule: x = (a & b)
     // implies:      x<=a && x<=b
 
-    if(expr.op1().id()==ID_bitand)
+    if(equal_expr.op1().id() == ID_bitand)
     {
-      const exprt &bitand_op=expr.op1();
+      const exprt &bitand_op = equal_expr.op1();
 
       forall_operands(it, bitand_op)
       {
-        exprt tmp(expr);
+        auto tmp(equal_expr);
         tmp.op1()=*it;
         tmp.id(ID_le);
         strengthen_rec(tmp);
@@ -527,38 +511,41 @@ void invariant_sett::strengthen_rec(const exprt &expr)
 
       return;
     }
-    else if(expr.op0().id()==ID_bitand)
+    else if(equal_expr.op0().id() == ID_bitand)
     {
-      exprt tmp(expr);
+      auto tmp(equal_expr);
       std::swap(tmp.op0(), tmp.op1());
       strengthen_rec(tmp);
       return;
     }
 
     // special rule: x = (type) y
-    if(expr.op1().id()==ID_typecast)
+    if(equal_expr.op1().id() == ID_typecast)
     {
-      assert(expr.op1().operands().size()==1);
-      add_type_bounds(expr.op0(), expr.op1().op0().type());
+      const auto &typecast_expr = to_typecast_expr(equal_expr.op1());
+      add_type_bounds(equal_expr.op0(), typecast_expr.op().type());
     }
-    else if(expr.op0().id()==ID_typecast)
+    else if(equal_expr.op0().id() == ID_typecast)
     {
-      assert(expr.op0().operands().size()==1);
-      add_type_bounds(expr.op1(), expr.op0().op0().type());
+      const auto &typecast_expr = to_typecast_expr(equal_expr.op0());
+      add_type_bounds(equal_expr.op1(), typecast_expr.op().type());
     }
 
     std::pair<unsigned, unsigned> p, s;
 
-    if(get_object(expr.op0(), p.first) ||
-       get_object(expr.op1(), p.second))
+    if(
+      get_object(equal_expr.op0(), p.first) ||
+      get_object(equal_expr.op1(), p.second))
+    {
       return;
+    }
 
-    mp_integer i;
-
-    if(!to_integer(expr.op0(), i))
-      add_bounds(p.second, boundst(i));
-    else if(!to_integer(expr.op1(), i))
-      add_bounds(p.first, boundst(i));
+    const auto i0 = numeric_cast<mp_integer>(equal_expr.op0());
+    const auto i1 = numeric_cast<mp_integer>(equal_expr.op1());
+    if(i0.has_value())
+      add_bounds(p.second, boundst(*i0));
+    else if(i1.has_value())
+      add_bounds(p.first, boundst(*i1));
 
     s=p;
     std::swap(s.first, s.second);
@@ -571,13 +558,16 @@ void invariant_sett::strengthen_rec(const exprt &expr)
   }
   else if(expr.id()==ID_notequal)
   {
-    assert(expr.operands().size()==2);
+    const auto &notequal_expr = to_notequal_expr(expr);
 
     std::pair<unsigned, unsigned> p;
 
-    if(get_object(expr.op0(), p.first) ||
-       get_object(expr.op1(), p.second))
+    if(
+      get_object(notequal_expr.op0(), p.first) ||
+      get_object(notequal_expr.op1(), p.second))
+    {
       return;
+    }
 
     // check if this is a contradiction
     if(has_eq(p))
@@ -600,8 +590,8 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
     throw "implies: non-Boolean expression";
 
   #if 0
-  std::cout << "I: " << from_expr(*ns, "", expr) << '\n';
-  #endif
+  std::cout << "I: " << from_expr(*ns, irep_idt(), expr) << '\n';
+#endif
 
   if(is_false) // can't get any stronger
     return tvt(true);
@@ -631,19 +621,19 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
           expr.id()==ID_equal ||
           expr.id()==ID_notequal)
   {
-    assert(expr.operands().size()==2);
+    const auto &rel = to_binary_relation_expr(expr);
 
     std::pair<unsigned, unsigned> p;
 
-    bool ob0=get_object(expr.op0(), p.first);
-    bool ob1=get_object(expr.op1(), p.second);
+    bool ob0 = get_object(rel.lhs(), p.first);
+    bool ob1 = get_object(rel.rhs(), p.second);
 
     if(ob0 || ob1)
       return tvt::unknown();
 
     tvt r;
 
-    if(expr.id()==ID_le)
+    if(rel.id() == ID_le)
     {
       r=is_le(p);
       if(!r.is_unknown())
@@ -655,7 +645,7 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
 
       return b0<=b1;
     }
-    else if(expr.id()==ID_lt)
+    else if(rel.id() == ID_lt)
     {
       r=is_lt(p);
       if(!r.is_unknown())
@@ -667,9 +657,9 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
 
       return b0<b1;
     }
-    else if(expr.id()==ID_equal)
+    else if(rel.id() == ID_equal)
       return is_eq(p);
-    else if(expr.id()==ID_notequal)
+    else if(rel.id() == ID_notequal)
       return is_ne(p);
     else
       UNREACHABLE;
@@ -684,11 +674,11 @@ void invariant_sett::get_bounds(unsigned a, boundst &bounds) const
   bounds=boundst();
 
   {
-    const exprt &e_a=object_store->get_expr(a);
-    mp_integer tmp;
-    if(!to_integer(e_a, tmp))
+    const exprt &e_a = object_store.get_expr(a);
+    const auto tmp = numeric_cast<mp_integer>(e_a);
+    if(tmp.has_value())
     {
-      bounds=boundst(tmp);
+      bounds = boundst(*tmp);
       return;
     }
 
@@ -719,10 +709,9 @@ void invariant_sett::nnf(exprt &expr, bool negate)
   }
   else if(expr.id()==ID_not)
   {
-    assert(expr.operands().size()==1);
-    nnf(expr.op0(), !negate);
+    nnf(to_not_expr(expr).op(), !negate);
     exprt tmp;
-    tmp.swap(expr.op0());
+    tmp.swap(to_not_expr(expr).op());
     expr.swap(tmp);
   }
   else if(expr.id()==ID_and)
@@ -743,21 +732,20 @@ void invariant_sett::nnf(exprt &expr, bool negate)
   }
   else if(expr.id()==ID_typecast)
   {
-    assert(expr.operands().size()==1);
+    const auto &typecast_expr = to_typecast_expr(expr);
 
-    if(expr.op0().type().id()==ID_unsignedbv ||
-       expr.op0().type().id()==ID_signedbv)
+    if(
+      typecast_expr.op().type().id() == ID_unsignedbv ||
+      typecast_expr.op().type().id() == ID_signedbv)
     {
-      equal_exprt tmp;
-      tmp.lhs()=expr.op0();
-      tmp.rhs()=from_integer(0, expr.op0().type());
+      equal_exprt tmp(
+        typecast_expr.op(), from_integer(0, typecast_expr.op().type()));
       nnf(tmp, !negate);
       expr.swap(tmp);
     }
-    else
+    else if(negate)
     {
-      if(negate)
-        expr.make_not();
+      expr = boolean_negate(expr);
     }
   }
   else if(expr.id()==ID_le)
@@ -766,7 +754,8 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     {
       // !a<=b <-> !b=>a <-> b<a
       expr.id(ID_lt);
-      std::swap(expr.op0(), expr.op1());
+      auto &rel = to_binary_relation_expr(expr);
+      std::swap(rel.lhs(), rel.rhs());
     }
   }
   else if(expr.id()==ID_lt)
@@ -775,7 +764,8 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     {
       // !a<b <-> !b>a <-> b<=a
       expr.id(ID_le);
-      std::swap(expr.op0(), expr.op1());
+      auto &rel = to_binary_relation_expr(expr);
+      std::swap(rel.lhs(), rel.rhs());
     }
   }
   else if(expr.id()==ID_ge)
@@ -785,7 +775,8 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     else
     {
       expr.id(ID_le);
-      std::swap(expr.op0(), expr.op1());
+      auto &rel = to_binary_relation_expr(expr);
+      std::swap(rel.lhs(), rel.rhs());
     }
   }
   else if(expr.id()==ID_gt)
@@ -795,7 +786,8 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     else
     {
       expr.id(ID_lt);
-      std::swap(expr.op0(), expr.op1());
+      auto &rel = to_binary_relation_expr(expr);
+      std::swap(rel.lhs(), rel.rhs());
     }
   }
   else if(expr.id()==ID_equal)
@@ -808,10 +800,9 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     if(negate)
       expr.id(ID_equal);
   }
-  else
+  else if(negate)
   {
-    if(negate)
-      expr.make_not();
+    expr = boolean_negate(expr);
   }
 }
 
@@ -854,12 +845,12 @@ exprt invariant_sett::get_constant(const exprt &expr) const
     for(std::size_t i=0; i<eq_set.size(); i++)
       if(eq_set.find(i)==r)
       {
-        const exprt &e=object_store->get_expr(i);
+        const exprt &e = object_store.get_expr(i);
 
         if(e.is_constant())
         {
-          mp_integer value;
-          assert(!to_integer(e, value));
+          const mp_integer value =
+            numeric_cast_v<mp_integer>(to_constant_expr(e));
 
           if(expr.type().id()==ID_pointer)
           {
@@ -869,7 +860,7 @@ exprt invariant_sett::get_constant(const exprt &expr) const
           else
             return from_integer(value, expr.type());
         }
-        else if(object_store->is_constant_address(e))
+        else if(object_store.is_constant_address(e))
         {
           if(e.type()==expr.type())
             return e;
@@ -882,19 +873,14 @@ exprt invariant_sett::get_constant(const exprt &expr) const
   return static_cast<const exprt &>(get_nil_irep());
 }
 
-std::string inv_object_storet::to_string(
-  unsigned a,
-  const irep_idt &) const
+std::string inv_object_storet::to_string(unsigned a) const
 {
   return id2string(map[a]);
 }
 
-std::string invariant_sett::to_string(
-  unsigned a,
-  const irep_idt &identifier) const
+std::string invariant_sett::to_string(unsigned a) const
 {
-  PRECONDITION(object_store!=nullptr);
-  return object_store->to_string(a, identifier);
+  return object_store.to_string(a);
 }
 
 bool invariant_sett::make_union(const invariant_sett &other)
@@ -1014,15 +1000,13 @@ void invariant_sett::modifies(const exprt &lhs)
   else if(lhs.id()==ID_if)
   {
     // we just assume both are changed
-    assert(lhs.operands().size()==3);
-    modifies(lhs.op1());
-    modifies(lhs.op2());
+    modifies(to_if_expr(lhs).op1());
+    modifies(to_if_expr(lhs).op2());
   }
   else if(lhs.id()==ID_typecast)
   {
     // just go down
-    assert(lhs.operands().size()==1);
-    modifies(lhs.op0());
+    modifies(to_typecast_expr(lhs).op());
   }
   else if(lhs.id()=="valid_object")
   {
@@ -1034,8 +1018,7 @@ void invariant_sett::modifies(const exprt &lhs)
           lhs.id()==ID_byte_extract_big_endian)
   {
     // just go down
-    assert(lhs.operands().size()==2);
-    modifies(lhs.op0());
+    modifies(to_byte_extract_expr(lhs).op0());
   }
   else if(lhs.id() == ID_null_object ||
           lhs.id() == "is_zero_string" ||
@@ -1052,13 +1035,11 @@ void invariant_sett::assignment(
   const exprt &lhs,
   const exprt &rhs)
 {
-  equal_exprt equality;
-  equality.lhs()=lhs;
-  equality.rhs()=rhs;
+  equal_exprt equality(lhs, rhs);
 
   // first evaluate RHS
   simplify(equality.rhs());
-  ::simplify(equality.rhs(), *ns);
+  ::simplify(equality.rhs(), ns);
 
   // now kill LHS
   modifies(lhs);
@@ -1076,8 +1057,7 @@ void invariant_sett::apply_code(const codet &code)
     forall_operands(it, code)
       apply_code(to_code(*it));
   }
-  else if(statement==ID_assign ||
-          statement==ID_init)
+  else if(statement==ID_assign)
   {
     if(code.operands().size()!=2)
       throw "assignment expected to have two operands";
@@ -1102,10 +1082,6 @@ void invariant_sett::apply_code(const codet &code)
   }
   else if(statement==ID_cpp_delete ||
           statement==ID_cpp_delete_array)
-  {
-    // does nothing
-  }
-  else if(statement==ID_free)
   {
     // does nothing
   }

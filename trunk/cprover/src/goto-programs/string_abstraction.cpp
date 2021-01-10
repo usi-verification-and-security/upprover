@@ -15,8 +15,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 #include <util/c_types.h>
+#include <util/exception_utils.h>
+#include <util/expr_util.h>
 #include <util/pointer_predicates.h>
-#include <util/type_eq.h>
+#include <util/string_constant.h>
 
 #include "pointer_arithmetic.h"
 
@@ -33,13 +35,14 @@ bool string_abstractiont::build_wrap(
   // #define build_wrap(a,b,c) build(a,b,c)
   // to avoid it
   const typet &a_t=build_abstraction_type(object.type());
-  /*assert(type_eq(dest.type(), a_t, ns) ||
+  /*assert(dest.type() == a_t ||
       (dest.type().id()==ID_array && a_t.id()==ID_pointer &&
-       type_eq(dest.type().subtype(), a_t.subtype(), ns)));
+       dest.type().subtype() == a_t.subtype()));
        */
-  if(!type_eq(dest.type(), a_t, ns) &&
-      !(dest.type().id()==ID_array && a_t.id()==ID_pointer &&
-       type_eq(dest.type().subtype(), a_t.subtype(), ns)))
+  if(
+    dest.type() != a_t &&
+    !(dest.type().id() == ID_array && a_t.id() == ID_pointer &&
+      dest.type().subtype() == a_t.subtype()))
   {
     warning() << "warning: inconsistent abstract type for "
               << object.pretty() << eom;
@@ -51,8 +54,7 @@ bool string_abstractiont::build_wrap(
 
 bool string_abstractiont::is_ptr_string_struct(const typet &type) const
 {
-  return type.id()==ID_pointer &&
-    type_eq(type.subtype(), string_struct, ns);
+  return type.id() == ID_pointer && type.subtype() == string_struct;
 }
 
 static inline bool is_ptr_argument(const typet &type)
@@ -98,23 +100,14 @@ string_abstractiont::string_abstractiont(
   ns(_symbol_table),
   temporary_counter(0)
 {
-  struct_typet s;
-
-  s.components().resize(3);
-
-  s.components()[0].set_name("is_zero");
+  struct_typet s({{"is_zero", build_type(whatt::IS_ZERO)},
+                  {"length", build_type(whatt::LENGTH)},
+                  {"size", build_type(whatt::SIZE)}});
   s.components()[0].set_pretty_name("is_zero");
-  s.components()[0].type()=build_type(whatt::IS_ZERO);
-
-  s.components()[1].set_name("length");
   s.components()[1].set_pretty_name("length");
-  s.components()[1].type()=build_type(whatt::LENGTH);
-
-  s.components()[2].set_name("size");
   s.components()[2].set_pretty_name("size");
-  s.components()[2].type()=build_type(whatt::SIZE);
 
-  string_struct=s;
+  string_struct = std::move(s);
 }
 
 typet string_abstractiont::build_type(whatt what)
@@ -170,33 +163,32 @@ void string_abstractiont::add_str_arguments(
     const irep_idt &name,
     goto_functionst::goto_functiont &fct)
 {
-  symbolt &fct_symbol=*symbol_table.get_writeable(name);
+  symbolt &fct_symbol = symbol_table.get_writeable_ref(name);
 
-  code_typet::parameterst &parameters=
-    to_code_type(fct.type).parameters();
   code_typet::parameterst str_args;
 
-  for(code_typet::parameterst::iterator
-      it=parameters.begin();
-      it!=parameters.end();
-      ++it)
+  for(const auto &identifier : fct.parameter_identifiers)
   {
-    const typet &abstract_type=build_abstraction_type(it->type());
+    if(identifier.empty())
+      continue; // ignore
+
+    const symbolt &param_symbol = ns.lookup(identifier);
+    const typet &abstract_type = build_abstraction_type(param_symbol.type);
     if(abstract_type.is_nil())
       continue;
 
-    const irep_idt &identifier=it->get_identifier();
-    if(identifier=="")
-      continue; // ignore
-
-    add_argument(str_args, fct_symbol, abstract_type,
-        id2string(it->get_base_name())+arg_suffix,
-        id2string(identifier)+arg_suffix);
+    add_argument(
+      str_args,
+      fct_symbol,
+      abstract_type,
+      id2string(param_symbol.base_name) + arg_suffix,
+      id2string(identifier) + arg_suffix);
 
     current_args.insert(identifier);
   }
 
-  parameters.insert(parameters.end(), str_args.begin(), str_args.end());
+  for(const auto &new_param : str_args)
+    fct.parameter_identifiers.push_back(new_param.get_identifier());
   code_typet::parameterst &symb_parameters=
     to_code_type(fct_symbol.type).parameters();
   symb_parameters.insert(
@@ -255,8 +247,8 @@ void string_abstractiont::declare_define_locals(goto_programt &dest)
     if(it->is_decl())
       // same name may exist several times due to inlining, make sure the first
       // declaration is used
-      available_decls.insert(std::make_pair(
-            to_code_decl(it->code).get_identifier(), it));
+      available_decls.insert(
+        std::make_pair(it->get_decl().get_identifier(), it));
 
   // declare (and, if necessary, define) locals
   for(const auto &l : locals)
@@ -289,11 +281,8 @@ void string_abstractiont::make_decl_and_def(goto_programt &dest,
   const symbolt &symbol=ns.lookup(identifier);
   symbol_exprt sym_expr=symbol.symbol_expr();
 
-  goto_programt::targett decl1=dest.add_instruction();
-  decl1->make_decl();
-  decl1->source_location=ref_instr->source_location;
-  decl1->function=ref_instr->function;
-  decl1->code=code_declt(sym_expr);
+  goto_programt::targett decl1 =
+    dest.add(goto_programt::make_decl(sym_expr, ref_instr->source_location));
   decl1->code.add_source_location()=ref_instr->source_location;
 
   exprt val=symbol.value;
@@ -307,11 +296,9 @@ void string_abstractiont::make_decl_and_def(goto_programt &dest,
   // may still be nil (structs, then assignments have been done already)
   if(val.is_not_nil())
   {
-    goto_programt::targett assignment1=dest.add_instruction();
-    assignment1->make_assignment();
-    assignment1->source_location=ref_instr->source_location;
-    assignment1->function=ref_instr->function;
-    assignment1->code=code_assignt(sym_expr, val);
+    goto_programt::targett assignment1 =
+      dest.add(goto_programt::make_assignment(
+        code_assignt(sym_expr, val), ref_instr->source_location));
     assignment1->code.add_source_location()=ref_instr->source_location;
   }
 }
@@ -335,8 +322,9 @@ exprt string_abstractiont::make_val_or_dummy_rec(goto_programt &dest,
     else
       return address_of_exprt(sym_expr);
   }
-  else if(eff_type.id()==ID_union ||
-      (eff_type.id()==ID_struct && !type_eq(eff_type, string_struct, ns)))
+  else if(
+    eff_type.id() == ID_union ||
+    (eff_type.id() == ID_struct && eff_type != string_struct))
   {
     const struct_union_typet &su_source=to_struct_union_type(source_type);
     const struct_union_typet::componentst &s_components=
@@ -367,11 +355,9 @@ exprt string_abstractiont::make_val_or_dummy_rec(goto_programt &dest,
 
         member_exprt member(symbol.symbol_expr(), it2->get_name(), it2->type());
 
-        goto_programt::targett assignment1=dest.add_instruction();
-        assignment1->make_assignment();
-        assignment1->source_location=ref_instr->source_location;
-        assignment1->function=ref_instr->function;
-        assignment1->code=code_assignt(member, sym_expr);
+        goto_programt::targett assignment1 =
+          dest.add(goto_programt::make_assignment(
+            code_assignt(member, sym_expr), ref_instr->source_location));
         assignment1->code.add_source_location()=ref_instr->source_location;
       }
 
@@ -379,7 +365,9 @@ exprt string_abstractiont::make_val_or_dummy_rec(goto_programt &dest,
       ++it2;
     }
 
-    assert(components.size()==seen);
+    INVARIANT(
+      components.size() == seen,
+      "some of the symbol's component names were not found in the source");
   }
 
   return nil_exprt();
@@ -413,24 +401,24 @@ symbol_exprt string_abstractiont::add_dummy_symbol_and_value(
   symbol_exprt sym_expr=new_symbol.symbol_expr();
 
   // make sure it is declared before the recursive call
-  goto_programt::targett decl=dest.add_instruction();
-  decl->make_decl();
-  decl->source_location=ref_instr->source_location;
-  decl->function=ref_instr->function;
-  decl->code=code_declt(sym_expr);
+  goto_programt::targett decl =
+    dest.add(goto_programt::make_decl(sym_expr, ref_instr->source_location));
   decl->code.add_source_location()=ref_instr->source_location;
 
   // set the value - may be nil
-  if(source_type.id()==ID_array && is_char_type(source_type.subtype()) &&
-      type_eq(type, string_struct, ns))
+  if(
+    source_type.id() == ID_array && is_char_type(source_type.subtype()) &&
+    type == string_struct)
   {
-    new_symbol.value=struct_exprt(string_struct);
-    new_symbol.value.operands().resize(3);
-    new_symbol.value.op0()=build_unknown(whatt::IS_ZERO, false);
-    new_symbol.value.op1()=build_unknown(whatt::LENGTH, false);
-    new_symbol.value.op2()=to_array_type(source_type).size().id()==ID_infinity?
-      build_unknown(whatt::SIZE, false):to_array_type(source_type).size();
-    make_type(new_symbol.value.op2(), build_type(whatt::SIZE));
+    new_symbol.value = struct_exprt(
+      {build_unknown(whatt::IS_ZERO, false),
+       build_unknown(whatt::LENGTH, false),
+       to_array_type(source_type).size().id() == ID_infinity
+         ? build_unknown(whatt::SIZE, false)
+         : to_array_type(source_type).size()},
+      string_struct);
+
+    make_type(to_struct_expr(new_symbol.value).op2(), build_type(whatt::SIZE));
   }
   else
     new_symbol.value=
@@ -438,11 +426,9 @@ symbol_exprt string_abstractiont::add_dummy_symbol_and_value(
 
   if(new_symbol.value.is_not_nil())
   {
-    goto_programt::targett assignment1=dest.add_instruction();
-    assignment1->make_assignment();
-    assignment1->source_location=ref_instr->source_location;
-    assignment1->function=ref_instr->function;
-    assignment1->code=code_assignt(sym_expr, new_symbol.value);
+    goto_programt::targett assignment1 =
+      dest.add(goto_programt::make_assignment(
+        code_assignt(sym_expr, new_symbol.value), ref_instr->source_location));
     assignment1->code.add_source_location()=ref_instr->source_location;
   }
 
@@ -464,8 +450,12 @@ goto_programt::targett string_abstractiont::abstract(
   case GOTO:
   case ASSERT:
   case ASSUME:
-    if(has_string_macros(it->guard))
-      replace_string_macros(it->guard, false, it->source_location);
+    if(has_string_macros(it->get_condition()))
+    {
+      exprt tmp = it->get_condition();
+      replace_string_macros(tmp, false, it->source_location);
+      it->set_condition(tmp);
+    }
     break;
 
   case FUNCTION_CALL:
@@ -504,22 +494,27 @@ goto_programt::targett string_abstractiont::abstract_assign(
   goto_programt &dest,
   goto_programt::targett target)
 {
-  code_assignt &assign=to_code_assign(target->code);
-
-  exprt &lhs=assign.lhs();
-  exprt &rhs=assign.rhs();
-
-  if(has_string_macros(lhs))
   {
-    replace_string_macros(lhs, true, target->source_location);
-    move_lhs_arithmetic(lhs, rhs);
+    code_assignt assign = target->get_assign();
+
+    exprt &lhs = assign.lhs();
+    exprt &rhs = assign.rhs();
+
+    if(has_string_macros(lhs))
+    {
+      replace_string_macros(lhs, true, target->source_location);
+      move_lhs_arithmetic(lhs, rhs);
+    }
+
+    if(has_string_macros(rhs))
+      replace_string_macros(rhs, false, target->source_location);
+
+    target->set_assign(assign);
   }
 
-  if(has_string_macros(rhs))
-    replace_string_macros(rhs, false, target->source_location);
+  const typet &type = target->get_assign().lhs().type();
 
-  const typet &type=ns.follow(lhs.type());
-  if(type.id()==ID_pointer || type.id()==ID_array)
+  if(type.id() == ID_pointer)
     return abstract_pointer_assign(dest, target);
   else if(is_char_type(type))
     return abstract_char_assign(dest, target);
@@ -530,7 +525,8 @@ goto_programt::targett string_abstractiont::abstract_assign(
 void string_abstractiont::abstract_function_call(
   goto_programt::targett target)
 {
-  code_function_callt &call=to_code_function_call(target->code);
+  code_function_callt call = target->get_function_call();
+
   code_function_callt::argumentst &arguments=call.arguments();
   code_function_callt::argumentst str_args;
 
@@ -549,8 +545,8 @@ void string_abstractiont::abstract_function_call(
 
     if(it1==arguments.end())
     {
-      error() << "function call: not enough arguments" << eom;
-      throw 0;
+      throw incorrect_goto_program_exceptiont(
+        "function call: not enough arguments", target->source_location);
     }
 
     str_args.push_back(exprt());
@@ -562,8 +558,9 @@ void string_abstractiont::abstract_function_call(
     if(str_args.back().type().id()==ID_array &&
         abstract_type.id()==ID_pointer)
     {
-      assert(type_eq(str_args.back().type().subtype(),
-          abstract_type.subtype(), ns));
+      INVARIANT(
+        str_args.back().type().subtype() == abstract_type.subtype(),
+        "argument array type differs from formal parameter pointer type");
 
       index_exprt idx(str_args.back(), from_integer(0, index_type()));
       // disable bounds check on that one
@@ -577,6 +574,8 @@ void string_abstractiont::abstract_function_call(
   }
 
   arguments.insert(arguments.end(), str_args.begin(), str_args.end());
+
+  target->set_function_call(call);
 }
 
 bool string_abstractiont::has_string_macros(const exprt &expr)
@@ -600,20 +599,23 @@ void string_abstractiont::replace_string_macros(
 {
   if(expr.id()=="is_zero_string")
   {
-    assert(expr.operands().size()==1);
-    exprt tmp=build(expr.op0(), whatt::IS_ZERO, lhs, source_location);
+    PRECONDITION(expr.operands().size() == 1);
+    exprt tmp =
+      build(to_unary_expr(expr).op(), whatt::IS_ZERO, lhs, source_location);
     expr.swap(tmp);
   }
   else if(expr.id()=="zero_string_length")
   {
-    assert(expr.operands().size()==1);
-    exprt tmp=build(expr.op0(), whatt::LENGTH, lhs, source_location);
+    PRECONDITION(expr.operands().size() == 1);
+    exprt tmp =
+      build(to_unary_expr(expr).op(), whatt::LENGTH, lhs, source_location);
     expr.swap(tmp);
   }
   else if(expr.id()=="buffer_size")
   {
-    assert(expr.operands().size()==1);
-    exprt tmp=build(expr.op0(), whatt::SIZE, false, source_location);
+    PRECONDITION(expr.operands().size() == 1);
+    exprt tmp =
+      build(to_unary_expr(expr).op(), whatt::SIZE, false, source_location);
     expr.swap(tmp);
   }
   else
@@ -631,12 +633,11 @@ exprt string_abstractiont::build(
   if(pointer.id()==ID_typecast)
   {
     // cast from another pointer type?
-    assert(pointer.operands().size()==1);
-    if(pointer.op0().type().id()!=ID_pointer)
+    if(to_typecast_expr(pointer).op().type().id() != ID_pointer)
       return build_unknown(what, write);
 
     // recursive call
-    return build(pointer.op0(), what, write, source_location);
+    return build(to_typecast_expr(pointer).op(), what, write, source_location);
   }
 
   exprt str_struct;
@@ -648,8 +649,9 @@ exprt string_abstractiont::build(
   if(what==whatt::LENGTH || what==whatt::SIZE)
   {
     // adjust for offset
-    result=minus_exprt(result, pointer_offset(pointer));
-    result.op0().make_typecast(result.op1().type());
+    exprt offset = pointer_offset(pointer);
+    result = minus_exprt(
+      typecast_exprt::conditional_cast(result, offset.type()), offset);
   }
 
   return result;
@@ -669,7 +671,7 @@ const typet &string_abstractiont::build_abstraction_type(const typet &type)
 
   abstraction_types_map.swap(tmp);
   map_entry=tmp.find(eff_type);
-  assert(map_entry!=tmp.end());
+  CHECK_RETURN(map_entry != tmp.end());
   return abstraction_types_map.insert(
       std::make_pair(eff_type, map_entry->second)).first->second;
 }
@@ -682,9 +684,8 @@ const typet &string_abstractiont::build_abstraction_type_rec(const typet &type,
   if(known_entry!=known.end())
     return known_entry->second;
 
-  ::std::pair< abstraction_types_mapt::iterator, bool > map_entry(
-      abstraction_types_map.insert(::std::make_pair(
-          eff_type, nil_typet())));
+  ::std::pair<abstraction_types_mapt::iterator, bool> map_entry(
+    abstraction_types_map.insert(::std::make_pair(eff_type, typet())));
   if(!map_entry.second)
     return map_entry.first->second;
 
@@ -748,15 +749,15 @@ bool string_abstractiont::build(const exprt &object, exprt &dest, bool write)
     if(build(to_typecast_expr(object).op(), dest, write))
       return true;
 
-    return !(type_eq(dest.type(), abstract_type, ns) ||
-        (dest.type().id()==ID_array &&
-         abstract_type.id()==ID_pointer &&
-         type_eq(dest.type().subtype(), abstract_type.subtype(), ns)));
+    return dest.type() != abstract_type ||
+           (dest.type().id() == ID_array && abstract_type.id() == ID_pointer &&
+            dest.type().subtype() == abstract_type.subtype());
   }
 
   if(object.id()==ID_string_constant)
   {
-    const std::string &str_value = id2string(object.get(ID_value));
+    const std::string &str_value =
+      id2string(to_string_constant(object).get_value());
     // make sure we handle the case of a string constant with string-terminating
     // \0 in it
     const std::size_t str_len =
@@ -781,21 +782,23 @@ bool string_abstractiont::build(const exprt &object, exprt &dest, bool write)
   {
     const member_exprt &o_mem=to_member_expr(object);
     dest=member_exprt(exprt(), o_mem.get_component_name(), abstract_type);
-    return build_wrap(o_mem.struct_op(), dest.op0(), write);
+    return build_wrap(
+      o_mem.struct_op(), to_member_expr(dest).compound(), write);
   }
 
   if(object.id()==ID_dereference)
   {
     const dereference_exprt &o_deref=to_dereference_expr(object);
     dest=dereference_exprt(exprt(), abstract_type);
-    return build_wrap(o_deref.pointer(), dest.op0(), write);
+    return build_wrap(
+      o_deref.pointer(), to_dereference_expr(dest).pointer(), write);
   }
 
   if(object.id()==ID_index)
   {
     const index_exprt &o_index=to_index_expr(object);
     dest=index_exprt(exprt(), o_index.index(), abstract_type);
-    return build_wrap(o_index.array(), dest.op0(), write);
+    return build_wrap(o_index.array(), to_index_expr(dest).array(), write);
   }
 
   // handle pointer stuff
@@ -836,23 +839,25 @@ bool string_abstractiont::build_if(const if_exprt &o_if,
 bool string_abstractiont::build_array(const array_exprt &object,
     exprt &dest, bool write)
 {
-  assert(is_char_type(object.type().subtype()));
+  PRECONDITION(is_char_type(object.type().subtype()));
 
   // writing is invalid
   if(write)
     return true;
 
   const exprt &a_size=to_array_type(object.type()).size();
-  mp_integer size;
+  const auto size = numeric_cast<mp_integer>(a_size);
   // don't do anything, if we cannot determine the size
-  if(to_integer(a_size, size))
+  if(!size.has_value())
     return true;
-  assert(size==object.operands().size());
+  INVARIANT(
+    *size == object.operands().size(),
+    "wrong number of array object arguments");
 
   exprt::operandst::const_iterator it=object.operands().begin();
-  for(mp_integer i=0; i<size; ++i, ++it)
+  for(mp_integer i = 0; i < *size; ++i, ++it)
     if(it->is_zero())
-      return build_symbol_constant(i, size, dest);
+      return build_symbol_constant(i, *size, dest);
 
   return true;
 }
@@ -860,7 +865,7 @@ bool string_abstractiont::build_array(const array_exprt &object,
 bool string_abstractiont::build_pointer(const exprt &object,
     exprt &dest, bool write)
 {
-  assert(object.type().id()==ID_pointer);
+  PRECONDITION(object.type().id() == ID_pointer);
 
   pointer_arithmetict ptr(object);
   if(ptr.pointer.id()==ID_address_of)
@@ -945,9 +950,9 @@ bool string_abstractiont::build_symbol(const symbol_exprt &sym, exprt &dest)
   const symbolt &symbol=ns.lookup(sym.get_identifier());
 
   const typet &abstract_type=build_abstraction_type(symbol.type);
-  assert(!abstract_type.is_nil());
+  CHECK_RETURN(!abstract_type.is_nil());
 
-  irep_idt identifier="";
+  irep_idt identifier;
 
   if(current_args.find(symbol.name)!=current_args.end())
     identifier=id2string(symbol.name)+arg_suffix;
@@ -962,7 +967,7 @@ bool string_abstractiont::build_symbol(const symbol_exprt &sym, exprt &dest)
   dest=str_symbol.symbol_expr();
   if(current_args.find(symbol.name)!=current_args.end() &&
       !is_ptr_argument(abstract_type))
-    dest=dereference_exprt(dest, dest.type().subtype());
+    dest = dereference_exprt{dest};
 
   return false;
 }
@@ -991,7 +996,8 @@ void string_abstractiont::build_new_symbol(const symbolt &symbol,
 
   if(symbol.is_static_lifetime)
   {
-    goto_programt::targett dummy_loc=initialization.add_instruction();
+    goto_programt::targett dummy_loc =
+      initialization.add(goto_programt::instructiont());
     dummy_loc->source_location=symbol.location;
     make_decl_and_def(initialization, dummy_loc, identifier, symbol.name);
     initialization.instructions.erase(dummy_loc);
@@ -1022,17 +1028,15 @@ bool string_abstractiont::build_symbol_constant(
     new_symbol.is_file_local=false;
 
     {
-      struct_exprt value(string_struct);
-      value.operands().resize(3);
-
-      value.op0()=true_exprt();
-      value.op1()=from_integer(zero_length, build_type(whatt::LENGTH));
-      value.op2()=from_integer(buf_size, build_type(whatt::SIZE));
+      struct_exprt value(
+        {true_exprt(),
+         from_integer(zero_length, build_type(whatt::LENGTH)),
+         from_integer(buf_size, build_type(whatt::SIZE))},
+        string_struct);
 
       // initialization
-      goto_programt::targett assignment1=initialization.add_instruction();
-      assignment1->make_assignment();
-      assignment1->code=code_assignt(new_symbol.symbol_expr(), value);
+      initialization.add(goto_programt::make_assignment(
+        code_assignt(new_symbol.symbol_expr(), value)));
     }
 
     symbol_table.insert(std::move(new_symbol));
@@ -1048,8 +1052,8 @@ void string_abstractiont::move_lhs_arithmetic(exprt &lhs, exprt &rhs)
   if(lhs.id()==ID_minus)
   {
     // move op1 to rhs
-    exprt rest=lhs.op0();
-    rhs=plus_exprt(rhs, lhs.op1());
+    exprt rest = to_minus_expr(lhs).op0();
+    rhs = plus_exprt(rhs, to_minus_expr(lhs).op1());
     rhs.type()=lhs.type();
     lhs=rest;
   }
@@ -1057,16 +1061,16 @@ void string_abstractiont::move_lhs_arithmetic(exprt &lhs, exprt &rhs)
 
 goto_programt::targett string_abstractiont::abstract_pointer_assign(
   goto_programt &dest,
-  goto_programt::targett target)
+  const goto_programt::targett target)
 {
-  code_assignt &assign=to_code_assign(target->code);
+  const code_assignt &assign = target->get_assign();
 
-  exprt &lhs=assign.lhs();
-  exprt rhs=assign.rhs();
-  exprt *rhsp=&(assign.rhs());
+  const exprt &lhs = assign.lhs();
+  const exprt rhs = assign.rhs();
+  const exprt *rhsp = &(assign.rhs());
 
   while(rhsp->id()==ID_typecast)
-    rhsp=&(rhsp->op0());
+    rhsp = &(to_typecast_expr(*rhsp).op());
 
   const typet &abstract_type=build_abstraction_type(lhs.type());
   if(abstract_type.is_nil())
@@ -1084,15 +1088,12 @@ goto_programt::targett string_abstractiont::abstract_pointer_assign(
   if(lhs.type().id()==ID_pointer && !unknown)
   {
     goto_programt::instructiont assignment;
-    assignment.make_assignment();
-    assignment.source_location=target->source_location;
-    assignment.function=target->function;
-    assignment.code=code_assignt(new_lhs, new_rhs);
+    assignment = goto_programt::make_assignment(
+      code_assignt(new_lhs, new_rhs), target->source_location);
     assignment.code.add_source_location()=target->source_location;
     dest.insert_before_swap(target, assignment);
-    ++target;
 
-    return target;
+    return std::next(target);
   }
   else
   {
@@ -1104,13 +1105,13 @@ goto_programt::targett string_abstractiont::abstract_char_assign(
   goto_programt &dest,
   goto_programt::targett target)
 {
-  code_assignt &assign=to_code_assign(target->code);
+  const code_assignt &assign = target->get_assign();
 
-  exprt &lhs=assign.lhs();
-  exprt *rhsp=&(assign.rhs());
+  const exprt &lhs = assign.lhs();
+  const exprt *rhsp = &(assign.rhs());
 
   while(rhsp->id()==ID_typecast)
-    rhsp=&(rhsp->op0());
+    rhsp = &(to_typecast_expr(*rhsp).op());
 
   // we only care if the constant zero is assigned
   if(!rhsp->is_zero())
@@ -1125,7 +1126,9 @@ goto_programt::targett string_abstractiont::abstract_char_assign(
     if(!build_wrap(i_lhs.array(), new_lhs, true))
     {
       exprt i2=member(new_lhs, whatt::LENGTH);
-      assert(i2.is_not_nil());
+      INVARIANT(
+        i2.is_not_nil(),
+        "failed to create length-component for the left-hand-side");
 
       exprt new_length=i_lhs.index();
       make_type(new_length, i2.type());
@@ -1143,7 +1146,9 @@ goto_programt::targett string_abstractiont::abstract_char_assign(
     if(!build_wrap(ptr.pointer, new_lhs, true))
     {
       const exprt i2=member(new_lhs, whatt::LENGTH);
-      assert(i2.is_not_nil());
+      INVARIANT(
+        i2.is_not_nil(),
+        "failed to create length-component for the left-hand-side");
 
       make_type(ptr.offset, build_type(whatt::LENGTH));
       return
@@ -1171,20 +1176,16 @@ goto_programt::targett string_abstractiont::char_assign(
   goto_programt tmp;
 
   const exprt i1=member(new_lhs, whatt::IS_ZERO);
-  assert(i1.is_not_nil());
+  INVARIANT(
+    i1.is_not_nil(),
+    "failed to create is_zero-component for the left-hand-side");
 
-  goto_programt::targett assignment1=tmp.add_instruction();
-  assignment1->make_assignment();
-  assignment1->source_location=target->source_location;
-  assignment1->function=target->function;
-  assignment1->code=code_assignt(i1, true_exprt());
+  goto_programt::targett assignment1 = tmp.add(goto_programt::make_assignment(
+    code_assignt(i1, true_exprt()), target->source_location));
   assignment1->code.add_source_location()=target->source_location;
 
-  goto_programt::targett assignment2=tmp.add_instruction();
-  assignment2->make_assignment();
-  assignment2->source_location=target->source_location;
-  assignment2->function=target->function;
-  assignment2->code=code_assignt(lhs, rhs);
+  goto_programt::targett assignment2 = tmp.add(goto_programt::make_assignment(
+    code_assignt(lhs, rhs), target->source_location));
   assignment2->code.add_source_location()=target->source_location;
 
   move_lhs_arithmetic(
@@ -1207,24 +1208,23 @@ goto_programt::targett string_abstractiont::value_assignments(
   if(rhs.id()==ID_if)
     return value_assignments_if(dest, target, lhs, to_if_expr(rhs));
 
-  assert(type_eq(lhs.type(), rhs.type(), ns));
+  PRECONDITION(lhs.type() == rhs.type());
 
   if(lhs.type().id()==ID_array)
   {
     const exprt &a_size=to_array_type(lhs.type()).size();
-    mp_integer size;
+    const auto size = numeric_cast<mp_integer>(a_size);
     // don't do anything, if we cannot determine the size
-    if(to_integer(a_size, size))
+    if(!size.has_value())
       return target;
-    for(mp_integer i=0; i<size; ++i)
+    for(mp_integer i = 0; i < *size; ++i)
       target=value_assignments(dest, target,
           index_exprt(lhs, from_integer(i, a_size.type())),
           index_exprt(rhs, from_integer(i, a_size.type())));
   }
-  else if(lhs.type().id()==ID_pointer)
-    return value_assignments(dest, target,
-        dereference_exprt(lhs, lhs.type().subtype()),
-        dereference_exprt(rhs, rhs.type().subtype()));
+  else if(lhs.type().id() == ID_pointer)
+    return value_assignments(
+      dest, target, dereference_exprt{lhs}, dereference_exprt{rhs});
   else if(lhs.type()==string_struct)
     return value_assignments_string_struct(dest, target, lhs, rhs);
   else if(lhs.type().id()==ID_struct || lhs.type().id()==ID_union)
@@ -1234,7 +1234,8 @@ goto_programt::targett string_abstractiont::value_assignments(
 
     for(const auto &comp : struct_union_type.components())
     {
-      assert(!comp.get_name().empty());
+      INVARIANT(
+        !comp.get_name().empty(), "struct/union components must have a name");
 
       target=value_assignments(dest, target,
           member_exprt(lhs, comp.get_name(), comp.type()),
@@ -1252,25 +1253,18 @@ goto_programt::targett string_abstractiont::value_assignments_if(
 {
   goto_programt tmp;
 
-  goto_programt::targett goto_else=tmp.add_instruction(GOTO);
-  goto_programt::targett goto_out=tmp.add_instruction(GOTO);
-  goto_programt::targett else_target=tmp.add_instruction(SKIP);
-  goto_programt::targett out_target=tmp.add_instruction(SKIP);
+  goto_programt::targett goto_else =
+    tmp.add(goto_programt::make_incomplete_goto(
+      boolean_negate(rhs.cond()), target->source_location));
+  goto_programt::targett goto_out = tmp.add(
+    goto_programt::make_incomplete_goto(true_exprt(), target->source_location));
+  goto_programt::targett else_target =
+    tmp.add(goto_programt::make_skip(target->source_location));
+  goto_programt::targett out_target =
+    tmp.add(goto_programt::make_skip(target->source_location));
 
-  goto_else->function=target->function;
-  goto_else->source_location=target->source_location;
-  goto_else->make_goto(else_target, rhs.cond());
-  goto_else->guard.make_not();
-
-  goto_out->function=target->function;
-  goto_out->source_location=target->source_location;
-  goto_out->make_goto(out_target, true_exprt());
-
-  else_target->function=target->function;
-  else_target->source_location=target->source_location;
-
-  out_target->function=target->function;
-  out_target->source_location=target->source_location;
+  goto_else->complete_goto(else_target);
+  goto_out->complete_goto(out_target);
 
   value_assignments(tmp, goto_out, lhs, rhs.true_case());
   value_assignments(tmp, else_target, lhs, rhs.false_case());
@@ -1292,33 +1286,27 @@ goto_programt::targett string_abstractiont::value_assignments_string_struct(
   goto_programt tmp;
 
   {
-    goto_programt::targett assignment=tmp.add_instruction(ASSIGN);
-    assignment->code=code_assignt(
-        member(lhs, whatt::IS_ZERO),
-        member(rhs, whatt::IS_ZERO));
+    goto_programt::targett assignment = tmp.add(goto_programt::make_assignment(
+      member(lhs, whatt::IS_ZERO),
+      member(rhs, whatt::IS_ZERO),
+      target->source_location));
     assignment->code.add_source_location()=target->source_location;
-    assignment->function=target->function;
-    assignment->source_location=target->source_location;
   }
 
   {
-    goto_programt::targett assignment=tmp.add_instruction(ASSIGN);
-    assignment->code=code_assignt(
-        member(lhs, whatt::LENGTH),
-        member(rhs, whatt::LENGTH));
+    goto_programt::targett assignment = tmp.add(goto_programt::make_assignment(
+      member(lhs, whatt::LENGTH),
+      member(rhs, whatt::LENGTH),
+      target->source_location));
     assignment->code.add_source_location()=target->source_location;
-    assignment->function=target->function;
-    assignment->source_location=target->source_location;
   }
 
   {
-    goto_programt::targett assignment=tmp.add_instruction(ASSIGN);
-    assignment->code=code_assignt(
-        member(lhs, whatt::SIZE),
-        member(rhs, whatt::SIZE));
+    goto_programt::targett assignment = tmp.add(goto_programt::make_assignment(
+      member(lhs, whatt::SIZE),
+      member(rhs, whatt::SIZE),
+      target->source_location));
     assignment->code.add_source_location()=target->source_location;
-    assignment->function=target->function;
-    assignment->source_location=target->source_location;
   }
 
   goto_programt::targett last=target;
@@ -1334,8 +1322,9 @@ exprt string_abstractiont::member(const exprt &a, whatt what)
   if(a.is_nil())
     return a;
 
-  assert(type_eq(a.type(), string_struct, ns) ||
-      is_ptr_string_struct(a.type()));
+  PRECONDITION_WITH_DIAGNOSTICS(
+    a.type() == string_struct || is_ptr_string_struct(a.type()),
+    "either the expression is not a string or it is not a pointer to one");
 
   exprt struct_op=
     a.type().id()==ID_pointer?
@@ -1350,7 +1339,5 @@ exprt string_abstractiont::member(const exprt &a, whatt what)
   case whatt::LENGTH: component_name="length"; break;
   }
 
-  member_exprt result(struct_op, component_name, build_type(what));
-
-  return result;
+  return member_exprt(struct_op, component_name, build_type(what));
 }

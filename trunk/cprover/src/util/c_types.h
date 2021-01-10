@@ -29,14 +29,14 @@ signedbv_typet signed_char_type();
 bitvector_typet wchar_t_type();
 unsignedbv_typet char16_t_type();
 unsignedbv_typet char32_t_type();
-bitvector_typet float_type();
-bitvector_typet double_type();
-bitvector_typet long_double_type();
+floatbv_typet float_type();
+floatbv_typet double_type();
+floatbv_typet long_double_type();
 unsignedbv_typet size_type();
 signedbv_typet signed_size_type();
 signedbv_typet pointer_diff_type();
 pointer_typet pointer_type(const typet &);
-typet void_type();
+empty_typet void_type();
 
 // This is for Java and C++
 reference_typet reference_type(const typet &);

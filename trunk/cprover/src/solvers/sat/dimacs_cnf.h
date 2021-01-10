@@ -17,7 +17,7 @@ Author: Daniel Kroening, kroening@kroening.com
 class dimacs_cnft:public cnf_clause_listt
 {
 public:
-  dimacs_cnft();
+  explicit dimacs_cnft(message_handlert &);
   virtual ~dimacs_cnft() { }
 
   virtual void write_dimacs_cnf(std::ostream &out);
@@ -42,32 +42,32 @@ protected:
 class dimacs_cnf_dumpt:public cnft
 {
 public:
-  explicit dimacs_cnf_dumpt(std::ostream &_out);
+  dimacs_cnf_dumpt(std::ostream &_out, message_handlert &message_handler);
   virtual ~dimacs_cnf_dumpt() { }
 
-  virtual const std::string solver_text()
+  const std::string solver_text() override
   {
     return "DIMACS CNF Dumper";
   }
 
-  virtual void lcnf(const bvt &bv);
+  void lcnf(const bvt &bv) override;
 
-  virtual resultt prop_solve()
-  {
-    return resultt::P_ERROR;
-  }
-
-  virtual tvt l_get(literalt) const
+  tvt l_get(literalt) const override
   {
     return tvt::unknown();
   }
 
-  virtual size_t no_clauses() const
+  size_t no_clauses() const override
   {
     return 0;
   }
 
 protected:
+  resultt do_prop_solve() override
+  {
+    return resultt::P_ERROR;
+  }
+
   std::ostream &out;
 };
 

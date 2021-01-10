@@ -13,6 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "ansi_c_typecheck.h"
 
 #include <util/config.h>
+#include <util/prefix.h>
 #include <util/string_utils.h>
 
 #include <ostream>
@@ -80,8 +81,8 @@ static bool convert(
   if(s_it==new_symbol_table.symbols.end())
   {
     messaget message(message_handler);
-    message.error() << "failed to produce built-in symbol `"
-                    << identifier << '\'' << messaget::eom;
+    message.error() << "failed to produce built-in symbol '" << identifier
+                    << '\'' << messaget::eom;
     return true;
   }
 

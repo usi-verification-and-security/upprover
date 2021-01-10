@@ -2,10 +2,11 @@ void __CPROVER_assume(__CPROVER_bool assumption);
 void __VERIFIER_assume(__CPROVER_bool assumption);
 void __CPROVER_assert(__CPROVER_bool assertion, const char *description);
 void __CPROVER_precondition(__CPROVER_bool precondition, const char *description);
+void __CPROVER_postcondition(__CPROVER_bool assertion, const char *description);
 void __CPROVER_havoc_object(void *);
 __CPROVER_bool __CPROVER_equal();
 __CPROVER_bool __CPROVER_same_object(const void *, const void *);
-__CPROVER_bool __CPROVER_invalid_pointer(const void *);
+__CPROVER_bool __CPROVER_is_invalid_pointer(const void *);
 __CPROVER_bool __CPROVER_is_zero_string(const void *);
 __CPROVER_size_t __CPROVER_zero_string_length(const void *);
 __CPROVER_size_t __CPROVER_buffer_size(const void *);
@@ -22,6 +23,7 @@ void __CPROVER_cleanup(const void *, const void *);
 __CPROVER_bool __CPROVER_get_must(const void *, const char *);
 __CPROVER_bool __CPROVER_get_may(const void *, const char *);
 
+void __CPROVER_printf(const char *format, ...);
 void __CPROVER_input(const char *id, ...);
 void __CPROVER_output(const char *id, ...);
 void __CPROVER_cover(__CPROVER_bool condition);
@@ -31,12 +33,10 @@ void __CPROVER_atomic_begin();
 void __CPROVER_atomic_end();
 void __CPROVER_fence(const char *kind, ...);
 
-// traces
-void CBMC_trace(int lvl, const char *event, ...);
-
 // pointers
 __CPROVER_size_t __CPROVER_POINTER_OBJECT(const void *);
 __CPROVER_ssize_t __CPROVER_POINTER_OFFSET(const void *);
+__CPROVER_size_t __CPROVER_OBJECT_SIZE(const void *);
 __CPROVER_bool __CPROVER_DYNAMIC_OBJECT(const void *);
 void __CPROVER_allocated_memory(__CPROVER_size_t address, __CPROVER_size_t extent);
 
@@ -97,3 +97,9 @@ void __CPROVER_k_induction_hint(unsigned min, unsigned max,
 // format string-related
 int __CPROVER_scanf(const char *, ...);
 
+// detect overflow
+__CPROVER_bool __CPROVER_overflow_minus();
+__CPROVER_bool __CPROVER_overflow_mult();
+__CPROVER_bool __CPROVER_overflow_plus();
+__CPROVER_bool __CPROVER_overflow_shl();
+__CPROVER_bool __CPROVER_overflow_unary_minus();

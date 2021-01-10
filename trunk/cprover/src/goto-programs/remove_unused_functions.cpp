@@ -75,10 +75,7 @@ void find_used_functions(
       {
         if(it->type==FUNCTION_CALL)
         {
-          const code_function_callt &call = to_code_function_call(it->code);
-
-          // check that this is actually a simple call
-          assert(call.function().id()==ID_symbol);
+          const code_function_callt &call = it->get_function_call();
 
           const irep_idt &identifier =
             to_symbol_expr(call.function()).get_identifier();

@@ -12,14 +12,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 #include <util/byte_operators.h>
+#include <util/expr_util.h>
 #include <util/pointer_offset_size.h>
 #include <util/std_expr.h>
-#include <util/throw_with_nested.h>
 
-#include "bv_conversion_exceptions.h"
+#include <solvers/lowering/expr_lowering.h>
+
 #include "bv_endianness_map.h"
-#include "flatten_byte_extract_exceptions.h"
-#include "flatten_byte_operators.h"
 
 bvt map_bv(const bv_endianness_mapt &map, const bvt &src)
 {
@@ -39,18 +38,11 @@ bvt map_bv(const bv_endianness_mapt &map, const bvt &src)
 
 bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 {
-  // if we extract from an unbounded array, call the flattening code
+  // array logic does not handle byte operators, thus lower when operating on
+  // unbounded arrays
   if(is_unbounded_array(expr.op().type()))
   {
-    try
-    {
-      return convert_bv(flatten_byte_extract(expr, ns));
-    }
-    catch(const flatten_byte_extract_exceptiont &)
-    {
-      util_throw_with_nested(
-        bitvector_conversion_exceptiont("Can't convert byte_extraction", expr));
-    }
+    return convert_bv(lower_byte_extract(expr, ns));
   }
 
   const std::size_t width = boolbv_width(expr.type());
@@ -76,19 +68,24 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 
   // see if the byte number is constant and within bounds, else work from the
   // root object
-  const mp_integer op_bytes = pointer_offset_size(expr.op().type(), ns);
+  const auto op_bytes_opt = pointer_offset_size(expr.op().type(), ns);
   auto index = numeric_cast<mp_integer>(expr.offset());
+
   if(
-    (!index.has_value() || (*index < 0 || *index >= op_bytes)) &&
-    (expr.op().id() == ID_member || expr.op().id() == ID_index ||
+    (!index.has_value() || !op_bytes_opt.has_value() ||
+     *index < 0 || *index >= *op_bytes_opt) &&
+    (expr.op().id() == ID_member ||
+     expr.op().id() == ID_index ||
      expr.op().id() == ID_byte_extract_big_endian ||
      expr.op().id() == ID_byte_extract_little_endian))
   {
     object_descriptor_exprt o;
     o.build(expr.op(), ns);
     CHECK_RETURN(o.offset().id() != ID_unknown);
-    if(o.offset().type() != expr.offset().type())
-      o.offset().make_typecast(expr.offset().type());
+
+    o.offset() =
+      typecast_exprt::conditional_cast(o.offset(), expr.offset().type());
+
     byte_extract_exprt be(
       expr.id(),
       o.root_object(),
@@ -99,7 +96,6 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
   }
 
   const exprt &op=expr.op();
-  const exprt &offset=expr.offset();
   PRECONDITION(
     expr.id() == ID_byte_extract_little_endian ||
     expr.id() == ID_byte_extract_big_endian);
@@ -140,18 +136,14 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 
       // add implications
 
-      equal_exprt equality;
-      equality.lhs()=offset; // index operand
-
-      typet constant_type=offset.type(); // type of index operand
+      // type of index operand
+      const typet &constant_type = expr.offset().type();
 
       bvt equal_bv;
       equal_bv.resize(width);
 
       for(std::size_t i=0; i<bytes; i++)
       {
-        equality.rhs()=from_integer(i, constant_type);
-
         std::size_t offset=i*byte_width;
 
         for(std::size_t j=0; j<width; j++)
@@ -160,22 +152,20 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
           else
             equal_bv[j]=const_literal(true);
 
-        prop.l_set_to_true(
-          prop.limplies(convert(equality), prop.land(equal_bv)));
+        prop.l_set_to_true(prop.limplies(
+          convert(equal_exprt(expr.offset(), from_integer(i, constant_type))),
+          prop.land(equal_bv)));
       }
     }
     else
     {
-      equal_exprt equality;
-      equality.lhs()=offset; // index operand
-
-      typet constant_type(offset.type()); // type of index operand
+      // type of index operand
+      const typet &constant_type = expr.offset().type();
 
       for(std::size_t i=0; i<bytes; i++)
       {
-        equality.rhs()=from_integer(i, constant_type);
-
-        literalt e=convert(equality);
+        literalt e =
+          convert(equal_exprt(expr.offset(), from_integer(i, constant_type)));
 
         std::size_t offset=i*byte_width;
 

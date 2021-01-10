@@ -15,12 +15,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <sstream>
 #include <string>
 
+#include "deprecate.h"
 #include "invariant.h"
-#include "json.h"
 #include "source_location.h"
-#include "xml.h"
 
-class json_stream_arrayt;
+class json_objectt;
+class jsont;
+class xmlt;
 
 class message_handlert
 {
@@ -31,31 +32,16 @@ public:
 
   virtual void print(unsigned level, const std::string &message)=0;
 
-  virtual void print(unsigned level, const xmlt &xml)
-  {
-    // no-op by default
-  }
+  virtual void print(unsigned level, const xmlt &xml) = 0;
 
-  /// Return the underlying JSON stream
-  virtual json_stream_arrayt &get_json_stream()
-  {
-    UNREACHABLE;
-  }
-
-  virtual void print(unsigned level, const jsont &json)
-  {
-    // no-op by default
-  }
+  virtual void print(unsigned level, const jsont &json) = 0;
 
   virtual void print(
     unsigned level,
     const std::string &message,
     const source_locationt &location);
 
-  virtual void flush(unsigned level)
-  {
-    // no-op by default
-  }
+  virtual void flush(unsigned) = 0;
 
   virtual ~message_handlert()
   {
@@ -72,6 +58,13 @@ public:
     return message_count[level];
   }
 
+  /// \brief Create an ECMA-48 SGR (Select Graphic Rendition) command.
+  /// The default behavior is no action.
+  virtual std::string command(unsigned) const
+  {
+    return std::string();
+  }
+
 protected:
   unsigned verbosity;
   std::vector<std::size_t> message_count;
@@ -80,17 +73,34 @@ protected:
 class null_message_handlert:public message_handlert
 {
 public:
-  virtual void print(unsigned level, const std::string &message)
+  null_message_handlert() : message_handlert()
+  {
+    verbosity = 0;
+  }
+
+  void print(unsigned level, const std::string &message) override
   {
     message_handlert::print(level, message);
   }
 
-  virtual void print(
+  void print(unsigned, const xmlt &) override
+  {
+  }
+
+  void print(unsigned, const jsont &) override
+  {
+  }
+
+  void print(
     unsigned level,
     const std::string &message,
-    const source_locationt &)
+    const source_locationt &) override
   {
     print(level, message);
+  }
+
+  void flush(unsigned) override
+  {
   }
 };
 
@@ -101,7 +111,7 @@ public:
   {
   }
 
-  virtual void print(unsigned level, const std::string &message)
+  void print(unsigned level, const std::string &message) override
   {
     message_handlert::print(level, message);
 
@@ -109,7 +119,15 @@ public:
       out << message << '\n';
   }
 
-  virtual void flush(unsigned level)
+  void print(unsigned, const xmlt &) override
+  {
+  }
+
+  void print(unsigned, const jsont &) override
+  {
+  }
+
+  void flush(unsigned) override
   {
     out << std::flush;
   }
@@ -118,6 +136,18 @@ protected:
   std::ostream &out;
 };
 
+/// \brief Class that provides messages with a built-in verbosity 'level'.
+/// These messages are then processed by a subclass of \ref message_handlert -
+/// which filters out all messages above a set verbosity level. By default the
+/// verbosity filtering level is set to the maximum level (10) - all messages
+/// printed (level 10 messages are debug information).
+/// Common practice is to inherit from the \ref messaget class, to provide
+/// local infrastructure for messaging, by calling one of the utility
+/// methods, e.g. `debug()`, `warning()` etc. - which return a reference to a
+/// new instance of `mstreamt` set with the appropriate level.
+/// Individual messages are stored in \ref mstreamt - an `ostringstream`
+/// subtype. \ref eomt is used to flush the internal string of \ref mstreamt.
+/// A static member `eom`, of \ref eomt type is provided.
 class messaget
 {
 public:
@@ -158,6 +188,7 @@ public:
 
   // constructors, destructor
 
+  DEPRECATED(SINCE(2019, 1, 7, "use messaget(message_handler) instead"))
   messaget():
     message_handler(nullptr),
     mstream(M_DEBUG, *this)
@@ -185,6 +216,7 @@ public:
 
   virtual ~messaget();
 
+  // \brief Class that stores an individual 'message' with a verbosity 'level'.
   class mstreamt:public std::ostringstream
   {
   public:
@@ -222,36 +254,13 @@ public:
       return *this;
     }
 
-    mstreamt &operator << (const json_objectt &data)
-    {
-      if(this->tellp() > 0)
-        *this << eom; // force end of previous message
-      if(message.message_handler)
-      {
-        message.message_handler->print(message_level, data);
-      }
-      return *this;
-    }
+    mstreamt &operator<<(const json_objectt &data);
 
     template <class T>
     mstreamt &operator << (const T &x)
     {
       static_cast<std::ostream &>(*this) << x;
       return *this;
-    }
-
-    // for feeding in manipulator functions such as eom
-    mstreamt &operator << (mstreamt &(*func)(mstreamt &))
-    {
-      return func(*this);
-    }
-
-    /// Returns a reference to the top-level JSON array stream
-    json_stream_arrayt &json_stream()
-    {
-      if(this->tellp() > 0)
-        *this << eom; // force end of previous message
-      return message.message_handler->get_json_stream();
     }
 
   private:
@@ -265,9 +274,15 @@ public:
     friend class messaget;
   };
 
-  // Feeding 'eom' into the stream triggers
-  // the printing of the message
-  static mstreamt &eom(mstreamt &m)
+  // Feeding 'eom' into the stream triggers the printing of the message
+  // This is implemented as an I/O manipulator (compare to STL's endl).
+  class eomt
+  {
+  };
+
+  static eomt eom;
+
+  friend mstreamt &operator<<(mstreamt &m, eomt)
   {
     if(m.message.message_handler)
     {
@@ -283,12 +298,83 @@ public:
     return m;
   }
 
-  // in lieu of std::endl
-  static mstreamt &endl(mstreamt &m)
+  // This is an I/O manipulator (compare to STL's set_precision).
+  class commandt
   {
-    static_cast<std::ostream &>(m) << std::endl;
-    return m;
+  public:
+    explicit commandt(unsigned _command) : command(_command)
+    {
+    }
+
+    unsigned command;
+  };
+
+  /// feed a command into an mstreamt
+  friend mstreamt &operator<<(mstreamt &m, const commandt &c)
+  {
+    if(m.message.message_handler)
+      return m << m.message.message_handler->command(c.command);
+    else
+      return m;
   }
+
+  /// \brief Create an ECMA-48 SGR (Select Graphic Rendition) command.
+  static commandt command(unsigned c)
+  {
+    return commandt(c);
+  }
+
+  /// return to default formatting,
+  /// as defined by the terminal
+  static const commandt reset;
+
+  /// render text with red foreground color
+  static const commandt red;
+
+  /// render text with green foreground color
+  static const commandt green;
+
+  /// render text with yellow foreground color
+  static const commandt yellow;
+
+  /// render text with blue foreground color
+  static const commandt blue;
+
+  /// render text with magenta foreground color
+  static const commandt magenta;
+
+  /// render text with cyan foreground color
+  static const commandt cyan;
+
+  /// render text with bright red foreground color
+  static const commandt bright_red;
+
+  /// render text with bright green foreground color
+  static const commandt bright_green;
+
+  /// render text with bright yellow foreground color
+  static const commandt bright_yellow;
+
+  /// render text with bright blue foreground color
+  static const commandt bright_blue;
+
+  /// render text with bright magenta foreground color
+  static const commandt bright_magenta;
+
+  /// render text with bright cyan foreground color
+  static const commandt bright_cyan;
+
+  /// render text with bold font
+  static const commandt bold;
+
+  /// render text with faint font
+  static const commandt faint;
+
+  /// render italic text
+  static const commandt italic;
+
+  /// render underlined text
+  static const commandt underline;
 
   mstreamt &get_mstream(unsigned message_level) const
   {

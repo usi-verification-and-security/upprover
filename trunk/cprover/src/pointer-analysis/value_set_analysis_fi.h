@@ -35,8 +35,8 @@ public:
 
   typedef flow_insensitive_analysist<value_set_domain_fit> baset;
 
-  virtual void initialize(const goto_programt &goto_program);
-  virtual void initialize(const goto_functionst &goto_functions);
+  void initialize(const goto_programt &goto_program) override;
+  void initialize(const goto_functionst &goto_functions) override;
 
 protected:
   track_optionst track_options;
@@ -58,19 +58,26 @@ protected:
 
 public:
   // interface value_sets
-  virtual void get_values(
+  DEPRECATED(SINCE(2019, 05, 22, "Use the version returning list instead"))
+  void get_values(
+    const irep_idt &function_id,
     locationt l,
     const exprt &expr,
-    std::list<exprt> &dest)
+    std::list<exprt> &dest) override
   {
     state.value_set.from_function =
-      state.value_set.function_numbering.number(l->function);
+      state.value_set.function_numbering.number(function_id);
     state.value_set.to_function =
-      state.value_set.function_numbering.number(l->function);
+      state.value_set.function_numbering.number(function_id);
     state.value_set.from_target_index = l->location_number;
     state.value_set.to_target_index = l->location_number;
     state.value_set.get_value_set(expr, dest, ns);
   }
+
+  std::vector<exprt> get_values(
+    const irep_idt &function_id,
+    locationt l,
+    const exprt &expr) override;
 };
 
 #endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_ANALYSIS_FI_H

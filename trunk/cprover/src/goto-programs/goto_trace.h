@@ -14,28 +14,42 @@ Date: July 2005
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H
 
-/*! \file goto-symex/goto_trace.h
- * \brief Traces through goto programs
- *
- * \author Daniel Kroening <kroening@kroening.com>
- * \date   Sun Jul 31 21:54:44 BST 2011
-*/
-
 #include <iosfwd>
 #include <vector>
 
+#include <util/message.h>
 #include <util/namespace.h>
 #include <util/options.h>
 #include <util/ssa_expr.h>
 
 #include <goto-programs/goto_program.h>
 
-/*! \brief TO_BE_DOCUMENTED
- * \ingroup gr_goto_symex
-*/
+/// Step of the trace of a GOTO program
+///
+/// A step is either:
+///   - an assignment
+///   - an assume statement
+///   - an assertion
+///   - a goto instruction
+///   - a constraint (unused)
+///   - a function call
+///   - a function return
+///   - a location (unused)
+///   - an output
+///   - an input
+///   - a declaration
+///   - a dead statement
+///   - a shared read (unused)
+///   - a shared write (unused)
+///   - a spawn statement
+///   - a memory barrier
+///   - an atomic begin (unused)
+///   - an atomic end (unused)
+/// \ingroup gr_goto_symex
 class goto_trace_stept
 {
 public:
+  /// Number of the step in the trace
   std::size_t step_nr;
 
   bool is_assignment() const      { return type==typet::ASSIGNMENT; }
@@ -92,6 +106,9 @@ public:
   enum class assignment_typet { STATE, ACTUAL_PARAMETER };
   assignment_typet assignment_type;
 
+  // The instruction that created this step
+  // (function calls are in the caller, function returns are in the callee)
+  irep_idt function_id;
   goto_programt::const_targett pc;
 
   // this transition done by given thread number
@@ -102,16 +119,17 @@ public:
   exprt cond_expr;
 
   // for assert
+  irep_idt property_id;
   std::string comment;
 
-  // the object being assigned
-  ssa_exprt lhs_object;
-
-  // the full, original lhs expression
+  // the full, original lhs expression, after dereferencing
   exprt full_lhs;
 
-  // A constant with the new value
-  exprt lhs_object_value, full_lhs_value;
+  // the object being assigned
+  optionalt<symbol_exprt> get_lhs_object() const;
+
+  // A constant with the new value of the lhs
+  exprt full_lhs_value;
 
   // for INPUT/OUTPUT
   irep_idt format_string, io_id;
@@ -119,14 +137,13 @@ public:
   io_argst io_args;
   bool formatted;
 
-  // for function call/return
-  irep_idt function_identifier;
+  // for function calls
+  irep_idt called_function;
 
   // for function call
   std::vector<exprt> function_arguments;
 
-  /*! \brief outputs the trace step in ASCII to a given stream
-  */
+  /// Outputs the trace step in ASCII to a given stream
   void output(
     const class namespacet &ns,
     std::ostream &out) const;
@@ -141,33 +158,27 @@ public:
     cond_value(false),
     formatted(false)
   {
-    lhs_object.make_nil();
-    lhs_object_value.make_nil();
     full_lhs.make_nil();
     full_lhs_value.make_nil();
     cond_expr.make_nil();
   }
 };
 
-/*! \brief TO_BE_DOCUMENTED
- * \ingroup gr_goto_symex
-*/
+/// Trace of a GOTO program.
+/// This is a wrapper for a list of steps.
+/// \ingroup gr_goto_symex
 class goto_tracet
 {
 public:
   typedef std::list<goto_trace_stept> stepst;
   stepst steps;
 
-  irep_idt mode;
-
   void clear()
   {
-    mode.clear();
     steps.clear();
   }
 
-  /*! \brief outputs the trace in ASCII to a given stream
-  */
+  /// Outputs the trace in ASCII to a given stream
   void output(
     const class namespacet &ns,
     std::ostream &out) const;
@@ -175,36 +186,48 @@ public:
   void swap(goto_tracet &other)
   {
     other.steps.swap(steps);
-    other.mode.swap(mode);
   }
 
+  /// Add a step at the end of the trace
   void add_step(const goto_trace_stept &step)
   {
     steps.push_back(step);
   }
 
-  // retrieves the final step in the trace for manipulation
-  // (used to fill a trace from code, hence non-const)
-  inline goto_trace_stept &get_last_step()
+  /// Retrieves the final step in the trace for manipulation
+  /// (used to fill a trace from code, hence non-const)
+  goto_trace_stept &get_last_step()
   {
     return steps.back();
   }
 
-  // delete all steps after (not including) s
-  void trim_after(stepst::iterator s)
+  const goto_trace_stept &get_last_step() const
   {
-    assert(s!=steps.end());
-    steps.erase(++s, steps.end());
+    return steps.back();
   }
+
+  /// Returns the property IDs of all failed assertions in the trace
+  std::set<irep_idt> get_failed_property_ids() const;
 };
 
+/// Options for printing the trace using show_goto_trace
 struct trace_optionst
 {
+  /// Add rawLhs property to trace
   bool json_full_lhs;
+  /// Represent plain trace values in hex
   bool hex_representation;
+  /// Use prefix (`0b` or `0x`) for distinguishing the base of the
+  /// representation.
   bool base_prefix;
+  /// Show function calls in plain text trace
   bool show_function_calls;
+  /// Show original code in plain text trace
   bool show_code;
+  /// Give a compact trace
+  bool compact_trace;
+  /// Give a stack trace only
+  bool stack_trace;
 
   static const trace_optionst default_options;
 
@@ -215,6 +238,8 @@ struct trace_optionst
     base_prefix = hex_representation;
     show_function_calls = options.get_bool_option("trace-show-function-calls");
     show_code = options.get_bool_option("trace-show-code");
+    compact_trace = options.get_bool_option("compact-trace");
+    stack_trace = options.get_bool_option("stack-trace");
   };
 
 private:
@@ -225,48 +250,74 @@ private:
     base_prefix = false;
     show_function_calls = false;
     show_code = false;
+    compact_trace = false;
+    stack_trace = false;
   };
 };
 
+/// Output the trace on the given stream \p out
 void show_goto_trace(
-  std::ostream &out,
-  const namespacet &,
-  const goto_tracet &);
+  messaget::mstreamt &out,
+  const namespacet &ns,
+  const goto_tracet &goto_trace,
+  const trace_optionst &trace_options = trace_optionst::default_options);
 
-void show_goto_trace(
-  std::ostream &out,
-  const namespacet &,
-  const goto_tracet &,
-  const trace_optionst &);
-
-void trace_value(
-  std::ostream &out,
-  const namespacet &,
-  const ssa_exprt &lhs_object,
-  const exprt &full_lhs,
-  const exprt &value);
-
-
-#define OPT_GOTO_TRACE "(trace-json-extended)" \
-                       "(trace-show-function-calls)" \
-                       "(trace-show-code)" \
-                       "(trace-hex)"
+#define OPT_GOTO_TRACE                                                         \
+  "(trace-json-extended)"                                                      \
+  "(trace-show-function-calls)"                                                \
+  "(trace-show-code)"                                                          \
+  "(trace-hex)"                                                                \
+  "(compact-trace)"                                                            \
+  "(stack-trace)"
 
 #define HELP_GOTO_TRACE                                                        \
   " --trace-json-extended        add rawLhs property to trace\n"               \
   " --trace-show-function-calls  show function calls in plain trace\n"         \
   " --trace-show-code            show original code in plain trace\n"          \
-  " --trace-hex                  represent plain trace values in hex\n"
+  " --trace-hex                  represent plain trace values in hex\n"        \
+  " --compact-trace              give a compact trace\n"                       \
+  " --stack-trace                give a stack trace only\n"
 
 #define PARSE_OPTIONS_GOTO_TRACE(cmdline, options)                             \
   if(cmdline.isset("trace-json-extended"))                                     \
     options.set_option("trace-json-extended", true);                           \
   if(cmdline.isset("trace-show-function-calls"))                               \
     options.set_option("trace-show-function-calls", true);                     \
-  if(cmdline.isset("trace-show-code"))                                       \
-      options.set_option("trace-show-code", true);                             \
+  if(cmdline.isset("trace-show-code"))                                         \
+    options.set_option("trace-show-code", true);                               \
   if(cmdline.isset("trace-hex"))                                               \
-    options.set_option("trace-hex", true);
+    options.set_option("trace-hex", true);                                     \
+  if(cmdline.isset("compact-trace"))                                           \
+    options.set_option("compact-trace", true);                                 \
+  if(cmdline.isset("stack-trace"))                                             \
+    options.set_option("stack-trace", true);
 
+/// Variety of constant expression only used in the context of a GOTO trace, to
+/// give both the numeric value and the symbolic value of a pointer,
+/// e.g. numeric value "0xabcd0004" but symbolic value "&some_object + 4". The
+/// numeric value is stored in the `constant_exprt`'s usual value slot (see
+/// \ref constant_exprt::get_value) and the symbolic value is accessed using the
+/// `symbolic_pointer` method introduced by this class.
+class goto_trace_constant_pointer_exprt : public constant_exprt
+{
+public:
+  const exprt &symbolic_pointer() const
+  {
+    return static_cast<const exprt &>(operands()[0]);
+  }
+};
+
+template <>
+inline bool can_cast_expr<goto_trace_constant_pointer_exprt>(const exprt &base)
+{
+  return can_cast_expr<constant_exprt>(base) && base.operands().size() == 1;
+}
+
+inline const goto_trace_constant_pointer_exprt &
+to_goto_trace_constant_pointer_expr(const exprt &expr)
+{
+  PRECONDITION(can_cast_expr<goto_trace_constant_pointer_exprt>(expr));
+  return static_cast<const goto_trace_constant_pointer_exprt &>(expr);
+}
 
 #endif // CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H

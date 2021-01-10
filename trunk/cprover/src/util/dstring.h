@@ -13,7 +13,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_UTIL_DSTRING_H
 
 #include <iosfwd>
+#include <string>
 
+#include "invariant.h"
+#include "magic.h"
 #include "string_container.h"
 
 /// \ref dstringt has one field, an unsigned integer \ref no which is an index
@@ -65,6 +68,18 @@ public:
   // this one is not safe for static objects
   // NOLINTNEXTLINE(runtime/explicit)
   dstringt(const std::string &s):no(get_string_container()[s])
+  {
+  }
+
+  dstringt(const dstringt &) = default;
+
+  /// Move constructor. There is no need and no point in actually destroying the
+  /// source object \p other, this is effectively just a copy constructor.
+#ifdef __GNUC__
+  constexpr
+#endif
+    dstringt(dstringt &&other)
+    : no(other.no)
   {
   }
 
@@ -133,6 +148,14 @@ public:
   dstringt &operator=(const dstringt &b)
   { no=b.no; return *this; }
 
+  /// Move assignment. There is no need and no point in actually destroying the
+  /// source object \p other, this is effectively just an assignment.
+  dstringt &operator=(dstringt &&other)
+  {
+    no = other.no;
+    return *this;
+  }
+
   // output
 
   std::ostream &operator<<(std::ostream &out) const;
@@ -147,6 +170,17 @@ public:
   size_t hash() const
   {
     return no;
+  }
+
+  // iterators for the underlying string
+  std::string::const_iterator begin() const
+  {
+    return as_string().begin();
+  }
+
+  std::string::const_iterator end() const
+  {
+    return as_string().end();
   }
 
 private:
@@ -196,6 +230,30 @@ struct hash<dstringt> // NOLINT(readability/identifiers)
     return dstring.hash();
   }
 };
+}
+
+template <>
+struct diagnostics_helpert<dstringt>
+{
+  static std::string diagnostics_as_string(const dstringt &dstring)
+  {
+    return as_string(dstring);
+  }
+};
+
+dstringt get_dstring_number(std::size_t);
+
+/// equivalent to dstringt(std::to_string(value)), i.e., produces a string
+/// from a number
+template <typename T>
+static inline
+  typename std::enable_if<std::is_integral<T>::value, dstringt>::type
+  to_dstring(T value)
+{
+  if(value >= 0 && value <= static_cast<T>(DSTRING_NUMBERS_MAX))
+    return get_dstring_number(value);
+  else
+    return std::to_string(value);
 }
 
 #endif // CPROVER_UTIL_DSTRING_H

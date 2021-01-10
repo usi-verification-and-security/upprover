@@ -158,7 +158,7 @@ public:
   /// Lookup the key of a non-streaming JSON element.
   /// \param key: The key to be looked up inside the
   ///   attributes of the JSON object.
-  /// \return: The value that corresponds to the key
+  /// \return The value that corresponds to the key
   ///   if found, a null_json_object otherwise.
   const jsont &operator[](const std::string &key) const
   {
@@ -167,6 +167,25 @@ public:
       return jsont::null_json_object;
     else
       return it->second;
+  }
+
+  /// Push back a JSON element into the current object stream.
+  /// Note the pushed key won't be available via operator[], as it has been
+  /// output already.
+  /// Provided for compatibility with `jsont`.
+  /// \param key: new key to create in the streamed object
+  /// \param json: a non-streaming JSON element
+  void push_back(const std::string &key, const jsont &json)
+  {
+    PRECONDITION(open);
+    // Check the key is not already due to be output later:
+    PRECONDITION(!object.count(key));
+    // To ensure consistency of the output, we flush and
+    // close the current child stream before printing the given element.
+    output_child_stream();
+    output_delimiter();
+    jsont::output_key(out, key);
+    json.output_rec(out, indent + 1);
   }
 
   json_stream_objectt &push_back_stream_object(const std::string &key);

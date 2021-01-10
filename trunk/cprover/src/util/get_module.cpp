@@ -53,12 +53,12 @@ const symbolt &get_module_by_name(
 
   if(symbolptr_list.empty())
   {
-    message.error() << "module `" << module << "' not found" << messaget::eom;
+    message.error() << "module '" << module << "' not found" << messaget::eom;
     throw 0;
   }
   else if(symbolptr_list.size()>=2)
   {
-    message.error() << "module `" << module << "' does not uniquely resolve:\n";
+    message.error() << "module '" << module << "' does not uniquely resolve:\n";
 
     forall_symbolptr_list(it, symbolptr_list)
       message.error() << "  " << (*it)->name << '\n';
@@ -77,7 +77,7 @@ const symbolt &get_module(
   const std::string &module,
   message_handlert &message_handler)
 {
-  if(module!="")
+  if(!module.empty())
     return get_module_by_name(symbol_table, module, message_handler);
 
   symbolptr_listt symbolptr_list, main_symbolptr_list;
@@ -123,7 +123,7 @@ const symbolt &get_module(
 
   const symbolt &symbol=*symbolptr_list.front();
 
-  message.status() << "Using module `" << symbol.pretty_name << "'"
+  message.status() << "Using module '" << symbol.pretty_name << "'"
                    << messaget::eom;
 
   return symbol;

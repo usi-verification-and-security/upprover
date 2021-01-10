@@ -102,53 +102,73 @@ protected:
     unsigned coming_from;
 
     bool contains_shared_array(
+      const irep_idt &function_id,
       goto_programt::const_targett targ,
       goto_programt::const_targett i_it,
       value_setst &value_sets
-      #ifdef LOCAL_MAY
-      , local_may_aliast local_may
-      #endif
-    ) const; // NOLINT(whitespace/parens)
+#ifdef LOCAL_MAY
+      ,
+      local_may_aliast local_may
+#endif
+      ) const; // NOLINT(whitespace/parens)
 
     /* transformers */
     void visit_cfg_thread() const;
     void visit_cfg_propagate(goto_programt::instructionst::iterator i_it);
     void visit_cfg_body(
+      const irep_idt &function_id,
+      const goto_programt &goto_program,
       goto_programt::const_targett i_it,
       loop_strategyt replicate_body,
       value_setst &value_sets
-      #ifdef LOCAL_MAY
-      , local_may_aliast &local_may
-      #endif
+#ifdef LOCAL_MAY
+      ,
+      local_may_aliast &local_may
+#endif
     ); // deprecated  NOLINT(whitespace/parens)
     void inline visit_cfg_backedge(goto_programt::const_targett targ,
       goto_programt::const_targett i_it);
-    void inline visit_cfg_duplicate(goto_programt::const_targett targ,
+    void inline visit_cfg_duplicate(
+      const goto_programt &goto_program,
+      goto_programt::const_targett targ,
       goto_programt::const_targett i_it);
-    void visit_cfg_assign(value_setst &value_sets, namespacet &ns,
-      goto_programt::instructionst::iterator &i_it, bool no_dependencies
-      #ifdef LOCAL_MAY
-      , local_may_aliast &local_may
-      #endif
+    void visit_cfg_assign(
+      value_setst &value_sets,
+      const irep_idt &function_id,
+      goto_programt::instructionst::iterator &i_it,
+      bool no_dependencies
+#ifdef LOCAL_MAY
+      ,
+      local_may_aliast &local_may
+#endif
     ); // NOLINT(whitespace/parens)
-    void visit_cfg_fence(goto_programt::instructionst::iterator i_it);
+    void visit_cfg_fence(
+      goto_programt::instructionst::iterator i_it,
+      const irep_idt &function_id);
     void visit_cfg_skip(goto_programt::instructionst::iterator i_it);
-    void visit_cfg_lwfence(goto_programt::instructionst::iterator i_it);
-    void visit_cfg_asm_fence(goto_programt::instructionst::iterator i_it);
+    void visit_cfg_lwfence(
+      goto_programt::instructionst::iterator i_it,
+      const irep_idt &function_id);
+    void visit_cfg_asm_fence(
+      goto_programt::instructionst::iterator i_it,
+      const irep_idt &function_id);
     void visit_cfg_function_call(value_setst &value_sets,
       goto_programt::instructionst::iterator i_it,
       memory_modelt model,
       bool no_dependenciess,
       loop_strategyt duplicate_body);
     void visit_cfg_goto(
+      const irep_idt &function_id,
+      const goto_programt &goto_program,
       goto_programt::instructionst::iterator i_it,
       /* forces the duplication of all the loops, with array or not
          otherwise, duplication of loops with array accesses only */
       loop_strategyt replicate_body,
       value_setst &value_sets
-      #ifdef LOCAL_MAY
-      , local_may_aliast &local_may
-      #endif
+#ifdef LOCAL_MAY
+      ,
+      local_may_aliast &local_may
+#endif
     ); // NOLINT(whitespace/parens)
     void visit_cfg_reference_function(irep_idt id_function);
 
@@ -221,16 +241,16 @@ protected:
       coming_from = 0;
     }
 
-    void inline enter_function(const irep_idt &function)
+    void inline enter_function(const irep_idt &function_id)
     {
-      if(functions_met.find(function)!=functions_met.end())
+      if(functions_met.find(function_id) != functions_met.end())
         throw "sorry, doesn't handle recursive function for the moment";
-      functions_met.insert(function);
+      functions_met.insert(function_id);
     }
 
-    void inline leave_function(const irep_idt &function)
+    void inline leave_function(const irep_idt &function_id)
     {
-      functions_met.erase(function);
+      functions_met.erase(function_id);
     }
 
     void inline visit_cfg(
@@ -238,17 +258,22 @@ protected:
       memory_modelt model,
       bool no_dependencies,
       loop_strategyt duplicate_body,
-      const irep_idt &function)
+      const irep_idt &function_id)
     {
       /* ignore recursive calls -- underapproximation */
       try
       {
         /* forbids recursive function */
-        enter_function(function);
+        enter_function(function_id);
         std::set<nodet> end_out;
-        visit_cfg_function(value_sets, model, no_dependencies, duplicate_body,
-          function, end_out);
-        leave_function(function);
+        visit_cfg_function(
+          value_sets,
+          model,
+          no_dependencies,
+          duplicate_body,
+          function_id,
+          end_out);
+        leave_function(function_id);
       }
       catch(const std::string &s)
       {
@@ -257,15 +282,19 @@ protected:
     }
 
     /// TODO: move the visitor outside, and inherit
+    /// \param value_sets: Value_sets and options
+    /// \param model: Memory model
+    /// \param no_dependencies: Option to disable dependency analysis
+    /// \param duplicate_body: Control which loop body segments should
+    ///   be duplicated
+    /// \param function_id: Function to analyse
+    /// \param ending_vertex: Outcoming edges
     virtual void visit_cfg_function(
-      /// value_sets and options
       value_setst &value_sets,
       memory_modelt model,
       bool no_dependencies,
       loop_strategyt duplicate_body,
-      /// function to analyse
-      const irep_idt &function,
-      /// outcoming edges
+      const irep_idt &function_id,
       std::set<nodet> &ending_vertex);
 
     bool inline local(const irep_idt &i);

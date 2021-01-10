@@ -19,9 +19,9 @@ code_function_callt get_destructor(
   const namespacet &ns,
   const typet &type)
 {
-  if(type.id() == ID_symbol_type)
+  if(type.id() == ID_struct_tag)
   {
-    return get_destructor(ns, ns.follow(type));
+    return get_destructor(ns, ns.follow_tag(to_struct_tag_type(type)));
   }
   else if(type.id()==ID_struct)
   {
@@ -42,11 +42,7 @@ code_function_callt get_destructor(
              ns.follow(arg_type.subtype())==type)
           {
             const symbol_exprt symbol_expr(it->get(ID_name), it->type());
-
-            code_function_callt function_call;
-            function_call.function()=symbol_expr;
-
-            return function_call;
+            return code_function_callt(symbol_expr);
           }
         }
       }

@@ -12,15 +12,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "value_set_fi.h"
 
 #include <cassert>
+#include <iterator>
 #include <ostream>
 
-#include <util/symbol_table.h>
-#include <util/simplify_expr.h>
-#include <util/base_type.h>
-#include <util/std_expr.h>
-#include <util/prefix.h>
-#include <util/std_code.h>
 #include <util/arith_tools.h>
+#include <util/byte_operators.h>
+#include <util/prefix.h>
+#include <util/simplify_expr.h>
+#include <util/std_code.h>
+#include <util/std_expr.h>
+#include <util/symbol_table.h>
 
 #include <langapi/language_util.h>
 #include <util/c_types.h>
@@ -58,7 +59,7 @@ void value_set_fit::output(
     if(has_prefix(id2string(e.identifier), "value_set::dynamic_object"))
     {
       display_name=id2string(e.identifier)+e.suffix;
-      identifier="";
+      identifier.clear();
     }
     else
     {
@@ -103,7 +104,7 @@ void value_set_fit::output(
         result="<"+from_expr(ns, identifier, o)+", ";
 
         if(o_it->second)
-          result += integer2string(*o_it->second) + "";
+          result += integer2string(*o_it->second);
         else
           result+='*';
 
@@ -238,7 +239,7 @@ exprt value_set_fit::to_expr(const object_map_dt::value_type &it) const
 
   od.type()=od.object().type();
 
-  return od;
+  return std::move(od);
 }
 
 bool value_set_fit::make_union(const value_set_fit::valuest &new_values)
@@ -298,6 +299,16 @@ void value_set_fit::get_value_set(
   std::list<exprt> &value_set,
   const namespacet &ns) const
 {
+  std::vector<exprt> result_as_vector = get_value_set(expr, ns);
+  std::move(
+    result_as_vector.begin(),
+    result_as_vector.end(),
+    std::back_inserter(value_set));
+}
+
+std::vector<exprt>
+value_set_fit::get_value_set(const exprt &expr, const namespacet &ns) const
+{
   object_mapt object_map;
   get_value_set(expr, object_map, ns);
 
@@ -337,21 +348,24 @@ void value_set_fit::get_value_set(
       flat_map.write()[it->first]=it->second;
   }
 
+  std::vector<exprt> result;
   forall_objects(fit, flat_map.read())
-    value_set.push_back(to_expr(*fit));
+    result.push_back(to_expr(*fit));
 
-  #if 0
+#if 0
   // Sanity check!
   for(std::list<exprt>::const_iterator it=value_set.begin();
       it!=value_set.end();
       it++)
     assert(it->type().id()!="#REF");
-  #endif
+#endif
 
-  #if 0
+#if 0
   for(expr_sett::const_iterator it=value_set.begin(); it!=value_set.end(); it++)
     std::cout << "GET_VALUE_SET: " << format(*it) << '\n';
-  #endif
+#endif
+
+  return result;
 }
 
 void value_set_fit::get_value_set(
@@ -405,39 +419,44 @@ void value_set_fit::get_value_set_rec(
   }
   else if(expr.id()==ID_index)
   {
-    assert(expr.operands().size()==2);
-
-    const typet &type=ns.follow(expr.op0().type());
+    const typet &type = to_index_expr(expr).array().type();
 
     DATA_INVARIANT(type.id()==ID_array ||
-                   type.id()==ID_incomplete_array ||
                    type.id()=="#REF#",
                    "operand 0 of index expression must be an array");
 
-    get_value_set_rec(expr.op0(), dest, "[]"+suffix,
-                      original_type, ns, recursion_set);
+    get_value_set_rec(
+      to_index_expr(expr).array(),
+      dest,
+      "[]" + suffix,
+      original_type,
+      ns,
+      recursion_set);
 
     return;
   }
   else if(expr.id()==ID_member)
   {
-    assert(expr.operands().size()==1);
+    const auto &compound = to_member_expr(expr).compound();
 
-    if(expr.op0().is_not_nil())
+    if(compound.is_not_nil())
     {
-      const typet &type=ns.follow(expr.op0().type());
+      const typet &type = ns.follow(compound.type());
 
-      DATA_INVARIANT(type.id()==ID_struct ||
-                     type.id()==ID_union ||
-                     type.id()==ID_incomplete_struct ||
-                     type.id()==ID_incomplete_union,
-                     "operand 0 of member expression must be struct or union");
+      DATA_INVARIANT(
+        type.id() == ID_struct || type.id() == ID_union,
+        "operand 0 of member expression must be struct or union");
 
-      const std::string &component_name=
-        expr.get_string(ID_component_name);
+      const std::string &component_name =
+        id2string(to_member_expr(expr).get_component_name());
 
-      get_value_set_rec(expr.op0(), dest, "."+component_name+suffix,
-                        original_type, ns, recursion_set);
+      get_value_set_rec(
+        compound,
+        dest,
+        "." + component_name + suffix,
+        original_type,
+        ns,
+        recursion_set);
 
       return;
     }
@@ -465,22 +484,26 @@ void value_set_fit::get_value_set_rec(
   }
   else if(expr.id()==ID_if)
   {
-    if(expr.operands().size()!=3)
-      throw "if takes three operands";
-
-    get_value_set_rec(expr.op1(), dest, suffix,
-                      original_type, ns, recursion_set);
-    get_value_set_rec(expr.op2(), dest, suffix,
-                      original_type, ns, recursion_set);
+    get_value_set_rec(
+      to_if_expr(expr).true_case(),
+      dest,
+      suffix,
+      original_type,
+      ns,
+      recursion_set);
+    get_value_set_rec(
+      to_if_expr(expr).false_case(),
+      dest,
+      suffix,
+      original_type,
+      ns,
+      recursion_set);
 
     return;
   }
   else if(expr.id()==ID_address_of)
   {
-    if(expr.operands().size()!=1)
-      throw expr.id_string()+" expected to have one operand";
-
-    get_reference_set_sharing(expr.op0(), dest, ns);
+    get_reference_set_sharing(to_address_of_expr(expr).object(), dest, ns);
 
     return;
   }
@@ -502,26 +525,6 @@ void value_set_fit::get_value_set_rec(
       return;
     }
   }
-  else if(expr.id()=="reference_to")
-  {
-    object_mapt reference_set;
-
-    get_reference_set_sharing(expr, reference_set, ns);
-
-    const object_map_dt &object_map=reference_set.read();
-
-    if(object_map.begin()!=object_map.end())
-    {
-      forall_objects(it, object_map)
-      {
-        const exprt &object=object_numbering[it->first];
-        get_value_set_rec(object, dest, suffix,
-                          original_type, ns, recursion_set);
-      }
-
-      return;
-    }
-  }
   else if(expr.is_constant())
   {
     // check if NULL
@@ -534,11 +537,13 @@ void value_set_fit::get_value_set_rec(
   }
   else if(expr.id()==ID_typecast)
   {
-    if(expr.operands().size()!=1)
-      throw "typecast takes one operand";
-
-    get_value_set_rec(expr.op0(), dest, suffix,
-                      original_type, ns, recursion_set);
+    get_value_set_rec(
+      to_typecast_expr(expr).op(),
+      dest,
+      suffix,
+      original_type,
+      ns,
+      recursion_set);
 
     return;
   }
@@ -574,21 +579,21 @@ void value_set_fit::get_value_set_rec(
 
         if(offset_is_zero(offset) && expr.operands().size() == 2)
         {
-          if(expr.op0().type().id()!=ID_pointer)
+          if(to_binary_expr(expr).op0().type().id() != ID_pointer)
           {
-            mp_integer i;
-            if(to_integer(expr.op0(), i))
+            const auto i = numeric_cast<mp_integer>(to_binary_expr(expr).op0());
+            if(!i.has_value())
               offset.reset();
             else
-              *offset = (expr.id() == ID_plus) ? i : -i;
+              *offset = (expr.id() == ID_plus) ? *i : -*i;
           }
           else
           {
-            mp_integer i;
-            if(to_integer(expr.op1(), i))
+            const auto i = numeric_cast<mp_integer>(to_binary_expr(expr).op1());
+            if(!i.has_value())
               offset.reset();
             else
-              *offset = (expr.id() == ID_plus) ? i : -i;
+              *offset = (expr.id() == ID_plus) ? *i : -*i;
           }
         }
         else
@@ -602,7 +607,7 @@ void value_set_fit::get_value_set_rec(
   }
   else if(expr.id()==ID_side_effect)
   {
-    const irep_idt &statement=expr.get(ID_statement);
+    const irep_idt &statement = to_side_effect_expr(expr).get_statement();
 
     if(statement==ID_function_call)
     {
@@ -614,7 +619,7 @@ void value_set_fit::get_value_set_rec(
       if(expr.type().id()!=ID_pointer)
         throw "malloc expected to return pointer type";
 
-      assert(suffix=="");
+      PRECONDITION(suffix.empty());
 
       const typet &dynamic_type=
         static_cast<const typet &>(expr.find(ID_C_cxx_alloc_type));
@@ -631,7 +636,7 @@ void value_set_fit::get_value_set_rec(
     else if(statement==ID_cpp_new ||
             statement==ID_cpp_new_array)
     {
-      assert(suffix=="");
+      PRECONDITION(suffix.empty());
       assert(expr.type().id()==ID_pointer);
 
       dynamic_object_exprt dynamic_object(expr.type().subtype());
@@ -693,10 +698,7 @@ void value_set_fit::dereference_rec(
   {
     assert(src.type().id()==ID_pointer);
 
-    if(src.operands().size()!=1)
-      throw "typecast expects one operand";
-
-    dereference_rec(src.op0(), dest);
+    dereference_rec(to_typecast_expr(src).op(), dest);
   }
   else
     dest=src;
@@ -712,17 +714,17 @@ void value_set_fit::get_reference_set(
 
   forall_objects(it, object_map.read())
   {
-    const exprt &expr = object_numbering[it->first];
+    const exprt &object = object_numbering[it->first];
 
-    if(expr.type().id()=="#REF#")
+    if(object.type().id() == "#REF#")
     {
-      const irep_idt &ident = expr.get(ID_identifier);
+      const irep_idt &ident = object.get(ID_identifier);
       valuest::const_iterator vit = values.find(ident);
       if(vit==values.end())
       {
         // Assume the variable never was assigned,
         // so assume it's reference set is unknown.
-        dest.insert(exprt(ID_unknown, expr.type()));
+        dest.insert(exprt(ID_unknown, object.type()));
       }
       else
       {
@@ -741,8 +743,8 @@ void value_set_fit::get_reference_set(
             t_it->second.reset();
         }
 
-        forall_objects(it, omt.read())
-          dest.insert(to_expr(*it));
+        for(const auto &o : omt.read())
+          dest.insert(to_expr(o));
       }
     }
     else
@@ -796,12 +798,15 @@ void value_set_fit::get_reference_set_sharing_rec(
   }
   else if(expr.id()==ID_dereference)
   {
-    if(expr.operands().size()!=1)
-      throw expr.id_string()+" expected to have one operand";
-
     gvs_recursion_sett recset;
     object_mapt temp;
-    get_value_set_rec(expr.op0(), temp, "", expr.op0().type(), ns, recset);
+    get_value_set_rec(
+      to_dereference_expr(expr).pointer(),
+      temp,
+      "",
+      to_dereference_expr(expr).pointer().type(),
+      ns,
+      recset);
 
     // REF's need to be dereferenced manually!
     forall_objects(it, temp.read())
@@ -850,15 +855,12 @@ void value_set_fit::get_reference_set_sharing_rec(
   }
   else if(expr.id()==ID_index)
   {
-    if(expr.operands().size()!=2)
-      throw "index expected to have two operands";
+    const exprt &array = to_index_expr(expr).array();
+    const exprt &offset = to_index_expr(expr).index();
+    const typet &array_type = array.type();
 
-    const exprt &array=expr.op0();
-    const exprt &offset=expr.op1();
-    const typet &array_type=ns.follow(array.type());
-
-    assert(array_type.id()==ID_array ||
-           array_type.id()==ID_incomplete_array);
+    DATA_INVARIANT(
+      array_type.id() == ID_array, "index takes array-typed operand");
 
     object_mapt array_references;
     get_reference_set_sharing(array, array_references, ns);
@@ -876,23 +878,26 @@ void value_set_fit::get_reference_set_sharing_rec(
         index_exprt index_expr(
           object, from_integer(0, index_type()), expr.type());
 
+        exprt casted_index;
+
         // adjust type?
-        if(object.type().id()!="#REF#" &&
-           ns.follow(object.type())!=array_type)
-          index_expr.make_typecast(array.type());
+        if(object.type().id() != "#REF#" && object.type() != array_type)
+          casted_index = typecast_exprt(index_expr, array.type());
+        else
+          casted_index = index_expr;
 
         offsett o = a_it->second;
-        mp_integer i;
+        const auto i = numeric_cast<mp_integer>(offset);
 
         if(offset.is_zero())
         {
         }
-        else if(!to_integer(offset, i) && offset_is_zero(o))
-          *o = i;
+        else if(i.has_value() && offset_is_zero(o))
+          *o = *i;
         else
           o.reset();
 
-        insert(dest, index_expr, o);
+        insert(dest, casted_index, o);
       }
     }
 
@@ -902,10 +907,7 @@ void value_set_fit::get_reference_set_sharing_rec(
   {
     const irep_idt &component_name=expr.get(ID_component_name);
 
-    if(expr.operands().size()!=1)
-      throw "member expected to have one operand";
-
-    const exprt &struct_op=expr.op0();
+    const exprt &struct_op = to_member_expr(expr).compound();
 
     object_mapt struct_references;
     get_reference_set_sharing(struct_op, struct_references, ns);
@@ -913,13 +915,14 @@ void value_set_fit::get_reference_set_sharing_rec(
     forall_objects(it, struct_references.read())
     {
       const exprt &object=object_numbering[it->first];
-      const typet &obj_type=ns.follow(object.type());
+      const typet &obj_type = object.type();
 
       if(object.id()==ID_unknown)
         insert(dest, exprt(ID_unknown, expr.type()));
-      else if(object.id()==ID_dynamic_object &&
-              obj_type.id()!=ID_struct &&
-              obj_type.id()!=ID_union)
+      else if(
+        object.id() == ID_dynamic_object && obj_type.id() != ID_struct &&
+        obj_type.id() != ID_union && obj_type.id() != ID_struct_tag &&
+        obj_type.id() != ID_union_tag)
       {
         // we catch dynamic objects of the wrong type,
         // to avoid non-integral typecasts.
@@ -933,7 +936,10 @@ void value_set_fit::get_reference_set_sharing_rec(
 
         // adjust type?
         if(ns.follow(struct_op.type())!=ns.follow(object.type()))
-          member_expr.op0().make_typecast(struct_op.type());
+        {
+          member_expr.compound() =
+            typecast_exprt(member_expr.compound(), struct_op.type());
+        }
 
         insert(dest, member_expr, o);
       }
@@ -943,11 +949,8 @@ void value_set_fit::get_reference_set_sharing_rec(
   }
   else if(expr.id()==ID_if)
   {
-    if(expr.operands().size()!=3)
-      throw "if takes three operands";
-
-    get_reference_set_sharing_rec(expr.op1(), dest, ns);
-    get_reference_set_sharing_rec(expr.op2(), dest, ns);
+    get_reference_set_sharing_rec(to_if_expr(expr).true_case(), dest, ns);
+    get_reference_set_sharing_rec(to_if_expr(expr).false_case(), dest, ns);
     return;
   }
 
@@ -966,11 +969,8 @@ void value_set_fit::assign(
 
   if(rhs.id()==ID_if)
   {
-    if(rhs.operands().size()!=3)
-      throw "if takes three operands";
-
-    assign(lhs, rhs.op1(), ns);
-    assign(lhs, rhs.op2(), ns);
+    assign(lhs, to_if_expr(rhs).true_case(), ns);
+    assign(lhs, to_if_expr(rhs).false_case(), ns);
     return;
   }
 
@@ -989,7 +989,7 @@ void value_set_fit::assign(
         c_it++, no++)
     {
       const typet &subtype=c_it->type();
-      const irep_idt &name=c_it->get(ID_name);
+      const irep_idt &name = c_it->get_name();
 
       // ignore methods
       if(subtype.id()==ID_code)
@@ -1006,10 +1006,10 @@ void value_set_fit::assign(
       }
       else
       {
-        if(!base_type_eq(rhs.type(), type, ns))
+        if(rhs.type() != lhs.type())
           throw "value_set_fit::assign type mismatch: "
                 "rhs.type():\n"+rhs.type().pretty()+"\n"+
-                "type:\n"+type.pretty();
+                "type:\n"+lhs.type().pretty();
 
         if(rhs.id()==ID_struct ||
            rhs.id()==ID_constant)
@@ -1019,10 +1019,9 @@ void value_set_fit::assign(
         }
         else if(rhs.id()==ID_with)
         {
-          assert(rhs.operands().size()==3);
-
-          // see if op1 is the member we want
-          const exprt &member_operand=rhs.op1();
+          // see if this is the member we want
+          const auto &rhs_with = to_with_expr(rhs);
+          const exprt &member_operand = rhs_with.where();
 
           const irep_idt &component_name=
             member_operand.get(ID_component_name);
@@ -1030,13 +1029,13 @@ void value_set_fit::assign(
           if(component_name==name)
           {
             // yes! just take op2
-            rhs_member=rhs.op2();
+            rhs_member = rhs_with.new_value();
           }
           else
           {
             // no! do op0
             rhs_member=exprt(ID_member, subtype);
-            rhs_member.copy_to_operands(rhs.op0());
+            rhs_member.copy_to_operands(rhs_with.old());
             rhs_member.set(ID_component_name, name);
           }
         }
@@ -1067,15 +1066,14 @@ void value_set_fit::assign(
     }
     else
     {
-      if(!base_type_eq(rhs.type(), type, ns))
+      if(rhs.type() != type)
         throw "value_set_fit::assign type mismatch: "
               "rhs.type():\n"+rhs.type().pretty()+"\n"+
               "type:\n"+type.pretty();
 
       if(rhs.id()==ID_array_of)
       {
-        assert(rhs.operands().size()==1);
-        assign(lhs_index, rhs.op0(), ns);
+        assign(lhs_index, to_array_of_expr(rhs).what(), ns);
       }
       else if(rhs.id()==ID_array ||
               rhs.id()==ID_constant)
@@ -1087,13 +1085,13 @@ void value_set_fit::assign(
       }
       else if(rhs.id()==ID_with)
       {
-        assert(rhs.operands().size()==3);
-
         const index_exprt op0_index(
-          rhs.op0(), exprt(ID_unknown, index_type()), type.subtype());
+          to_with_expr(rhs).old(),
+          exprt(ID_unknown, index_type()),
+          type.subtype());
 
         assign(lhs_index, op0_index, ns);
-        assign(lhs_index, rhs.op2(), ns);
+        assign(lhs_index, to_with_expr(rhs).new_value(), ns);
       }
       else
       {
@@ -1112,83 +1110,6 @@ void value_set_fit::assign(
 
     assign_recursion_sett recset;
     assign_rec(lhs, values_rhs, "", ns, recset);
-  }
-}
-
-void value_set_fit::do_free(
-  const exprt &op,
-  const namespacet &ns)
-{
-  // op must be a pointer
-  if(op.type().id()!=ID_pointer)
-    throw "free expected to have pointer-type operand";
-
-  // find out what it points to
-  object_mapt value_set;
-  get_value_set(op, value_set, ns);
-  entryt e; e.identifier="VP:TEMP";
-  e.object_map = value_set;
-  flatten(e, value_set);
-
-  const object_map_dt &object_map=value_set.read();
-
-  // find out which *instances* interest us
-  dynamic_object_id_sett to_mark;
-
-  forall_objects(it, object_map)
-  {
-    const exprt &object=object_numbering[it->first];
-
-    if(object.id()==ID_dynamic_object)
-    {
-      const dynamic_object_exprt &dynamic_object=
-        to_dynamic_object_expr(object);
-
-      if(dynamic_object.valid().is_true())
-        to_mark.insert(dynamic_object.get_instance());
-    }
-  }
-
-  // mark these as 'may be invalid'
-  // this, unfortunately, destroys the sharing
-  for(valuest::iterator v_it=values.begin();
-      v_it!=values.end();
-      v_it++)
-  {
-    object_mapt new_object_map;
-
-    const object_map_dt &old_object_map=
-      v_it->second.object_map.read();
-
-    bool changed=false;
-
-    forall_objects(o_it, old_object_map)
-    {
-      const exprt &object=object_numbering[o_it->first];
-
-      if(object.id()==ID_dynamic_object)
-      {
-        const dynamic_object_exprt &dynamic_object=
-          to_dynamic_object_expr(object);
-
-        if(to_mark.count(dynamic_object.get_instance())==0)
-          set(new_object_map, *o_it);
-        else
-        {
-          // adjust
-          offsett o = o_it->second;
-          exprt tmp(object);
-          to_dynamic_object_expr(tmp).valid()=exprt(ID_unknown);
-          insert(new_object_map, tmp, o);
-          changed=true;
-        }
-      }
-      else
-        set(new_object_map, *o_it);
-    }
-
-    if(changed)
-      v_it->second.object_map=new_object_map;
   }
 }
 
@@ -1274,38 +1195,34 @@ void value_set_fit::assign_rec(
   }
   else if(lhs.id()==ID_index)
   {
-    if(lhs.operands().size()!=2)
-      throw "index expected to have two operands";
-
-    const typet &type=ns.follow(lhs.op0().type());
+    const typet &type = to_index_expr(lhs).array().type();
 
     DATA_INVARIANT(type.id()==ID_array ||
-                   type.id()==ID_incomplete_array ||
                    type.id()=="#REF#",
                    "operand 0 of index expression must be an array");
 
-    assign_rec(lhs.op0(), values_rhs, "[]"+suffix, ns, recursion_set);
+    assign_rec(
+      to_index_expr(lhs).array(), values_rhs, "[]" + suffix, ns, recursion_set);
   }
   else if(lhs.id()==ID_member)
   {
-    if(lhs.operands().size()!=1)
-      throw "member expected to have one operand";
-
-    if(lhs.op0().is_nil())
+    if(to_member_expr(lhs).compound().is_nil())
       return;
 
     const std::string &component_name=lhs.get_string(ID_component_name);
 
-    const typet &type=ns.follow(lhs.op0().type());
+    const typet &type = ns.follow(to_member_expr(lhs).compound().type());
 
-    DATA_INVARIANT(type.id()==ID_struct ||
-                   type.id()==ID_union ||
-                   type.id()==ID_incomplete_struct ||
-                   type.id()==ID_incomplete_union,
-                   "operand 0 of member expression must be struct or union");
+    DATA_INVARIANT(
+      type.id() == ID_struct || type.id() == ID_union,
+      "operand 0 of member expression must be struct or union");
 
-    assign_rec(lhs.op0(), values_rhs, "."+component_name+suffix,
-               ns, recursion_set);
+    assign_rec(
+      to_member_expr(lhs).compound(),
+      values_rhs,
+      "." + component_name + suffix,
+      ns,
+      recursion_set);
   }
   else if(lhs.id()=="valid_object" ||
           lhs.id()=="dynamic_size" ||
@@ -1337,11 +1254,11 @@ void value_set_fit::assign_rec(
   else if(lhs.id()==ID_byte_extract_little_endian ||
           lhs.id()==ID_byte_extract_big_endian)
   {
-    assert(lhs.operands().size()==2);
-    assign_rec(lhs.op0(), values_rhs, suffix, ns, recursion_set);
+    assign_rec(
+      to_byte_extract_expr(lhs).op(), values_rhs, suffix, ns, recursion_set);
   }
   else
-    throw "assign NYI: `"+lhs.id_string()+"'";
+    throw "assign NYI: '" + lhs.id_string() + "'";
 }
 
 void value_set_fit::do_function_call(
@@ -1363,7 +1280,7 @@ void value_set_fit::do_function_call(
   {
     const std::string identifier="value_set::" + id2string(function) + "::" +
                                  "argument$"+std::to_string(i);
-    add_var(identifier, "");
+    add_var(identifier);
     const symbol_exprt dummy_lhs(identifier, arguments[i].type());
     assign(dummy_lhs, arguments[i], ns);
   }
@@ -1381,7 +1298,7 @@ void value_set_fit::do_function_call(
     if(identifier.empty())
       continue;
 
-    add_var(identifier, "");
+    add_var(identifier);
 
     const exprt v_expr=
       symbol_exprt("value_set::" + id2string(function) + "::" +
@@ -1406,24 +1323,21 @@ void value_set_fit::do_end_function(
   assign(lhs, rhs, ns);
 }
 
-void value_set_fit::apply_code(
-  const exprt &code,
-  const namespacet &ns)
+void value_set_fit::apply_code(const codet &code, const namespacet &ns)
 {
   const irep_idt &statement=code.get(ID_statement);
 
   if(statement==ID_block)
   {
-    forall_operands(it, code)
-      apply_code(*it, ns);
+    for(const auto &stmt : to_code_block(code).statements())
+      apply_code(stmt, ns);
   }
   else if(statement==ID_function_call)
   {
     // shouldn't be here
     UNREACHABLE;
   }
-  else if(statement==ID_assign ||
-          statement==ID_init)
+  else if(statement==ID_assign)
   {
     if(code.operands().size()!=2)
       throw "assignment expected to have two operands";
@@ -1451,15 +1365,6 @@ void value_set_fit::apply_code(
   {
     // does nothing
   }
-  else if(statement==ID_free)
-  {
-    // this may kill a valid bit
-
-    if(code.operands().size()!=1)
-      throw "free expected to have one operand";
-
-    do_free(code.op0(), ns);
-  }
   else if(statement=="lock" || statement=="unlock")
   {
     // ignore for now
@@ -1478,12 +1383,13 @@ void value_set_fit::apply_code(
   }
   else if(statement==ID_return)
   {
+    const code_returnt &code_return = to_code_return(code);
     // this is turned into an assignment
-    if(code.operands().size()==1)
+    if(code_return.has_return_value())
     {
       std::string rvs="value_set::return_value"+std::to_string(from_function);
-      symbol_exprt lhs(rvs, code.op0().type());
-      assign(lhs, code.op0(), ns);
+      symbol_exprt lhs(rvs, code_return.return_value().type());
+      assign(lhs, code_return.return_value(), ns);
     }
   }
   else if(statement==ID_fence)
@@ -1494,7 +1400,7 @@ void value_set_fit::apply_code(
           statement==ID_array_set)
   {
   }
-  else if(statement==ID_input || statement==ID_output)
+  else if(can_cast_expr<code_inputt>(code) || can_cast_expr<code_outputt>(code))
   {
     // doesn't do anything
   }

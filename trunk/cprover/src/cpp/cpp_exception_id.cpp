@@ -12,6 +12,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include "cpp_exception_id.h"
 
 #include <util/invariant.h>
+#include <util/std_types.h>
 
 /// turns a type into a list of relevant exception IDs
 void cpp_exception_list_rec(
@@ -20,11 +21,7 @@ void cpp_exception_list_rec(
   const std::string &suffix,
   std::vector<irep_idt> &dest)
 {
-  if(src.id() == ID_symbol_type)
-  {
-    cpp_exception_list_rec(ns.follow(src), ns, suffix, dest);
-  }
-  else if(src.id()==ID_pointer)
+  if(src.id() == ID_pointer)
   {
     if(src.get_bool(ID_C_reference))
     {
@@ -37,10 +34,18 @@ void cpp_exception_list_rec(
       cpp_exception_list_rec(src.subtype(), ns, "_ptr"+suffix, dest);
     }
   }
+  else if(src.id() == ID_union_tag)
+  {
+    cpp_exception_list_rec(ns.follow_tag(to_union_tag_type(src)), ns, suffix, dest);
+  }
   else if(src.id()==ID_union)
   {
     // just get tag
     dest.push_back("union_"+src.get_string(ID_tag));
+  }
+  else if(src.id() == ID_struct_tag)
+  {
+    cpp_exception_list_rec(ns.follow_tag(to_struct_tag_type(src)), ns, suffix, dest);
   }
   else if(src.id()==ID_struct)
   {
@@ -48,13 +53,8 @@ void cpp_exception_list_rec(
     dest.push_back("struct_"+src.get_string(ID_tag));
 
     // now do any bases, recursively
-    const irept::subt &bases=src.find(ID_bases).get_sub();
-
-    forall_irep(it, bases)
-    {
-      const typet &type=static_cast<const typet &>(it->find(ID_type));
-      cpp_exception_list_rec(type, ns, suffix, dest);
-    }
+    for(const auto &b : to_struct_type(src).bases())
+      cpp_exception_list_rec(b.type(), ns, suffix, dest);
   }
   else
   {

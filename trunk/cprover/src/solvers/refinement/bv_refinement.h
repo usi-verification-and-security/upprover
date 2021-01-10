@@ -12,8 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_REFINEMENT_BV_REFINEMENT_H
 #define CPROVER_SOLVERS_REFINEMENT_BV_REFINEMENT_H
 
-#include <util/ui_message.h>
-
 #include <solvers/flattening/bv_pointers.h>
 
 #define MAX_STATE 10000
@@ -23,7 +21,7 @@ class bv_refinementt:public bv_pointerst
 private:
   struct configt
   {
-    ui_message_handlert::uit ui=ui_message_handlert::uit::PLAIN;
+    bool output_xml = false;
     /// Max number of times we refine a formula node
     unsigned max_node_refinement=5;
     /// Enable array refinement
@@ -36,6 +34,7 @@ public:
   {
     const namespacet *ns=nullptr;
     propt *prop=nullptr;
+    message_handlert *message_handler = nullptr;
   };
 
   explicit bv_refinementt(const infot &info);
@@ -53,12 +52,10 @@ protected:
   void post_process_arrays() override;
 
   // Refine arithmetic
-  bvt convert_mult(const exprt &expr) override;
+  bvt convert_mult(const mult_exprt &expr) override;
   bvt convert_div(const div_exprt &expr) override;
   bvt convert_mod(const mod_exprt &expr) override;
-  bvt convert_floatbv_op(const exprt &expr) override;
-
-  void set_assumptions(const bvt &_assumptions) override;
+  bvt convert_floatbv_op(const ieee_float_op_exprt &) override;
 
 private:
   // the list of operator approximations
@@ -79,8 +76,8 @@ private:
     bvt op0_bv, op1_bv, op2_bv, result_bv;
     mp_integer op0_value, op1_value, op2_value, result_value;
 
-    bvt under_assumptions;
-    bvt over_assumptions;
+    std::vector<exprt> under_assumptions;
+    std::vector<exprt> over_assumptions;
 
     // the kind of under- or over-approximation
     unsigned under_state, over_state;
@@ -109,7 +106,7 @@ private:
 
   bool progress;
   std::list<approximationt> approximations;
-  bvt parent_assumptions;
+
 protected:
   // use gui format
   configt config_;

@@ -45,18 +45,16 @@ void build_havoc_code(
       m_it++)
   {
     exprt lhs=*m_it;
-    exprt rhs =
-      side_effect_expr_nondett(lhs.type(), loop_head->source_location);
+    side_effect_expr_nondett rhs(lhs.type(), loop_head->source_location);
 
-    goto_programt::targett t=dest.add_instruction(ASSIGN);
-    t->function=loop_head->function;
-    t->source_location=loop_head->source_location;
-    t->code=code_assignt(lhs, rhs);
+    goto_programt::targett t = dest.add(goto_programt::make_assignment(
+      code_assignt(std::move(lhs), std::move(rhs)),
+      loop_head->source_location));
     t->code.add_source_location()=loop_head->source_location;
   }
 }
 
-static void get_modifies_lhs(
+void get_modifies_lhs(
   const local_may_aliast &local_may_alias,
   goto_programt::const_targett t,
   const exprt &lhs,

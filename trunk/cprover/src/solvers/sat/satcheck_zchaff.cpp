@@ -8,7 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "satcheck_zchaff.h"
 
-#include <cassert>
+#include <util/invariant.h>
 
 #include <zchaff_solver.h>
 
@@ -25,7 +25,7 @@ satcheck_zchaff_baset::~satcheck_zchaff_baset()
 
 tvt satcheck_zchaff_baset::l_get(literalt a) const
 {
-  assert(status==SAT);
+  PRECONDITION(status == SAT);
 
   if(a.is_true())
     return tvt(true);
@@ -34,7 +34,9 @@ tvt satcheck_zchaff_baset::l_get(literalt a) const
 
   tvt result;
 
-  assert(a.var_no()<solver->variables().size());
+  INVARIANT(
+    a.var_no() < solver->variables().size(),
+    "variable number shall be within bounds");
 
   switch(solver->variable(a.var_no()).value())
   {
@@ -56,7 +58,7 @@ const std::string satcheck_zchaff_baset::solver_text()
 
 void satcheck_zchaff_baset::copy_cnf()
 {
-  assert(status==INIT);
+  PRECONDITION(status == INIT);
 
   // this can only be called once
   solver->set_variable_number(no_variables());
@@ -68,10 +70,10 @@ void satcheck_zchaff_baset::copy_cnf()
       reinterpret_cast<int*>(&((*it)[0])), it->size());
 }
 
-propt::resultt satcheck_zchaff_baset::prop_solve()
+propt::resultt satcheck_zchaff_baset::do_prop_solve()
 {
   // this is *not* incremental
-  assert(status==INIT);
+  PRECONDITION(status == INIT);
 
   copy_cnf();
 
@@ -79,7 +81,7 @@ propt::resultt satcheck_zchaff_baset::prop_solve()
     std::string msg=
       std::to_string(solver->num_variables())+" variables, "+
       std::to_string(solver->clauses().size())+" clauses";
-    messaget::status() << msg << messaget::eom;
+    log.statistics() << msg << messaget::eom;
   }
 
   SAT_StatusT result=(SAT_StatusT)solver->solve();
@@ -118,15 +120,17 @@ propt::resultt satcheck_zchaff_baset::prop_solve()
       break;
     }
 
-    messaget::status() << msg << messaget::eom;
+    log.status() << msg << messaget::eom;
   }
 
   if(result==SATISFIABLE)
   {
     // see if it is complete
     for(unsigned i=1; i<solver->variables().size(); i++)
-      assert(solver->variables()[i].value()==0 ||
-             solver->variables()[i].value()==1);
+      INVARIANT(
+        solver->variables()[i].value() == 0 ||
+          solver->variables()[i].value() == 1,
+        "all variables shall have been assigned");
   }
 
   #ifdef DEBUG

@@ -15,7 +15,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #include <sstream>
 
-dimacs_cnft::dimacs_cnft():break_lines(false)
+dimacs_cnft::dimacs_cnft(message_handlert &message_handler)
+  : cnf_clause_listt(message_handler), break_lines(false)
 {
 }
 
@@ -30,7 +31,10 @@ bool dimacs_cnft::is_in_conflict(literalt) const
   return false;
 }
 
-dimacs_cnf_dumpt::dimacs_cnf_dumpt(std::ostream &_out):out(_out)
+dimacs_cnf_dumpt::dimacs_cnf_dumpt(
+  std::ostream &_out,
+  message_handlert &message_handler)
+  : cnft(message_handler), out(_out)
 {
 }
 

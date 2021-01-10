@@ -12,15 +12,19 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_BASE_TYPE_H
 #define CPROVER_UTIL_BASE_TYPE_H
 
+#include "deprecate.h"
+
 class exprt;
 class typet;
 class namespacet;
 
+DEPRECATED(SINCE(2019, 1, 22, "Use == instead"))
 bool base_type_eq(
   const typet &type1,
   const typet &type2,
   const namespacet &ns);
 
+DEPRECATED(SINCE(2019, 1, 22, "Use == instead"))
 bool base_type_eq(
   const exprt &expr1,
   const exprt &expr2,

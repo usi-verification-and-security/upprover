@@ -16,16 +16,17 @@ Author: Martin Brain, martin.brain@diffblue.com
 
 #include <iostream>
 
+bool cbmc_invariants_should_throw = false;
+
 // Backtraces compiler and C library specific
 // So we should include something explicitly from the C library
 // to check if the C library is glibc.
 #include <assert.h>
-#ifdef __GLIBC__
+#if defined(__GLIBC__) || defined(__APPLE__)
 
 // GCC needs LINKFLAGS="-rdynamic" to give function names in the backtrace
 #include <execinfo.h>
 #include <cxxabi.h>
-
 
 /// Attempts to demangle the function name assuming the glibc
 /// format of stack entry:
@@ -78,7 +79,7 @@ static bool output_demangled_name(
 void print_backtrace(
   std::ostream &out)
 {
-#ifdef __GLIBC__
+#if defined(__GLIBC__) || defined(__APPLE__)
     void * stack[50] = {};
 
     std::size_t entries=backtrace(stack, sizeof(stack) / sizeof(void *));

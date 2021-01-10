@@ -18,15 +18,13 @@ void goto_convertt::convert_msc_try_finally(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  if(code.operands().size()!=2)
-  {
-    error().source_location=code.find_source_location();
-    error() << "msc_try_finally expects two arguments" << eom;
-    throw 0;
-  }
+  INVARIANT_WITH_DIAGNOSTICS(
+    code.operands().size() == 2,
+    "msc_try_finally expects two arguments",
+    code.find_source_location());
 
   goto_programt tmp;
-  tmp.add_instruction(SKIP)->source_location=code.source_location();
+  tmp.add(goto_programt::make_skip(code.source_location()));
 
   {
     // save 'leave' target
@@ -34,13 +32,14 @@ void goto_convertt::convert_msc_try_finally(
     targets.set_leave(tmp.instructions.begin());
 
     // first put 'finally' code onto destructor stack
-    targets.destructor_stack.push_back(to_code(code.op1()));
+    node_indext old_stack_top = targets.destructor_stack.get_current_node();
+    targets.destructor_stack.add(to_code(code.op1()));
 
     // do 'try' code
     convert(to_code(code.op0()), dest, mode);
 
     // pop 'finally' from destructor stack
-    targets.destructor_stack.pop_back();
+    targets.destructor_stack.set_current_node(old_stack_top);
 
     // 'leave' target gets restored here
   }
@@ -57,12 +56,10 @@ void goto_convertt::convert_msc_try_except(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  if(code.operands().size()!=3)
-  {
-    error().source_location=code.find_source_location();
-    error() << "msc_try_except expects three arguments" << eom;
-    throw 0;
-  }
+  INVARIANT_WITH_DIAGNOSTICS(
+    code.operands().size() == 3,
+    "msc_try_except expects three arguments",
+    code.find_source_location());
 
   convert(to_code(code.op0()), dest, mode);
 
@@ -74,26 +71,15 @@ void goto_convertt::convert_msc_leave(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  if(!targets.leave_set)
-  {
-    error().source_location=code.find_source_location();
-    error() << "leave without target" << eom;
-    throw 0;
-  }
+  INVARIANT_WITH_DIAGNOSTICS(
+    targets.leave_set, "leave without target", code.find_source_location());
 
   // need to process destructor stack
-  for(std::size_t d=targets.destructor_stack.size();
-      d!=targets.leave_stack_size;
-      d--)
-  {
-    codet d_code=targets.destructor_stack[d-1];
-    d_code.add_source_location()=code.source_location();
-    convert(d_code, dest, mode);
-  }
+  unwind_destructor_stack(
+    code.source_location(), dest, mode, targets.leave_stack_node);
 
-  goto_programt::targett t=dest.add_instruction();
-  t->make_goto(targets.leave_target);
-  t->source_location=code.source_location();
+  dest.add(
+    goto_programt::make_goto(targets.leave_target, code.source_location()));
 }
 
 void goto_convertt::convert_try_catch(
@@ -101,12 +87,14 @@ void goto_convertt::convert_try_catch(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  assert(code.operands().size()>=2);
+  INVARIANT_WITH_DIAGNOSTICS(
+    code.operands().size() >= 2,
+    "try_catch expects at least two arguments",
+    code.find_source_location());
 
   // add the CATCH-push instruction to 'dest'
-  goto_programt::targett catch_push_instruction=dest.add_instruction();
-  catch_push_instruction->make_catch();
-  catch_push_instruction->source_location=code.source_location();
+  goto_programt::targett catch_push_instruction =
+    dest.add(goto_programt::make_catch(code.source_location()));
 
   code_push_catcht push_catch_code;
 
@@ -117,19 +105,18 @@ void goto_convertt::convert_try_catch(
 
   // add a SKIP target for the end of everything
   goto_programt end;
-  goto_programt::targett end_target=end.add_instruction();
-  end_target->make_skip();
+  goto_programt::targett end_target = end.add(goto_programt::make_skip());
 
   // the first operand is the 'try' block
   convert(to_code(code.op0()), dest, mode);
 
   // add the CATCH-pop to the end of the 'try' block
-  goto_programt::targett catch_pop_instruction=dest.add_instruction();
-  catch_pop_instruction->make_catch();
-  catch_pop_instruction->code=code_pop_catcht();
+  goto_programt::targett catch_pop_instruction =
+    dest.add(goto_programt::make_catch());
+  catch_pop_instruction->code = code_pop_catcht();
 
   // add a goto to the end of the 'try' block
-  dest.add_instruction()->make_goto(end_target);
+  dest.add(goto_programt::make_goto(end_target));
 
   for(std::size_t i=1; i<code.operands().size(); i++)
   {
@@ -145,7 +132,7 @@ void goto_convertt::convert_try_catch(
     dest.destructive_append(tmp);
 
     // add a goto to the end of the 'catch' block
-    dest.add_instruction()->make_goto(end_target);
+    dest.add(goto_programt::make_goto(end_target));
   }
 
   catch_push_instruction->code=push_catch_code;
@@ -159,34 +146,32 @@ void goto_convertt::convert_CPROVER_try_catch(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  if(code.operands().size()!=2)
-  {
-    error().source_location=code.find_source_location();
-    error() << "CPROVER_try_catch expects two arguments" << eom;
-    throw 0;
-  }
+  INVARIANT_WITH_DIAGNOSTICS(
+    code.operands().size() == 2,
+    "CPROVER_try_catch expects two arguments",
+    code.find_source_location());
 
   // this is where we go after 'throw'
   goto_programt tmp;
-  tmp.add_instruction(SKIP)->source_location=code.source_location();
+  tmp.add(goto_programt::make_skip(code.source_location()));
 
   // set 'throw' target
   throw_targett throw_target(targets);
   targets.set_throw(tmp.instructions.begin());
 
   // now put 'catch' code onto destructor stack
-  code_ifthenelset catch_code;
-  catch_code.cond()=exception_flag();
+  code_ifthenelset catch_code(exception_flag(mode), to_code(code.op1()));
   catch_code.add_source_location()=code.source_location();
-  catch_code.then_case()=to_code(code.op1());
 
-  targets.destructor_stack.push_back(catch_code);
+  // Store the point before the temp catch code.
+  node_indext old_stack_top = targets.destructor_stack.get_current_node();
+  targets.destructor_stack.add(catch_code);
 
   // now convert 'try' code
   convert(to_code(code.op0()), dest, mode);
 
   // pop 'catch' code off stack
-  targets.destructor_stack.pop_back();
+  targets.destructor_stack.set_current_node(old_stack_top);
 
   // add 'throw' target
   dest.destructive_append(tmp);
@@ -198,35 +183,28 @@ void goto_convertt::convert_CPROVER_throw(
   const irep_idt &mode)
 {
   // set the 'exception' flag
-  {
-    goto_programt::targett t_set_exception=
-      dest.add_instruction(ASSIGN);
-
-    t_set_exception->source_location=code.source_location();
-    t_set_exception->code=code_assignt(exception_flag(), true_exprt());
-  }
+  dest.add(goto_programt::make_assignment(
+    exception_flag(mode), true_exprt(), code.source_location()));
 
   // do we catch locally?
   if(targets.throw_set)
   {
     // need to process destructor stack
     unwind_destructor_stack(
-      code.source_location(), targets.throw_stack_size, dest, mode);
+      code.source_location(), dest, mode, targets.throw_stack_node);
 
     // add goto
-    goto_programt::targett t=dest.add_instruction();
-    t->make_goto(targets.throw_target);
-    t->source_location=code.source_location();
+    dest.add(
+      goto_programt::make_goto(targets.throw_target, code.source_location()));
   }
   else // otherwise, we do a return
   {
     // need to process destructor stack
-    unwind_destructor_stack(code.source_location(), 0, dest, mode);
+    unwind_destructor_stack(code.source_location(), dest, mode);
 
     // add goto
-    goto_programt::targett t=dest.add_instruction();
-    t->make_goto(targets.return_target);
-    t->source_location=code.source_location();
+    dest.add(
+      goto_programt::make_goto(targets.return_target, code.source_location()));
   }
 }
 
@@ -235,27 +213,26 @@ void goto_convertt::convert_CPROVER_try_finally(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  if(code.operands().size()!=2)
-  {
-    error().source_location=code.find_source_location();
-    error() << "CPROVER_try_finally expects two arguments" << eom;
-    throw 0;
-  }
+  INVARIANT_WITH_DIAGNOSTICS(
+    code.operands().size() == 2,
+    "CPROVER_try_finally expects two arguments",
+    code.find_source_location());
 
   // first put 'finally' code onto destructor stack
-  targets.destructor_stack.push_back(to_code(code.op1()));
+  node_indext old_stack_top = targets.destructor_stack.get_current_node();
+  targets.destructor_stack.add(to_code(code.op1()));
 
   // do 'try' code
   convert(to_code(code.op0()), dest, mode);
 
   // pop 'finally' from destructor stack
-  targets.destructor_stack.pop_back();
+  targets.destructor_stack.set_current_node(old_stack_top);
 
   // now add 'finally' code
   convert(to_code(code.op1()), dest, mode);
 }
 
-symbol_exprt goto_convertt::exception_flag()
+symbol_exprt goto_convertt::exception_flag(const irep_idt &mode)
 {
   irep_idt id="$exception_flag";
 
@@ -271,45 +248,81 @@ symbol_exprt goto_convertt::exception_flag()
     new_symbol.is_thread_local=true;
     new_symbol.is_file_local=false;
     new_symbol.type=bool_typet();
+    new_symbol.mode = mode;
     symbol_table.insert(std::move(new_symbol));
   }
 
   return symbol_exprt(id, bool_typet());
 }
 
+/// Unwinds the destructor stack and creates destructors for each node between
+/// destructor_start_point and destructor_end_point (including the start,
+/// excluding the end).
+///
+/// If \p end_index isn't passed, it will unwind the whole stack.
+/// If \p start_index isn't passed, it will unwind from the current node.
+///
+/// When destructors are non-trivial (i.e. if they contain DECL or GOTO
+/// statements) then unwinding becomes more complicated because when we call
+/// convert on the destructor code it may recursively invoke this function.
+///
+/// Say we have a tree of [3, 2, 1, 0] and we start unwinding from top to
+/// bottom. If node 1 has such a non-trivial destructor during the convert it
+/// will add nodes to the tree so it ends up looking like this:
+///
+///     3, 2, 1, 0
+///        5, 4,/
+///
+/// If for example the destructor contained a THROW statement then it would
+/// unwind destroying variables 5, 4 and finally 0. Note that we don't have 1
+/// here even if that was the instruction that triggered the recursive unwind
+/// because it's already been popped off before convert is called.
+///
+/// After our unwind has finished, we return to our [3, 2, 1, 0] branch and
+/// continue processing the branch for destructor 0.
 void goto_convertt::unwind_destructor_stack(
   const source_locationt &source_location,
-  std::size_t final_stack_size,
   goto_programt &dest,
-  const irep_idt &mode)
+  const irep_idt &mode,
+  optionalt<node_indext> end_index,
+  optionalt<node_indext> starting_index)
 {
-  unwind_destructor_stack(
-    source_location, final_stack_size, dest, targets.destructor_stack, mode);
-}
+  // As we go we'll keep targets.destructor_stack.current_node pointing at the
+  // next node we intend to destroy, so that if our convert(...) call for each
+  // destructor returns, throws or otherwise unwinds then it will carry on from
+  // the correct point in the stack of variables we intend to destroy, and if it
+  // contains any DECL statements they will be added as a new child branch,
+  // again at the right point.
 
-void goto_convertt::unwind_destructor_stack(
-  const source_locationt &source_location,
-  std::size_t final_stack_size,
-  goto_programt &dest,
-  destructor_stackt &destructor_stack,
-  const irep_idt &mode)
-{
-  // There might be exceptions happening in the exception
-  // handler. We thus pop off the stack, and then later
-  // one restore the original stack.
-  destructor_stackt old_stack=destructor_stack;
+  // We back up the current node as of entering this function so this
+  // side-effect is only noticed by that convert(...) call.
 
-  while(destructor_stack.size()>final_stack_size)
+  node_indext start_id =
+    starting_index.value_or(targets.destructor_stack.get_current_node());
+
+  targets.destructor_stack.set_current_node(start_id);
+
+  node_indext end_id = end_index.value_or(0);
+
+  while(targets.destructor_stack.get_current_node() > end_id)
   {
-    codet d_code=destructor_stack.back();
-    d_code.add_source_location()=source_location;
+    node_indext current_node = targets.destructor_stack.get_current_node();
 
-    // pop now to avoid doing this again
-    destructor_stack.pop_back();
+    optionalt<codet> &destructor =
+      targets.destructor_stack.get_destructor(current_node);
 
-    convert(d_code, dest, mode);
+    // Descend the tree before unwinding so we don't re-do the current node
+    // in event that convert(...) recurses into this function:
+    targets.destructor_stack.descend_tree();
+    if(destructor)
+    {
+      // Copy, assign source location then convert.
+      codet copied_instruction = *destructor;
+      copied_instruction.add_source_location() = source_location;
+      convert(copied_instruction, dest, mode);
+    }
   }
 
-  // Now restore old stack.
-  old_stack.swap(destructor_stack);
+  // Restore the working destructor stack to how it was before we began:
+  targets.destructor_stack.set_current_node(start_id);
 }

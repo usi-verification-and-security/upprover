@@ -16,10 +16,15 @@ Author: Michael Tautschnig, 2018
 
 #include <cstring>
 
+#if defined(__APPLE__)
+#  include <sys/stat.h>
+#endif
+
 int hybrid_binary(
   const std::string &compiler_or_linker,
   const std::string &goto_binary_file,
   const std::string &output_file,
+  bool building_executable,
   message_handlert &message_handler)
 {
   messaget message(message_handler);
@@ -27,6 +32,9 @@ int hybrid_binary(
   int result;
 
 #if defined(__linux__) || defined(__FreeBSD_kernel__)
+  // we can use objcopy for both object files and executables
+  (void)building_executable;
+
   std::string objcopy_cmd;
 
   if(has_suffix(compiler_or_linker, "-ld"))
@@ -52,7 +60,7 @@ int hybrid_binary(
       "--remove-section", "goto-cc",
       "--add-section", "goto-cc=" + goto_binary_file, output_file};
 
-    result = run(objcopy_argv[0], objcopy_argv, "", "");
+    result = run(objcopy_argv[0], objcopy_argv);
   }
 
   // delete the goto binary
@@ -69,9 +77,10 @@ int hybrid_binary(
   // Mac
 
   message.debug() << "merging " << output_file << " and " << goto_binary_file
-                  << " using lipo"
+                  << " using " << (building_executable ? "lipo" : "ld")
                   << messaget::eom;
 
+  if(building_executable)
   {
     // Add goto-binary as hppa7100LC section.
     // This overwrites if there's already one.
@@ -79,7 +88,39 @@ int hybrid_binary(
       "lipo", output_file, "-create", "-arch", "hppa7100LC", goto_binary_file,
       "-output", output_file };
 
-    result = run(lipo_argv[0], lipo_argv, "", "");
+    result = run(lipo_argv[0], lipo_argv);
+
+    if(result == 0)
+    {
+      // lipo creates an output file, but it does not set execute permissions,
+      // so the user is unable to directly execute the output file until its
+      // chmod +x
+      mode_t current_umask = umask(0);
+      umask(current_umask);
+      int chmod_result = chmod(
+        output_file.c_str(), (S_IRWXU | S_IRWXG | S_IRWXO) & ~current_umask);
+      if(chmod_result != 0)
+      {
+        message.error() << "Setting execute permissions failed: "
+                        << std::strerror(errno) << messaget::eom;
+        result = chmod_result;
+      }
+    }
+  }
+  else
+  {
+    // This fails if there's already one.
+    std::vector<std::string> ld_argv = {"ld",
+                                        "-r",
+                                        "-sectcreate",
+                                        "__TEXT",
+                                        "goto-cc",
+                                        goto_binary_file,
+                                        output_file,
+                                        "-o",
+                                        output_file};
+
+    result = run(ld_argv[0], ld_argv);
   }
 
   // delete the goto binary
@@ -93,6 +134,11 @@ int hybrid_binary(
   }
 
 #else
+  // unused parameters
+  (void)compiler_or_linker;
+  (void)goto_binary_file;
+  (void)output_file;
+  (void)building_executable;
   message.error() << "binary merging not implemented for this platform"
                   << messaget::eom;
   result = 1;

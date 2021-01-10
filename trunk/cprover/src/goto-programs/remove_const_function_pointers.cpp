@@ -47,7 +47,7 @@ remove_const_function_pointerst::remove_const_function_pointerst(
 /// variations within.
 /// \param base_expression: The function call through a function pointer
 /// \param out_functions: The functions that (symbols of type ID_code) the base
-/// expression could take.
+///   expression could take.
 /// \return Returns true if it was able to resolve the call, false if not. If it
 ///   returns true, out_functions will be populated by all the possible values
 ///   the function pointer could be.
@@ -75,7 +75,7 @@ exprt remove_const_function_pointerst::replace_const_symbols(
     if(is_const_expression(expression))
     {
       const symbolt &symbol =
-        *symbol_table.lookup(to_symbol_expr(expression).get_identifier());
+        symbol_table.lookup_ref(to_symbol_expr(expression).get_identifier());
       if(symbol.type.id()!=ID_code)
       {
         const exprt &symbol_value=symbol.value;
@@ -111,8 +111,7 @@ exprt remove_const_function_pointerst::replace_const_symbols(
 exprt remove_const_function_pointerst::resolve_symbol(
   const symbol_exprt &symbol_expr) const
 {
-  const symbolt &symbol=
-    *symbol_table.lookup(symbol_expr.get_identifier());
+  const symbolt &symbol = symbol_table.lookup_ref(symbol_expr.get_identifier());
   return symbol.value;
 }
 
@@ -127,7 +126,7 @@ exprt remove_const_function_pointerst::resolve_symbol(
 bool remove_const_function_pointerst::try_resolve_function_call(
   const exprt &expr, functionst &out_functions)
 {
-  assert(out_functions.empty());
+  PRECONDITION(out_functions.empty());
   const exprt &simplified_expr=simplify_expr(expr, ns);
   bool resolved=false;
   functionst resolved_functions;
@@ -537,8 +536,8 @@ bool remove_const_function_pointerst::try_resolve_index_of(
         if(try_resolve_index_value(index_expr.index(), value))
         {
           expressionst array_out_functions;
-          const exprt &func_expr=
-            potential_array_expr.operands()[integer2size_t(value)];
+          const exprt &func_expr =
+            potential_array_expr.operands()[numeric_cast_v<std::size_t>(value)];
           bool value_const=false;
           bool resolved_value=
             try_resolve_expression(func_expr, array_out_functions, value_const);
@@ -697,11 +696,10 @@ bool remove_const_function_pointerst::try_resolve_dereference(
         address_of_exprt address_expr=to_address_of_expr(pointer_val);
         bool object_const=false;
         expressionst out_object_values;
-        bool resolved=
-          try_resolve_expression(
-            address_expr.object(), out_object_values, object_const);
+        const bool resolved_address = try_resolve_expression(
+          address_expr.object(), out_object_values, object_const);
 
-        if(resolved)
+        if(resolved_address)
         {
           out_expressions.insert(
             out_expressions.end(),

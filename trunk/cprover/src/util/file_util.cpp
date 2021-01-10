@@ -13,7 +13,7 @@ Date: January 2012
 
 #include "file_util.h"
 
-#include "invariant.h"
+#include "exception_utils.h"
 
 #include <cerrno>
 #include <cstring>
@@ -32,35 +32,58 @@ Date: January 2012
 #endif
 
 #ifdef _WIN32
+#include <util/pragma_push.def>
+#ifdef _MSC_VER
+#pragma warning(disable:4668)
+  // using #if/#elif on undefined macro
+#pragma warning(disable : 5039)
+// pointer or reference to potentially throwing function passed to extern C
+#endif
 #include <io.h>
 #include <windows.h>
 #include <direct.h>
 #include <util/unicode.h>
 #define chdir _chdir
-#define popen _popen
-#define pclose _pclose
+#include <util/pragma_pop.def>
 #endif
 
 /// \return current working directory
 std::string get_current_working_directory()
 {
-  #ifndef _WIN32
+#ifndef _WIN32
   errno=0;
   char *wd=realpath(".", nullptr);
-  INVARIANT(
-    wd!=nullptr && errno==0,
-    std::string("realpath failed: ")+strerror(errno));
+
+  if(wd == nullptr || errno != 0)
+    throw system_exceptiont(
+      std::string("realpath failed: ") + std::strerror(errno));
 
   std::string working_directory=wd;
   free(wd);
-  #else
-  char buffer[4096];
+#else
+  TCHAR buffer[4096];
   DWORD retval=GetCurrentDirectory(4096, buffer);
-  CHECK_RETURN(retval>0);
+  if(retval == 0)
+    throw system_exceptiont("failed to get current directory of process");
+
+#  ifdef UNICODE
+  std::string working_directory(narrow(buffer));
+#  else
   std::string working_directory(buffer);
-  #endif
+#  endif
+
+#endif
 
   return working_directory;
+}
+
+/// Set working directory.
+/// \param path: New working directory to change to
+void set_current_path(const std::string &path)
+{
+  if(chdir(path.c_str()) != 0)
+    throw system_exceptiont(
+      std::string("chdir failed: ") + std::strerror(errno));
 }
 
 /// deletes all files in 'path' and then the directory itself
@@ -112,7 +135,8 @@ void delete_directory(const std::string &path)
       struct stat stbuf;
       int result=stat(sub_path.c_str(), &stbuf);
       if(result!=0)
-        throw std::string("Stat failed: ")+std::strerror(errno);
+        throw system_exceptiont(
+          std::string("Stat failed: ") + std::strerror(errno));
 
       if(S_ISDIR(stbuf.st_mode))
         delete_directory(sub_path);
@@ -120,7 +144,8 @@ void delete_directory(const std::string &path)
       {
         result=remove(sub_path.c_str());
         if(result!=0)
-          throw std::string("Remove failed: ")+std::strerror(errno);
+          throw system_exceptiont(
+            std::string("Remove failed: ") + std::strerror(errno));
       }
     }
     closedir(dir);
@@ -166,5 +191,15 @@ bool is_directory(const std::string &path)
   else
     return (buf.st_mode & S_IFDIR) != 0;
 
+#endif
+}
+
+bool create_directory(const std::string &path)
+{
+#ifdef _WIN32
+  return _mkdir(path.c_str()) == 0;
+#else
+  // the umask matches what std::filesystem::create_directory does
+  return mkdir(path.c_str(), 0777) == 0;
 #endif
 }

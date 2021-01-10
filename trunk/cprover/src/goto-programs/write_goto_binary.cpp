@@ -13,14 +13,16 @@ Author: CM Wintersteiger
 
 #include <fstream>
 
-#include <util/message.h>
+#include <util/exception_utils.h>
+#include <util/invariant.h>
 #include <util/irep_serialization.h>
+#include <util/message.h>
 #include <util/symbol_table.h>
 
 #include <goto-programs/goto_model.h>
 
-/// Writes a goto program to disc, using goto binary format ver 4
-bool write_goto_binary_v4(
+/// Writes a goto program to disc, using goto binary format
+bool write_goto_binary(
   std::ostream &out,
   const symbol_tablet &symbol_table,
   const goto_functionst &goto_functions,
@@ -95,11 +97,9 @@ bool write_goto_binary_v4(
         const goto_programt::instructiont &instruction = *i_it;
 
         irepconverter.reference_convert(instruction.code, out);
-        irepconverter.write_string_ref(out, instruction.function);
         irepconverter.reference_convert(instruction.source_location, out);
         write_gb_word(out, (long)instruction.type);
         irepconverter.reference_convert(instruction.guard, out);
-        irepconverter.write_string_ref(out, irep_idt()); // former event
         write_gb_word(out, instruction.target_number);
 
         write_gb_word(out, instruction.targets.size());
@@ -148,22 +148,16 @@ bool write_goto_binary(
   irep_serializationt::ireps_containert irepc;
   irep_serializationt irepconverter(irepc);
 
-  switch(version)
-  {
-  case 1:
-  case 2:
-  case 3:
-    throw "version no longer supported";
-
-  case 4:
-    return write_goto_binary_v4(
-      out, symbol_table, goto_functions, irepconverter);
-
-  default:
-    throw "unknown goto binary version";
-  }
-
-  return false;
+  if(version < GOTO_BINARY_VERSION)
+    throw invalid_command_line_argument_exceptiont(
+      "version " + std::to_string(version) + " no longer supported",
+      "supported version = " + std::to_string(GOTO_BINARY_VERSION));
+  else if(version > GOTO_BINARY_VERSION)
+    throw invalid_command_line_argument_exceptiont(
+      "unknown goto binary version " + std::to_string(version),
+      "supported version = " + std::to_string(GOTO_BINARY_VERSION));
+  else
+    return write_goto_binary(out, symbol_table, goto_functions, irepconverter);
 }
 
 /// Writes a goto program to disc
@@ -177,8 +171,7 @@ bool write_goto_binary(
   if(!out)
   {
     messaget message(message_handler);
-    message.error() <<
-      "Failed to open `" << filename << "'";
+    message.error() << "Failed to open '" << filename << "'";
     return true;
   }
 

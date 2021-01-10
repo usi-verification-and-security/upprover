@@ -32,7 +32,6 @@ Date: April 2016
 
 class symbol_tablet;
 class json_stream_arrayt;
-class message_handlert;
 
 /// Non-graph-based representation of the class hierarchy.
 /// \deprecated `class_hierarchy_grapht` is a more advanced graph-based
@@ -56,6 +55,14 @@ public:
   class_mapt class_map;
 
   void operator()(const symbol_tablet &);
+
+  class_hierarchyt() = default;
+  explicit class_hierarchyt(const symbol_tablet &symbol_table)
+  {
+    (*this)(symbol_table);
+  }
+  class_hierarchyt(const class_hierarchyt &) = delete;
+  class_hierarchyt &operator=(const class_hierarchyt &) = delete;
 
   // transitively gets all children
   idst get_children_trans(const irep_idt &id) const
@@ -127,12 +134,10 @@ private:
 /// Output the class hierarchy
 /// \param hierarchy: the class hierarchy to be printed
 /// \param message_handler: the message handler
-/// \param ui: the UI format
 /// \param children_only: print the children only and do not print the parents
 void show_class_hierarchy(
   const class_hierarchyt &hierarchy,
-  message_handlert &message_handler,
-  ui_message_handlert::uit ui,
+  ui_message_handlert &message_handler,
   bool children_only = false);
 
 #endif // CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H

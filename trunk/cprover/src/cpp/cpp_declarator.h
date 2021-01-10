@@ -45,11 +45,24 @@ public:
     return static_cast<const exprt &>(find(ID_value));
   }
 
+  bool get_is_parameter() const
+  {
+    return get_bool(ID_is_parameter);
+  }
+
+  void set_is_parameter(bool is_parameter)
+  {
+    set(ID_is_parameter, is_parameter);
+  }
+
   // initializers for function arguments
-  exprt &init_args() { return static_cast<exprt&>(add("init_args")); }
+  exprt &init_args()
+  {
+    return static_cast<exprt &>(add(ID_init_args));
+  }
   const exprt &init_args() const
   {
-    return static_cast<const exprt&>(find("init_args"));
+    return static_cast<const exprt &>(find(ID_init_args));
   }
 
   irept &method_qualifier() { return add(ID_method_qualifier); }
@@ -61,8 +74,14 @@ public:
     return find(ID_member_initializers);
   }
 
-  irept &throw_decl() { return add("throw_decl"); }
-  const irept &throw_decl() const { return find("throw_decl"); }
+  irept &throw_decl()
+  {
+    return add(ID_throw_decl);
+  }
+  const irept &throw_decl() const
+  {
+    return find(ID_throw_decl);
+  }
 
   void output(std::ostream &out) const;
 

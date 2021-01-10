@@ -19,8 +19,8 @@ irep_idt uncaught_exceptions_domaint::get_exception_type(const typet &type)
 {
   PRECONDITION(type.id()==ID_pointer);
 
-  if(type.subtype().id() == ID_symbol_type)
-    return to_symbol_type(type.subtype()).get_identifier();
+  if(type.subtype().id() == ID_struct_tag)
+    return to_struct_tag_type(type.subtype()).get_identifier();
   else
     return ID_empty;
 }
@@ -28,8 +28,8 @@ irep_idt uncaught_exceptions_domaint::get_exception_type(const typet &type)
 /// Returns the symbol corresponding to an exception
 exprt uncaught_exceptions_domaint::get_exception_symbol(const exprt &expr)
 {
-  if(expr.id()!=ID_symbol && expr.has_operands())
-    return get_exception_symbol(expr.op0());
+  if(expr.id() != ID_symbol && expr.operands().size() >= 1)
+    return get_exception_symbol(to_multi_ary_expr(expr).op0());
 
   return expr;
 }
@@ -125,8 +125,35 @@ void uncaught_exceptions_domaint::transform(
     join(uea.exceptions_map[function_name]);
     break;
   }
-  default:
-  {}
+  case DECL:   // Safe to ignore in this context
+  case DEAD:   // Safe to ignore in this context
+  case ASSIGN: // Safe to ignore in this context
+    break;
+  case RETURN:
+#if 0
+    DATA_INVARIANT(false, "Returns must be removed before analysis");
+#endif
+    break;
+  case GOTO:         // Ignoring the guard is a valid over-approximation
+  case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
+  case ATOMIC_END:   // Ignoring is a valid over-approximation
+  case START_THREAD: // Require a concurrent analysis at higher level
+  case END_THREAD:   // Require a concurrent analysis at higher level
+  case END_FUNCTION: // No action required
+  case ASSERT:       // No action required
+  case ASSUME:       // Ignoring is a valid over-approximation
+  case LOCATION:     // No action required
+  case SKIP:         // No action required
+    break;
+  case OTHER:
+#if 0
+    DATA_INVARIANT(false, "Unclear what is a safe over-approximation of OTHER");
+#endif
+    break;
+  case INCOMPLETE_GOTO:
+  case NO_INSTRUCTION_TYPE:
+    DATA_INVARIANT(false, "Only complete instructions can be analyzed");
+    break;
   }
 }
 
@@ -182,6 +209,7 @@ void uncaught_exceptions_analysist::collect_uncaught_exceptions(
 void uncaught_exceptions_analysist::output(
   const goto_functionst &goto_functions) const
 {
+  (void)goto_functions; // unused parameter
 #ifdef DEBUG
   forall_goto_functions(it, goto_functions)
   {

@@ -64,10 +64,10 @@ void add_failed_symbol_if_needed(
   if(!symbol.is_lvalue)
     return;
 
-  if(symbol.type.get(ID_C_failed_symbol)!="")
+  if(!symbol.type.get(ID_C_failed_symbol).empty())
     return;
 
-  add_failed_symbol(*symbol_table.get_writeable(symbol.name), symbol_table);
+  add_failed_symbol(symbol_table.get_writeable_ref(symbol.name), symbol_table);
 }
 
 /// Create a failed-dereference symbol for all symbols in the given table that
@@ -86,20 +86,14 @@ void add_failed_symbols(symbol_table_baset &symbol_table)
     add_failed_symbol_if_needed(*symbol, symbol_table);
 }
 
-/// Get the failed-dereference symbol for the given symbol
-/// \param expr: symbol expression to get a failed symbol for
-/// \param ns: global namespace
-/// \return symbol expression for the failed-dereference symbol, or nil_exprt
-///   if none exists.
-exprt get_failed_symbol(
-  const symbol_exprt &expr,
-  const namespacet &ns)
+optionalt<symbol_exprt>
+get_failed_symbol(const symbol_exprt &expr, const namespacet &ns)
 {
   const symbolt &symbol=ns.lookup(expr);
   irep_idt failed_symbol_id=symbol.type.get(ID_C_failed_symbol);
 
   if(failed_symbol_id.empty())
-    return nil_exprt();
+    return {};
 
   const symbolt &failed_symbol=ns.lookup(failed_symbol_id);
 

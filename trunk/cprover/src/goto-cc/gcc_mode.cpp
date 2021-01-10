@@ -423,6 +423,9 @@ int gcc_modet::doit()
       debug() << "GCC mode" << eom;
   }
 
+  // model validation
+  compiler.validate_goto_model = cmdline.isset("validate-goto-model");
+
   // determine actions to be undertaken
   if(cmdline.isset('S'))
     compiler.mode=compilet::ASSEMBLE_ONLY;
@@ -481,7 +484,7 @@ int gcc_modet::doit()
     cmdline.isset("mtune") ? cmdline.get_value("mtune") :
     cmdline.isset("mcpu")  ? cmdline.get_value("mcpu")  : "";
 
-  if(target_cpu!="")
+  if(!target_cpu.empty())
   {
     // Work out what CPROVER architecture we should target.
     for(auto &pair : arch_map)
@@ -528,21 +531,12 @@ int gcc_modet::doit()
   if(cmdline.isset("-fsingle-precision-constant"))
     config.ansi_c.single_precision_constant=true;
 
-  // ISO/IEC TS 18661-3:2015 support was introduced with gcc 7.0
-  if(gcc_version.flavor==gcc_versiont::flavort::GCC &&
-     gcc_version.is_at_least(7))
-    config.ansi_c.ts_18661_3_Floatn_types=true;
-
-  const auto gcc_float128_minor_version =
-    config.ansi_c.arch == "x86_64" ? 3u : 5u;
-
-  config.ansi_c.Float128_type =
-    gcc_version.flavor == gcc_versiont::flavort::GCC &&
-    gcc_version.is_at_least(4u, gcc_float128_minor_version);
-
   // -fshort-double makes double the same as float
   if(cmdline.isset("fshort-double"))
     config.ansi_c.double_width=config.ansi_c.single_width;
+
+  // configure version-specific gcc settings
+  configure_gcc(gcc_version);
 
   switch(compiler.mode)
   {
@@ -656,7 +650,7 @@ int gcc_modet::doit()
   }
   else
   {
-    compiler.output_file_object="";
+    compiler.output_file_object.clear();
     compiler.output_file_executable="a.out";
   }
 
@@ -680,8 +674,9 @@ int gcc_modet::doit()
         {
           compiler.add_input_file(arg_it->arg);
         }
-        else if(language=="c" || language=="c++" ||
-                (language=="" && needs_preprocessing(arg_it->arg)))
+        else if(
+          language == "c" || language == "c++" ||
+          (language.empty() && needs_preprocessing(arg_it->arg)))
         {
           std::string new_suffix;
 
@@ -717,14 +712,14 @@ int gcc_modet::doit()
         {
           language=arg_it->arg;
           if(language=="none")
-            language="";
+            language.clear();
         }
       }
       else if(has_prefix(arg_it->arg, "-x"))
       {
         language=std::string(arg_it->arg, 2, std::string::npos);
         if(language=="none")
-          language="";
+          language.clear();
       }
     }
   }
@@ -817,7 +812,7 @@ int gcc_modet::preprocess(
   }
 
   // language, if given
-  if(language!="")
+  if(!language.empty())
   {
     new_argv.push_back("-x");
     new_argv.push_back(language);
@@ -835,7 +830,7 @@ int gcc_modet::preprocess(
     debug() << " " << new_argv[i];
   debug() << eom;
 
-  return run(new_argv[0], new_argv, cmdline.stdin_file, stdout_file);
+  return run(new_argv[0], new_argv, cmdline.stdin_file, stdout_file, "");
 }
 
 int gcc_modet::run_gcc(const compilet &compiler)
@@ -878,7 +873,7 @@ int gcc_modet::run_gcc(const compilet &compiler)
     debug() << " " << new_argv[i];
   debug() << eom;
 
-  return run(new_argv[0], new_argv, cmdline.stdin_file);
+  return run(new_argv[0], new_argv, cmdline.stdin_file, "", "");
 }
 
 int gcc_modet::gcc_hybrid_binary(compilet &compiler)
@@ -982,7 +977,11 @@ int gcc_modet::gcc_hybrid_binary(compilet &compiler)
 
     if(result==0)
       result = hybrid_binary(
-        native_tool, goto_binary, *it, get_message_handler());
+        native_tool,
+        goto_binary,
+        *it,
+        compiler.mode == compilet::COMPILE_LINK_EXECUTABLE,
+        get_message_handler());
   }
 
   return result;

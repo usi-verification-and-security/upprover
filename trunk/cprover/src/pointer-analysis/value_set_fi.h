@@ -24,6 +24,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "object_numbering.h"
 
+class codet;
+
 class value_set_fit
 {
 public:
@@ -203,28 +205,27 @@ public:
   typedef std::unordered_set<idt, string_hash> assign_recursion_sett;
   #endif
 
+  DEPRECATED(SINCE(2019, 05, 22, "Use the version returning vector instead"))
   void get_value_set(
     const exprt &expr,
     std::list<exprt> &dest,
     const namespacet &ns) const;
 
+  std::vector<exprt>
+  get_value_set(const exprt &expr, const namespacet &ns) const;
+
   expr_sett &get(
     const idt &identifier,
     const std::string &suffix);
-
-  void make_any()
-  {
-    values.clear();
-  }
 
   void clear()
   {
     values.clear();
   }
 
-  void add_var(const idt &id, const std::string &suffix)
+  void add_var(const idt &id)
   {
-    get_entry(id, suffix);
+    get_entry(id, "");
   }
 
   void add_var(const entryt &e)
@@ -276,9 +277,7 @@ public:
     return make_union(new_values.values);
   }
 
-  void apply_code(
-    const exprt &code,
-    const namespacet &ns);
+  void apply_code(const codet &code, const namespacet &ns);
 
   void assign(
     const exprt &lhs,
@@ -343,10 +342,6 @@ protected:
     const std::string &suffix,
     const namespacet &ns,
     assign_recursion_sett &recursion_set);
-
-  void do_free(
-    const exprt &op,
-    const namespacet &ns);
 
   void flatten(const entryt &e, object_mapt &dest) const;
 

@@ -55,12 +55,13 @@ bool jsil_entry_point(
 
   irep_idt main_symbol;
 
-  // find main symbol
-  if(config.main!="")
+  // find main symbol, if any is given
+  if(config.main.has_value())
   {
     std::list<irep_idt> matches;
 
-    forall_symbol_base_map(it, symbol_table.symbol_base_map, config.main)
+    forall_symbol_base_map(
+      it, symbol_table.symbol_base_map, config.main.value())
     {
       // look it up
       symbol_tablet::symbolst::const_iterator s_it=
@@ -76,15 +77,15 @@ bool jsil_entry_point(
     if(matches.empty())
     {
       messaget message(message_handler);
-      message.error() << "main symbol `" << config.main
-                      << "' not found" << messaget::eom;
+      message.error() << "main symbol '" << config.main.value() << "' not found"
+                      << messaget::eom;
       return true; // give up
     }
 
     if(matches.size()>=2)
     {
       messaget message(message_handler);
-      message.error() << "main symbol `" << config.main
+      message.error() << "main symbol '" << config.main.value()
                       << "' is ambiguous" << messaget::eom;
       return true;
     }
@@ -101,7 +102,7 @@ bool jsil_entry_point(
   if(s_it==symbol_table.symbols.end())
   {
     messaget message(message_handler);
-    message.error() << "main symbol `" << id2string(main_symbol)
+    message.error() << "main symbol '" << id2string(main_symbol)
                     << "' not in symbol table" << messaget::eom;
     return true; // give up, no main
   }
@@ -112,8 +113,8 @@ bool jsil_entry_point(
   if(symbol.value.is_nil())
   {
     messaget message(message_handler);
-    message.error() << "main symbol `" << main_symbol
-                    << "' has no body" << messaget::eom;
+    message.error() << "main symbol '" << main_symbol << "' has no body"
+                    << messaget::eom;
     return false; // give up
   }
 
@@ -130,22 +131,18 @@ bool jsil_entry_point(
     if(init_it==symbol_table.symbols.end())
       throw "failed to find " INITIALIZE_FUNCTION " symbol";
 
-    code_function_callt call_init;
-    call_init.lhs().make_nil();
+    code_function_callt call_init(init_it->second.symbol_expr());
     call_init.add_source_location()=symbol.location;
-    call_init.function()=init_it->second.symbol_expr();
-
-    init_code.move_to_operands(call_init);
+    init_code.add(call_init);
   }
 
   // build call to main function
 
-  code_function_callt call_main;
+  code_function_callt call_main(symbol.symbol_expr());
   call_main.add_source_location()=symbol.location;
-  call_main.function()=symbol.symbol_expr();
   call_main.function().add_source_location()=symbol.location;
 
-  init_code.move_to_operands(call_main);
+  init_code.add(call_main);
 
   // add "main"
   symbolt new_symbol;

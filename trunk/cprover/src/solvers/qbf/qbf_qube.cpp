@@ -8,11 +8,13 @@ Author: CM Wintersteiger
 
 #include "qbf_qube.h"
 
-#include <cassert>
 #include <cstdlib>
 #include <fstream>
 
-qbf_qubet::qbf_qubet()
+#include <util/invariant.h>
+
+qbf_qubet::qbf_qubet(message_handlert &message_handler)
+  : qdimacs_cnft(message_handler)
 {
   // skizzo crashes on broken lines
   break_lines=false;
@@ -24,8 +26,7 @@ qbf_qubet::~qbf_qubet()
 
 tvt qbf_qubet::l_get(literalt) const
 {
-  assert(false);
-  return tvt(false);
+  UNREACHABLE;
 }
 
 const std::string qbf_qubet::solver_text()
@@ -40,10 +41,8 @@ propt::resultt qbf_qubet::prop_solve()
     return resultt::P_SATISFIABLE;
 
   {
-    messaget::status() <<
-      "QuBE: " <<
-      no_variables() << " variables, " <<
-      no_clauses() << " clauses" << eom;
+    log.status() << "QuBE: " << no_variables() << " variables, " << no_clauses()
+                 << " clauses" << messaget::eom;
   }
 
   std::string qbf_tmp_file="qube.qdimacs";
@@ -56,7 +55,7 @@ propt::resultt qbf_qubet::prop_solve()
     write_qdimacs_cnf(out);
   }
 
-  std::string options="";
+  std::string options;
 
   // solve it
   int res=system(
@@ -76,7 +75,7 @@ propt::resultt qbf_qubet::prop_solve()
 
       std::getline(in, line);
 
-      if(line!="" && line[line.size()-1]=='\r')
+      if(!line.empty() && line[line.size() - 1] == '\r')
         line.resize(line.size()-1);
 
       if(line=="s cnf 0")
@@ -95,19 +94,19 @@ propt::resultt qbf_qubet::prop_solve()
 
     if(!result_found)
     {
-      messaget::error() << "QuBE failed: unknown result" << eom;
+      log.error() << "QuBE failed: unknown result" << messaget::eom;
       return resultt::P_ERROR;
     }
   }
 
   if(result)
   {
-    messaget::status() << "QuBE: TRUE" << eom;
+    log.status() << "QuBE: TRUE" << messaget::eom;
     return resultt::P_SATISFIABLE;
   }
   else
   {
-    messaget::status() << "QuBE: FALSE" << eom;
+    log.status() << "QuBE: FALSE" << messaget::eom;
     return resultt::P_UNSATISFIABLE;
   }
 

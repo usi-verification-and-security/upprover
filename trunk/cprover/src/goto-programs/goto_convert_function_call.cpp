@@ -11,12 +11,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_convert_class.h"
 
-#include <cassert>
 
+#include <util/cprover_prefix.h>
+#include <util/expr_util.h>
+#include <util/prefix.h>
 #include <util/replace_expr.h>
 #include <util/source_location.h>
-#include <util/cprover_prefix.h>
-#include <util/prefix.h>
 #include <util/std_expr.h>
 
 #include <util/c_types.h>
@@ -85,10 +85,11 @@ void goto_convertt::do_function_call(
   }
   else
   {
-    error().source_location=function.find_source_location();
-    error() << "unexpected function argument: " << new_function.id()
-            << eom;
-    throw 0;
+    INVARIANT_WITH_DIAGNOSTICS(
+      false,
+      "unexpected function argument",
+      new_function.id(),
+      function.find_source_location());
   }
 }
 
@@ -111,16 +112,17 @@ void goto_convertt::do_function_call_if(
 
   // do the v label
   goto_programt tmp_v;
-  goto_programt::targett v=tmp_v.add_instruction();
+  goto_programt::targett v = tmp_v.add(goto_programt::make_incomplete_goto(
+    boolean_negate(function.cond()), function.cond().source_location()));
 
   // do the x label
   goto_programt tmp_x;
-  goto_programt::targett x=tmp_x.add_instruction();
+  goto_programt::targett x =
+    tmp_x.add(goto_programt::make_incomplete_goto(true_exprt()));
 
   // do the z label
   goto_programt tmp_z;
-  goto_programt::targett z=tmp_z.add_instruction();
-  z->make_skip();
+  goto_programt::targett z = tmp_z.add(goto_programt::make_skip());
 
   // y: g();
   goto_programt tmp_y;
@@ -129,15 +131,12 @@ void goto_convertt::do_function_call_if(
   do_function_call(lhs, function.false_case(), arguments, tmp_y, mode);
 
   if(tmp_y.instructions.empty())
-    y=tmp_y.add_instruction(SKIP);
+    y = tmp_y.add(goto_programt::make_skip());
   else
     y=tmp_y.instructions.begin();
 
   // v: if(!c) goto y;
-  v->make_goto(y);
-  v->guard=function.cond();
-  v->guard.make_not();
-  v->source_location=function.cond().source_location();
+  v->complete_goto(y);
 
   // w: f();
   goto_programt tmp_w;
@@ -145,10 +144,10 @@ void goto_convertt::do_function_call_if(
   do_function_call(lhs, function.true_case(), arguments, tmp_w, mode);
 
   if(tmp_w.instructions.empty())
-    tmp_w.add_instruction(SKIP);
+    tmp_w.add(goto_programt::make_skip());
 
   // x: goto z;
-  x->make_goto(z);
+  x->complete_goto(z);
 
   dest.destructive_append(tmp_v);
   dest.destructive_append(tmp_w);
@@ -164,14 +163,8 @@ void goto_convertt::do_function_call_other(
   goto_programt &dest)
 {
   // don't know what to do with it
-  goto_programt::targett t=dest.add_instruction(FUNCTION_CALL);
-
-  code_function_callt function_call;
+  code_function_callt function_call(lhs, function, arguments);
   function_call.add_source_location()=function.source_location();
-  function_call.lhs()=lhs;
-  function_call.function()=function;
-  function_call.arguments()=arguments;
-
-  t->source_location=function.source_location();
-  t->code.swap(function_call);
+  dest.add(goto_programt::make_function_call(
+    function_call, function.source_location()));
 }

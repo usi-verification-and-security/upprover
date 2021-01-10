@@ -24,10 +24,16 @@ class reachability_slicert
 public:
   void operator()(
     goto_functionst &goto_functions,
-    slicing_criteriont &criterion,
+    const slicing_criteriont &criterion,
     bool include_forward_reachability)
   {
     cfg(goto_functions);
+    forall_goto_functions(f_it, goto_functions)
+    {
+      forall_goto_program_instructions(i_it, f_it->second.body)
+        cfg[cfg.entry_map[i_it]].function_id = f_it->first;
+    }
+
     is_threadedt is_threaded(goto_functions);
     fixedpoint_to_assertions(is_threaded, criterion);
     if(include_forward_reachability)
@@ -42,9 +48,14 @@ protected:
     {
     }
 
+    irep_idt function_id;
     bool reaches_assertion;
     bool reachable_from_assertion;
   };
+
+  bool is_same_target(
+    goto_programt::const_targett it1,
+    goto_programt::const_targett it2) const;
 
   typedef cfg_baset<slicer_entryt> cfgt;
   cfgt cfg;
@@ -76,17 +87,33 @@ protected:
 
   void fixedpoint_to_assertions(
     const is_threadedt &is_threaded,
-    slicing_criteriont &criterion);
+    const slicing_criteriont &criterion);
 
   void fixedpoint_from_assertions(
     const is_threadedt &is_threaded,
-    slicing_criteriont &criterion);
+    const slicing_criteriont &criterion);
 
   void slice(goto_functionst &goto_functions);
 
 private:
   std::vector<cfgt::node_indext>
-  get_sources(const is_threadedt &is_threaded, slicing_criteriont &criterion);
+    backward_outwards_walk_from(std::vector<cfgt::node_indext>);
+
+  void backward_inwards_walk_from(std::vector<cfgt::node_indext>);
+
+  std::vector<cfgt::node_indext>
+    forward_outwards_walk_from(std::vector<cfgt::node_indext>);
+
+  void forward_inwards_walk_from(std::vector<cfgt::node_indext>);
+
+  void forward_walk_call_instruction(
+    const cfgt::nodet &call_node,
+    std::vector<cfgt::node_indext> &callsite_successor_stack,
+    std::vector<cfgt::node_indext> &callee_head_stack);
+
+  std::vector<cfgt::node_indext> get_sources(
+    const is_threadedt &is_threaded,
+    const slicing_criteriont &criterion);
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_REACHABILITY_SLICER_CLASS_H

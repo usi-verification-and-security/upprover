@@ -10,6 +10,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <fstream>
 
+#include <util/object_factory_parameters.h>
+
 #include "language.h"
 
 language_filet::language_filet(const language_filet &rhs):
@@ -48,18 +50,6 @@ void language_filest::show_parse(std::ostream &out)
     file.second.language->show_parse(out);
 }
 
-/// Turn on or off stub generation for all the languages
-/// \param should_generate_stubs: Should stub generation be enabled
-void language_filest::set_should_generate_opaque_method_stubs(
-  bool stubs_enabled)
-{
-  for(file_mapt::value_type &language_file_entry : file_map)
-  {
-    auto &language=*language_file_entry.second.language;
-    language.set_should_generate_opaque_method_stubs(stubs_enabled);
-  }
-}
-
 bool language_filest::parse()
 {
   for(auto &file : file_map)
@@ -92,7 +82,9 @@ bool language_filest::parse()
   return false;
 }
 
-bool language_filest::typecheck(symbol_tablet &symbol_table)
+bool language_filest::typecheck(
+  symbol_tablet &symbol_table,
+  const bool keep_file_local)
 {
   // typecheck interfaces
 
@@ -139,8 +131,16 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
   {
     if(file.second.modules.empty())
     {
-      if(file.second.language->typecheck(symbol_table, ""))
-        return true;
+      if(file.second.language->can_keep_file_local())
+      {
+        if(file.second.language->typecheck(symbol_table, "", keep_file_local))
+          return true;
+      }
+      else
+      {
+        if(file.second.language->typecheck(symbol_table, ""))
+          return true;
+      }
       // register lazy methods.
       // TODO: learn about modules and generalise this
       // to module-providing languages if required.
@@ -155,7 +155,7 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
 
   for(auto &module : module_map)
   {
-    if(typecheck_module(symbol_table, module.second))
+    if(typecheck_module(symbol_table, module.second, keep_file_local))
       return true;
   }
 
@@ -205,7 +205,8 @@ bool language_filest::interfaces(
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,
-  const std::string &module)
+  const std::string &module,
+  const bool keep_file_local)
 {
   // check module map
 
@@ -217,12 +218,13 @@ bool language_filest::typecheck_module(
     return true;
   }
 
-  return typecheck_module(symbol_table, it->second);
+  return typecheck_module(symbol_table, it->second, keep_file_local);
 }
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,
-  language_modulet &module)
+  language_modulet &module,
+  const bool keep_file_local)
 {
   // already typechecked?
 
@@ -250,22 +252,28 @@ bool language_filest::typecheck_module(
       it!=dependency_set.end();
       it++)
   {
-    if(typecheck_module(symbol_table, *it))
-    {
-      module.in_progress=false;
+    module.in_progress = !typecheck_module(symbol_table, *it, keep_file_local);
+    if(module.in_progress == false)
       return true;
-    }
   }
 
   // type check it
 
   status() << "Type-checking " << module.name << eom;
 
-  if(module.file->language->typecheck(symbol_table, module.name))
+  if(module.file->language->can_keep_file_local())
   {
-    module.in_progress=false;
-    return true;
+    module.in_progress = !module.file->language->typecheck(
+      symbol_table, module.name, keep_file_local);
   }
+  else
+  {
+    module.in_progress =
+      !module.file->language->typecheck(symbol_table, module.name);
+  }
+
+  if(!module.in_progress)
+    return true;
 
   module.type_checked=true;
   module.in_progress=false;

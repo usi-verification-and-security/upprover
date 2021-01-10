@@ -14,9 +14,10 @@ Date: July 2016
 #ifndef CPROVER_GOTO_CC_AS_MODE_H
 #define CPROVER_GOTO_CC_AS_MODE_H
 
-#include <util/cout_message.h>
-
+#include "gcc_message_handler.h"
 #include "goto_cc_mode.h"
+
+class compilet;
 
 class as_modet:public goto_cc_modet
 {
@@ -36,7 +37,7 @@ protected:
 
   int run_as(); // call as with original command line
 
-  int as_hybrid_binary();
+  int as_hybrid_binary(const compilet &compiler);
 };
 
 #endif // CPROVER_GOTO_CC_AS_MODE_H

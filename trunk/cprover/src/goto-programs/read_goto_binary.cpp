@@ -18,7 +18,6 @@ Author:
 #include <util/unicode.h>
 #include <util/tempfile.h>
 #include <util/rename_symbol.h>
-#include <util/base_type.h>
 #include <util/config.h>
 
 #include "goto_model.h"
@@ -27,16 +26,37 @@ Author:
 #include "elf_reader.h"
 #include "osx_fat_reader.h"
 
-bool read_goto_binary(
+static bool read_goto_binary(
   const std::string &filename,
-  goto_modelt &dest,
-  message_handlert &message_handler)
+  symbol_tablet &,
+  goto_functionst &,
+  message_handlert &);
+
+/// \brief Read a goto binary from a file, but do not update \ref config
+/// \param filename: the file name of the goto binary
+/// \param message_handler: for diagnostics
+/// \return goto model on success, {} on failure
+optionalt<goto_modelt>
+read_goto_binary(const std::string &filename, message_handlert &message_handler)
 {
-  return read_goto_binary(
-    filename, dest.symbol_table, dest.goto_functions, message_handler);
+  goto_modelt dest;
+
+  if(read_goto_binary(
+       filename, dest.symbol_table, dest.goto_functions, message_handler))
+  {
+    return {};
+  }
+  else
+    return std::move(dest);
 }
 
-bool read_goto_binary(
+/// \brief Read a goto binary from a file, but do not update \ref config
+/// \param filename: the file name of the goto binary
+/// \param symbol_table: the symbol table from the goto binary
+/// \param goto_functions: the goto functions from the goto binary
+/// \param message_handler: for diagnostics
+/// \return true on failure, false on success
+static bool read_goto_binary(
   const std::string &filename,
   symbol_tablet &symbol_table,
   goto_functionst &goto_functions,
@@ -48,19 +68,23 @@ bool read_goto_binary(
   std::ifstream in(filename, std::ios::binary);
   #endif
 
+  messaget message(message_handler);
+
   if(!in)
   {
-    messaget message(message_handler);
-    message.error() << "Failed to open `" << filename << "'"
+    message.error() << "Failed to open '" << filename << "'" << messaget::eom;
+    return true;
+  }
+
+  char hdr[8];
+  in.read(hdr, 8);
+  if(!in)
+  {
+    message.error() << "Failed to read header from '" << filename << "'"
                     << messaget::eom;
     return true;
   }
 
-  char hdr[4];
-  hdr[0]=in.get();
-  hdr[1]=in.get();
-  hdr[2]=in.get();
-  hdr[3]=in.get();
   in.seekg(0);
 
   if(hdr[0]==0x7f && hdr[1]=='G' && hdr[2]=='B' && hdr[3]=='F')
@@ -94,18 +118,22 @@ bool read_goto_binary(
       messaget(message_handler).error() << s << messaget::eom;
     }
   }
-  else if(is_osx_fat_magic(hdr))
+  else if(is_osx_fat_header(hdr))
   {
     messaget message(message_handler);
 
     // Mach-O universal binary
     // This _may_ have a goto binary as hppa7100LC architecture
-    osx_fat_readert osx_fat_reader(in);
+    osx_fat_readert osx_fat_reader(in, message_handler);
 
     if(osx_fat_reader.has_gb())
     {
       temporary_filet tempname("tmp.goto-binary", ".gb");
-      osx_fat_reader.extract_gb(filename, tempname());
+      if(osx_fat_reader.extract_gb(filename, tempname()))
+      {
+        message.error() << "failed to extract goto binary" << messaget::eom;
+        return true;
+      }
 
       std::ifstream temp_in(tempname(), std::ios::binary);
       if(!temp_in)
@@ -122,6 +150,34 @@ bool read_goto_binary(
     message.error() << "failed to find goto binary in Mach-O file"
                     << messaget::eom;
   }
+  else if(is_osx_mach_object(hdr))
+  {
+    messaget message(message_handler);
+
+    // Mach-O object file, may contain a goto-cc section
+    try
+    {
+      osx_mach_o_readert mach_o_reader(in, message_handler);
+
+      osx_mach_o_readert::sectionst::const_iterator entry =
+        mach_o_reader.sections.find("goto-cc");
+      if(entry != mach_o_reader.sections.end())
+      {
+        in.seekg(entry->second.offset);
+        return read_bin_goto_object(
+          in, filename, symbol_table, goto_functions, message_handler);
+      }
+
+      // section not found
+      messaget(message_handler).error()
+        << "failed to find goto-cc section in Mach-O binary" << messaget::eom;
+    }
+
+    catch(const deserialization_exceptiont &e)
+    {
+      messaget(message_handler).error() << e.what() << messaget::eom;
+    }
+  }
   else
   {
     messaget(message_handler).error() <<
@@ -131,7 +187,9 @@ bool read_goto_binary(
   return true;
 }
 
-bool is_goto_binary(const std::string &filename)
+bool is_goto_binary(
+  const std::string &filename,
+  message_handlert &message_handler)
 {
   #ifdef _MSC_VER
   std::ifstream in(widen(filename), std::ios::binary);
@@ -146,11 +204,10 @@ bool is_goto_binary(const std::string &filename)
   // 1. goto binaries, marked with 0x7f GBF
   // 2. ELF binaries, marked with 0x7f ELF
 
-  char hdr[4];
-  hdr[0]=in.get();
-  hdr[1]=in.get();
-  hdr[2]=in.get();
-  hdr[3]=in.get();
+  char hdr[8];
+  in.read(hdr, 8);
+  if(!in)
+    return false;
 
   if(hdr[0]==0x7f && hdr[1]=='G' && hdr[2]=='B' && hdr[3]=='F')
   {
@@ -172,14 +229,30 @@ bool is_goto_binary(const std::string &filename)
       // ignore any errors
     }
   }
-  else if(is_osx_fat_magic(hdr))
+  else if(is_osx_fat_header(hdr))
   {
     // this _may_ have a goto binary as hppa7100LC architecture
     try
     {
       in.seekg(0);
-      osx_fat_readert osx_fat_reader(in);
+      osx_fat_readert osx_fat_reader(in, message_handler);
       if(osx_fat_reader.has_gb())
+        return true;
+    }
+
+    catch(...)
+    {
+      // ignore any errors
+    }
+  }
+  else if(is_osx_mach_object(hdr))
+  {
+    // this _may_ have a goto-cc section
+    try
+    {
+      in.seekg(0);
+      osx_mach_o_readert mach_o_reader(in, message_handler);
+      if(mach_o_reader.has_section("goto-cc"))
         return true;
     }
 
@@ -192,8 +265,10 @@ bool is_goto_binary(const std::string &filename)
   return false;
 }
 
-/// reads an object file
-/// \par parameters: a file_name
+/// \brief reads an object file, and also updates config
+/// \param file_name: file name of the goto binary
+/// \param dest: the goto model returned
+/// \param message_handler: for diagnostics
 /// \return true on error, false otherwise
 bool read_object_and_link(
   const std::string &file_name,
@@ -204,17 +279,13 @@ bool read_object_and_link(
                                          << file_name << messaget::eom;
 
   // we read into a temporary model
-  goto_modelt temp_model;
-
-  if(read_goto_binary(
-      file_name,
-      temp_model,
-      message_handler))
+  auto temp_model = read_goto_binary(file_name, message_handler);
+  if(!temp_model.has_value())
     return true;
 
   try
   {
-    link_goto_model(dest, temp_model, message_handler);
+    link_goto_model(dest, *temp_model, message_handler);
   }
   catch(...)
   {
@@ -227,8 +298,11 @@ bool read_object_and_link(
   return false;
 }
 
-/// reads an object file
-/// \par parameters: a file_name
+/// \brief reads an object file, and also updates the config
+/// \param file_name: file name of the goto binary
+/// \param dest_symbol_table: symbol table to update
+/// \param dest_functions: collection of goto functions to update
+/// \param message_handler: for diagnostics
 /// \return true on error, false otherwise
 bool read_object_and_link(
   const std::string &file_name,

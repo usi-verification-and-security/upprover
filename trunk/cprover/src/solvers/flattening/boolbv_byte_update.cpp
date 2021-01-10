@@ -8,20 +8,27 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "boolbv.h"
 
-#include <iostream>
-#include <cassert>
-
 #include <util/arith_tools.h>
 #include <util/byte_operators.h>
+#include <util/expr_util.h>
+#include <util/invariant.h>
+
+#include <solvers/lowering/expr_lowering.h>
 
 #include "bv_endianness_map.h"
 
 bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
 {
-  if(expr.operands().size()!=3)
-    throw "byte_update takes three operands";
+  // if we update (from) an unbounded array, lower the expression as the array
+  // logic does not handle byte operators
+  if(
+    is_unbounded_array(expr.op().type()) ||
+    is_unbounded_array(expr.value().type()))
+  {
+    return convert_bv(lower_byte_update(expr, ns));
+  }
 
-  const exprt &op=expr.op0();
+  const exprt &op = expr.op();
   const exprt &offset_expr=expr.offset();
   const exprt &value=expr.value();
 
@@ -41,11 +48,11 @@ bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
 
   // see if the byte number is constant
 
-  mp_integer index;
-  if(!to_integer(offset_expr, index))
+  const auto index = numeric_cast<mp_integer>(offset_expr);
+  if(index.has_value())
   {
     // yes!
-    mp_integer offset=index*8;
+    const mp_integer offset = *index * 8;
 
     if(offset+update_width>mp_integer(bv.size()) || offset<0)
     {
@@ -56,22 +63,25 @@ bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
       if(little_endian)
       {
         for(std::size_t i=0; i<update_width; i++)
-          bv[integer2size_t(offset+i)]=value_bv[i];
+          bv[numeric_cast_v<std::size_t>(offset + i)] = value_bv[i];
       }
       else
       {
         bv_endianness_mapt map_op(op.type(), false, ns, boolbv_width);
         bv_endianness_mapt map_value(value.type(), false, ns, boolbv_width);
 
-        std::size_t offset_i=integer2unsigned(offset);
+        const std::size_t offset_i = numeric_cast_v<std::size_t>(offset);
 
         for(std::size_t i=0; i<update_width; i++)
         {
           size_t index_op=map_op.map_bit(offset_i+i);
           size_t index_value=map_value.map_bit(i);
 
-          assert(index_op<bv.size());
-          assert(index_value<value_bv.size());
+          INVARIANT(
+            index_op < bv.size(), "bit vector index shall be within bounds");
+          INVARIANT(
+            index_value < value_bv.size(),
+            "bit vector index shall be within bounds");
 
           bv[index_op]=value_bv[index_value];
         }
@@ -85,9 +95,8 @@ bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
   for(std::size_t offset=0; offset<bv.size(); offset+=byte_width)
   {
     // index condition
-    equal_exprt equality;
-    equality.lhs()=offset_expr;
-    equality.rhs()=from_integer(offset/byte_width, offset_expr.type());
+    equal_exprt equality(
+      offset_expr, from_integer(offset / byte_width, offset_expr.type()));
     literalt equal=convert(equality);
 
     bv_endianness_mapt map_op(op.type(), little_endian, ns, boolbv_width);

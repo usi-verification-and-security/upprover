@@ -25,7 +25,7 @@ void jsil_internal_additions(symbol_tablet &dest)
 
   {
     symbolt symbol;
-    symbol.base_name="__CPROVER_rounding_mode";
+    symbol.base_name = CPROVER_PREFIX "rounding_mode";
     symbol.name=CPROVER_PREFIX "rounding_mode";
     symbol.type=signed_int_type();
     symbol.mode=ID_C;
@@ -41,7 +41,7 @@ void jsil_internal_additions(symbol_tablet &dest)
 
   {
     symbolt symbol;
-    symbol.base_name="__CPROVER_malloc_object";
+    symbol.base_name = CPROVER_PREFIX "malloc_object";
     symbol.name=CPROVER_PREFIX "malloc_object";
     symbol.type=pointer_type(empty_typet());
     symbol.mode=ID_C;
@@ -56,9 +56,7 @@ void jsil_internal_additions(symbol_tablet &dest)
   // add eval
 
   {
-    code_typet eval_type;
-    code_typet::parametert p;
-    eval_type.parameters().push_back(p);
+    code_typet eval_type({code_typet::parametert(typet())}, empty_typet());
 
     symbolt symbol;
     symbol.base_name="eval";

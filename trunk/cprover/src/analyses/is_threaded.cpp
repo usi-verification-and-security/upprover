@@ -46,9 +46,13 @@ public:
            old_is_threaded!=is_threaded;
   }
 
-  void
-  transform(locationt from, locationt, ai_baset &, const namespacet &)
-    final override
+  void transform(
+    const irep_idt &,
+    locationt from,
+    const irep_idt &,
+    locationt,
+    ai_baset &,
+    const namespacet &) final override
   {
     INVARIANT(reachable,
               "Transformers are only applied at reachable locations");
@@ -101,6 +105,9 @@ void is_threadedt::compute(const goto_functionst &goto_functions)
 
   forall_goto_functions(f_it, goto_functions)
     forall_goto_program_instructions(i_it, f_it->second.body)
-      if(is_threaded_analysis[i_it].is_threaded)
+    {
+      auto domain_ptr = is_threaded_analysis.abstract_state_before(i_it);
+      if(static_cast<const is_threaded_domaint &>(*domain_ptr).is_threaded)
         is_threaded_set.insert(i_it);
+    }
 }

@@ -13,12 +13,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
+#include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/config.h>
 #include <util/namespace.h>
 #include <util/simplify_expr.h>
-#include <util/arith_tools.h>
 #include <util/std_types.h>
+#include <util/string_constant.h>
 
 #include "gcc_types.h"
 
@@ -50,13 +51,13 @@ void ansi_c_convert_typet::read_rec(const typet &type)
   {
     if(type.has_subtype() &&
        type.subtype().id()==ID_string_constant)
-      c_storage_spec.asm_label=type.subtype().get(ID_value);
+      c_storage_spec.asm_label = to_string_constant(type.subtype()).get_value();
   }
   else if(type.id()==ID_section &&
           type.has_subtype() &&
           type.subtype().id()==ID_string_constant)
   {
-    c_storage_spec.section=type.subtype().get(ID_value);
+    c_storage_spec.section = to_string_constant(type.subtype()).get_value();
   }
   else if(type.id()==ID_const)
     c_qualifiers.is_constant=true;
@@ -106,8 +107,7 @@ void ansi_c_convert_typet::read_rec(const typet &type)
   {
     const exprt &as_expr=
       static_cast<const exprt &>(static_cast<const irept &>(type));
-    assert(as_expr.operands().size()==1);
-    msc_based=as_expr.op0();
+    msc_based = to_unary_expr(as_expr).op();
   }
   else if(type.id()==ID_custom_bv)
   {
@@ -214,9 +214,8 @@ void ansi_c_convert_typet::read_rec(const typet &type)
         c_storage_spec.is_thread_local=true;
       else if(id=="align")
       {
-        assert(it->operands().size()==1);
         aligned=true;
-        alignment=it->op0();
+        alignment = to_unary_expr(*it).op();
       }
     }
   }
@@ -230,7 +229,7 @@ void ansi_c_convert_typet::read_rec(const typet &type)
           type.has_subtype() &&
           type.subtype().id()==ID_string_constant)
   {
-    c_storage_spec.alias=type.subtype().get(ID_value);
+    c_storage_spec.alias = to_string_constant(type.subtype()).get_value();
   }
   else if(type.id()==ID_frontend_pointer)
   {
@@ -588,9 +587,17 @@ void ansi_c_convert_typet::write(typet &type)
     }
   }
 
+  build_type_with_subtype(type);
+  set_attributes(type);
+}
+
+/// Build a vector or complex type with \p type as subtype.
+void ansi_c_convert_typet::build_type_with_subtype(typet &type) const
+{
   if(vector_size.is_not_nil())
   {
-    vector_typet new_type(type, vector_size);
+    type_with_subtypet new_type(ID_frontend_vector, type);
+    new_type.set(ID_size, vector_size);
     new_type.add_source_location()=vector_size.source_location();
     type=new_type;
   }
@@ -598,12 +605,15 @@ void ansi_c_convert_typet::write(typet &type)
   if(complex_cnt)
   {
     // These take more or less arbitrary subtypes.
-    complex_typet new_type;
+    complex_typet new_type(type);
     new_type.add_source_location()=source_location;
-    new_type.subtype()=type;
     type.swap(new_type);
   }
+}
 
+/// Add qualifiers and GCC attributes onto \p type.
+void ansi_c_convert_typet::set_attributes(typet &type) const
+{
   if(gcc_attribute_mode.is_not_nil())
   {
     typet new_type=gcc_attribute_mode;

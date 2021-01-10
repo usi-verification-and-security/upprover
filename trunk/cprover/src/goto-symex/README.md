@@ -47,11 +47,11 @@ digraph G {
 
 \subsection symex-overview Overview
 
-The \ref bmct class gets a reference to an \ref symex_target_equationt
-"equation" (initially, an empty list of \ref symex_target_equationt::SSA_stept
+The \ref goto_symext class gets a reference to a \ref symex_target_equationt
+"equation" (initially, an empty list of \ref SSA_stept
 "single-static assignment steps") and a goto-program from the frontend.
-The \ref bmct creates a goto_symext to symbolically execute the
-goto-program, thereby filling the equation, which can then be passed
+\ref multi_path_symex_checkert then calls goto_symext to symbolically execute
+the goto-program, thereby filling the equation, which can then be passed
 along to the SAT solver.
 
 The class \ref goto_symext holds the global state of the symbol executor, while
@@ -81,7 +81,7 @@ the instruction type, i.e. goto_symext::symex_function_call() if the
 current instruction is a function call, goto_symext::symex_goto() if the
 current instruction is a goto, etc.
 
-\subsection Loop and recursion unwinding
+\subsection symex-loop-and-recursion-unwinding Loop and recursion unwinding
 
 Each backwards goto and recursive call has a separate counter
 (handled by \ref cbmc or another driver program, see the `--unwind` and
@@ -91,7 +91,7 @@ be handled completely (assuming the unwinding limit is sufficient).
 When an unwind or recursion limit is reached, an assertion can be added to
 explicitly show when analysis is incomplete.
 
-\subsection \ref goto_symext::clean_expr
+\subsection goto-symext-clean-expr goto_symext::clean_expr
 
 Before any expression is incorporated into the output equation set it is passed
 through \ref goto_symext::clean_expr and thus \ref goto_symext::dereference,
@@ -131,12 +131,11 @@ representing that path, then continues to execute other paths.
 The 'other paths' that would have been taken when the program branches
 are saved onto a workqueue so that the driver program can continue to execute
 the current path, and then later retrieve saved paths from the workqueue.
-Implementation-wise, \ref bmct passes a worklist to goto_symext in
-\ref bmct::do_language_agnostic_bmc. If path exploration is enabled,
-goto_symext will fill up the worklist whenever it encounters a branch,
-instead of merging the paths on the branch.  After the initial symbolic
-execution (i.e. the first call to \ref bmct::run in
-\ref bmct::do_language_agnostic_bmc), \ref bmct continues popping the
+Implementation-wise, \ref single_path_symex_checkert maintains a worklist
+and passes it to goto_symext. If path exploration is enabled, goto_symext will
+fill up the worklist whenever it encounters a branch, instead of merging the
+paths on the branch. The worklist is initialized with the initial state at the
+entry point. Then \ref single_path_symex_checkert continues popping the
 worklist and executing untaken paths until the worklist empties. Note
 that this means that the default model-checking behaviour is a special
 case of path exploration: when model-checking, the initial symbolic
@@ -261,8 +260,6 @@ In the \ref goto-symex directory.
 **Key classes:**
 * \ref symex_target_equationt
 * \ref prop_convt
-* \ref bmct
-* \ref fault_localizationt
 * \ref counterexample_beautificationt
 
 \dot
@@ -276,3 +273,10 @@ digraph G {
   2 -> 3 [label="counter-examples"];
 }
 \enddot
+
+\section Concurrency
+
+\subsection Partial Order Concurrency
+
+The class \ref partial_order_concurrencyt provides an interface for
+implementing ordering of concurrent events.

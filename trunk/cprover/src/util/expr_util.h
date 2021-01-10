@@ -21,6 +21,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <functional>
 
+class constant_exprt;
 class exprt;
 class symbol_exprt;
 class update_exprt;
@@ -57,13 +58,12 @@ bool has_subexpr(const exprt &, const irep_idt &);
 /// \param pred: a predicate
 /// \param ns: namespace for symbol type lookups
 /// \return true if one of the subtype of `type` satisfies predicate `pred`.
-///         The meaning of "subtype" is in the algebraic datatype sense:
-///         for example, the subtypes of a struct are the types of its
-///         components, the subtype of a pointer is the type it points to,
-///         etc...
-///         For instance in the type `t` defined by
-///         `{ int a; char[] b; double * c; { bool d} e}`, `int`, `char`,
-///         `double` and `bool` are subtypes of `t`.
+///   The meaning of "subtype" is in the algebraic datatype sense: for example,
+///   the subtypes of a struct are the types of its components, the subtype of
+///   a pointer is the type it points to, etc...
+///   For instance in the type `t` defined by
+///     `{ int a; char[] b; double * c; { bool d} e}`, `int`, `char`,
+///   `double` and `bool` are subtypes of `t`.
 bool has_subtype(
   const typet &type,
   const std::function<bool(const typet &)> &pred,
@@ -77,5 +77,32 @@ if_exprt lift_if(const exprt &, std::size_t operand_number);
 
 /// find the expression nested inside typecasts, if any
 const exprt &skip_typecast(const exprt &expr);
+
+/// Determine whether an expression is constant.  A literal constant is
+/// constant, but so are, e.g., sums over constants or addresses of objects.
+/// An implementation derive from this class to refine what it considers
+/// constant in a particular context by overriding is_constant and/or
+/// is_constant_address_of.
+class is_constantt
+{
+public:
+  /// returns true iff the expression can be considered constant
+  bool operator()(const exprt &e) const
+  {
+    return is_constant(e);
+  }
+
+protected:
+  virtual bool is_constant(const exprt &) const;
+  virtual bool is_constant_address_of(const exprt &) const;
+};
+
+/// returns true_exprt if given true and false_exprt otherwise
+constant_exprt make_boolean_expr(bool);
+
+/// Conjunction of two expressions. If the second is already an `and_exprt`
+/// add to its operands instead of creating a new expression. If one is `true`,
+/// return the other expression. If one is `false` returns `false`.
+exprt make_and(exprt a, exprt b);
 
 #endif // CPROVER_UTIL_EXPR_UTIL_H

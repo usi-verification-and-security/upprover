@@ -82,22 +82,33 @@ void rw_range_sett::output(std::ostream &out) const
   }
 }
 
-void rw_range_sett::get_objects_complex(
+void rw_range_sett::get_objects_complex_real(
   get_modet mode,
-  const exprt &expr,
+  const complex_real_exprt &expr,
   const range_spect &range_start,
   const range_spect &size)
 {
-  const exprt &op=expr.op0();
-  assert(op.type().id()==ID_complex);
+  get_objects_rec(mode, expr.op(), range_start, size);
+}
 
-  range_spect sub_size=
-    to_range_spect(pointer_offset_bits(op.type().subtype(), ns));
-  assert(sub_size>0);
+void rw_range_sett::get_objects_complex_imag(
+  get_modet mode,
+  const complex_imag_exprt &expr,
+  const range_spect &range_start,
+  const range_spect &size)
+{
+  const exprt &op = expr.op();
+
+  auto subtype_bits = pointer_offset_bits(op.type().subtype(), ns);
+  CHECK_RETURN(subtype_bits.has_value());
+
+  range_spect sub_size = to_range_spect(*subtype_bits);
+  CHECK_RETURN(sub_size > 0);
+
   range_spect offset=
     (range_start==-1 || expr.id()==ID_complex_real) ? 0 : sub_size;
 
-  get_objects_rec(mode, op, range_start+offset, size);
+  get_objects_rec(mode, op, range_start + offset, size);
 }
 
 void rw_range_sett::get_objects_if(
@@ -139,21 +150,21 @@ void rw_range_sett::get_objects_byte_extract(
 {
   const exprt simp_offset=simplify_expr(be.offset(), ns);
 
-  mp_integer index;
-  if(range_start==-1 || to_integer(simp_offset, index))
+  auto index = numeric_cast<mp_integer>(simp_offset);
+  if(range_start == -1 || !index.has_value())
     get_objects_rec(mode, be.op(), -1, size);
   else
   {
-    index*=8;
-    if(index>=pointer_offset_bits(be.op().type(), ns))
+    *index *= 8;
+    if(*index >= *pointer_offset_bits(be.op().type(), ns))
       return;
 
     endianness_mapt map(
       be.op().type(),
       be.id()==ID_byte_extract_little_endian,
       ns);
-    assert(index<std::numeric_limits<size_t>::max());
-    range_spect offset=range_start + map.map_bit(integer2size_t(index));
+    range_spect offset =
+      range_start + map.map_bit(numeric_cast_v<std::size_t>(*index));
     get_objects_rec(mode, be.op(), offset, size);
   }
 }
@@ -166,21 +177,19 @@ void rw_range_sett::get_objects_shift(
 {
   const exprt simp_distance=simplify_expr(shift.distance(), ns);
 
-  range_spect src_size=
-    to_range_spect(pointer_offset_bits(shift.op().type(), ns));
+  auto op_bits = pointer_offset_bits(shift.op().type(), ns);
 
-  mp_integer dist;
-  if(range_start==-1 ||
-     size==-1 ||
-     src_size==-1 ||
-     to_integer(simp_distance, dist))
+  range_spect src_size = op_bits.has_value() ? to_range_spect(*op_bits) : -1;
+
+  const auto dist = numeric_cast<mp_integer>(simp_distance);
+  if(range_start == -1 || size == -1 || src_size == -1 || !dist.has_value())
   {
     get_objects_rec(mode, shift.op(), -1, -1);
     get_objects_rec(mode, shift.distance(), -1, -1);
   }
   else
   {
-    range_spect dist_r=to_range_spect(dist);
+    const range_spect dist_r = to_range_spect(*dist);
 
     // not sure whether to worry about
     // config.ansi_c.endianness==configt::ansi_ct::IS_LITTLE_ENDIAN
@@ -212,26 +221,28 @@ void rw_range_sett::get_objects_member(
   const range_spect &range_start,
   const range_spect &size)
 {
-  const typet &type=ns.follow(expr.struct_op().type());
+  const typet &type = expr.struct_op().type();
 
-  if(type.id()==ID_union ||
-     range_start==-1)
+  if(type.id() == ID_union || type.id() == ID_union_tag || range_start == -1)
   {
     get_objects_rec(mode, expr.struct_op(), range_start, size);
     return;
   }
 
-  const struct_typet &struct_type=to_struct_type(type);
+  const struct_typet &struct_type = to_struct_type(ns.follow(type));
 
-  range_spect offset=
-    to_range_spect(
-      member_offset_bits(
-        struct_type,
-        expr.get_component_name(),
-        ns));
+  auto offset_bits =
+    member_offset_bits(struct_type, expr.get_component_name(), ns);
 
-  if(offset!=-1)
-    offset+=range_start;
+  range_spect offset;
+
+  if(offset_bits.has_value())
+  {
+    offset = to_range_spect(*offset_bits);
+    offset += range_start;
+  }
+  else
+    offset = -1;
 
   get_objects_rec(mode, expr.struct_op(), offset, size);
 }
@@ -246,43 +257,40 @@ void rw_range_sett::get_objects_index(
     return;
 
   range_spect sub_size=0;
-  const typet &type=ns.follow(expr.array().type());
+  const typet &type = expr.array().type();
 
   if(type.id()==ID_vector)
   {
     const vector_typet &vector_type=to_vector_type(type);
 
-    sub_size=
-      to_range_spect(pointer_offset_bits(vector_type.subtype(), ns));
+    auto subtype_bits = pointer_offset_bits(vector_type.subtype(), ns);
+
+    sub_size = subtype_bits.has_value() ? to_range_spect(*subtype_bits) : -1;
   }
   else if(type.id()==ID_array)
   {
     const array_typet &array_type=to_array_type(type);
 
-    sub_size=
-      to_range_spect(pointer_offset_bits(array_type.subtype(), ns));
+    auto subtype_bits = pointer_offset_bits(array_type.subtype(), ns);
+
+    sub_size = subtype_bits.has_value() ? to_range_spect(*subtype_bits) : -1;
   }
   else
     return;
 
   const exprt simp_index=simplify_expr(expr.index(), ns);
 
-  mp_integer index;
-  if(to_integer(simp_index, index))
-  {
+  const auto index = numeric_cast<mp_integer>(simp_index);
+  if(!index.has_value())
     get_objects_rec(get_modet::READ, expr.index());
-    index=-1;
-  }
 
-  if(range_start==-1 ||
-     sub_size==-1 ||
-     index==-1)
+  if(range_start == -1 || sub_size == -1 || !index.has_value())
     get_objects_rec(mode, expr.array(), -1, size);
   else
     get_objects_rec(
       mode,
       expr.array(),
-      range_start+to_range_spect(index*sub_size),
+      range_start + to_range_spect(*index * sub_size),
       size);
 }
 
@@ -292,13 +300,15 @@ void rw_range_sett::get_objects_array(
   const range_spect &range_start,
   const range_spect &size)
 {
-  const array_typet &array_type=
-    to_array_type(ns.follow(expr.type()));
+  const array_typet &array_type = expr.type();
 
-  range_spect sub_size=
-    to_range_spect(pointer_offset_bits(array_type.subtype(), ns));
+  auto subtype_bits = pointer_offset_bits(array_type.subtype(), ns);
 
-  if(sub_size==-1)
+  range_spect sub_size;
+
+  if(subtype_bits.has_value())
+    sub_size = to_range_spect(*subtype_bits);
+  else
   {
     forall_operands(it, expr)
       get_objects_rec(mode, *it, 0, -1);
@@ -335,8 +345,10 @@ void rw_range_sett::get_objects_struct(
   const struct_typet &struct_type=
     to_struct_type(ns.follow(expr.type()));
 
-  range_spect full_size=
-    to_range_spect(pointer_offset_bits(struct_type, ns));
+  auto struct_bits = pointer_offset_bits(struct_type, ns);
+
+  range_spect full_size =
+    struct_bits.has_value() ? to_range_spect(*struct_bits) : -1;
 
   range_spect offset=0;
   range_spect full_r_s=range_start==-1 ? 0 : range_start;
@@ -344,8 +356,9 @@ void rw_range_sett::get_objects_struct(
 
   forall_operands(it, expr)
   {
-    range_spect sub_size=
-      to_range_spect(pointer_offset_bits(it->type(), ns));
+    auto it_bits = pointer_offset_bits(it->type(), ns);
+
+    range_spect sub_size = it_bits.has_value() ? to_range_spect(*it_bits) : -1;
 
     if(offset==-1)
     {
@@ -394,8 +407,9 @@ void rw_range_sett::get_objects_typecast(
 {
   const exprt &op=tc.op();
 
-  range_spect new_size=
-    to_range_spect(pointer_offset_bits(op.type(), ns));
+  auto op_bits = pointer_offset_bits(op.type(), ns);
+
+  range_spect new_size = op_bits.has_value() ? to_range_spect(*op_bits) : -1;
 
   if(range_start==-1)
     new_size=-1;
@@ -417,12 +431,18 @@ void rw_range_sett::get_objects_address_of(const exprt &object)
      object.id() == ID_label ||
      object.id() == ID_array ||
      object.id() == ID_null_object)
+  {
     // constant, nothing to do
     return;
+  }
   else if(object.id()==ID_symbol)
+  {
     get_objects_rec(get_modet::READ, object);
+  }
   else if(object.id()==ID_dereference)
+  {
     get_objects_rec(get_modet::READ, object);
+  }
   else if(object.id()==ID_index)
   {
     const index_exprt &index=to_index_expr(object);
@@ -458,7 +478,7 @@ void rw_range_sett::get_objects_address_of(const exprt &object)
     get_objects_rec(get_modet::READ, address_of_exprt(tc.op()));
   }
   else
-    throw "rw_range_sett: address_of `"+object.id_string()+"' not handled";
+    throw "rw_range_sett: address_of '" + object.id_string() + "' not handled";
 }
 
 void rw_range_sett::add(
@@ -487,9 +507,12 @@ void rw_range_sett::get_objects_rec(
   const range_spect &range_start,
   const range_spect &size)
 {
-  if(expr.id()==ID_complex_real ||
-     expr.id()==ID_complex_imag)
-    get_objects_complex(mode, expr, range_start, size);
+  if(expr.id() == ID_complex_real)
+    get_objects_complex_real(
+      mode, to_complex_real_expr(expr), range_start, size);
+  else if(expr.id() == ID_complex_imag)
+    get_objects_complex_imag(
+      mode, to_complex_imag_expr(expr), range_start, size);
   else if(expr.id()==ID_typecast)
     get_objects_typecast(
       mode,
@@ -527,8 +550,11 @@ void rw_range_sett::get_objects_rec(
   {
     const symbol_exprt &symbol=to_symbol_expr(expr);
     const irep_idt identifier=symbol.get_identifier();
-    range_spect full_size=
-      to_range_spect(pointer_offset_bits(symbol.type(), ns));
+
+    auto symbol_bits = pointer_offset_bits(symbol.type(), ns);
+
+    range_spect full_size =
+      symbol_bits.has_value() ? to_range_spect(*symbol_bits) : -1;
 
     if(full_size==0 ||
        (full_size>0 && range_start>=full_size))
@@ -569,13 +595,15 @@ void rw_range_sett::get_objects_rec(
       get_objects_rec(mode, *it);
   }
   else
-    throw "rw_range_sett: assignment to `"+expr.id_string()+"' not handled";
+    throw "rw_range_sett: assignment to '" + expr.id_string() + "' not handled";
 }
 
 void rw_range_sett::get_objects_rec(get_modet mode, const exprt &expr)
 {
-  range_spect size=
-    to_range_spect(pointer_offset_bits(expr.type(), ns));
+  auto expr_bits = pointer_offset_bits(expr.type(), ns);
+
+  range_spect size = expr_bits.has_value() ? to_range_spect(*expr_bits) : -1;
+
   get_objects_rec(mode, expr, 0, size);
 }
 
@@ -584,8 +612,9 @@ void rw_range_sett::get_objects_rec(const typet &type)
   // TODO should recurse into various composite types
   if(type.id()==ID_array)
   {
-    get_objects_rec(type.subtype());
-    get_objects_rec(get_modet::READ, to_array_type(type).size());
+    const auto &array_type = to_array_type(type);
+    get_objects_rec(array_type.subtype());
+    get_objects_rec(get_modet::READ, array_type.size());
   }
 }
 
@@ -602,18 +631,26 @@ void rw_range_set_value_sett::get_objects_dereference(
     size);
 
   exprt object=deref;
-  dereference(target, object, ns, value_sets);
+  dereference(function, target, object, ns, value_sets);
 
-  range_spect new_size=
-    to_range_spect(pointer_offset_bits(object.type(), ns));
+  auto type_bits = pointer_offset_bits(object.type(), ns);
 
-  if(range_start==-1 || new_size<=range_start)
-    new_size=-1;
-  else
+  range_spect new_size;
+
+  if(type_bits.has_value())
   {
-    new_size-=range_start;
-    new_size=std::min(size, new_size);
+    new_size = to_range_spect(*type_bits);
+
+    if(range_start == -1 || new_size <= range_start)
+      new_size = -1;
+    else
+    {
+      new_size -= range_start;
+      new_size = std::min(size, new_size);
+    }
   }
+  else
+    new_size = -1;
 
   // value_set_dereferencet::build_reference_to will turn *p into
   // DYNAMIC_OBJECT(p) ? *p : invalid_objectN
@@ -634,7 +671,7 @@ void guarded_range_domaint::output(
     out << itr->first << ":" << itr->second.first;
     // we don't know what mode (language) we are in, so we rely on the default
     // language to be reasonable for from_expr
-    out << " if " << from_expr(ns, "", itr->second.second);
+    out << " if " << from_expr(ns, irep_idt(), itr->second.second);
   }
   out << "]";
 }
@@ -653,15 +690,15 @@ void rw_guarded_range_set_value_sett::get_objects_if(
   {
     get_objects_rec(get_modet::READ, if_expr.cond());
 
-    guardt guard_bak1(guard), guard_bak2(guard);
+    guardt copy = guard;
 
     guard.add(not_exprt(if_expr.cond()));
     get_objects_rec(mode, if_expr.false_case(), range_start, size);
-    guard.swap(guard_bak1);
+    guard = copy;
 
     guard.add(if_expr.cond());
     get_objects_rec(mode, if_expr.true_case(), range_start, size);
-    guard.swap(guard_bak2);
+    guard = std::move(copy);
   }
 }
 
@@ -685,35 +722,40 @@ void rw_guarded_range_set_value_sett::add(
     {range_start, {range_end, guard.as_expr()}});
 }
 
-void goto_rw(goto_programt::const_targett target,
-             const code_assignt &assign,
-             rw_range_sett &rw_set)
+static void goto_rw(
+  const irep_idt &function,
+  goto_programt::const_targett target,
+  const code_assignt &assign,
+  rw_range_sett &rw_set)
 {
-  rw_set.get_objects_rec(target, rw_range_sett::get_modet::LHS_W, assign.lhs());
-  rw_set.get_objects_rec(target, rw_range_sett::get_modet::READ, assign.rhs());
+  rw_set.get_objects_rec(
+    function, target, rw_range_sett::get_modet::LHS_W, assign.lhs());
+  rw_set.get_objects_rec(
+    function, target, rw_range_sett::get_modet::READ, assign.rhs());
 }
 
-void goto_rw(goto_programt::const_targett target,
-             const code_function_callt &function_call,
-             rw_range_sett &rw_set)
+static void goto_rw(
+  const irep_idt &function,
+  goto_programt::const_targett target,
+  const code_function_callt &function_call,
+  rw_range_sett &rw_set)
 {
   if(function_call.lhs().is_not_nil())
     rw_set.get_objects_rec(
-      target,
-      rw_range_sett::get_modet::LHS_W,
-      function_call.lhs());
+      function, target, rw_range_sett::get_modet::LHS_W, function_call.lhs());
 
   rw_set.get_objects_rec(
-    target,
-    rw_range_sett::get_modet::READ,
-    function_call.function());
+    function, target, rw_range_sett::get_modet::READ, function_call.function());
 
   forall_expr(it, function_call.arguments())
-    rw_set.get_objects_rec(target, rw_range_sett::get_modet::READ, *it);
+    rw_set.get_objects_rec(
+      function, target, rw_range_sett::get_modet::READ, *it);
 }
 
-void goto_rw(goto_programt::const_targett target,
-             rw_range_sett &rw_set)
+void goto_rw(
+  const irep_idt &function,
+  goto_programt::const_targett target,
+  rw_range_sett &rw_set)
 {
   switch(target->type)
   {
@@ -726,9 +768,10 @@ void goto_rw(goto_programt::const_targett target,
   case ASSUME:
   case ASSERT:
     rw_set.get_objects_rec(
+      function,
       target,
       rw_range_sett::get_modet::READ,
-      target->guard);
+      target->get_condition());
     break;
 
   case RETURN:
@@ -737,6 +780,7 @@ void goto_rw(goto_programt::const_targett target,
         to_code_return(target->code);
       if(code_return.has_return_value())
         rw_set.get_objects_rec(
+          function,
           target,
           rw_range_sett::get_modet::READ,
           code_return.return_value());
@@ -745,10 +789,11 @@ void goto_rw(goto_programt::const_targett target,
 
   case OTHER:
     // if it's printf, mark the operands as read here
-    if(target->code.get(ID_statement)==ID_printf)
+    if(target->get_other().get_statement() == ID_printf)
     {
-      forall_expr(it, target->code.operands())
-        rw_set.get_objects_rec(target, rw_range_sett::get_modet::READ, *it);
+      for(const auto &op : target->get_other().operands())
+        rw_set.get_objects_rec(
+          function, target, rw_range_sett::get_modet::READ, op);
     }
     break;
 
@@ -765,11 +810,12 @@ void goto_rw(goto_programt::const_targett target,
     break;
 
   case ASSIGN:
-    goto_rw(target, to_code_assign(target->code), rw_set);
+    goto_rw(function, target, to_code_assign(target->code), rw_set);
     break;
 
   case DEAD:
     rw_set.get_objects_rec(
+      function,
       target,
       rw_range_sett::get_modet::LHS_W,
       to_code_dead(target->code).symbol());
@@ -777,23 +823,27 @@ void goto_rw(goto_programt::const_targett target,
 
   case DECL:
     rw_set.get_objects_rec(
-      to_code_decl(target->code).symbol().type());
+      function, target, to_code_decl(target->code).symbol().type());
     rw_set.get_objects_rec(
+      function,
       target,
       rw_range_sett::get_modet::LHS_W,
       to_code_decl(target->code).symbol());
     break;
 
   case FUNCTION_CALL:
-    goto_rw(target, to_code_function_call(target->code), rw_set);
+    goto_rw(function, target, to_code_function_call(target->code), rw_set);
     break;
   }
 }
 
-void goto_rw(const goto_programt &goto_program, rw_range_sett &rw_set)
+void goto_rw(
+  const irep_idt &function,
+  const goto_programt &goto_program,
+  rw_range_sett &rw_set)
 {
   forall_goto_program_instructions(i_it, goto_program)
-    goto_rw(i_it, rw_set);
+    goto_rw(function, i_it, rw_set);
 }
 
 void goto_rw(const goto_functionst &goto_functions,
@@ -807,6 +857,6 @@ void goto_rw(const goto_functionst &goto_functions,
   {
     const goto_programt &body=f_it->second.body;
 
-    goto_rw(body, rw_set);
+    goto_rw(f_it->first, body, rw_set);
   }
 }

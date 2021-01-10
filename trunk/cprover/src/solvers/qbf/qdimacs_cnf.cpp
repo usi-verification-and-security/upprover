@@ -9,7 +9,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "qdimacs_cnf.h"
 
 #include <iostream>
-#include <cassert>
+
+#include <util/invariant.h>
 
 void qdimacs_cnft::write_qdimacs_cnf(std::ostream &out)
 {
@@ -31,9 +32,12 @@ void qdimacs_cnft::write_prefix(std::ostream &out) const
   {
     const quantifiert &quantifier=*it;
 
-    assert(quantifier.var_no<no_variables());
+    INVARIANT_WITH_DIAGNOSTICS(
+      quantifier.var_no < no_variables(),
+      "unknown variable: ",
+      std::to_string(quantifier.var_no));
     // double quantification?
-    assert(!quantified[quantifier.var_no]);
+    INVARIANT(!quantified[quantifier.var_no], "no double quantification");
     quantified[quantifier.var_no]=true;
 
     switch(quantifier.type)
@@ -46,8 +50,8 @@ void qdimacs_cnft::write_prefix(std::ostream &out) const
       out << "e";
       break;
 
-    default:
-      assert(false);
+    case quantifiert::typet::NONE:
+      UNREACHABLE;
     }
 
     out << " " << quantifier.var_no << " 0\n";

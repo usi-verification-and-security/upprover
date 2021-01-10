@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_ANSI_C_ANSI_C_PARSER_H
 
 #include <cassert>
+#include <set>
 
 #include <util/parser.h>
 #include <util/expr.h>
@@ -28,16 +29,15 @@ class ansi_c_parsert:public parsert
 public:
   ansi_c_parse_treet parse_tree;
 
-  ansi_c_parsert():
-    tag_following(false),
-    asm_block_following(false),
-    parenthesis_counter(0),
-    mode(modet::NONE),
-    cpp98(false),
-    cpp11(false),
-    for_has_scope(false),
-    ts_18661_3_Floatn_types(false),
-    Float128_type(false)
+  ansi_c_parsert()
+    : tag_following(false),
+      asm_block_following(false),
+      parenthesis_counter(0),
+      mode(modet::NONE),
+      cpp98(false),
+      cpp11(false),
+      for_has_scope(false),
+      ts_18661_3_Floatn_types(false)
   {
   }
 
@@ -57,6 +57,7 @@ public:
     parenthesis_counter=0;
     string_literal.clear();
     pragma_pack.clear();
+    pragma_cprover.clear();
 
     // set up global scope
     scopes.clear();
@@ -69,6 +70,7 @@ public:
   unsigned parenthesis_counter;
   std::string string_literal;
   std::list<exprt> pragma_pack;
+  std::list<std::set<irep_idt>> pragma_cprover;
 
   typedef configt::ansi_ct::flavourt modet;
   modet mode;
@@ -81,9 +83,6 @@ public:
 
   // ISO/IEC TS 18661-3:2015
   bool ts_18661_3_Floatn_types;
-
-  // Does the compiler version emulated provide _Float128?
-  bool Float128_type;
 
   typedef ansi_c_identifiert identifiert;
   typedef ansi_c_scopet scopet;
@@ -146,6 +145,16 @@ public:
     irep_idt identifier;
     lookup(base_name, identifier, false, true);
     return identifier;
+  }
+
+  void set_pragma_cprover()
+  {
+    source_location.remove(ID_pragma);
+    for(const auto &pragma_set : pragma_cprover)
+    {
+      for(const auto &pragma : pragma_set)
+        source_location.add_pragma(pragma);
+    }
   }
 };
 

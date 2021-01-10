@@ -21,10 +21,9 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 #include "std_expr.h"
 
 refined_string_typet::refined_string_typet(
-  const typet &index_type, const typet &char_type)
+  const typet &index_type,
+  const pointer_typet &content_type)
+  : struct_typet({{"length", index_type}, {"content", content_type}})
 {
-  array_typet char_array(char_type, infinity_exprt(index_type));
-  components().emplace_back("length", index_type);
-  components().emplace_back("content", char_array);
   set_tag(CPROVER_PREFIX"refined_string_type");
 }

@@ -18,6 +18,7 @@ Author: Michael Tautschnig, Daniel Kroening
 #include <util/rename_symbol.h>
 
 #include <linking/linking_class.h>
+#include <util/exception_utils.h>
 
 #include "goto_model.h"
 
@@ -26,16 +27,26 @@ static void rename_symbols_in_function(
   irep_idt &new_function_name,
   const rename_symbolt &rename_symbol)
 {
+  for(auto &identifier : function.parameter_identifiers)
+  {
+    auto entry = rename_symbol.expr_map.find(identifier);
+    if(entry != rename_symbol.expr_map.end())
+      identifier = entry->second;
+  }
+
   goto_programt &program=function.body;
   rename_symbol(function.type);
 
   Forall_goto_program_instructions(iit, program)
   {
     rename_symbol(iit->code);
-    rename_symbol(iit->guard);
-    // we need to update the instruction's function field as
-    // well, with the new symbol for the function
-    iit->function=new_function_name;
+
+    if(iit->has_condition())
+    {
+      exprt c = iit->get_condition();
+      rename_symbol(c);
+      iit->set_condition(c);
+    }
   }
 }
 
@@ -86,6 +97,8 @@ static bool link_functions(
         rename_symbols_in_function(src_func, final_id, rename_symbol);
 
         in_dest_symbol_table.body.swap(src_func.body);
+        in_dest_symbol_table.parameter_identifiers.swap(
+          src_func.parameter_identifiers);
         in_dest_symbol_table.type=src_func.type;
       }
       else if(src_func.body.instructions.empty() ||
@@ -93,7 +106,7 @@ static bool link_functions(
       {
         // just keep the old one in dest
       }
-      else if(in_dest_symbol_table.type.get_bool(ID_C_inlined))
+      else if(to_code_type(ns.lookup(final_id).type).get_inlined())
       {
         // ok, we silently ignore
       }
@@ -145,8 +158,10 @@ static bool link_functions(
     Forall_goto_functions(dest_it, dest_functions)
       Forall_goto_program_instructions(iit, dest_it->second.body)
       {
-        object_type_updates(iit->code);
-        object_type_updates(iit->guard);
+        iit->transform([&object_type_updates](exprt expr) {
+          object_type_updates(expr);
+          return expr;
+        });
       }
   }
 
@@ -171,15 +186,18 @@ void link_goto_model(
                    message_handler);
 
   if(linking.typecheck_main())
-    throw 0;
-
+  {
+    throw invalid_source_file_exceptiont("typechecking main failed");
+  }
   if(link_functions(
-      dest.symbol_table,
-      dest.goto_functions,
-      src.symbol_table,
-      src.goto_functions,
-      linking.rename_symbol,
-      weak_symbols,
-      linking.object_type_updates))
-    throw 0;
+       dest.symbol_table,
+       dest.goto_functions,
+       src.symbol_table,
+       src.goto_functions,
+       linking.rename_symbol,
+       weak_symbols,
+       linking.object_type_updates))
+  {
+    throw invalid_source_file_exceptiont("linking failed");
+  }
 }

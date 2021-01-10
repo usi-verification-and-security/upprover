@@ -20,6 +20,7 @@ extern const void *__CPROVER_memory_leak;
 void __CPROVER_assume(__CPROVER_bool assumption) __attribute__((__noreturn__));
 void __CPROVER_assert(__CPROVER_bool assertion, const char *description);
 void __CPROVER_precondition(__CPROVER_bool assertion, const char *description);
+void __CPROVER_postcondition(__CPROVER_bool assertion, const char *description);
 
 __CPROVER_bool __CPROVER_is_zero_string(const void *);
 __CPROVER_size_t __CPROVER_zero_string_length(const void *);
@@ -38,6 +39,7 @@ void __CPROVER_initialize(void);
 void __CPROVER_cover(__CPROVER_bool condition);
 #endif
 
+void __CPROVER_printf(const char *format, ...);
 void __CPROVER_input(const char *id, ...);
 void __CPROVER_output(const char *id, ...);
 
@@ -149,5 +151,12 @@ __CPROVER_bool __CPROVER_get_may(const void *, const char *);
 #define __CPROVER_danger_max_solution_size 1
 #define __CPROVER_danger_number_of_vars 1
 #define __CPROVER_danger_number_of_consts 1
+
+// detect overflow
+__CPROVER_bool __CPROVER_overflow_minus();
+__CPROVER_bool __CPROVER_overflow_mult();
+__CPROVER_bool __CPROVER_overflow_plus();
+__CPROVER_bool __CPROVER_overflow_shl();
+__CPROVER_bool __CPROVER_overflow_unary_minus();
 
 #endif // CPROVER_ANSI_C_LIBRARY_CPROVER_H

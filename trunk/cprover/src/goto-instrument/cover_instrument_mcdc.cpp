@@ -11,6 +11,8 @@ Author: Daniel Kroening
 
 #include "cover_instrument.h"
 
+#include <util/expr_util.h>
+
 #include <langapi/language_util.h>
 
 #include <algorithm>
@@ -73,7 +75,7 @@ void collect_mcdc_controlling_rec(
           new_conditions.push_back(conjunction(o));
           result.insert(conjunction(new_conditions));
 
-          o[i].make_not();
+          o[i] = boolean_negate(op);
           new_conditions.back() = conjunction(o);
           result.insert(conjunction(new_conditions));
         }
@@ -206,7 +208,7 @@ collect_mcdc_controlling_nested(const std::set<exprt> &decisions)
           // expansion of such an operand is stored in ''res''.
           if(operands[i].id() == ID_not)
           {
-            exprt no = operands[i].op0();
+            exprt no = to_not_expr(operands[i]).op();
             if(!is_condition(no))
             {
               changed = true;
@@ -269,7 +271,7 @@ std::set<signed> sign_of_expr(const exprt &e, const exprt &E)
   // or, ''E'' is the negation of ''e''?
   if(E.id() == ID_not)
   {
-    if(e == E.op0())
+    if(e == to_not_expr(E).op())
     {
       signs.insert(-1);
       return signs;
@@ -279,25 +281,24 @@ std::set<signed> sign_of_expr(const exprt &e, const exprt &E)
   // In the general case, we analyze each operand of ''E''.
   std::vector<exprt> ops;
   collect_operands(E, ops);
-  for(auto &x : ops)
+  for(const auto &x : ops)
   {
-    exprt y(x);
-    if(y == e)
+    if(x == e)
       signs.insert(+1);
-    else if(y.id() == ID_not)
+    else if(x.id() == ID_not)
     {
-      y.make_not();
-      if(y == e)
+      const exprt &x_op = to_not_expr(x).op();
+      if(x_op == e)
         signs.insert(-1);
-      if(!is_condition(y))
+      if(!is_condition(x_op))
       {
-        std::set<signed> re = sign_of_expr(e, y);
+        std::set<signed> re = sign_of_expr(e, x_op);
         signs.insert(re.begin(), re.end());
       }
     }
-    else if(!is_condition(y))
+    else if(!is_condition(x))
     {
-      std::set<signed> re = sign_of_expr(e, y);
+      std::set<signed> re = sign_of_expr(e, x);
       signs.insert(re.begin(), re.end());
     }
   }
@@ -420,9 +421,7 @@ bool eval_expr(const std::map<exprt, signed> &atomic_exprs, const exprt &src)
   // src is NOT
   else if(src.id() == ID_not)
   {
-    exprt no_op(src);
-    no_op.make_not();
-    return !eval_expr(atomic_exprs, no_op);
+    return !eval_expr(atomic_exprs, to_not_expr(src).op());
   }
   else // if(is_condition(src))
   {
@@ -621,12 +620,13 @@ void minimize_mcdc_controlling(
 }
 
 void cover_mcdc_instrumentert::instrument(
+  const irep_idt &function_id,
   goto_programt &goto_program,
   goto_programt::targett &i_it,
   const cover_blocks_baset &) const
 {
   if(is_non_cover_assertion(i_it))
-    i_it->make_skip();
+    i_it->turn_into_skip();
 
   // 1. Each entry and exit point is invoked
   // 2. Each decision takes every possible outcome
@@ -657,28 +657,23 @@ void cover_mcdc_instrumentert::instrument(
                                   ? "decision/condition"
                                   : is_decision ? "decision" : "condition";
 
-      std::string p_string = from_expr(ns, i_it->function, p);
+      std::string p_string = from_expr(ns, function_id, p);
 
-      std::string comment_t = description + " `" + p_string + "' true";
-      const irep_idt function = i_it->function;
+      std::string comment_t = description + " '" + p_string + "' true";
       goto_program.insert_before_swap(i_it);
-      i_it->make_assertion(not_exprt(p));
-      i_it->source_location = source_location;
+      *i_it = goto_programt::make_assertion(not_exprt(p), source_location);
       i_it->source_location.set_comment(comment_t);
       i_it->source_location.set(ID_coverage_criterion, coverage_criterion);
       i_it->source_location.set_property_class(property_class);
-      i_it->source_location.set_function(function);
-      i_it->function = function;
+      i_it->source_location.set_function(function_id);
 
-      std::string comment_f = description + " `" + p_string + "' false";
+      std::string comment_f = description + " '" + p_string + "' false";
       goto_program.insert_before_swap(i_it);
-      i_it->make_assertion(p);
-      i_it->source_location = source_location;
+      *i_it = goto_programt::make_assertion(p, source_location);
       i_it->source_location.set_comment(comment_f);
       i_it->source_location.set(ID_coverage_criterion, coverage_criterion);
       i_it->source_location.set_property_class(property_class);
-      i_it->source_location.set_function(function);
-      i_it->function = function;
+      i_it->source_location.set_function(function_id);
     }
 
     std::set<exprt> controlling;
@@ -693,20 +688,17 @@ void cover_mcdc_instrumentert::instrument(
 
     for(const auto &p : controlling)
     {
-      std::string p_string = from_expr(ns, i_it->function, p);
+      std::string p_string = from_expr(ns, function_id, p);
 
       std::string description =
-        "MC/DC independence condition `" + p_string + "'";
+        "MC/DC independence condition '" + p_string + "'";
 
-      const irep_idt function = i_it->function;
       goto_program.insert_before_swap(i_it);
-      i_it->make_assertion(not_exprt(p));
-      i_it->source_location = source_location;
+      *i_it = goto_programt::make_assertion(not_exprt(p), source_location);
       i_it->source_location.set_comment(description);
       i_it->source_location.set(ID_coverage_criterion, coverage_criterion);
       i_it->source_location.set_property_class(property_class);
-      i_it->source_location.set_function(function);
-      i_it->function = function;
+      i_it->source_location.set_function(function_id);
     }
 
     for(std::size_t i = 0; i < both.size() * 2 + controlling.size(); i++)

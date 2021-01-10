@@ -11,17 +11,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "std_code.h"
 
+#include "arith_tools.h"
+#include "c_types.h"
 #include "std_expr.h"
-
-const irep_idt &code_declt::get_identifier() const
-{
-  return to_symbol_expr(symbol()).get_identifier();
-}
-
-const irep_idt &code_deadt::get_identifier() const
-{
-  return to_symbol_expr(symbol()).get_identifier();
-}
+#include "string_constant.h"
 
 /// If this `codet` is a \ref code_blockt (i.e.\ it represents a block of
 /// statements), return the unmodified input. Otherwise (i.e.\ the `codet`
@@ -36,7 +29,7 @@ code_blockt &codet::make_block()
   tmp.swap(*this);
 
   *this = codet(ID_block);
-  move_to_operands(tmp);
+  add_to_operands(std::move(tmp));
 
   return static_cast<code_blockt &>(*this);
 }
@@ -111,53 +104,146 @@ const codet &codet::last_statement() const
 /// \param extra_block: The input code_blockt
 void code_blockt::append(const code_blockt &extra_block)
 {
-  operands().reserve(operands().size()+extra_block.operands().size());
+  statements().reserve(statements().size() + extra_block.statements().size());
 
-  for(const auto &operand : extra_block.operands())
+  for(const auto &statement : extra_block.statements())
   {
-    add(to_code(operand));
+    add(statement);
   }
+}
+
+codet &code_blockt::find_last_statement()
+{
+  codet *last=this;
+
+  while(true)
+  {
+    const irep_idt &statement=last->get_statement();
+
+    if(statement==ID_block &&
+       !to_code_block(*last).statements().empty())
+    {
+      last=&to_code_block(*last).statements().back();
+    }
+    else if(statement==ID_label)
+    {
+      last = &(to_code_label(*last).code());
+    }
+    else
+      break;
+  }
+
+  return *last;
 }
 
 code_blockt create_fatal_assertion(
   const exprt &condition, const source_locationt &loc)
 {
-  code_blockt result;
-  result.copy_to_operands(code_assertt(condition));
-  result.copy_to_operands(code_assumet(condition));
-  for(auto &op : result.operands())
+  code_blockt result({code_assertt(condition), code_assumet(condition)});
+
+  for(auto &op : result.statements())
     op.add_source_location() = loc;
+
   result.add_source_location() = loc;
+
   return result;
 }
 
-side_effect_exprt::side_effect_exprt(
-  const irep_idt &statement,
-  const typet &_type,
-  const source_locationt &loc)
-  : exprt(ID_side_effect, _type)
+std::vector<irep_idt> code_function_bodyt::get_parameter_identifiers() const
 {
-  set_statement(statement);
-  add_source_location() = loc;
+  const auto &sub = find(ID_parameters).get_sub();
+  std::vector<irep_idt> result;
+  result.reserve(sub.size());
+  for(const auto &s : sub)
+    result.push_back(s.get(ID_identifier));
+  return result;
 }
 
-side_effect_expr_nondett::side_effect_expr_nondett(
-  const typet &_type,
-  const source_locationt &loc)
-  : side_effect_exprt(ID_nondet, _type, loc)
+void code_function_bodyt::set_parameter_identifiers(
+  const std::vector<irep_idt> &parameter_identifiers)
 {
-  set_nullable(true);
+  auto &sub = add(ID_parameters).get_sub();
+  sub.reserve(parameter_identifiers.size());
+  for(const auto &id : parameter_identifiers)
+  {
+    sub.push_back(irept(ID_parameter));
+    sub.back().set(ID_identifier, id);
+  }
 }
 
-side_effect_expr_function_callt::side_effect_expr_function_callt(
-  const exprt &_function,
-  const exprt::operandst &_arguments,
-  const typet &_type,
-  const source_locationt &loc)
-  : side_effect_exprt(ID_function_call, _type, loc)
+code_inputt::code_inputt(
+  std::vector<exprt> arguments,
+  optionalt<source_locationt> location)
+  : codet{ID_input, std::move(arguments)}
 {
-  operands().resize(2);
-  op1().id(ID_arguments);
-  function() = _function;
-  arguments() = _arguments;
+  if(location)
+    add_source_location() = std::move(*location);
+  check(*this, validation_modet::INVARIANT);
+}
+
+code_inputt::code_inputt(
+  const irep_idt &description,
+  exprt expression,
+  optionalt<source_locationt> location)
+  : code_inputt{{address_of_exprt(index_exprt(
+                   string_constantt(description),
+                   from_integer(0, index_type()))),
+                 std::move(expression)},
+                std::move(location)}
+{
+}
+
+void code_inputt::check(const codet &code, const validation_modet vm)
+{
+  DATA_CHECK(
+    vm, code.operands().size() >= 2, "input must have at least two operands");
+}
+
+code_outputt::code_outputt(
+  std::vector<exprt> arguments,
+  optionalt<source_locationt> location)
+  : codet{ID_output, std::move(arguments)}
+{
+  if(location)
+    add_source_location() = std::move(*location);
+  check(*this, validation_modet::INVARIANT);
+}
+
+code_outputt::code_outputt(
+  const irep_idt &description,
+  exprt expression,
+  optionalt<source_locationt> location)
+  : code_outputt{{address_of_exprt(index_exprt(
+                    string_constantt(description),
+                    from_integer(0, index_type()))),
+                  std::move(expression)},
+                 std::move(location)}
+{
+}
+
+void code_outputt::check(const codet &code, const validation_modet vm)
+{
+  DATA_CHECK(
+    vm, code.operands().size() >= 2, "output must have at least two operands");
+}
+
+code_fort code_fort::from_index_bounds(
+  exprt start_index,
+  exprt end_index,
+  symbol_exprt loop_index,
+  codet body,
+  source_locationt location)
+{
+  PRECONDITION(start_index.type() == loop_index.type());
+  PRECONDITION(end_index.type() == loop_index.type());
+  side_effect_expr_assignt inc(
+    loop_index,
+    plus_exprt(loop_index, from_integer(1, loop_index.type())),
+    location);
+
+  return code_fort{
+    code_assignt{loop_index, std::move(start_index)},
+    binary_relation_exprt{loop_index, ID_lt, std::move(end_index)},
+    std::move(inc),
+    std::move(body)};
 }

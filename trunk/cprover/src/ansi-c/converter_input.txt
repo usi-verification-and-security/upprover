@@ -1,0 +1,8482 @@
+/* FUNCTION: __CPROVER_danger_execute */
+
+#ifndef __CPROVER_cegis_number_of_vars
+#define __CPROVER_cegis_number_of_vars 2
+#endif
+#ifndef __CPROVER_cegis_number_of_consts
+#define __CPROVER_cegis_number_of_consts 1
+#endif
+#ifndef __CPROVER_cegis_number_of_ops
+#define __CPROVER_cegis_number_of_ops 3
+#endif
+#ifndef __CPROVER_cegis_max_solution_size
+#define __CPROVER_cegis_max_solution_size 1
+#endif
+
+const void *__CPROVER_cegis_OPS[__CPROVER_cegis_number_of_ops];
+void *__CPROVER_cegis_RESULT_OPS[__CPROVER_cegis_max_solution_size];
+
+typedef unsigned char opcodet;
+typedef unsigned char opt;
+struct __CPROVER_cegis_instructiont
+{
+  opcodet opcode;
+  opt op0;
+  opt op1;
+  opt op2;
+};
+
+#define __CPROVER_cegis_max_instruction 24u
+
+void __CPROVER_danger_execute(struct __CPROVER_cegis_instructiont *program,
+                              unsigned char size)
+{
+  for (unsigned char i = 0; i < size; ++i)
+  {
+#define opcode program[i].opcode
+    __CPROVER_assume(opcode <= __CPROVER_cegis_max_instruction);
+    const unsigned int op0_id=program[i].op0;
+    const unsigned int op1_id=program[i].op1;
+    const unsigned int op2_id=program[i].op2;
+    const unsigned int max_op_index=__CPROVER_cegis_number_of_vars + i;
+    __CPROVER_assume(op0_id < max_op_index && op1_id < max_op_index && op2_id < max_op_index
+        && (op0_id >= __CPROVER_cegis_number_of_consts || op1_id >= __CPROVER_cegis_number_of_consts  || op2_id >= __CPROVER_cegis_number_of_consts)
+        && (opcode > 5u || op0_id <= op1_id) && (opcode < 21u || !op1_id)
+        && (opcode == 9u || !op2_id)
+        && (opcode != 9u || op0_id != op2_id || op1_id <= op2_id));
+    const unsigned int * const op0_ptr=__CPROVER_cegis_OPS[op0_id];
+    const unsigned int * const op1_ptr=__CPROVER_cegis_OPS[op1_id];
+    const unsigned int * const op2_ptr=__CPROVER_cegis_OPS[op2_id];
+    __CPROVER_assume(op0_ptr && op1_ptr && op2_ptr);  // No null pointers in op array
+    const unsigned int op0=*op0_ptr;
+    const unsigned int op1=*op1_ptr;
+    __CPROVER_assume((opcode != 19 && opcode != 20) || op1); // Avoid div by 0.
+    const unsigned int op2=*op2_ptr;
+#define sop0 ((int) op0)
+#define sop1 ((int) op1)
+#define sop2 ((int) op2)
+
+    unsigned int result;
+    if (opcode < 15)
+      if (opcode < 7)
+        if (opcode < 3)
+          if (opcode < 1)
+    __CPROVER_cegis_opcode_0: result=op0 + op1;
+          else if (opcode < 2)
+    __CPROVER_cegis_opcode_1: result=op0 * op1;
+          else
+    __CPROVER_cegis_opcode_2: result=op0 &op1;
+        else
+          if (opcode < 5)
+            if  (opcode < 4)
+    __CPROVER_cegis_opcode_3: result=op0 | op1;
+            else
+    __CPROVER_cegis_opcode_4: result=op0 ^ op1;
+          else if (opcode < 6)
+    __CPROVER_cegis_opcode_5: result=op0 != op1;
+            else
+    __CPROVER_cegis_opcode_6: result=!op0 || op1;
+      else
+        if (opcode < 11)
+          if (opcode < 9)
+            if (opcode < 8)
+    {
+    __CPROVER_cegis_opcode_first_7: result=op0 < op1;
+    if (result) result=op0;
+    else __CPROVER_cegis_opcode_last_7: result=op1;
+    }
+            else
+    {
+    __CPROVER_cegis_opcode_first_8: result=op0 > op1;
+    if (result) result=op0;
+    else __CPROVER_cegis_opcode_last_8: result=op1;
+    }
+          else if (opcode < 10)
+    {
+    __CPROVER_cegis_opcode_first_9: if (op0) result=op1;
+    else __CPROVER_cegis_opcode_last_9: result=op2;
+    }
+          else
+    __CPROVER_cegis_opcode_10: result=op0 - op1;
+        else
+          if (opcode < 13)
+            if (opcode < 12)
+            {
+    __CPROVER_cegis_opcode_first_11: result=op1;
+    //result%=sizeof(op0);
+    result%=32u;
+    __CPROVER_cegis_opcode_last_11: result=op0 << result;
+            }
+            else
+            {
+    __CPROVER_cegis_opcode_first_12:  result=op1;
+    //result%=sizeof(op0);
+    result%=32u;
+    __CPROVER_cegis_opcode_last_12:  result=op0 >> result;
+            }
+          else if (opcode < 14)
+          {
+    __CPROVER_cegis_opcode_first_13: result=op1;
+    //result%=sizeof(op0);
+    result%=32u;
+    __CPROVER_cegis_opcode_last_13: result=op0 >> result;
+          }
+          else
+          {
+    __CPROVER_cegis_opcode_first_14: result=op1;
+    //result%=sizeof(op0);
+    result%=32u;
+    __CPROVER_cegis_opcode_last_14: result=sop0 >> result;
+          }
+    else if (opcode < 19)
+      if (opcode < 17)
+        if (opcode < 16)
+    __CPROVER_cegis_opcode_15: result=op0 <= op1;
+        else
+    __CPROVER_cegis_opcode_16: result=op0 < op1;
+      else if (opcode < 18)
+    __CPROVER_cegis_opcode_17: result=sop0 <= sop1;
+      else
+    __CPROVER_cegis_opcode_18: result=sop0 < sop1;
+    else if (opcode < 23)
+      if (opcode < 21)
+        if (opcode < 20)
+    __CPROVER_cegis_opcode_19: result=op0 / op1;
+        else
+    __CPROVER_cegis_opcode_20: result=op0 % op1;
+      else if (opcode < 22)
+    __CPROVER_cegis_opcode_21: result=-op0;
+      else
+    __CPROVER_cegis_opcode_22: result=~op0;
+    else if (opcode < 24)
+    //__CPROVER_cegis_opcode_23: result=0u;
+    __CPROVER_cegis_opcode_23: result=sop0 == -1;
+    else
+      __CPROVER_cegis_opcode_24: result=op0;
+    //__CPROVER_cegis_opcode_24: result=sop0 != -1;
+
+    *(unsigned int *)__CPROVER_cegis_RESULT_OPS[i]=result;
+  }
+}
+
+/* FUNCTION: isalnum */
+
+inline int isalnum(int c)
+{ return (c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9'); }
+
+/* FUNCTION: isalpha */
+
+inline int isalpha(int c)
+{ return (c>='a' && c<='z') || (c>='A' && c<='Z'); }
+
+/* FUNCTION: isblank */
+
+inline int isblank(int c)
+{ return c==' ' || c=='\t'; }
+
+/* FUNCTION: iscntrl */
+
+inline int iscntrl(int c)
+{ return (c>=0 && c<='\037') || c=='\177'; }
+
+/* FUNCTION: isdigit */
+
+inline int isdigit(int c)
+{ return c>='0' && c<='9'; }
+
+/* FUNCTION: isgraph */
+
+inline int isgraph(int c)
+{ return c>='!' && c<='~'; }
+
+/* FUNCTION: islower */
+
+inline int islower(int c)
+{ return c>='a' && c<='z'; }
+
+/* FUNCTION: isprint */
+
+inline int isprint(int c)
+{ return c>=' ' && c<='~'; }
+
+/* FUNCTION: ispunct */
+
+inline int ispunct(int c)
+{ return c=='!' ||
+         c=='"' ||
+         c=='#' ||
+         c=='$' ||
+         c=='%' ||
+         c=='&' ||
+         c=='\'' ||
+         c=='(' ||
+         c==')' ||
+         c=='*' ||
+         c=='+' ||
+         c==',' ||
+         c=='-' ||
+         c=='.' ||
+         c=='/' ||
+         c==':' ||
+         c==';' ||
+         c=='<' ||
+         c=='=' ||
+         c=='>' ||
+         c=='?' ||
+         c=='@' ||
+         c=='[' ||
+         c=='\\' ||
+         c==']' ||
+         c=='^' ||
+         c=='_' ||
+         c=='`' ||
+         c=='{' ||
+         c=='|' ||
+         c=='}' ||
+         c=='~'; }
+
+/* FUNCTION: isspace */
+
+inline int isspace(int c)
+{ return c=='\t' ||
+         c=='\n' ||
+         c=='\v' ||
+         c=='\f' ||
+         c=='\r' ||
+         c==' '; }
+
+/* FUNCTION: isupper */
+
+inline int isupper(int c)
+{ return c>='A' && c<='Z'; }
+
+/* FUNCTION: isxdigit */
+
+inline int isxdigit(int c)
+{ return (c>='A' && c<='F') || (c>='a' && c<='f') || (c>='0' && c<='9'); }
+
+/* FUNCTION: tolower */
+
+inline int tolower(int c)
+{ return (c>='A' && c<='Z')?c+('a'-'A'):c; }
+
+/* FUNCTION: toupper */
+
+inline int toupper(int c)
+{ return (c>='a' && c<='z')?c-('a'-'A'):c; }
+/* FUNCTION: err */
+
+#ifndef __CPROVER_ERR_H_INCLUDED
+#include <err.h>
+#define __CPROVER_ERR_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+void err(int eval, const char *fmt, ...)
+{
+  (void)eval;
+  (void)*fmt;
+  abort();
+}
+
+/* FUNCTION: err */
+
+#ifndef __CPROVER_ERR_H_INCLUDED
+#include <err.h>
+#define __CPROVER_ERR_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+void errx(int eval, const char *fmt, ...)
+{
+  (void)eval;
+  (void)*fmt;
+  abort();
+}
+
+/* FUNCTION: warn */
+
+#ifndef __CPROVER_ERR_H_INCLUDED
+#include <err.h>
+#define __CPROVER_ERR_H_INCLUDED
+#endif
+
+void warn(const char *fmt, ...)
+{
+  (void)*fmt;
+}
+
+/* FUNCTION: warnx */
+
+#ifndef __CPROVER_ERR_H_INCLUDED
+#include <err.h>
+#define __CPROVER_ERR_H_INCLUDED
+#endif
+
+void warnx(const char *fmt, ...)
+{
+  (void)*fmt;
+}
+/* FUNCTION: __error */
+
+// This is used on MacOS to return the address of a
+// variable used for the errno macro.
+
+__CPROVER_thread_local int __CPROVER_errno;
+
+inline int * __error(void)
+{
+  return &__CPROVER_errno;
+}
+
+/* FUNCTION: __errno_location */
+
+// This is used on Linux to return the address of a
+// variable used for the errno macro.
+
+__CPROVER_thread_local int __CPROVER_errno;
+
+inline int *__errno_location(void)
+{
+  return &__CPROVER_errno;
+}
+
+/* FUNCTION: _errno */
+
+// This is used on Windows to return the address of a
+// variable used for the errno macro.
+
+__CPROVER_thread_local int __CPROVER_errno;
+
+inline int *_errno(void)
+{
+  return &__CPROVER_errno;
+}
+
+/* FUNCTION: __errno */
+
+// This has been spotted in CYGWIN
+
+__CPROVER_thread_local int __CPROVER_errno;
+
+extern int *__errno(void)
+{
+  return &__CPROVER_errno;
+}
+
+/* FUNCTION: ___errno */
+
+// This has been spotted on Solaris
+
+__CPROVER_thread_local int __CPROVER_errno;
+
+extern int *___errno(void)
+{
+  return &__CPROVER_errno;
+}
+/* FUNCTION: fcntl */
+
+#ifndef __CPROVER_FCNTL_H_INCLUDED
+#include <fcntl.h>
+#define __CPROVER_FCNTL_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+int fcntl(int fd, int cmd, ...)
+{
+__CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+  (void)fd;
+  (void)cmd;
+  return return_value;
+}
+/* FUNCTION: fegetround */
+
+#include <fenv.h>
+
+extern int __CPROVER_rounding_mode;
+
+inline int fegetround(void)
+{
+__CPROVER_HIDE:;
+  // CPROVER uses the x86 numbering of the rounding modes
+  return
+         #ifdef FE_DOWNWARD
+         __CPROVER_rounding_mode==1?FE_DOWNWARD:
+         #endif
+         __CPROVER_rounding_mode==0?FE_TONEAREST:
+         __CPROVER_rounding_mode==3?FE_TOWARDZERO:
+         #ifdef FE_UPWARD
+         __CPROVER_rounding_mode==2?FE_UPWARD:
+         #endif
+         -1;
+}
+
+/* FUNCTION: fesetround */
+
+#include <fenv.h>
+
+inline int fesetround(int rounding_mode)
+{
+__CPROVER_HIDE:;
+  // CPROVER uses the x86 numbering of the rounding modes
+  __CPROVER_rounding_mode=
+    #ifdef FE_DOWNWARD
+    rounding_mode==FE_DOWNWARD?1:
+    #endif
+    rounding_mode==FE_TONEAREST?0:
+    rounding_mode==FE_TOWARDZERO?3:
+    #ifdef FE_UPWARD
+    rounding_mode==FE_UPWARD?2:
+    #endif
+    0;
+  return 0; // we never fail
+}
+/* FUNCTION: _controlfp */
+
+#ifdef _WIN32
+#include <float.h>
+
+__CPROVER_thread_local unsigned __CPROVER_fpu_control_word;
+
+unsigned int _controlfp(
+  unsigned int new_value,
+  unsigned int mask)
+{
+  __CPROVER_fpu_control_word=
+    (__CPROVER_fpu_control_word&~mask)|new_value;
+
+  if((mask&_MCW_RC)!=0)
+    __CPROVER_rounding_mode=(new_value&_MCW_RC)>>8;
+
+  return __CPROVER_fpu_control_word;
+}
+
+#endif
+
+/* FUNCTION: _status87 */
+
+#ifdef _WIN32
+
+__CPROVER_thread_local unsigned __CPROVER_fpu_control_word;
+
+inline unsigned int _status87(void)
+{
+  return __CPROVER_fpu_control_word;
+}
+
+#endif
+
+/* FUNCTION: _statusfp */
+
+#ifdef _WIN32
+
+__CPROVER_thread_local unsigned __CPROVER_fpu_control_word;
+
+inline unsigned int _statusfp(void)
+{
+  return __CPROVER_fpu_control_word;
+}
+
+#endif
+
+/* FUNCTION: _statusfp2 */
+
+#ifdef _WIN32
+
+__CPROVER_thread_local unsigned __CPROVER_fpu_control_word;
+
+inline void _statusfp2(unsigned int *px86, unsigned int *pSSE2)
+{
+  unsigned SSE2_status;
+  *px86=__CPROVER_fpu_control_word;
+  *pSSE2=SSE2_status; // nondet
+}
+
+#endif
+
+/* FUNCTION: _isnan */
+
+inline int _isnan(double x)
+{
+  return __CPROVER_isnand(x);
+}
+
+/* FUNCTION: __builtin_flt_rounds */
+
+extern int __CPROVER_rounding_mode;
+
+inline int __builtin_flt_rounds(void)
+{
+  // This is a clang builtin for FLT_ROUNDS
+  // The magic numbers are C99 and different from the
+  // x86 encoding that CPROVER uses.
+  return __CPROVER_rounding_mode==0?1: // to nearest
+         __CPROVER_rounding_mode==1?3: // downward
+         __CPROVER_rounding_mode==2?2: // upward
+         __CPROVER_rounding_mode==3?0: // to zero
+         -1;
+}
+
+/* FUNCTION: __flt_rounds */
+
+int __builtin_flt_rounds(void);
+
+inline int __flt_rounds(void)
+{
+  // Spotted on FreeBSD
+  return __builtin_flt_rounds();
+}
+/* FUNCTION: __builtin_ia32_sfence */
+
+inline void __builtin_ia32_sfence(void)
+{
+  __asm("sfence");
+}
+
+/* FUNCTION: __builtin_ia32_lfence */
+
+inline void __builtin_ia32_lfence(void)
+{
+  __asm("lfence");
+}
+
+/* FUNCTION: __builtin_ia32_mfence */
+
+inline void __builtin_ia32_mfence(void)
+{
+  __asm("mfence");
+}
+
+/* FUNCTION: __sync_synchronize */
+
+inline void __sync_synchronize(void)
+{
+  // WARNING: this was a NOP before gcc 4.3.1,
+  // but is now believed to be the strongest possible barrier.
+
+  #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) >= 40301
+  __CPROVER_HIDE:;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  #endif
+}
+
+/* FUNCTION: __builtin_clz */
+
+int __builtin_popcount(unsigned int);
+
+inline int __builtin_clz(unsigned int x)
+{
+  __CPROVER_precondition(x != 0, "__builtin_clz(0) is undefined");
+
+  x = x | (x >> 1);
+  x = x | (x >> 2);
+  x = x | (x >> 4);
+  x = x | (x >> 8);
+  if(sizeof(x) >= 4)
+    x = x | (x >> 16);
+
+  return __builtin_popcount(~x);
+}
+
+/* FUNCTION: __builtin_clzl */
+
+int __builtin_popcountl(unsigned long int);
+
+inline int __builtin_clzl(unsigned long int x)
+{
+  __CPROVER_precondition(x != 0, "__builtin_clzl(0) is undefined");
+
+  x = x | (x >> 1);
+  x = x | (x >> 2);
+  x = x | (x >> 4);
+  x = x | (x >> 8);
+  if(sizeof(x) >= 4)
+    x = x | (x >> 16);
+  if(sizeof(x) >= 8)
+    x = x | (x >> 32);
+
+  return __builtin_popcountl(~x);
+}
+
+/* FUNCTION: __builtin_clzll */
+
+int __builtin_popcountll(unsigned long long int);
+
+inline int __builtin_clzll(unsigned long long int x)
+{
+  __CPROVER_precondition(x != 0, "__builtin_clzll(0) is undefined");
+
+  x = x | (x >> 1);
+  x = x | (x >> 2);
+  x = x | (x >> 4);
+  x = x | (x >> 8);
+  if(sizeof(x) >= 4)
+    x = x | (x >> 16);
+  if(sizeof(x) >= 8)
+    x = x | (x >> 32);
+
+  return __builtin_popcountll(~x);
+}
+
+/* FUNCTION: __atomic_test_and_set */
+
+void __atomic_thread_fence(int memorder);
+
+inline _Bool __atomic_test_and_set(void *ptr, int memorder)
+{
+__CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  _Bool result = *(char *)ptr == 1;
+  *(char *)ptr = 1;
+  __atomic_thread_fence(memorder);
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: __atomic_clear */
+
+void __atomic_thread_fence(int memorder);
+
+inline void __atomic_clear(_Bool *ptr, int memorder)
+{
+__CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  *(char *)ptr = 0;
+  __atomic_thread_fence(memorder);
+  __CPROVER_atomic_end();
+}
+
+/* FUNCTION: __atomic_thread_fence */
+
+#if __STDC_VERSION__ >= 201112L
+// GCC 4.8 did claim to support C++11, but failed to ship stdatomic.h
+#  if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__) >= 409
+#    include <stdatomic.h>
+#  endif
+#endif
+
+#ifndef __ATOMIC_RELAXED
+#  define __ATOMIC_RELAXED 0
+#endif
+
+#ifndef __ATOMIC_CONSUME
+#  define __ATOMIC_CONSUME 1
+#endif
+
+#ifndef __ATOMIC_ACQUIRE
+#  define __ATOMIC_ACQUIRE 2
+#endif
+
+#ifndef __ATOMIC_RELEASE
+#  define __ATOMIC_RELEASE 3
+#endif
+
+#ifndef __ATOMIC_ACQ_REL
+#  define __ATOMIC_ACQ_REL 4
+#endif
+
+#ifndef __ATOMIC_SEQ_CST
+#  define __ATOMIC_SEQ_CST 5
+#endif
+
+inline void __atomic_thread_fence(int memorder)
+{
+__CPROVER_HIDE:;
+  if(memorder == __ATOMIC_CONSUME || memorder == __ATOMIC_ACQUIRE)
+    __CPROVER_fence("RRfence", "RWfence", "RRcumul", "RWcumul");
+  else if(memorder == __ATOMIC_RELEASE)
+    __CPROVER_fence("WRfence", "WWfence", "WRcumul", "WWcumul");
+  else if(memorder == __ATOMIC_ACQ_REL || memorder == __ATOMIC_SEQ_CST)
+    __CPROVER_fence(
+      "WWfence",
+      "RRfence",
+      "RWfence",
+      "WRfence",
+      "WWcumul",
+      "RRcumul",
+      "RWcumul",
+      "WRcumul");
+}
+
+/* FUNCTION: __atomic_signal_fence */
+
+void __atomic_thread_fence(int memorder);
+
+inline void __atomic_signal_fence(int memorder)
+{
+__CPROVER_HIDE:;
+  __atomic_thread_fence(memorder);
+}
+
+/* FUNCTION: __atomic_always_lock_free */
+
+inline _Bool __atomic_always_lock_free(__CPROVER_size_t size, void *ptr)
+{
+__CPROVER_HIDE:;
+  (void)ptr;
+  return size <= sizeof(__CPROVER_size_t);
+}
+
+/* FUNCTION: __atomic_is_lock_free */
+
+inline _Bool __atomic_is_lock_free(__CPROVER_size_t size, void *ptr)
+{
+__CPROVER_HIDE:;
+  (void)ptr;
+  return size <= sizeof(__CPROVER_size_t);
+}
+/* FUNCTION: getopt */
+
+extern char *optarg;
+extern int optind;
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+size_t __VERIFIER_nondet_size_t();
+
+inline int getopt(
+  int argc, char * const argv[], const char *optstring)
+{
+  __CPROVER_HIDE:;
+  int result=-1;
+
+  if(optind==0)
+    optind=1;
+
+  if(optind>=argc || argv[optind][0]!='-')
+    return -1;
+
+  size_t result_index=__VERIFIER_nondet_size_t();
+  __CPROVER_assume(
+    result_index<strlen(optstring) && optstring[result_index]!=':');
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(optstring),
+    "getopt zero-termination of 3rd argument");
+  #endif
+
+  __CPROVER_bool found=__VERIFIER_nondet___CPROVER_bool();
+  if(found)
+  {
+    result=optstring[result_index];
+    __CPROVER_bool skipped=__VERIFIER_nondet___CPROVER_bool();
+    if(skipped)
+      ++optind;
+  }
+
+  if(result!=-1 && optind<argc && optstring[result_index+1]==':')
+  {
+    __CPROVER_bool has_no_arg=__VERIFIER_nondet___CPROVER_bool();
+    if(has_no_arg)
+    {
+      optarg=argv[optind];
+      ++optind;
+    }
+    else
+      optarg=NULL;
+  }
+
+  return result;
+}
+
+/* FUNCTION: getopt_long */
+
+#ifndef __CPROVER_GETOPT_H_INCLUDED
+#include <getopt.h>
+#define __CPROVER_GETOPT_H_INCLUDED
+#endif
+
+inline int getopt_long(
+  int argc,
+  char * const argv[],
+  const char *optstring,
+  const struct option *longopts,
+  int *longindex)
+{
+  // trigger valid-pointer checks (if enabled), even though we don't
+  // use the parameter in this model
+  (void)*longopts;
+  // avoid unused-parameter warnings when compiling using GCC (for
+  // internal library syntax checks)
+  (void)longindex;
+
+  return getopt(argc, argv, optstring);
+}
+/* FUNCTION: inet_addr */
+
+#ifndef _WIN32
+
+#ifndef __CPROVER_INET_H_INCLUDED
+#include <arpa/inet.h>
+#define __CPROVER_INET_H_INCLUDED
+#endif
+
+in_addr_t __VERIFIER_nondet_in_addr_t();
+
+in_addr_t inet_addr(const char *cp)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(cp),
+                         "inet_addr zero-termination of argument");
+  #endif
+  (void)*cp;
+
+  in_addr_t result=__VERIFIER_nondet_in_addr_t();
+  return result;
+}
+
+#endif
+
+/* FUNCTION: inet_aton */
+
+#ifndef _WIN32
+
+#ifndef __CPROVER_INET_H_INCLUDED
+#include <arpa/inet.h>
+#define __CPROVER_INET_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+int inet_aton(const char *cp, struct in_addr *pin)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(cp),
+                         "inet_aton zero-termination of name argument");
+  #endif
+  (void)*cp;
+  (void)*pin;
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+
+#endif
+
+/* FUNCTION: inet_network */
+
+#ifndef _WIN32
+
+#ifndef __CPROVER_INET_H_INCLUDED
+#include <arpa/inet.h>
+#define __CPROVER_INET_H_INCLUDED
+#endif
+
+in_addr_t __VERIFIER_nondet_in_addr_t();
+
+in_addr_t inet_network(const char *cp)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(cp),
+                         "inet_network zero-termination of name argument");
+  #endif
+  (void)*cp;
+
+  in_addr_t result=__VERIFIER_nondet_in_addr_t();
+  return result;
+}
+
+#endif
+
+/* FUNCTION: htonl */
+
+#ifndef __CPROVER_STDINT_H_INCLUDED
+#include <stdint.h>
+#define __CPROVER_STDINT_H_INCLUDED
+#endif
+
+#undef htonl
+
+uint32_t __builtin_bswap32(uint32_t);
+
+uint32_t htonl(uint32_t hostlong)
+{
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  return __builtin_bswap32(hostlong);
+#else
+  return hostlong;
+#endif
+}
+
+/* FUNCTION: htons */
+
+#ifndef __CPROVER_STDINT_H_INCLUDED
+#include <stdint.h>
+#define __CPROVER_STDINT_H_INCLUDED
+#endif
+
+#undef htons
+
+uint16_t __builtin_bswap16(uint16_t);
+
+uint16_t htons(uint16_t hostshort)
+{
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  return __builtin_bswap16(hostshort);
+#else
+  return hostshort;
+#endif
+}
+
+
+/* FUNCTION: ntohl */
+
+#ifndef __CPROVER_STDINT_H_INCLUDED
+#include <stdint.h>
+#define __CPROVER_STDINT_H_INCLUDED
+#endif
+
+#undef ntohl
+
+uint32_t __builtin_bswap32(uint32_t);
+
+uint32_t ntohl(uint32_t netlong)
+{
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  return __builtin_bswap32(netlong);
+#else
+  return netlong;
+#endif
+}
+
+
+/* FUNCTION: ntohs */
+
+#ifndef __CPROVER_STDINT_H_INCLUDED
+#include <stdint.h>
+#define __CPROVER_STDINT_H_INCLUDED
+#endif
+
+#undef ntohs
+
+uint16_t __builtin_bswap16(uint16_t);
+
+uint16_t ntohs(uint16_t netshort)
+{
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  return __builtin_bswap16(netshort);
+#else
+  return netshort;
+#endif
+}
+/* intrin.h is an include file provided by Visual Studio */
+
+/* FUNCTION: _InterlockedDecrement */
+
+inline long _InterlockedDecrement(long volatile *p)
+{
+  __CPROVER_HIDE:;
+  // This function generates a full memory barrier (or fence) to ensure that
+  // memory operations are completed in order.
+  __CPROVER_atomic_begin();
+  long result=--(*p);
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedExchange */
+
+inline long _InterlockedExchange(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long old=*p;
+  *p=v;
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: _InterlockedExchange16 */
+
+inline short _InterlockedExchange16(short volatile *p, short v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short old=*p;
+  *p=v;
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: _InterlockedExchange8 */
+
+inline char _InterlockedExchange8(char volatile *p, char v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char old=*p;
+  *p=v;
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: _InterlockedExchangeAdd */
+
+inline long _InterlockedExchangeAdd(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=(*p)+=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedExchangeAdd16 */
+
+inline short _InterlockedExchangeAdd16(short volatile *p, short v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=(*p)+=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedExchangeAdd8 */
+
+inline char _InterlockedExchangeAdd8(char volatile *p, char v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char result=(*p)+=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedCompareExchange */
+
+inline long _InterlockedCompareExchange(long volatile *p, long v1, long v2)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long old=(*p);
+  *p=(old==v2)?v1:old;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: _InterlockedCompareExchange64 */
+
+inline long long _InterlockedCompareExchange64(long long volatile *p, long long v1, long long v2)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long long old=(*p);
+  *p=(old==v2)?v1:old;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: __InterlockedIncrement */
+
+inline long _InterlockedIncrement(long volatile *p)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=++(*p);
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedOr */
+
+inline long _InterlockedOr(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=(*p)|=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedOr8 */
+
+inline char _InterlockedOr8(char volatile *p, char v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char result=(*p)|=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedOr16 */
+
+inline short _InterlockedOr16(short volatile *p, short v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=(*p)|=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedXor */
+
+inline long _InterlockedXor(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=(*p)^=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedXor8 */
+
+inline char _InterlockedXor8(char volatile *p, char v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char result=(*p)^=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedXor16 */
+
+inline short _InterlockedXor16(short volatile *p, short v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=(*p)^=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedAnd */
+
+inline long _InterlockedAnd(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=(*p)&=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedAnd8 */
+
+inline char _InterlockedAnd8(char volatile *p, char v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char result=(*p)&=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedAnd16 */
+
+inline short _InterlockedAnd16(short volatile *p, short v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=(*p)&=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedAdd */
+
+inline long _InterlockedAdd(long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  long result=(*p)+=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedAddLargeStatistic */
+
+inline long _InterlockedAddLargeStatistic(long long volatile *p, long v)
+{
+  __CPROVER_HIDE:;
+  // not atomic:
+  // http://msdn.microsoft.com/en-us/library/yc92ytxy%28v=vs.90%29.aspx
+  (*p)+=v;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  return v;
+}
+
+/* FUNCTION: _mm_lfence */
+
+inline void _mm_lfence(void)
+{
+  __CPROVER_HIDE:;
+}
+
+/* FUNCTION: _mm_mfence */
+
+inline void _mm_mfence(void)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+}
+
+/* FUNCTION: _WriteBarrier */
+
+inline void _WriteBarrier(void)
+{
+  __CPROVER_HIDE:;
+}
+
+/* FUNCTION: _ReadWriteBarrier */
+
+inline void _ReadWriteBarrier(void)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+}
+
+/* FUNCTION: _ReadBarrier */
+
+inline void _ReadBarrier(void)
+{
+  __CPROVER_HIDE:;
+}
+
+/* FUNCTION: _InterlockedIncrement16 */
+
+inline short _InterlockedIncrement16(short volatile *p)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=++(*p);
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedDecrement16 */
+
+inline short _InterlockedDecrement16(short volatile *p)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short result=--(*p);
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return result;
+}
+
+/* FUNCTION: _InterlockedCompareExchange16 */
+
+inline short _InterlockedCompareExchange16(short volatile *p, short v1, short v2)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  short old=(*p);
+  *p=(old==v2)?v1:old;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return old;
+}
+
+/* FUNCTION: _InterlockedCompareExchange8 */
+
+inline char _InterlockedCompareExchange8(char volatile *p, char v1, char v2)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  char old=(*p);
+  *p=(old==v2)?v1:old;
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+  __CPROVER_atomic_end();
+  return old;
+}
+/* FUNCTION: java::java.io.InputStream.read:()I */
+
+int __CPROVER_ID "java::java.io.InputStream.read:()I" (void *)
+{
+  int read_result;
+  __CPROVER_assume(read_result>=-1 && read_result<=255);
+  return read_result;
+}
+
+/* FUNCTION: setlocale */
+
+#ifndef __CPROVER_LOCALE_H_INCLUDED
+#include <locale.h>
+#define __CPROVER_LOCALE_H_INCLUDED
+#endif
+
+inline char *setlocale(int category, const char *locale)
+{
+  __CPROVER_HIDE:;
+  (void)category;
+  (void)*locale;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "setlocale_result");
+  char *setlocale_result;
+  __CPROVER_set_may(setlocale_result, "setlocale_result");
+  return setlocale_result;
+  #else
+  static char setlocale_result[1];
+  return setlocale_result;
+  #endif
+}
+
+/* FUNCTION: localeconv */
+
+#ifndef __CPROVER_LOCALE_H_INCLUDED
+#include <locale.h>
+#define __CPROVER_LOCALE_H_INCLUDED
+#endif
+
+inline struct lconv *localeconv(void)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "localeconv_result");
+  struct lconv *localeconv_result;
+  __CPROVER_set_may(localeconv_result, "localeconv_result");
+  return localeconv_result;
+  #else
+  static struct lconv localeconv_result;
+  return &localeconv_result;
+  #endif
+}
+/* FUNCTION: fabs */
+
+inline double fabs(double d) { return __CPROVER_fabs(d); }
+
+/* FUNCTION: fabsl */
+
+inline long double fabsl(long double d) { return __CPROVER_fabsl(d); }
+
+/* FUNCTION: fabsf */
+
+inline float fabsf(float f) { return __CPROVER_fabsf(f); }
+
+/* FUNCTION: __builtin_fabs */
+
+inline double __builtin_fabs(double d) { return __CPROVER_fabs(d); }
+
+/* FUNCTION: __builtin_fabsl */
+
+inline long double __builtin_fabsl(long double d) { return __CPROVER_fabsl(d); }
+
+/* FUNCTION: __builtin_fabsf */
+
+inline float __builtin_fabsf(float f) { return __CPROVER_fabsf(f); }
+
+/* FUNCTION: __CPROVER_isgreaterf */
+
+int __CPROVER_isgreaterf(float f, float g) { return f > g; }
+
+/* FUNCTION: __CPROVER_isgreaterd */
+
+int __CPROVER_isgreaterd(double f, double g) { return f > g; }
+
+/* FUNCTION: __CPROVER_isgreaterequalf */
+
+int __CPROVER_isgreaterequalf(float f, float g) { return f >= g; }
+
+/* FUNCTION: __CPROVER_isgreaterequald */
+
+int __CPROVER_isgreaterequald(double f, double g) { return f >= g; }
+
+/* FUNCTION: __CPROVER_islessf */
+
+int __CPROVER_islessf(float f, float g) { return f < g;}
+
+/* FUNCTION: __CPROVER_islessd */
+
+int __CPROVER_islessd(double f, double g) { return f < g;}
+
+/* FUNCTION: __CPROVER_islessequalf */
+
+int __CPROVER_islessequalf(float f, float g) { return f <= g; }
+
+/* FUNCTION: __CPROVER_islessequald */
+
+int __CPROVER_islessequald(double f, double g) { return f <= g; }
+
+/* FUNCTION: __CPROVER_islessgreaterf */
+
+int __CPROVER_islessgreaterf(float f, float g) { return (f < g) || (f > g); }
+
+/* FUNCTION: __CPROVER_islessgreaterd */
+
+int __CPROVER_islessgreaterd(double f, double g) { return (f < g) || (f > g); }
+
+/* FUNCTION: __CPROVER_isunorderedf */
+
+int __CPROVER_isunorderedf(float f, float g)
+{
+  return __CPROVER_isnanf(f) || __CPROVER_isnanf(g);
+}
+
+/* FUNCTION: __CPROVER_isunorderedd */
+
+int __CPROVER_isunorderedd(double f, double g)
+{
+  return __CPROVER_isnand(f) || __CPROVER_isnand(g);
+}
+
+/* FUNCTION: isfinite */
+
+#undef isfinite
+
+int isfinite(double d) { return __CPROVER_isfinited(d); }
+
+/* FUNCTION: __finite */
+
+int __finite(double d) { return __CPROVER_isfinited(d); }
+
+/* FUNCTION: __finitef */
+
+int __finitef(float f) { return __CPROVER_isfinitef(f); }
+
+/* FUNCTION: __finitel */
+
+int __finitel(long double ld) { return __CPROVER_isfiniteld(ld); }
+
+/* FUNCTION: isinf */
+
+#undef isinf
+
+inline int isinf(double d) { return __CPROVER_isinfd(d); }
+
+/* FUNCTION: __isinf */
+
+inline int __isinf(double d) { return __CPROVER_isinfd(d); }
+
+/* FUNCTION: isinff */
+
+inline int isinff(float f) { return __CPROVER_isinff(f); }
+
+/* FUNCTION: __isinff */
+
+inline int __isinff(float f) { return __CPROVER_isinff(f); }
+
+/* FUNCTION: isinfl */
+
+inline int isinfl(long double ld) { return __CPROVER_isinfld(ld); }
+
+/* FUNCTION: __isinfl */
+
+inline int __isinfl(long double ld) { return __CPROVER_isinfld(ld); }
+
+/* FUNCTION: isnan */
+
+#undef isnan
+
+inline int isnan(double d) { return __CPROVER_isnand(d); }
+
+/* FUNCTION: __isnan */
+
+inline int __isnan(double d) { return __CPROVER_isnand(d); }
+
+/* FUNCTION: __isnanf */
+
+inline int __isnanf(float f) { return __CPROVER_isnanf(f); }
+
+/* FUNCTION: isnanf */
+
+inline int isnanf(float f) { return __CPROVER_isnanf(f); }
+
+/* FUNCTION: isnanl */
+
+inline int isnanl(long double ld) { return __CPROVER_isnanld(ld); }
+
+/* FUNCTION: __isnanl */
+
+inline int __isnanl(long double ld) { return __CPROVER_isnanld(ld); }
+
+/* FUNCTION: isnormal */
+
+#undef isnormal
+
+inline int isnormal(double d) { return __CPROVER_isnormald(d); }
+
+/* FUNCTION: __isnormalf */
+
+inline int __isnormalf(float f) { return __CPROVER_isnormalf(f); }
+
+/* FUNCTION: __builtin_inff */
+
+inline float __builtin_inff(void) { return 1.0f/0.0f; }
+
+/* FUNCTION: __builtin_inf */
+
+inline double __builtin_inf(void) { return 1.0/0.0; }
+
+/* FUNCTION: __builtin_infl */
+
+inline long double __builtin_infl(void) { return 1.0l/0.0l; }
+
+/* FUNCTION: __builtin_isinf */
+
+inline int __builtin_isinf(double d) { return __CPROVER_isinfd(d); }
+
+/* FUNCTION: __builtin_isinff */
+
+inline int __builtin_isinff(float f) { return __CPROVER_isinff(f); }
+
+/* FUNCTION: __builtin_isinf */
+
+inline int __builtin_isinfl(long double ld) { return __CPROVER_isinfld(ld); }
+
+/* FUNCTION: __builtin_isnan */
+
+inline int __builtin_isnan(double d) { return __CPROVER_isnand(d); }
+
+/* FUNCTION: __builtin_isnanf */
+
+inline int __builtin_isnanf(float f) { return __CPROVER_isnanf(f); }
+
+/* FUNCTION: __builtin_huge_valf */
+
+inline float __builtin_huge_valf(void) { return 1.0f/0.0f; }
+
+/* FUNCTION: __builtin_huge_val */
+
+inline double __builtin_huge_val(void) { return 1.0/0.0; }
+
+/* FUNCTION: __builtin_huge_vall */
+
+inline long double __builtin_huge_vall(void) { return 1.0l/0.0l; }
+
+/* FUNCTION: _dsign */
+
+inline int _dsign(double d) { return __CPROVER_signd(d); }
+
+/* FUNCTION: _ldsign */
+
+inline int _ldsign(long double ld) { return __CPROVER_signld(ld); }
+
+/* FUNCTION: _fdsign */
+
+inline int _fdsign(float f) { return __CPROVER_signf(f); }
+
+/* FUNCTION: signbit */
+
+#undef signbit
+
+inline int signbit(double d) { return __CPROVER_signd(d); }
+
+/* FUNCTION: __signbitd */
+
+inline int __signbitd(double d) { return __CPROVER_signd(d); }
+
+/* FUNCTION: __signbitf */
+
+inline int __signbitf(float f) { return __CPROVER_signf(f); }
+
+/* FUNCTION: __signbit */
+
+inline int __signbit(double ld) { return __CPROVER_signld(ld); }
+
+/* FUNCTION: _dclass */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline short _dclass(double d) {
+  __CPROVER_HIDE:
+  return __CPROVER_isnand(d)?FP_NAN:
+         __CPROVER_isinfd(d)?FP_INFINITE:
+         d==0?FP_ZERO:
+         __CPROVER_isnormald(d)?FP_NORMAL:
+         FP_SUBNORMAL;
+}
+
+/* FUNCTION: _ldclass */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline short _ldclass(long double ld) {
+  __CPROVER_HIDE:
+  return __CPROVER_isnanld(ld)?FP_NAN:
+         __CPROVER_isinfld(ld)?FP_INFINITE:
+         ld==0?FP_ZERO:
+         __CPROVER_isnormalld(ld)?FP_NORMAL:
+         FP_SUBNORMAL;
+}
+
+/* FUNCTION: _fdclass */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline short _fdclass(float f) {
+  __CPROVER_HIDE:
+  return __CPROVER_isnanf(f)?FP_NAN:
+         __CPROVER_isinff(f)?FP_INFINITE:
+         f==0?FP_ZERO:
+         __CPROVER_isnormalf(f)?FP_NORMAL:
+         FP_SUBNORMAL;
+}
+
+/* FUNCTION: __fpclassifyd */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline int __fpclassifyd(double d) {
+  __CPROVER_HIDE:
+    return __CPROVER_fpclassify(
+      FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, d);
+}
+
+/* FUNCTION: __fpclassifyf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline int __fpclassifyf(float f) {
+  __CPROVER_HIDE:
+    return __CPROVER_fpclassify(
+      FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, f);
+}
+
+/* FUNCTION: __fpclassifyl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+inline int __fpclassifyl(long double f) {
+  __CPROVER_HIDE:
+    return __CPROVER_fpclassify(
+      FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, f);
+}
+
+/* FUNCTION: __fpclassify */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// The variant with long double below is needed for older Macs
+// only; newer ones use __fpclassifyd.
+
+#ifdef __APPLE__
+inline int __fpclassify(long double d) {
+  __CPROVER_HIDE:
+    return __CPROVER_fpclassify(
+      FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, d);
+}
+#else
+inline int __fpclassify(double d) {
+  __CPROVER_HIDE:
+    return __CPROVER_fpclassify(
+      FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL, FP_ZERO, d);
+}
+#endif
+
+/* FUNCTION: sin */
+
+double __VERIFIER_nondet_double();
+
+double sin(double x)
+{
+  // gross over-approximation
+  double ret=__VERIFIER_nondet_double();
+
+  if(__CPROVER_isinfd(x) || __CPROVER_isnand(x))
+    __CPROVER_assume(__CPROVER_isnand(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==0);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: sinl */
+
+long double __VERIFIER_nondet_long_double();
+
+long double sinl(long double x)
+{
+  // gross over-approximation
+  long double ret=__VERIFIER_nondet_long_double();
+
+  if(__CPROVER_isinfld(x) || __CPROVER_isnanld(x))
+    __CPROVER_assume(__CPROVER_isnanld(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==0);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: sinf */
+
+float __VERIFIER_nondet_float();
+
+float sinf(float x)
+{
+  // gross over-approximation
+  float ret=__VERIFIER_nondet_float();
+
+  if(__CPROVER_isinff(x) || __CPROVER_isnanf(x))
+    __CPROVER_assume(__CPROVER_isnanf(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==0);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: cos */
+
+double __VERIFIER_nondet_double();
+
+double cos(double x)
+{
+  // gross over-approximation
+  double ret=__VERIFIER_nondet_double();
+
+  if(__CPROVER_isinfd(x) || __CPROVER_isnand(x))
+    __CPROVER_assume(__CPROVER_isnand(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==1);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: cosl */
+
+long double __VERIFIER_nondet_long_double();
+
+long double cosl(long double x)
+{
+  // gross over-approximation
+  long double ret=__VERIFIER_nondet_long_double();
+
+  if(__CPROVER_isinfld(x) || __CPROVER_isnanld(x))
+    __CPROVER_assume(__CPROVER_isnanld(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==1);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: cosf */
+
+float __VERIFIER_nondet_float();
+
+float cosf(float x)
+{
+__CPROVER_hide:;
+  // gross over-approximation
+  float ret=__VERIFIER_nondet_float();
+
+  if(__CPROVER_isinff(x) || __CPROVER_isnanf(x))
+    __CPROVER_assume(__CPROVER_isnanf(ret));
+  else
+  {
+    __CPROVER_assume(ret<=1);
+    __CPROVER_assume(ret>=-1);
+    __CPROVER_assume(x!=0 || ret==1);
+  }
+
+  return ret;
+}
+
+/* FUNCTION: __builtin_nan */
+
+double __builtin_nan(const char *str)
+{
+  // the 'str' argument is not yet used
+__CPROVER_hide:;
+  (void)*str;
+  return 0.0/0.0;
+}
+
+/* FUNCTION: __builtin_nanf */
+
+float __builtin_nanf(const char *str)
+{
+  // the 'str' argument is not yet used
+__CPROVER_hide:;
+  (void)*str;
+  return 0.0f/0.0f;
+}
+
+
+/* ISO 9899:2011
+ * The call nan("n-char-sequence") is equivalent to
+ * strtod("NAN(n-char-sequence)", (char**) NULL); the call nan("") is
+ * equivalent to strtod("NAN()", (char**) NULL). If tagp does not
+ * point to an n-char sequence or an empty string, the call is
+ * equivalent to strtod("NAN", (char**) NULL). Calls to nanf and nanl
+ * are equivalent to the corresponding calls to strtof and strtold.
+ *
+ * The nan functions return a quiet NaN, if available, with content
+ * indicated through tagp. If the implementation does not support
+ * quiet NaNs, the functions return zero.
+ */
+
+/* FUNCTION: nan */
+
+double nan(const char *str) {
+  // the 'str' argument is not yet used
+ __CPROVER_hide:;
+  (void)*str;
+  return 0.0/0.0;
+}
+
+/* FUNCTION: nanf */
+
+float nanf(const char *str) {
+  // the 'str' argument is not yet used
+ __CPROVER_hide:;
+  (void)*str;
+  return 0.0f/0.0f;
+}
+
+/* FUNCTION: nanl */
+
+long double nanl(const char *str) {
+  // the 'str' argument is not yet used
+ __CPROVER_hide:;
+  (void)*str;
+  return 0.0/0.0;
+}
+
+/* FUNCTION: nextUpf */
+
+#ifndef __CPROVER_LIMITS_H_INCLUDED
+#include <limits.h>
+#define __CPROVER_LIMITS_H_INCLUDED
+#endif
+
+
+// IEEE_754 2008 althought similar to C's nextafter / nexttowards
+// Loosely assumes that float is (IEEE-754) binary32
+
+union mixf
+{
+  float f;
+  #ifdef LIBRARY_CHECK
+  int bv;
+  #else
+  __CPROVER_bitvector[CHAR_BIT * sizeof(float)] bv;
+  #endif
+};
+
+float nextUpf(float f)
+{
+__CPROVER_hide:;
+  if (__CPROVER_isnanf(f))
+    return 0.0f/0.0f;  // NaN
+  else if (f == 0.0f)
+    return 0x1p-149f;
+  else if (f > 0.0f)
+  {
+    if (__CPROVER_isinff(f))
+      return f;
+
+    union mixf m;
+    m.f = f;
+    ++m.bv;
+    return m.f;
+  }
+  else
+  {
+    //assert(f < 0.0f);
+
+    union mixf m;
+    m.f = f;
+    --m.bv;
+    return m.f;
+  }
+}
+
+/* FUNCTION: nextUp */
+
+#ifndef __CPROVER_LIMITS_H_INCLUDED
+#include <limits.h>
+#define __CPROVER_LIMITS_H_INCLUDED
+#endif
+
+
+// IEEE_754 2008 althought similar to C's nextafter / nexttowards
+// Loosely assumes that double is (IEEE-754) binary64
+
+union mixd
+{
+  double f;
+  #ifdef LIBRARY_CHECK
+  long long int bv;
+  #else
+  __CPROVER_bitvector[CHAR_BIT * sizeof(double)] bv;
+  #endif
+};
+
+double nextUp(double d)
+{
+__CPROVER_hide:;
+  if (__CPROVER_isnand(d))
+    return 0.0/0.0;  // NaN
+  else if (d == 0.0)
+    return 0x1.0p-1074;
+  else if (d > 0.0)
+  {
+    if (__CPROVER_isinfd(d))
+      return d;
+
+    union mixd m;
+    m.f = d;
+    ++m.bv;
+    return m.f;
+  }
+  else
+  {
+    //assert(d < 0.0);
+
+    union mixd m;
+    m.f = d;
+    --m.bv;
+    return m.f;
+  }
+}
+
+
+/* FUNCTION: nextUpl */
+
+#ifndef __CPROVER_LIMITS_H_INCLUDED
+#include <limits.h>
+#define __CPROVER_LIMITS_H_INCLUDED
+#endif
+
+// IEEE_754 2008 althought similar to C's nextafter / nexttowards
+
+union mixl
+{
+  long double f;
+  #ifdef LIBRARY_CHECK
+  long long int bv;
+  #else
+  __CPROVER_bitvector[CHAR_BIT * sizeof(long double)] bv;
+  #endif
+};
+
+long double nextUpl(long double d)
+{
+__CPROVER_hide:;
+  if(__CPROVER_isnanld(d))
+    return 0.0/0.0;  // NaN
+  else if (d == 0.0)
+  {
+    union mixl m;
+    m.bv = 0x1;
+    return m.f;
+  }
+  else if (d > 0.0)
+  {
+    if(__CPROVER_isinfld(d))
+      return d;
+
+    union mixl m;
+    m.f = d;
+    ++m.bv;
+    return m.f;
+  }
+  else
+  {
+    //assert(d < 0.0);
+
+    union mixl m;
+    m.f = d;
+    --m.bv;
+    return m.f;
+  }
+  
+}
+
+
+
+
+/* FUNCTION: sqrtf */
+
+/* This code is *WRONG* in some circumstances, specifically:
+ *
+ *   1. If run with a rounding mode other than RNE the
+ *      answer will be out by one or two ULP.  This could be fixed
+ *      with careful choice of round mode for the multiplications.
+ *
+ *   2. Subnormals have the unusual property that there are
+ *      multiple numbers that square to give them.  I.E. if
+ *      f is subnormal then there are multiple f1 != f2 such that
+ *      f1 * f1 == f == f2 * f2.  This code will return *a*
+ *      square root of a subnormal input but not necessarily *the*
+ *      square root (i.e. the real value of the square root rounded).
+ */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float nextUpf(float f);
+
+float __VERIFIER_nondet_float();
+
+float sqrtf(float f)
+{
+ __CPROVER_hide:;
+
+  if ( f < 0.0f )
+    return 0.0f/0.0f; // NaN
+  else if (__CPROVER_isinff(f) ||   // +Inf only
+           f == 0.0f          ||   // Includes -0
+           __CPROVER_isnanf(f))
+    return f;
+  else if (__CPROVER_isnormalf(f))
+  {
+    float lower=__VERIFIER_nondet_float();
+    __CPROVER_assume(lower > 0.0f);
+    __CPROVER_assume(__CPROVER_isnormalf(lower));
+    // Tighter bounds can be given but are dependent on the
+    // number of exponent and significand bits.  Thus they are
+    // given implicitly...
+
+    float lowerSquare = lower * lower;
+    __CPROVER_assume(__CPROVER_isnormalf(lowerSquare));
+
+    float upper = nextUpf(lower);
+    float upperSquare = upper * upper;  // Might be +Inf
+
+    // Restrict these to bound f and thus compute the possible
+    // values for the square root.  Note that the lower bound
+    // can be equal, this is important to catch edge cases such as
+    // 0x1.fffffep+127f and relies on the smallest normal number
+    // being a perfect square (which it will be for any sensible
+    // bit width).
+    __CPROVER_assume(lowerSquare <= f);
+    __CPROVER_assume(f < upperSquare);
+
+    // Select between them to work out which to return
+    switch(fegetround())
+    {
+    case FE_TONEAREST :
+      return (f - lowerSquare < upperSquare - f) ? lower : upper; break;
+    case FE_UPWARD :
+      return (f - lowerSquare == 0.0f) ? lower : upper; break;
+    case FE_DOWNWARD : // Fall through
+    case FE_TOWARDZERO :
+      return (f - lowerSquare == 0.0f) ? lower : upper; break;
+    default:;
+      //assert(0);
+    }
+
+  }
+  else
+  {
+    //assert(fpclassify(f) == FP_SUBNORMAL);
+    //assert(f > 0.0f);
+
+    // With respect to the algebra of floating point number
+    // all subnormals seem to be perfect squares, thus ...
+
+    float root=__VERIFIER_nondet_float();
+    __CPROVER_assume(root >= 0.0f);
+
+    __CPROVER_assume(root * root == f);
+
+    return root;
+  }
+}
+
+
+
+
+/* FUNCTION: sqrt */
+
+/* The same caveats as sqrtf apply */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double nextUp(double d);
+
+double __VERIFIER_nondet_double();
+
+double sqrt(double d)
+{
+ __CPROVER_hide:;
+
+  if ( d < 0.0 )
+    return 0.0/0.0; // NaN
+  else if (__CPROVER_isinfd(d) ||   // +Inf only
+           d == 0.0            ||   // Includes -0
+           __CPROVER_isnand(d))
+    return d;
+  else if (__CPROVER_isnormald(d))
+  {
+    double lower=__VERIFIER_nondet_double();
+    __CPROVER_assume(lower > 0.0);
+    __CPROVER_assume(__CPROVER_isnormald(lower));
+
+    double lowerSquare = lower * lower;
+    __CPROVER_assume(__CPROVER_isnormald(lowerSquare));
+
+    double upper = nextUp(lower);
+    double upperSquare = upper * upper;  // Might be +Inf
+
+    __CPROVER_assume(lowerSquare <= d);
+    __CPROVER_assume(d < upperSquare);
+
+    switch(fegetround())
+    {
+    case FE_TONEAREST:
+      return (d - lowerSquare < upperSquare - d) ? lower : upper; break;
+    case FE_UPWARD:
+      return (d - lowerSquare == 0.0f) ? lower : upper; break;
+    case FE_DOWNWARD: // Fall through
+    case FE_TOWARDZERO:
+      return (d - lowerSquare == 0.0) ? lower : upper; break;
+    default:;
+      //assert(0);
+    }
+
+  }
+  else
+  {
+    //assert(fpclassify(d) == FP_SUBNORMAL);
+    //assert(d > 0.0);
+
+    double root=__VERIFIER_nondet_double();
+    __CPROVER_assume(root >= 0.0);
+
+    __CPROVER_assume(root * root == d);
+
+    return root;
+  }
+}
+
+/* FUNCTION: sqrtl */
+
+/* The same caveats as sqrtf apply */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double nextUpl(long double d);
+
+long double __VERIFIER_nondet_long_double();
+
+long double sqrtl(long double d)
+{
+ __CPROVER_hide:;
+
+  if(d < 0.0l)
+    return 0.0l/0.0l; // NaN
+  else if (__CPROVER_isinfld(d) ||   // +Inf only
+           d == 0.0l            ||   // Includes -0
+           __CPROVER_isnanld(d))
+    return d;
+  else if (__CPROVER_isnormalld(d))
+  {
+    long double lower=__VERIFIER_nondet_long_double();
+    __CPROVER_assume(lower > 0.0l);
+    __CPROVER_assume(__CPROVER_isnormalld(lower));
+
+    long double lowerSquare = lower * lower;
+    __CPROVER_assume(__CPROVER_isnormalld(lowerSquare));
+
+    long double upper = nextUpl(lower);
+    long double upperSquare = upper * upper;  // Might be +Inf
+
+    __CPROVER_assume(lowerSquare <= d);
+    __CPROVER_assume(d < upperSquare);
+
+    switch(fegetround())
+    {
+    case FE_TONEAREST:
+      return (d - lowerSquare < upperSquare - d) ? lower : upper; break;
+    case FE_UPWARD:
+      return (d - lowerSquare == 0.0l) ? lower : upper; break;
+    case FE_DOWNWARD: // Fall through
+    case FE_TOWARDZERO:
+      return (d - lowerSquare == 0.0l) ? lower : upper; break;
+    default:;
+      //assert(0);
+    }
+
+  }
+  else
+  {
+    //assert(fpclassify(d) == FP_SUBNORMAL);
+    //assert(d > 0.0l);
+
+    long double root=__VERIFIER_nondet_long_double();
+    __CPROVER_assume(root >= 0.0l);
+
+    __CPROVER_assume(root * root == d);
+
+    return root;
+  }
+}
+
+
+/* ISO 9899:2011
+ * The fmax functions determine the maximum numeric value of their
+ * arguments. 242)
+ *
+ * 242) NaN arguments are treated as missing data: if one argument is
+ * a NaN and the other numeric, then the fmax functions choose the
+ * numeric value. See F.10.9.2.
+ *
+ * - If just one argument is a NaN, the fmax functions return the other
+ *   argument (if both arguments are NaNs, the functions return a NaN).
+ * - The returned value is exact and is independent of the current
+ *   rounding direction mode.
+ * - The body of the fmax function might be 374)
+ *       { return (isgreaterequal(x, y) || isnan(y)) ? x : y; }
+ *
+ * 374) Ideally, fmax would be sensitive to the sign of zero, for
+ * example fmax(-0.0, +0.0) would return +0; however, implementation
+ * in software might be impractical.
+ */
+
+/* FUNCTION: fmax */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB
+double fmax(double f, double g) { return ((f >= g) || isnan(g)) ? f : g; }
+
+/* FUNCTION : fmaxf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB
+float fmaxf(float f, float g) { return ((f >= g) || isnan(g)) ? f : g; }
+
+
+/* FUNCTION : fmaxl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB
+long double fmaxl(long double f, long double g) { return ((f >= g) || isnan(g)) ? f : g; }
+
+
+/* ISO 9899:2011
+ * The fmin functions determine the minimum numeric value of their
+ * arguments.243)
+ *
+ * 243) The fmin functions are analogous to the fmax functions in
+ * their treatment of NaNs.
+ *
+ * - The fmin functions are analogous to the fmax functions (see F.10.9.2).
+ * - The returned value is exact and is independent of the current
+ *   rounding direction mode.
+ */
+
+/* FUNCTION: fmin */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+ 
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB
+double fmin(double f, double g) { return ((f <= g) || isnan(g)) ? f : g; }
+
+/* FUNCTION: fminf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB 
+float fminf(float f, float g) { return ((f <= g) || isnan(g)) ? f : g; }
+
+/* FUNCTION: fminl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+// TODO : Should call a __CPROVER_function so that it can be converted to SMT-LIB 
+long double fminl(long double f, long double g) { return ((f <= g) || isnan(g)) ? f : g; }
+
+
+/* ISO 9899:2011
+ * The fdim functions determine the positive difference between their
+ * arguments:
+ *     x - y if x > y
+ *     +0    if x <= y
+ * A range error may occur.
+ */
+
+/* FUNCTION: fdim */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+double fdim(double f, double g) { return ((f > g) ? f - g : +0.0); }
+
+
+/* FUNCTION: fdimf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+float fdimf(float f, float g) { return ((f > g) ? f - g : +0.0f); }
+
+
+/* FUNCTION: fdiml */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+long double fdiml(long double f, long double g) { return ((f > g) ? f - g : +0.0); }
+
+
+
+/* FUNCTION: __sort_of_CPROVER_round_to_integral */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d)
+{
+  double magicConst = 0x1.0p+52;
+  double return_value;
+  int saved_rounding_mode = fegetround();
+  fesetround(rounding_mode);
+  
+  if (fabs(d) >= magicConst || d == 0.0)
+  {
+    return_value = d;
+  }
+  else
+  {
+    if (!signbit(d)) {
+      double tmp = d + magicConst;
+      return_value = tmp - magicConst;
+    } else {
+      double tmp = d - magicConst;
+      return_value = tmp + magicConst;    
+    }
+  }
+
+  fesetround(saved_rounding_mode);
+  return return_value;
+}
+
+/* FUNCTION: __sort_of_CPROVER_round_to_integralf */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d)
+{
+  float magicConst = 0x1.0p+23f;  // 23 is significant
+  float return_value;
+  int saved_rounding_mode = fegetround();
+  fesetround(rounding_mode);
+  
+  if (fabsf(d) >= magicConst || d == 0.0)
+  {
+    return_value = d;
+  }
+  else
+  {
+    if (!signbit(d)) {
+      float tmp = d + magicConst;
+      return_value = tmp - magicConst;    
+    } else {
+      float tmp = d - magicConst;
+      return_value = tmp + magicConst;    
+    }
+  }
+
+  fesetround(saved_rounding_mode);
+  return return_value;
+}
+
+
+/* FUNCTION: __sort_of_CPROVER_round_to_integrall */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d)
+{
+  long double magicConst = 0x1.0p+64;
+  long double return_value;
+  int saved_rounding_mode = fegetround();
+  fesetround(rounding_mode);
+  
+  if (fabsl(d) >= magicConst || d == 0.0)
+  {
+    return_value = d;
+  }
+  else
+  {
+    if (!signbit(d)) {
+      long double tmp = d + magicConst;
+      return_value = tmp - magicConst;    
+    } else {
+      long double tmp = d - magicConst;
+      return_value = tmp + magicConst;    
+    }
+  }
+
+  fesetround(saved_rounding_mode);
+  return return_value;
+}
+
+/* ISO 9899:2011
+ *
+ * The ceil functions compute the smallest integer value not less than
+ * x.
+ */
+
+/* FUNCTION: ceil */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double ceil(double x)
+{
+  return __sort_of_CPROVER_round_to_integral(FE_UPWARD, x);
+}
+
+/* FUNCTION: ceilf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float ceilf(float x)
+{
+  return __sort_of_CPROVER_round_to_integralf(FE_UPWARD, x);
+}
+
+
+/* FUNCTION: ceill */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double ceill(long double x)
+{
+  return __sort_of_CPROVER_round_to_integrall(FE_UPWARD, x);
+}
+
+
+/* ISO 9899:2011
+ *
+ * The floor functions compute the largest integer value not greater than x.
+ */
+
+/* FUNCTION: floor */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double floor(double x)
+{
+  return __sort_of_CPROVER_round_to_integral(FE_DOWNWARD, x);
+}
+
+/* FUNCTION: floorf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float floorf(float x)
+{
+  return __sort_of_CPROVER_round_to_integralf(FE_DOWNWARD, x);
+}
+
+
+/* FUNCTION: floorl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double floorl(long double x)
+{
+  return __sort_of_CPROVER_round_to_integrall(FE_DOWNWARD, x);
+}
+
+
+/* ISO 9899:2011
+ *
+ * The trunc functions round their argument to the integer value, in
+ * floating format, nearest to but no larger in magnitude than the argument.
+ */
+
+/* FUNCTION: trunc */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double trunc(double x)
+{
+  return __sort_of_CPROVER_round_to_integral(FE_TOWARDZERO, x);
+}
+
+/* FUNCTION: truncf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float truncf(float x)
+{
+  return __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, x);
+}
+
+
+/* FUNCTION: truncl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double truncl(long double x)
+{
+  return __sort_of_CPROVER_round_to_integrall(FE_TOWARDZERO, x);
+}
+
+
+/* ISO 9899:2011
+ *
+ * The round functions round their argument to the integer value, in
+ * floating format, nearest to but no larger in magnitude than the argument.
+ */
+
+/* FUNCTION: round */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double round(double x)
+{
+  // Tempting but RNE not RNA
+  // return __sort_of_CPROVER_round_to_integral(FE_TONEAREST, x);
+
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  return __sort_of_CPROVER_round_to_integral(FE_TOWARDZERO, xp);
+}
+
+/* FUNCTION: roundf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float roundf(float x)
+{
+  // Tempting but RNE not RNA
+  // return __sort_of_CPROVER_round_to_integralf(FE_TONEAREST, x);
+
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  float xp;
+  if (x > 0.0f) {
+    xp = x + 0.5f;
+  } else if (x < 0.0f) {
+    xp = x - 0.5f;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  return __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, xp);
+}
+
+
+/* FUNCTION: roundl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double roundl(long double x)
+{
+  // Tempting but RNE not RNA
+  // return __sort_of_CPROVER_round_to_integrall(FE_TONEAREST, x);
+
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  long double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  return __sort_of_CPROVER_round_to_integrall(FE_TOWARDZERO, xp);
+}
+
+
+
+/* ISO 9899:2011
+ *
+ * The nearbyint functions round their argument to an integer value in
+ * floating-point format, using the current rounding direction and
+ * without raising the inexact floating-point exception.
+ */
+
+/* FUNCTION: nearbyint */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double nearbyint(double x)
+{
+  return __sort_of_CPROVER_round_to_integral(fegetround(), x);
+}
+
+/* FUNCTION: nearbyintf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float nearbyintf(float x)
+{
+  return __sort_of_CPROVER_round_to_integralf(fegetround(), x);
+}
+
+
+/* FUNCTION: nearbyintl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double nearbyintl(long double x)
+{
+  return __sort_of_CPROVER_round_to_integrall(fegetround(), x);
+}
+
+
+
+/* ISO 9899:2011
+ *
+ * The rint functions differ from the nearbyint functions (7.12.9.3)
+ * only in that the rint functions may raise the inexact
+ * floating-point exception if the result differs in value from the argument.
+ */
+
+/* FUNCTION: rint */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double rint(double x)
+{
+  return __sort_of_CPROVER_round_to_integral(fegetround(), x);
+}
+
+/* FUNCTION: rintf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float rintf(float x)
+{
+  return __sort_of_CPROVER_round_to_integralf(fegetround(), x);
+}
+
+/* FUNCTION: rintl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double rintl(long double x)
+{
+  return __sort_of_CPROVER_round_to_integrall(fegetround(), x);
+}
+
+
+
+/* ISO 9899:2011
+ *
+ * The lrint and llrint functions round their argument to the nearest
+ * integer value, rounding according to the current rounding
+ * direction. If the rounded value is outside the range of the return
+ * type, the numeric result is unspecified and a domain error or range
+ * error may occur.
+ */
+
+/* FUNCTION: lrint */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+long int lrint(double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  double rti = __sort_of_CPROVER_round_to_integral(fegetround(), x);
+  return (long int)rti;
+}
+
+/* FUNCTION: lrintf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+long int lrintf(float x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  float rti = __sort_of_CPROVER_round_to_integralf(fegetround(), x);
+  return (long int)rti;
+}
+
+
+/* FUNCTION: lrintl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long int lrintl(long double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  long double rti = __sort_of_CPROVER_round_to_integrall(fegetround(), x);
+  return (long int)rti;
+}
+
+
+/* FUNCTION: llrint */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+long long int llrint(double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  double rti = __sort_of_CPROVER_round_to_integral(fegetround(), x);
+  return (long long int)rti;
+}
+
+/* FUNCTION: llrintf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+long long int llrintf(float x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  float rti = __sort_of_CPROVER_round_to_integralf(fegetround(), x);
+  return (long long int)rti;
+}
+
+
+/* FUNCTION: llrintl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long long int llrintl(long double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT
+  long double rti = __sort_of_CPROVER_round_to_integrall(fegetround(), x);
+  return (long long int)rti;
+}
+
+
+/* ISO 9899:2011
+ *
+ * The lround and llround functions round their argument to the
+ * nearest integer value, rounding halfway cases away from zero,
+ * regardless of the current rounding direction. If the rounded value
+ * is outside the range of the return type, the numeric result is
+ * unspecified and a domain error or range error may occur.
+ */
+
+/* FUNCTION: lround */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+long int lround(double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  double rti = __sort_of_CPROVER_round_to_integral(FE_TOWARDZERO, xp);
+  return (long int)rti;
+}
+
+/* FUNCTION: lroundf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+long int lroundf(float x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  float xp;
+  if (x > 0.0f) {
+    xp = x + 0.5f;
+  } else if (x < 0.0f) {
+    xp = x - 0.5f;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  float rti = __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, xp);
+  return (long int)rti;
+}
+
+
+/* FUNCTION: lroundl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long int lroundl(long double x)
+{
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+  long double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  long double rti = __sort_of_CPROVER_round_to_integrall(FE_TOWARDZERO, xp);
+  return (long int)rti;
+}
+
+
+/* FUNCTION: llround */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+long long int llround(double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  double rti = __sort_of_CPROVER_round_to_integral(FE_TOWARDZERO, xp);
+  return (long long int)rti;
+}
+
+/* FUNCTION: llroundf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+long long int llroundf(float x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  float xp;
+  if (x > 0.0f) {
+    xp = x + 0.5f;
+  } else if (x < 0.0f) {
+    xp = x - 0.5f;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  float rti = __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, xp);
+  return (long long int)rti;
+}
+
+
+/* FUNCTION: llroundl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long long int llroundl(long double x)
+{
+  // TODO : should be an all-in-one __CPROVER function to allow
+  // conversion to SMT, plus should use RNA
+  int saved_rounding_mode = fegetround();
+  fesetround(FE_TOWARDZERO);
+
+  long double xp;
+  if (x > 0.0) {
+    xp = x + 0.5;
+  } else if (x < 0.0) {
+    xp = x - 0.5;
+  } else {
+    xp = x;
+  }
+
+  fesetround(saved_rounding_mode);
+  
+  long double rti = __sort_of_CPROVER_round_to_integrall(FE_TOWARDZERO, xp);
+  return (long long int)rti;
+}
+
+
+/* ISO 9899:2011
+ *
+ * The modf functions break the argument value into integral and
+ * fractional parts, each of which has the same type and sign as the
+ * argument. They store the integral part (in floating-point format)
+ * in the object pointed to by iptr.
+ */
+
+/* FUNCTION: modf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+
+double modf(double x, double *iptr)
+{
+  *iptr = __sort_of_CPROVER_round_to_integral(FE_TOWARDZERO, x);
+  return (x - *iptr);
+}
+
+/* FUNCTION: modff */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+  float modff(float x, float *iptr)
+{
+  *iptr = __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, x);
+  return (x - *iptr);
+}
+
+
+/* FUNCTION: modfl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+  long double modfl(long double x, long double *iptr)
+{
+  *iptr = __sort_of_CPROVER_round_to_integralf(FE_TOWARDZERO, x);
+  return (x - *iptr);
+}
+
+
+
+/* FUNCTION: __sort_of_CPROVER_remainder */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+double __sort_of_CPROVER_round_to_integral (int rounding_mode, double d);
+  
+double __sort_of_CPROVER_remainder (int rounding_mode, double x, double y)
+{
+  if (x == 0.0 || __CPROVER_isinfd(y))
+    return x;
+
+  // Extended precision helps... a bit...
+  long double div = x/y;
+  long double n = __sort_of_CPROVER_round_to_integral(rounding_mode,div);
+  long double res = (-y * n) + x;   // TODO : FMA would be an improvement
+  return res;
+}
+
+/* FUNCTION: __sort_of_CPROVER_remainderf */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+
+float __sort_of_CPROVER_round_to_integralf (int rounding_mode, float d);
+
+float __sort_of_CPROVER_remainderf (int rounding_mode, float x, float y)
+{
+  if (x == 0.0f || __CPROVER_isinff(y))
+    return x;
+
+  // Extended precision helps... a bit...
+  long double div = x/y;
+  long double n = __sort_of_CPROVER_round_to_integral(rounding_mode,div);
+  long double res = (-y * n) + x;   // TODO : FMA would be an improvement
+  return res;
+}
+
+/* FUNCTION: __sort_of_CPROVER_remainderl */
+// TODO : Should be a real __CPROVER function to convert to SMT-LIB
+
+long double __sort_of_CPROVER_round_to_integrall (int rounding_mode, long double d);
+
+long double __sort_of_CPROVER_remainderl (int rounding_mode, long double x, long double y)
+{
+  if (x == 0.0 || __CPROVER_isinfld(y))
+    return x;
+
+  // Extended precision helps... a bit...
+  long double div = x/y;
+  long double n = __sort_of_CPROVER_round_to_integral(rounding_mode,div);
+  long double res = (-y * n) + x;   // TODO : FMA would be an improvement
+  return res;
+}
+
+
+
+/* ISO 9899:2011
+ *
+ * The fmod functions return the value x - ny, for some
+ * integer n such that, if y is nonzero, the result has the same sign
+ * as x and magnitude less than the magnitude of y. If y is zero,
+ * whether a domain error occurs or the fmod functions return zero is
+ * implementation-defined.
+ */
+
+/* FUNCTION: fmod */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_remainder (int rounding_mode, double x, double y);
+
+double fmod(double x, double y) { return __sort_of_CPROVER_remainder(FE_TOWARDZERO, x, y); }
+
+
+/* FUNCTION: fmodf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_remainderf (int rounding_mode, float x, float y);
+
+float fmodf(float x, float y) { return __sort_of_CPROVER_remainderf(FE_TOWARDZERO, x, y); }
+
+
+/* FUNCTION: fmodl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_remainderl (int rounding_mode, long double x, long double y);
+
+long double fmodl(long double x, long double y) { return __sort_of_CPROVER_remainderl(FE_TOWARDZERO, x, y); }
+
+
+
+/* ISO 9899:2011
+ *
+ * The remainder functions compute the remainder x REM y required by
+ * IEC 60559.239)
+ *
+ * 239) "When y != 0, the remainder r = x REM y is defined regardless
+ *      of the rounding mode by the  mathematical relation r = x - n
+ *      y, where n is the integer nearest the exact value of x/y;
+ *      whenever | n -  x/y | = 1/2, then n is even. If r = 0, its
+ *      sign shall be that of x." This definition is applicable for
+ *      all implementations.
+ */
+
+/* FUNCTION: remainder */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+double __sort_of_CPROVER_remainder (int rounding_mode, double x, double y);
+
+double remainder(double x, double y) { return __sort_of_CPROVER_remainder(FE_TONEAREST, x, y); }
+
+
+/* FUNCTION: remainderf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+float __sort_of_CPROVER_remainderf (int rounding_mode, float x, float y);
+
+float remainderf(float x, float y) { return __sort_of_CPROVER_remainderf(FE_TONEAREST, x, y); }
+
+
+/* FUNCTION: remainderl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_FENV_H_INCLUDED
+#include <fenv.h>
+#define __CPROVER_FENV_H_INCLUDED
+#endif
+
+long double __sort_of_CPROVER_remainderl (int rounding_mode, long double x, long double y);
+
+long double remainderl(long double x, long double y) { return __sort_of_CPROVER_remainderl(FE_TONEAREST, x, y); }
+
+
+
+
+/* ISO 9899:2011
+ * The copysign functions produce a value with the magnitude of x and
+ * the sign of y. They produce a NaN (with the sign of y) if x is a
+ * NaN. On implementations that represent a signed zero but do not
+ * treat negative zero consistently in arithmetic operations, the
+ * copysign functions regard the sign of zero as positive.
+ */
+
+/* FUNCTION: copysign */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+double fabs (double d);
+
+double copysign(double x, double y)
+{
+  double abs = fabs(x);
+  return (signbit(y)) ? -abs : abs;
+}
+
+/* FUNCTION: copysignf */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+float fabsf (float d);
+
+float copysignf(float x, float y)
+{
+  float abs = fabs(x);
+  return (signbit(y)) ? -abs : abs;
+}
+
+/* FUNCTION: copysignl */
+
+#ifndef __CPROVER_MATH_H_INCLUDED
+#include <math.h>
+#define __CPROVER_MATH_H_INCLUDED
+#endif
+
+long double fabsl (long double d);
+
+long double copysignl(long double x, long double y)
+{
+  long double abs = fabsl(x);
+  return (signbit(y)) ? -abs : abs;
+}
+
+
+
+/* FUNCTION: gethostbyname */
+
+#ifdef _MSC_VER
+#include <windows.h>
+#else
+#include <netdb.h>
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+struct hostent *gethostbyname(const char *name)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(name),
+                         "gethostbyname zero-termination of name argument");
+  #endif
+  (void)*name;
+
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  if(error) return 0;
+
+  // quite restrictive, as will alias between calls
+  static struct hostent result;
+
+  // we whould be filling in the fields of this
+  return &result;
+}
+
+/* FUNCTION: gethostbyaddr */
+
+#ifdef _MSC_VER
+#include <windows.h>
+#else
+#include <netdb.h>
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
+{
+  __CPROVER_HIDE:;
+  (void)*(char*)addr;
+  (void)len;
+  (void)type;
+
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  if(error) return 0;
+
+  // quite restrictive, as will alias between calls
+  static struct hostent result;
+
+  // we whould be filling in the fields of this
+  return &result;
+}
+
+/* FUNCTION: gethostent */
+
+// There does not appear to be a Windows variant of gethostent
+#include <netdb.h>
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+struct hostent *gethostent(void)
+{
+  __CPROVER_HIDE:;
+
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  if(error) return 0;
+
+  // quite restrictive, as will alias between calls
+  static struct hostent result;
+
+  // we whould be filling in the fields of this
+  return &result;
+}
+/* FUNCTION: __noop */
+
+int __noop()
+{
+  // does nothing
+  return 0;
+}
+/* FUNCTION: _beginthread */
+
+__CPROVER_size_t __VERIFIER_nondet___CPROVER_size_t();
+
+__CPROVER_size_t _beginthread(
+  void (*start_address)(void *),
+  unsigned stack_size,
+  void *arglist)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_ASYNC_1: start_address(arglist);
+  (void)stack_size;
+  __CPROVER_size_t handle=__VERIFIER_nondet___CPROVER_size_t();
+  return handle;
+}
+
+/* FUNCTION: _beginthreadex */
+
+__CPROVER_size_t __VERIFIER_nondet___CPROVER_size_t();
+
+__CPROVER_size_t _beginthreadex(
+   void *security,
+   unsigned stack_size,
+   unsigned (*start_address )(void *),
+   void *arglist,
+   unsigned initflag,
+   unsigned *thrdaddr)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_ASYNC_1: start_address(arglist);
+  if(security)
+    (void)*(char*)security;
+  (void)stack_size;
+  (void)initflag;
+  (void)*thrdaddr;
+  __CPROVER_size_t handle=__VERIFIER_nondet___CPROVER_size_t();
+  return handle;
+}
+/* FUNCTION: pthread_mutexattr_settype */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
+{
+  __CPROVER_HIDE:;
+
+  (void)attr;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  if(type==PTHREAD_MUTEX_RECURSIVE)
+    __CPROVER_set_must(attr, "mutexattr-recursive");
+  #else
+  (void)type;
+  #endif
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+
+/* FUNCTION: pthread_cancel */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int pthread_cancel(pthread_t thread)
+{
+  __CPROVER_HIDE:;
+
+  (void)thread;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(&thread, "pthread-id"),
+                   "pthread_cancel must be given valid thread ID");
+  #endif
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+
+/* FUNCTION: pthread_mutex_init */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_mutex_t_defined
+#define __CPROVER_mutex_t_defined
+#if defined __CYGWIN__ || defined __MINGW32__ || defined _WIN32
+// on Windows, the mutexes are integers already
+typedef pthread_mutex_t __CPROVER_mutex_t;
+#else
+typedef signed char __CPROVER_mutex_t;
+#endif
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+inline void pthread_mutex_cleanup(void *p)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_assert(
+    __CPROVER_get_must(p, "mutex-destroyed"),
+    "mutex must be destroyed");
+}
+#endif
+
+inline int pthread_mutex_init(
+  pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr)
+{
+  __CPROVER_HIDE:;
+  *((__CPROVER_mutex_t *)mutex)=0;
+  if(mutexattr!=0) (void)*mutexattr;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_cleanup(mutex, pthread_mutex_cleanup);
+  __CPROVER_set_must(mutex, "mutex-init");
+  __CPROVER_clear_may(mutex, "mutex-destroyed");
+  if(__CPROVER_get_must(mutexattr, "mutexattr-recursive"))
+    __CPROVER_set_must(mutex, "mutex-recursive");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: pthread_mutex_lock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_mutex_t_defined
+#define __CPROVER_mutex_t_defined
+#if defined __CYGWIN__ || defined __MINGW32__ || defined _WIN32
+// on Windows, the mutexes are integers already
+typedef pthread_mutex_t __CPROVER_mutex_t;
+#else
+typedef signed char __CPROVER_mutex_t;
+#endif
+#endif
+
+inline int pthread_mutex_lock(pthread_mutex_t *mutex)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-init"),
+                   "mutex must be initialized");
+
+  __CPROVER_assert(!__CPROVER_get_may(mutex, "mutex-destroyed"),
+                   "mutex must not be destroyed");
+
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-recursive") ||
+                   !__CPROVER_get_may(mutex, "mutex-locked"),
+                   "attempt to lock non-recurisive locked mutex");
+
+  __CPROVER_set_must(mutex, "mutex-locked");
+  __CPROVER_set_may(mutex, "mutex-locked");
+
+  __CPROVER_assert(*((__CPROVER_mutex_t *)mutex)!=-1,
+    "mutex not initialised or destroyed");
+  #else
+  __CPROVER_atomic_begin();
+  __CPROVER_assume(!*((__CPROVER_mutex_t *)mutex));
+  *((__CPROVER_mutex_t *)mutex)=1;
+  __CPROVER_atomic_end();
+
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  #endif
+
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_mutex_trylock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_mutex_t_defined
+#define __CPROVER_mutex_t_defined
+#if defined __CYGWIN__ || defined __MINGW32__ || defined _WIN32
+// on Windows, the mutexes are integers already
+typedef pthread_mutex_t __CPROVER_mutex_t;
+#else
+typedef signed char __CPROVER_mutex_t;
+#endif
+#endif
+
+inline int pthread_mutex_trylock(pthread_mutex_t *mutex)
+{
+  __CPROVER_HIDE:;
+  int return_value;
+  __CPROVER_atomic_begin();
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-init"),
+                   "mutex must be initialized");
+
+  __CPROVER_assert(*((__CPROVER_mutex_t *)mutex)!=-1,
+    "mutex not initialised or destroyed");
+  #endif
+
+  if(*((__CPROVER_mutex_t *)mutex)==1)
+  {
+    // failed
+    return_value=1;
+  }
+  else
+  {
+    // ok
+    return_value=0;
+    *((__CPROVER_mutex_t *)mutex)=1;
+  }
+
+  __CPROVER_atomic_end();
+
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+
+  return return_value;
+}
+
+/* FUNCTION: pthread_mutex_unlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_mutex_t_defined
+#define __CPROVER_mutex_t_defined
+#if defined __CYGWIN__ || defined __MINGW32__ || defined _WIN32
+// on Windows, the mutexes are integers already
+typedef pthread_mutex_t __CPROVER_mutex_t;
+#else
+typedef signed char __CPROVER_mutex_t;
+#endif
+#endif
+
+inline int pthread_mutex_unlock(pthread_mutex_t *mutex)
+{
+  __CPROVER_HIDE:;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-init"),
+                   "mutex must be initialized");
+
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-locked"),
+                   "mutex must be locked");
+
+  __CPROVER_assert(!__CPROVER_get_may(mutex, "mutex-destroyed"),
+                   "mutex must not be destroyed");
+
+  __CPROVER_clear_may(mutex, "mutex-locked");
+
+  #else
+
+  // the fence must be before the unlock
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                    "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  __CPROVER_atomic_begin();
+  __CPROVER_assert(*((__CPROVER_mutex_t *)mutex)==1,
+    "must hold lock upon unlock");
+  *((__CPROVER_mutex_t *)mutex)=0;
+  __CPROVER_atomic_end();
+  #endif
+
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_mutex_destroy */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_mutex_t_defined
+#define __CPROVER_mutex_t_defined
+#if defined __CYGWIN__ || defined __MINGW32__ || defined _WIN32
+// on Windows, the mutexes are integers already
+typedef pthread_mutex_t __CPROVER_mutex_t;
+#else
+typedef signed char __CPROVER_mutex_t;
+#endif
+#endif
+
+inline int pthread_mutex_destroy(pthread_mutex_t *mutex)
+{
+  __CPROVER_HIDE:;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-init"),
+                   "mutex must be initialized");
+
+  __CPROVER_assert(!__CPROVER_get_may(mutex, "mutex-locked"),
+                   "mutex must not be locked");
+
+  __CPROVER_assert(!__CPROVER_get_may(mutex, "mutex-destroyed"),
+                   "mutex must not be destroyed");
+
+  __CPROVER_set_must(mutex, "mutex-destroyed");
+  __CPROVER_set_may(mutex, "mutex-destroyed");
+  #else
+
+  __CPROVER_assert(*((__CPROVER_mutex_t *)mutex)==0,
+    "lock held upon destroy");
+  *((__CPROVER_mutex_t *)mutex)=-1;
+
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: pthread_exit */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_bool __CPROVER_threads_exited[];
+extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
+extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
+
+inline void pthread_exit(void *value_ptr)
+{
+  __CPROVER_HIDE:;
+  if(value_ptr!=0) (void)*(char*)value_ptr;
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
+  {
+    const void *key = __CPROVER_thread_keys[i];
+    __CPROVER_thread_keys[i] = 0;
+    if(__CPROVER_thread_key_dtors[i] && key)
+      __CPROVER_thread_key_dtors[i](key);
+  }
+#endif
+  __CPROVER_threads_exited[__CPROVER_thread_id]=1;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: pthread_join */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+extern __CPROVER_bool __CPROVER_threads_exited[];
+extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
+extern unsigned long __CPROVER_next_thread_id;
+
+inline int pthread_join(pthread_t thread, void **value_ptr)
+{
+__CPROVER_HIDE:;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(
+    __CPROVER_get_must(&thread, "pthread-id"),
+    "pthread_join must be given valid thread ID");
+#endif
+
+  if((unsigned long)thread>__CPROVER_next_thread_id) return ESRCH;
+  if((unsigned long)thread==__CPROVER_thread_id) return EDEADLK;
+  if(value_ptr!=0) (void)**(char**)value_ptr;
+  __CPROVER_assume(__CPROVER_threads_exited[(unsigned long)thread]);
+
+  return 0;
+}
+
+/* FUNCTION: _pthread_join */
+
+// This is for Apple
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+#ifdef __APPLE__
+extern __CPROVER_bool __CPROVER_threads_exited[];
+extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
+extern unsigned long __CPROVER_next_thread_id;
+
+inline int _pthread_join(pthread_t thread, void **value_ptr)
+{
+__CPROVER_HIDE:;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(
+    __CPROVER_get_must(&thread, "pthread-id"),
+    "pthread_join must be given valid thread ID");
+#endif
+
+  if((unsigned long)thread>__CPROVER_next_thread_id) return ESRCH;
+  if((unsigned long)thread==__CPROVER_thread_id) return EDEADLK;
+  if(value_ptr!=0) (void)**(char**)value_ptr;
+  __CPROVER_assume(__CPROVER_threads_exited[(unsigned long)thread]);
+
+  return 0;
+}
+#endif
+
+/* FUNCTION: pthread_rwlock_destroy */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_destroy(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_assert(*((signed char *)lock)==0,
+    "rwlock held upon destroy");
+  *((signed char *)lock)=-1;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(lock, "rwlock_destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: pthread_rwlock_init */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+inline void pthread_rwlock_cleanup(void *p)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_assert(__CPROVER_get_must(p, "rwlock_destroyed"),
+                   "rwlock must be destroyed");
+}
+#endif
+
+inline int pthread_rwlock_init(pthread_rwlock_t *lock,
+  const pthread_rwlockattr_t *attr)
+{
+  __CPROVER_HIDE:;
+  (*(signed char *)lock)=0;
+  if(attr!=0) (void)*attr;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_cleanup(lock, pthread_rwlock_cleanup);
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: pthread_rwlock_rdlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_rdlock(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  __CPROVER_assert(*((signed char *)lock)!=-1,
+    "lock not initialised or destroyed");
+  __CPROVER_assume(!*((signed char *)lock));
+  *((signed char *)lock)=1;
+  __CPROVER_atomic_end();
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_rwlock_tryrdlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_tryrdlock(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  if((*(signed char *)lock &2)!=0) { __CPROVER_atomic_end(); return 1; }
+  (*(signed char *)lock)|=1;
+  __CPROVER_atomic_end();
+  return 0;
+}
+
+/* FUNCTION: pthread_rwlock_trywrlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_trywrlock(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  if(*(signed char *)lock) { __CPROVER_atomic_end(); return 1; }
+  (*(signed char *)lock)=2;
+  __CPROVER_atomic_end();
+  return 0;
+}
+
+/* FUNCTION: pthread_rwlock_unlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_unlock(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_assert(*((signed char *)lock)==1,
+    "must hold lock upon unlock");
+  // TODO: unlocks all held locks at once
+  *((signed char *)lock)=0;
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_rwlock_wrlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_rwlock_wrlock(pthread_rwlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  __CPROVER_assert(*((signed char *)lock)!=-1,
+    "lock not initialised or destroyed");
+  __CPROVER_assume(!*((signed char *)lock));
+  *((signed char *)lock)=2;
+  __CPROVER_atomic_end();
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_create */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_bool __CPROVER_threads_exited[];
+extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
+extern unsigned long __CPROVER_next_thread_id;
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
+extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
+
+inline void __spawned_thread(
+  unsigned long this_thread_id,
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  void (**thread_key_dtors)(void *),
+#endif
+  unsigned long next_thread_key,
+  void *(*start_routine)(void *),
+  void *arg)
+{
+__CPROVER_HIDE:;
+  __CPROVER_thread_id = this_thread_id;
+  __CPROVER_next_thread_key = next_thread_key;
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
+    __CPROVER_thread_key_dtors[i] = thread_key_dtors[i];
+#endif
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  // Clear all locked mutexes; locking must happen in same thread.
+  __CPROVER_clear_must(0, "mutex-locked");
+  __CPROVER_clear_may(0, "mutex-locked");
+#endif
+  start_routine(arg);
+  __CPROVER_fence(
+    "WWfence",
+    "RRfence",
+    "RWfence",
+    "WRfence",
+    "WWcumul",
+    "RRcumul",
+    "RWcumul",
+    "WRcumul");
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
+  {
+    const void *key = __CPROVER_thread_keys[i];
+    __CPROVER_thread_keys[i] = 0;
+    if(__CPROVER_thread_key_dtors[i] && key)
+      __CPROVER_thread_key_dtors[i](key);
+  }
+#endif
+  __CPROVER_threads_exited[this_thread_id] = 1;
+}
+
+inline int pthread_create(
+  pthread_t *thread, // must not be null
+  const pthread_attr_t *attr, // may be null
+  void * (*start_routine)(void *), // must not be null
+  void *arg) // may be null
+{
+  __CPROVER_HIDE:;
+  unsigned long this_thread_id;
+  __CPROVER_atomic_begin();
+  this_thread_id=++__CPROVER_next_thread_id;
+  __CPROVER_atomic_end();
+
+  // pthread_t is a pointer type on some systems
+  *thread=(pthread_t)this_thread_id;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(thread, "pthread-id");
+  #endif
+
+  if(attr) (void)*attr;
+
+  unsigned long next_thread_key = __CPROVER_next_thread_key;
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  void (**thread_key_dtors)(void *) = __CPROVER_thread_key_dtors;
+#endif
+
+  __CPROVER_ASYNC_1:
+    __spawned_thread(
+      this_thread_id,
+#if 0
+      // Destructor support is disabled as it is too expensive due to its
+      // extensive use of shared variables.
+      thread_key_dtors,
+#endif
+      next_thread_key,
+      start_routine,
+      arg);
+
+    return 0;
+}
+
+/* FUNCTION: pthread_cond_init */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_cond_init(
+    pthread_cond_t *cond,
+    const pthread_condattr_t *attr)
+{ __CPROVER_HIDE:
+  *((unsigned *)cond)=0;
+  if(attr) (void)*attr;
+  return 0;
+}
+
+/* FUNCTION: pthread_cond_signal */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_cond_signal(
+  pthread_cond_t *cond)
+{ __CPROVER_HIDE:
+  __CPROVER_atomic_begin();
+  (*((unsigned *)cond))++;
+  __CPROVER_atomic_end();
+  return 0;
+}
+
+/* FUNCTION: pthread_cond_broadcast */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_cond_broadcast(
+    pthread_cond_t *cond)
+{ __CPROVER_HIDE:
+  __CPROVER_atomic_begin();
+  *((unsigned *)cond)=(unsigned)-1;
+  __CPROVER_atomic_end();
+  return 0;
+}
+
+/* FUNCTION: pthread_cond_wait */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+inline int pthread_cond_wait(
+    pthread_cond_t *cond,
+    pthread_mutex_t *mutex)
+{ __CPROVER_HIDE:
+
+  (void)*mutex;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-init"),
+                   "mutex must be initialized");
+
+  __CPROVER_assert(__CPROVER_get_must(mutex, "mutex-locked"),
+                   "mutex must be locked");
+
+  __CPROVER_assert(!__CPROVER_get_may(mutex, "mutex-destroyed"),
+                   "mutex must not be destroyed");
+
+  __CPROVER_clear_may(mutex, "mutex-locked");
+  #endif
+
+  __CPROVER_atomic_begin();
+  if(*((unsigned *)cond))
+    (*((unsigned *)cond))--;
+  __CPROVER_atomic_end();
+
+  return 0; // we never fail
+}
+
+/* FUNCTION: pthread_spin_lock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+// no pthread_spinlock_t on the Mac
+#ifndef __APPLE__
+int pthread_spin_lock(pthread_spinlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_atomic_begin();
+  __CPROVER_assume(!*((unsigned *)lock));
+  (*((unsigned *)lock))=1;
+  __CPROVER_atomic_end();
+
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  return 0;
+}
+#endif
+
+/* FUNCTION: pthread_spin_unlock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+// no pthread_spinlock_t on the Mac
+#ifndef __APPLE__
+int pthread_spin_unlock(pthread_spinlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  // This is atomic_full_barrier() in glibc.
+  // The fence must be before the unlock.
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  *((unsigned *)lock) = 0;
+  return 0;
+}
+#endif
+
+/* FUNCTION: pthread_spin_trylock */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+// no pthread_spinlock_t on the Mac
+#ifndef __APPLE__
+int pthread_spin_trylock(pthread_spinlock_t *lock)
+{
+  __CPROVER_HIDE:;
+  int result;
+  __CPROVER_atomic_begin();
+  if(*((unsigned *)lock))
+    result=EBUSY;
+  else
+  {
+    result=0;
+    (*((unsigned *)lock))=1;
+  }
+  __CPROVER_atomic_end();
+
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                  "WWcumul", "RRcumul", "RWcumul", "WRcumul");
+  return result;
+}
+#endif
+
+/* FUNCTION: pthread_barrier_init */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+// no pthread_barrier_t on the Mac
+// slightly different declaration on OpenBSD
+#if !defined(__APPLE__) && !defined(__OpenBSD__)
+inline int pthread_barrier_init(
+  pthread_barrier_t *restrict barrier,
+  const pthread_barrierattr_t *restrict attr, unsigned count)
+{
+  __CPROVER_HIDE:;
+  (void)barrier;
+  (void)attr;
+  (void)count;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(barrier, "barrier-init");
+  __CPROVER_clear_may(barrier, "barrier-destroyed");
+  #endif
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+#endif
+
+// pthread_barrier_init has a slightly different decl on OpenBSD
+#if defined(__OpenBSD__)
+inline int pthread_barrier_init(
+  pthread_barrier_t *restrict barrier,
+  pthread_barrierattr_t *restrict attr,
+  unsigned count)
+{
+__CPROVER_HIDE:;
+  (void)barrier;
+  (void)attr;
+  (void)count;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(barrier, "barrier-init");
+  __CPROVER_clear_may(barrier, "barrier-destroyed");
+#endif
+
+  int result = __VERIFIER_nondet_int();
+  return result;
+}
+#endif
+
+/* FUNCTION: pthread_barrier_destroy */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+// no pthread_barrier_t on the Mac
+#ifndef __APPLE__
+inline int pthread_barrier_destroy(pthread_barrier_t *barrier)
+{
+  __CPROVER_HIDE:;
+
+  (void)barrier;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(barrier, "barrier-init"),
+                   "pthread barrier must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(barrier, "barrier-destroyed"),
+                   "pthread barrier must not be destroyed");
+  __CPROVER_set_may(barrier, "barrier-destroyed");
+  #endif
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+#endif
+
+/* FUNCTION: pthread_barrier_wait */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+// no pthread_barrier_t on the Mac
+#ifndef __APPLE__
+inline int pthread_barrier_wait(pthread_barrier_t *barrier)
+{
+  __CPROVER_HIDE:;
+
+  (void)barrier;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(barrier, "barrier-init"),
+                   "pthread barrier must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(barrier, "barrier-destroyed"),
+                   "pthread barrier must not be destroyed");
+  #endif
+
+  int result=__VERIFIER_nondet_int();
+  return result;
+}
+#endif
+
+/* FUNCTION: pthread_key_create */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
+extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
+
+inline int pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
+{
+__CPROVER_HIDE:;
+  __CPROVER_thread_keys[__CPROVER_next_thread_key] = 0;
+#if 0
+  // Destructor support is disabled as it is too expensive due to its extensive
+  // use of shared variables.
+  __CPROVER_thread_key_dtors[__CPROVER_next_thread_key] = destructor;
+#else
+  __CPROVER_precondition(destructor == 0, "destructors are not yet supported");
+#endif
+  *key = __CPROVER_next_thread_key++;
+  return 0;
+}
+
+/* FUNCTION: pthread_key_delete */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+
+inline int pthread_key_delete(pthread_key_t key)
+{
+__CPROVER_HIDE:;
+  __CPROVER_thread_keys[key] = 0;
+  return 0;
+}
+
+/* FUNCTION: pthread_getspecific */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+
+inline void *pthread_getspecific(pthread_key_t key)
+{
+__CPROVER_HIDE:;
+  return (void *)__CPROVER_thread_keys[key];
+}
+
+/* FUNCTION: pthread_setspecific */
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
+
+inline int pthread_setspecific(pthread_key_t key, const void *value)
+{
+__CPROVER_HIDE:;
+  __CPROVER_thread_keys[key] = value;
+  return 0;
+}
+/* FUNCTION: sem_init */
+
+#include <semaphore.h>
+
+inline int sem_init(sem_t *sem, int pshared, unsigned int value)
+{
+  __CPROVER_HIDE:;
+  (void)pshared;
+  (void)value;
+  (void)sem;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(sem, "sem-init");
+  __CPROVER_clear_may(sem, "sem-destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_wait */
+
+#include <semaphore.h>
+
+inline int sem_wait(sem_t *sem)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_timedwait */
+
+#include <semaphore.h>
+
+inline int sem_timedwait(sem_t *sem, const struct timespec *abstime)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+  (void)abstime;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_trywait */
+
+#include <semaphore.h>
+
+inline int sem_trywait(sem_t *sem)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_post */
+
+#include <semaphore.h>
+
+inline int sem_post(sem_t *sem)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_post_multiple */
+
+#include <semaphore.h>
+
+inline int sem_post_multiple(sem_t *sem, int number)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+  (void)number;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_getvalue */
+
+#include <semaphore.h>
+
+inline int sem_getvalue(sem_t *sem, int *sval)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+  (void)sval;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: sem_destroy */
+
+#include <semaphore.h>
+
+inline int sem_destroy(sem_t *sem)
+{
+  __CPROVER_HIDE:;
+  (void)sem;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(sem, "sem-init"),
+                   "semaphore must be initialized");
+  __CPROVER_assert(!__CPROVER_get_may(sem, "sem-destroyed"),
+                   "semaphore must not be destroyed");
+  __CPROVER_set_may(sem, "sem-destroyed");
+  #endif
+
+  return 0;
+}
+
+/* FUNCTION: longjmp */
+
+#ifndef __CPROVER_SETJMP_H_INCLUDED
+#include <setjmp.h>
+#define __CPROVER_SETJMP_H_INCLUDED
+#endif
+
+inline void longjmp(jmp_buf env, int val)
+{
+  // does not return
+  (void)env;
+  (void)val;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: _longjmp */
+
+#ifndef __CPROVER_SETJMP_H_INCLUDED
+#include <setjmp.h>
+#define __CPROVER_SETJMP_H_INCLUDED
+#endif
+
+inline void _longjmp(jmp_buf env, int val)
+{
+  // does not return
+  (void)env;
+  (void)val;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: siglongjmp */
+
+#ifndef __CPROVER_SETJMP_H_INCLUDED
+#include <setjmp.h>
+#define __CPROVER_SETJMP_H_INCLUDED
+#endif
+
+inline void siglongjmp(sigjmp_buf env, int val)
+{
+  // does not return
+  (void)env;
+  (void)val;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: setjmp */
+
+#ifndef __CPROVER_SETJMP_H_INCLUDED
+#include <setjmp.h>
+#define __CPROVER_SETJMP_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int setjmp(jmp_buf env)
+{
+  // store PC
+  int retval=__VERIFIER_nondet_int();
+  (void)env;
+  return retval;
+}
+/* FUNCTION: kill */
+
+#ifndef __CPROVER_SYS_TYPES_H_INCLUDED
+#include <sys/types.h>
+#define __CPROVER_SYS_TYPES_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_SIGNAL_H_INCLUDED
+#include <signal.h>
+#define __CPROVER_SIGNAL_H_INCLUDED
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+int kill(pid_t pid, int sig)
+{
+  (void)pid;
+  (void)sig;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  return error ? -1 : 0;
+}
+
+/* FUNCTION: putchar */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+/* undefine macros in OpenBSD's stdio.h that are problematic to the checker. */
+#if defined(__OpenBSD__)
+#undef getchar
+#undef putchar
+#undef getc
+#undef feof
+#undef ferror
+#undef fileno
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+inline int putchar(int c)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_printf("%c", c);
+  return (error?-1:c);
+}
+
+/* FUNCTION: puts */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+int __VERIFIER_nondet_int();
+
+inline int puts(const char *s)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  int ret=__VERIFIER_nondet_int();
+  __CPROVER_printf("%s\n", s);
+  if(error) ret=-1; else __CPROVER_assume(ret>=0);
+  return ret;
+}
+
+/* FUNCTION: fopen */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+inline void fclose_cleanup(void *stream)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_assert(!__CPROVER_get_must(stream, "open") ||
+                   __CPROVER_get_must(stream, "closed"),
+                   "resource leak: fopen file not closed");
+}
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+inline FILE *fopen(const char *filename, const char *mode)
+{
+  __CPROVER_HIDE:;
+  (void)*filename;
+  (void)*mode;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(filename), "fopen zero-termination of 1st argument");
+  __CPROVER_assert(__CPROVER_is_zero_string(mode), "fopen zero-termination of 2nd argument");
+#endif
+
+  FILE *fopen_result;
+
+  __CPROVER_bool fopen_error=__VERIFIER_nondet___CPROVER_bool();
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  fopen_result=fopen_error?NULL:malloc(sizeof(FILE));
+#else
+  // libraries need to expose the definition of FILE; this is the
+  // case for musl
+  fopen_result=fopen_error?NULL:malloc(sizeof(int));
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_set_must(fopen_result, "open");
+  __CPROVER_cleanup(fopen_result, fclose_cleanup);
+#endif
+
+  return fopen_result;
+}
+
+/* FUNCTION: freopen */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+inline FILE* freopen(const char *filename, const char *mode, FILE *f)
+{
+  __CPROVER_HIDE:;
+  (void)*filename;
+  (void)*mode;
+#if !defined(__linux__) || defined(__GLIBC__)
+  (void)*f;
+#else
+  (void)*(char*)f;
+#endif
+
+  return f;
+}
+
+/* FUNCTION: fclose */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fclose(FILE *stream)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fclose file must be open");
+  __CPROVER_clear_must(stream, "open");
+  __CPROVER_set_must(stream, "closed");
+#endif
+  int return_value=__VERIFIER_nondet_int();
+  free(stream);
+  return return_value;
+}
+
+/* FUNCTION: fdopen */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+inline FILE *fdopen(int handle, const char *mode)
+{
+  __CPROVER_HIDE:;
+  (void)handle;
+  (void)*mode;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(mode),
+    "fdopen zero-termination of 2nd argument");
+#endif
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  FILE *f=malloc(sizeof(FILE));
+#else
+  // libraries need to expose the definition of FILE; this is the
+  // case for musl
+  FILE *f=malloc(sizeof(int));
+#endif
+
+  return f;
+}
+
+/* FUNCTION: _fdopen */
+
+// This is for Apple; we cannot fall back to fdopen as we need
+// header files to have a definition of FILE available; the same
+// header files rename fdopen to _fdopen and would thus yield
+// unbounded recursion.
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+#ifdef __APPLE__
+inline FILE *_fdopen(int handle, const char *mode)
+{
+  __CPROVER_HIDE:;
+  (void)handle;
+  (void)*mode;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(mode),
+    "fdopen zero-termination of 2nd argument");
+#endif
+
+  FILE *f=malloc(sizeof(FILE));
+
+  return f;
+}
+#endif
+
+/* FUNCTION: fgets */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+int __VERIFIER_nondet_int();
+
+char *fgets(char *str, int size, FILE *stream)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+
+  (void)size;
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fgets file must be open");
+#endif
+
+#ifdef __CPROVER_STRING_ABSTRACTION
+  int resulting_size;
+  __CPROVER_assert(__CPROVER_buffer_size(str)>=size, "buffer-overflow in fgets");
+  if(size>0)
+  {
+    __CPROVER_assume(resulting_size<size);
+    __CPROVER_is_zero_string(str)=!error;
+    __CPROVER_zero_string_length(str)=resulting_size;
+  }
+#else
+  if(size>0)
+  {
+    int str_length=__VERIFIER_nondet_int();
+    __CPROVER_assume(str_length >= 0 && str_length < size);
+    __CPROVER_precondition(__CPROVER_w_ok(str, size), "fgets buffer writable");
+    char contents_nondet[str_length];
+    __CPROVER_array_replace(str, contents_nondet);
+    if(!error)
+      str[str_length]='\0';
+  }
+#endif
+
+  return error?0:str;
+}
+
+/* FUNCTION: fread */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+size_t __VERIFIER_nondet_size_t();
+
+inline size_t fread(
+  void *ptr,
+  size_t size,
+  size_t nitems,
+  FILE *stream)
+{
+  __CPROVER_HIDE:;
+  size_t nread=__VERIFIER_nondet_size_t();
+  size_t bytes=nread*size;
+  __CPROVER_assume(nread<=nitems);
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fread file must be open");
+#endif
+
+  for(size_t i=0; i<bytes; i++)
+  {
+    char nondet_char;
+    ((char *)ptr)[i]=nondet_char;
+  }
+
+  return nread;
+}
+
+/* FUNCTION: feof */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int feof(FILE *stream)
+{
+  // just return nondet
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "feof file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: ferror */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int ferror(FILE *stream)
+{
+  // just return nondet
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "feof file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: fileno */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fileno(FILE *stream)
+{
+__CPROVER_HIDE:;
+  if(stream == stdin)
+    return 0;
+  else if(stream == stdout)
+    return 1;
+  else if(stream == stderr)
+    return 2;
+
+  int return_value=__VERIFIER_nondet_int();
+  __CPROVER_assume(return_value >= -1);
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  (void)*stream;
+#else
+  (void)*(char*)stream;
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fileno file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: fputs */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fputs(const char *s, FILE *stream)
+{
+  // just return nondet
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(s), "fputs zero-termination of 1st argument");
+#endif
+  (void)*s;
+
+  if(stream != stdout && stream != stderr)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fputs file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: fflush */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fflush(FILE *stream)
+{
+  // just return nondet
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+  (void)stream;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  if(stream)
+    __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                     "fflush file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: fpurge */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fpurge(FILE *stream)
+{
+  // just return nondet
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin && stream != stdout && stream != stderr)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fpurge file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: fgetc */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fgetc(FILE *stream)
+{
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+  // it's a byte or EOF (-1)
+  __CPROVER_assume(return_value>=-1 && return_value<=255);
+
+  __CPROVER_input("fgetc", return_value);
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fgetc file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: getc */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int getc(FILE *stream)
+{
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "getc file must be open");
+#endif
+
+  // It's a byte or EOF, which we fix to -1.
+  __CPROVER_assume(return_value>=-1 && return_value<=255);
+
+  __CPROVER_input("getc", return_value);
+
+  return return_value;
+}
+
+/* FUNCTION: getchar */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int getchar()
+{
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+  // it's a byte or EOF
+  __CPROVER_assume(return_value>=-1 && return_value<=255);
+  __CPROVER_input("getchar", return_value);
+  return return_value;
+}
+
+/* FUNCTION: getw */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int getw(FILE *stream)
+{
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "getw file must be open");
+#endif
+
+  __CPROVER_input("getw", return_value);
+
+  // it's any int, no restriction
+  return return_value;
+}
+
+/* FUNCTION: fseek */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int fseek(FILE *stream, long offset, int whence)
+{
+  __CPROVER_HIDE:;
+  int return_value=__VERIFIER_nondet_int();
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  (void)*stream;
+#else
+  (void)*(char*)stream;
+#endif
+  (void)offset;
+  (void)whence;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fseek file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: ftell */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+long __VERIFIER_nondet_long();
+
+inline long ftell(FILE *stream)
+{
+  __CPROVER_HIDE:;
+  long return_value=__VERIFIER_nondet_long();
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  (void)*stream;
+#else
+  (void)*(char*)stream;
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "ftell file must be open");
+#endif
+
+  return return_value;
+}
+
+/* FUNCTION: rewind */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+void rewind(FILE *stream)
+{
+__CPROVER_HIDE:
+
+#if !defined(__linux__) || defined(__GLIBC__)
+  (void)*stream;
+#else
+  (void)*(char*)stream;
+#endif
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "rewind file must be open");
+#endif
+}
+
+/* FUNCTION: fwrite */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+size_t __VERIFIER_nondet_size_t();
+
+size_t fwrite(
+  const void *ptr,
+  size_t size,
+  size_t nitems,
+  FILE *stream)
+{
+  __CPROVER_HIDE:;
+  (void)*(char*)ptr;
+  (void)size;
+
+  if(stream != stdout && stream != stderr)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "fwrite file must be open");
+#endif
+
+  size_t nwrite=__VERIFIER_nondet_size_t();
+  __CPROVER_assume(nwrite<=nitems);
+  return nwrite;
+}
+
+/* FUNCTION: perror */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+void perror(const char *s)
+{
+  __CPROVER_HIDE:;
+  if(s!=0)
+  {
+    #ifdef __CPROVER_STRING_ABSTRACTION
+    __CPROVER_assert(__CPROVER_is_zero_string(s), "perror zero-termination");
+    #endif
+    // should go to stderr
+    if(s[0]!=0)
+      __CPROVER_printf("%s: ", s);
+  }
+
+  // TODO: print errno error
+}
+
+/* FUNCTION: fscanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+inline int fscanf(FILE *restrict stream, const char *restrict format, ...)
+{
+__CPROVER_HIDE:;
+  va_list list;
+  va_start(list, format);
+  int result=vfscanf(stream, format, list);
+  va_end(list);
+  return result;
+}
+
+/* FUNCTION: scanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+inline int scanf(const char *restrict format, ...)
+{
+__CPROVER_HIDE:;
+  va_list list;
+  va_start(list, format);
+  int result=vfscanf(stdin, format, list);
+  va_end(list);
+  return result;
+}
+
+/* FUNCTION: sscanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+inline int sscanf(const char *restrict s, const char *restrict format, ...)
+{
+__CPROVER_HIDE:;
+  va_list list;
+  va_start(list, format);
+  int result=vsscanf(s, format, list);
+  va_end(list);
+  return result;
+}
+
+/* FUNCTION: vfscanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int vfscanf(FILE *restrict stream, const char *restrict format, va_list arg)
+{
+  __CPROVER_HIDE:;
+  int result=__VERIFIER_nondet_int();
+
+  if(stream != stdin)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+  (void)*format;
+  (void)arg;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "vfscanf file must be open");
+#endif
+
+  return result;
+}
+
+/* FUNCTION: vscanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+inline int vscanf(const char *restrict format, va_list arg)
+{
+  __CPROVER_HIDE:;
+  return vfscanf(stdin, format, arg);
+}
+
+/* FUNCTION: vsscanf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int vsscanf(const char *restrict s, const char *restrict format, va_list arg)
+{
+  __CPROVER_HIDE:;
+  int result=__VERIFIER_nondet_int();
+  (void)*s;
+  (void)*format;
+  (void)arg;
+  return result;
+}
+
+/* FUNCTION: printf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#  include <stdio.h>
+#  define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#  include <stdarg.h>
+#  define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int printf(const char *format, ...)
+{
+__CPROVER_HIDE:;
+  int result = __VERIFIER_nondet_int();
+  va_list list;
+  va_start(list, format);
+  __CPROVER_printf(format, list);
+  va_end(list);
+  return result;
+}
+
+/* FUNCTION: fprintf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+inline int fprintf(FILE *stream, const char *restrict format, ...)
+{
+  __CPROVER_HIDE:;
+  va_list list;
+  va_start(list, format);
+  int result=vfprintf(stream, format, list);
+  va_end(list);
+  return result;
+}
+
+/* FUNCTION: vfprintf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
+inline int vfprintf(FILE *stream, const char *restrict format, va_list arg)
+{
+  __CPROVER_HIDE:;
+
+  int result=__VERIFIER_nondet_int();
+
+  if(stream != stdout && stream != stderr)
+  {
+#if !defined(__linux__) || defined(__GLIBC__)
+    (void)*stream;
+#else
+    (void)*(char *)stream;
+#endif
+  }
+
+  (void)*format;
+  (void)arg;
+
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                   "vfprintf file must be open");
+#endif
+
+  return result;
+}
+
+/* FUNCTION: vasprintf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+char __VERIFIER_nondet_char();
+int __VERIFIER_nondet_int();
+
+inline int vasprintf(char **ptr, const char *fmt, va_list ap)
+{
+  (void)*fmt;
+  (void)ap;
+
+  int result_buffer_size=__VERIFIER_nondet_int();
+  if(result_buffer_size<=0)
+    return -1;
+
+  *ptr=malloc(result_buffer_size);
+  int i=0;
+  for( ; i<result_buffer_size; ++i)
+  {
+    char c=__VERIFIER_nondet_char();
+    (*ptr)[i]=c;
+    if(c=='\0')
+      break;
+  }
+
+  __CPROVER_assume(i<result_buffer_size);
+
+  return i;
+}
+
+/* FUNCTION: __acrt_iob_func */
+
+#ifdef _WIN32
+
+#  ifndef __CPROVER_STDIO_H_INCLUDED
+#    include <stdio.h>
+#    define __CPROVER_STDIO_H_INCLUDED
+#  endif
+
+inline FILE *__acrt_iob_func(unsigned fd)
+{
+  static FILE stdin_file;
+  static FILE stdout_file;
+  static FILE stderr_file;
+
+  switch(fd)
+  {
+  case 0:
+    return &stdin_file;
+  case 1:
+    return &stdout_file;
+  case 2:
+    return &stderr_file;
+  default:
+    return (FILE *)0;
+  }
+}
+
+#endif
+
+/* FUNCTION: __stdio_common_vfprintf */
+
+#ifdef _WIN32
+
+#  ifndef __CPROVER_STDIO_H_INCLUDED
+#    include <stdio.h>
+#    define __CPROVER_STDIO_H_INCLUDED
+#  endif
+
+#  ifndef __CPROVER_STDARG_H_INCLUDED
+#    include <stdarg.h>
+#    define __CPROVER_STDARG_H_INCLUDED
+#  endif
+
+inline int __stdio_common_vfprintf(
+  unsigned __int64 options,
+  FILE *stream,
+  char const *format,
+  _locale_t locale,
+  va_list args)
+{
+  (void)options;
+  (void)locale;
+
+  if(stream == __acrt_iob_func(1))
+    __CPROVER_printf(format, args);
+  return 0;
+}
+
+#endif
+/* FUNCTION: abs */
+
+#undef abs
+
+inline int abs(int i) { return __CPROVER_abs(i); }
+
+/* FUNCTION: labs */
+
+#undef labs
+
+inline long int labs(long int i) { return __CPROVER_labs(i); }
+
+/* FUNCTION: llabs */
+
+#undef llabs
+
+inline long long int llabs(long long int i) { return __CPROVER_llabs(i); }
+
+/* FUNCTION: __builtin_abs */
+
+inline int __builtin_abs(int i) { return __CPROVER_abs(i); }
+
+/* FUNCTION: __builtin_labs */
+
+inline long int __builtin_labs(long int i) { return __CPROVER_labs(i); }
+
+/* FUNCTION: __builtin_llabs */
+
+inline long long int __builtin_llabs(long long int i) { return __CPROVER_llabs(i); }
+
+/* FUNCTION: exit */
+
+#undef exit
+
+inline void exit(int status)
+{
+  (void)status;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: _Exit */
+
+#undef _Exit
+
+inline void _Exit(int status)
+{
+  (void)status;
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: abort */
+
+#undef abort
+
+inline void abort(void)
+{
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: calloc */
+
+#undef calloc
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+inline void *calloc(__CPROVER_size_t nmemb, __CPROVER_size_t size)
+{
+__CPROVER_HIDE:;
+#pragma CPROVER check push
+#pragma CPROVER check disable "unsigned-overflow"
+  if(__CPROVER_overflow_mult(nmemb, size))
+    return (void *)0;
+  // This is now safe; still do it within the scope of the pragma to avoid an
+  // unnecessary assertion to be generated.
+  __CPROVER_size_t alloc_size = nmemb * size;
+#pragma CPROVER check pop
+
+  void *malloc_res;
+  // realistically, calloc may return NULL,
+  // and __CPROVER_allocate doesn't, but no one cares
+  malloc_res = __CPROVER_allocate(alloc_size, 1);
+
+  // make sure it's not recorded as deallocated
+  __CPROVER_deallocated =
+    (malloc_res == __CPROVER_deallocated) ? 0 : __CPROVER_deallocated;
+
+  // record the object size for non-determistic bounds checking
+  __CPROVER_bool record_malloc = __VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_malloc_object =
+    record_malloc ? malloc_res : __CPROVER_malloc_object;
+  __CPROVER_malloc_size = record_malloc ? alloc_size : __CPROVER_malloc_size;
+  __CPROVER_malloc_is_new_array =
+    record_malloc ? 0 : __CPROVER_malloc_is_new_array;
+
+  // detect memory leaks
+  __CPROVER_bool record_may_leak = __VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_memory_leak = record_may_leak ? malloc_res : __CPROVER_memory_leak;
+
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_is_zero_string(malloc_res) = 1;
+  __CPROVER_zero_string_length(malloc_res) = 0;
+#endif
+
+  return malloc_res;
+}
+
+/* FUNCTION: malloc */
+
+#undef malloc
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+inline void *malloc(__CPROVER_size_t malloc_size)
+{
+  // realistically, malloc may return NULL,
+  // and __CPROVER_allocate doesn't, but no one cares
+  __CPROVER_HIDE:;
+  void *malloc_res;
+  malloc_res = __CPROVER_allocate(malloc_size, 0);
+
+  // make sure it's not recorded as deallocated
+  __CPROVER_deallocated=(malloc_res==__CPROVER_deallocated)?0:__CPROVER_deallocated;
+
+  // record the object size for non-determistic bounds checking
+  __CPROVER_bool record_malloc=__VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_malloc_object=record_malloc?malloc_res:__CPROVER_malloc_object;
+  __CPROVER_malloc_size=record_malloc?malloc_size:__CPROVER_malloc_size;
+  __CPROVER_malloc_is_new_array=record_malloc?0:__CPROVER_malloc_is_new_array;
+
+  // detect memory leaks
+  __CPROVER_bool record_may_leak=__VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_memory_leak=record_may_leak?malloc_res:__CPROVER_memory_leak;
+
+  return malloc_res;
+}
+
+/* FUNCTION: __builtin_alloca */
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+extern void *__CPROVER_alloca_object;
+
+inline void *__builtin_alloca(__CPROVER_size_t alloca_size)
+{
+  __CPROVER_HIDE:;
+  void *res;
+  res = __CPROVER_allocate(alloca_size, 0);
+
+  // make sure it's not recorded as deallocated
+  __CPROVER_deallocated=(res==__CPROVER_deallocated)?0:__CPROVER_deallocated;
+
+  // record the object size for non-determistic bounds checking
+  __CPROVER_bool record_malloc=__VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_malloc_object=record_malloc?res:__CPROVER_malloc_object;
+  __CPROVER_malloc_size=record_malloc?alloca_size:__CPROVER_malloc_size;
+  __CPROVER_malloc_is_new_array=record_malloc?0:__CPROVER_malloc_is_new_array;
+
+  // record alloca to detect invalid free
+  __CPROVER_bool record_alloca = __VERIFIER_nondet___CPROVER_bool();
+  __CPROVER_alloca_object = record_alloca ? res : __CPROVER_alloca_object;
+
+  return res;
+}
+
+/* FUNCTION: alloca */
+
+#undef alloca
+
+void *__builtin_alloca(__CPROVER_size_t alloca_size);
+
+inline void *alloca(__CPROVER_size_t alloca_size)
+{
+__CPROVER_HIDE:;
+  return __builtin_alloca(alloca_size);
+}
+
+/* FUNCTION: free */
+
+#undef free
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+extern void *__CPROVER_alloca_object;
+
+inline void free(void *ptr)
+{
+  __CPROVER_HIDE:;
+  // If ptr is NULL, no operation is performed.
+  __CPROVER_precondition(
+    ptr == 0 || __CPROVER_r_ok(ptr, 0),
+    "free argument must be NULL or valid pointer");
+  __CPROVER_precondition(ptr==0 || __CPROVER_DYNAMIC_OBJECT(ptr),
+                         "free argument must be dynamic object");
+  __CPROVER_precondition(ptr==0 || __CPROVER_POINTER_OFFSET(ptr)==0,
+                         "free argument has offset zero");
+
+  // catch double free
+  __CPROVER_precondition(ptr==0 || __CPROVER_deallocated!=ptr,
+                         "double free");
+
+  // catch people who try to use free(...) for stuff
+  // allocated with new[]
+  __CPROVER_precondition(ptr==0 ||
+                         __CPROVER_malloc_object!=ptr ||
+                         !__CPROVER_malloc_is_new_array,
+                         "free called for new[] object");
+
+  // catch people who try to use free(...) with alloca
+  __CPROVER_precondition(
+    ptr == 0 || __CPROVER_alloca_object != ptr,
+    "free called for stack-allocated object");
+
+  if(ptr!=0)
+  {
+    // non-deterministically record as deallocated
+    __CPROVER_bool record=__VERIFIER_nondet___CPROVER_bool();
+    if(record) __CPROVER_deallocated=ptr;
+
+    // detect memory leaks
+    if(__CPROVER_memory_leak==ptr)
+      __CPROVER_memory_leak=0;
+  }
+}
+
+/* FUNCTION: strtol */
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_LIMITS_H_INCLUDED
+#include <limits.h>
+#define __CPROVER_LIMITS_H_INCLUDED
+#endif
+
+#undef strtol
+#undef isdigit
+#undef isspace
+
+int isspace(int);
+int isdigit(int);
+
+inline long strtol(const char *nptr, char **endptr, int base)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(nptr),
+    "zero-termination of argument of strtol");
+  #endif
+
+  if(base==1 || base<0 || base>36)
+  {
+    errno=EINVAL;
+    return 0;
+  }
+
+  long res=0;
+  _Bool in_number=0;
+  char sign=0;
+
+  // 32 chars is an arbitrarily chosen limit
+  int i=0;
+  for( ; i<31; ++i)
+  {
+    char ch=nptr[i];
+    char sub=0;
+    if(ch==0)
+      break;
+    else if((base==0 || base==16) && !in_number &&
+            ch=='0' && (nptr[i+1]=='x' || nptr[i+1]=='X'))
+    {
+      base=16;
+      in_number=1;
+      ++i;
+      continue;
+    }
+    else if(base==0 && !in_number && ch=='0')
+    {
+      base=8;
+      in_number=1;
+      continue;
+    }
+    else if(!in_number && !sign && isspace(ch))
+      continue;
+    else if(!in_number && !sign && (ch=='-' || ch=='+'))
+    {
+      sign=ch;
+      continue;
+    }
+    else if(base>10 && ch>='a' && ch-'a'<base-10)
+      sub='a'-10;
+    else if(base>10 && ch>='A' && ch-'A'<base-10)
+      sub='A'-10;
+    else if(isdigit(ch))
+    {
+      sub='0';
+      base=base==0 ? 10 : base;
+    }
+    else
+      break;
+
+    in_number=1;
+    long res_before=res;
+    res=res*base+ch-sub;
+    if(res<res_before)
+    {
+      errno=ERANGE;
+      if(sign=='-')
+        return LONG_MIN;
+      else
+        return LONG_MAX;
+    }
+  }
+
+  if(endptr!=0)
+    *endptr=(char*)nptr+i;
+
+  if(sign=='-')
+    res*=-1;
+
+  return res;
+}
+
+/* FUNCTION: atoi */
+
+#undef atoi
+#undef strtol
+
+long strtol(const char *nptr, char **endptr, int base);
+
+inline int atoi(const char *nptr)
+{
+  __CPROVER_HIDE:;
+  return (int)strtol(nptr, (char **)0, 10);
+}
+
+/* FUNCTION: atol */
+
+#undef atol
+#undef strtol
+
+long strtol(const char *nptr, char **endptr, int base);
+
+inline long atol(const char *nptr)
+{
+  __CPROVER_HIDE:;
+  return strtol(nptr, (char **)0, 10);
+}
+
+/* FUNCTION: getenv */
+
+#undef getenv
+
+#ifndef __CPROVER_LIMITS_H_INCLUDED
+#include <limits.h>
+#define __CPROVER_LIMITS_H_INCLUDED
+#endif
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+__CPROVER_size_t __VERIFIER_nondet___CPROVER_size_t();
+
+inline void *__builtin_alloca(__CPROVER_size_t alloca_size);
+
+inline char *getenv(const char *name)
+{
+  __CPROVER_HIDE:;
+
+  (void)*name;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(name),
+    "zero-termination of argument of getenv");
+  #endif
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "getenv_result");
+  char *getenv_result;
+  __CPROVER_set_must(getenv_result, "getenv_result");
+  return getenv_result;
+
+  #else
+
+  __CPROVER_bool found=__VERIFIER_nondet___CPROVER_bool();
+  if(!found) return 0;
+
+  __CPROVER_size_t buf_size=__VERIFIER_nondet___CPROVER_size_t();
+
+  // It's reasonable to assume this won't exceed the signed
+  // range in practice, but in principle, this could exceed
+  // the range.
+
+  __CPROVER_assume(1<=buf_size && buf_size<=SSIZE_MAX);
+  char *buffer=(char *)__builtin_alloca(buf_size);
+  buffer[buf_size-1]=0;
+
+  return buffer;
+  #endif
+}
+
+/* FUNCTION: realloc */
+
+inline void *malloc(__CPROVER_size_t malloc_size);
+inline void free(void *ptr);
+
+inline void *realloc(void *ptr, __CPROVER_size_t malloc_size)
+{
+  __CPROVER_HIDE:;
+
+  __CPROVER_precondition(ptr==0 || __CPROVER_DYNAMIC_OBJECT(ptr),
+                         "realloc argument is dynamic object");
+
+  // if ptr is NULL, this behaves like malloc
+  if(ptr==0)
+    return malloc(malloc_size);
+
+  // if malloc-size is 0, allocate new minimum sized object
+  // and free original
+  if(malloc_size==0)
+  {
+    free(ptr);
+    return malloc(1);
+  }
+
+  // this shouldn't move if the new size isn't bigger
+  void *res;
+  res=malloc(malloc_size);
+  __CPROVER_array_copy(res, ptr);
+  free(ptr);
+
+  return res;
+}
+
+/* FUNCTION: valloc */
+
+inline void *malloc(__CPROVER_size_t malloc_size);
+
+inline void *valloc(__CPROVER_size_t malloc_size)
+{
+  // The allocated memory is aligned on a page
+  // boundary, which we don't model.
+
+  __CPROVER_HIDE:;
+  return malloc(malloc_size);
+}
+
+/* FUNCTION: posix_memalign */
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+#undef posix_memalign
+
+inline void *malloc(__CPROVER_size_t malloc_size);
+inline int
+posix_memalign(void **ptr, __CPROVER_size_t alignment, __CPROVER_size_t size)
+{
+__CPROVER_HIDE:;
+
+  __CPROVER_size_t multiplier = alignment / sizeof(void *);
+  // Modeling the posix_memalign checks on alignment.
+  if(
+    alignment % sizeof(void *) != 0 || ((multiplier) & (multiplier - 1)) != 0 ||
+    alignment == 0)
+  {
+    return EINVAL;
+  }
+  // The address of the allocated memory is supposed to be aligned with
+  // alignment. As cbmc doesn't model address alignment,
+  // assuming MALLOC_ALIGNMENT = MAX_INT_VALUE seems fair.
+  // As _mid_memalign simplifies for alignment <= MALLOC_ALIGNMENT
+  // to a malloc call, it should be sound, if we do it too.
+
+  // The original posix_memalign check on the pointer is:
+
+  // void *tmp = malloc(size);
+  // if(tmp != NULL){
+  //   *ptr = tmp;
+  //   return 0;
+  // }
+  // return ENOMEM;
+
+  // As _CPROVER_allocate used in malloc never returns null,
+  // this check is not applicable and can be simplified:
+
+  *ptr = malloc(size);
+  return 0;
+}
+
+/* FUNCTION: random */
+
+long __VERIFIER_nondet_long();
+
+long random(void)
+{
+  // We return a non-deterministic value instead of a random one.
+  __CPROVER_HIDE:;
+  long result=__VERIFIER_nondet_long();
+  __CPROVER_assume(result>=0 && result<=2147483647);
+  return result;
+}
+/* FUNCTION: __builtin___strcpy_chk */
+
+inline char *__builtin___strcpy_chk(char *dst, const char *src, __CPROVER_size_t s)
+{
+__CPROVER_HIDE:;
+
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src), "strcpy zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) > __CPROVER_zero_string_length(src),
+    "strcpy buffer overflow");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) == s, "builtin object size");
+  dst[__CPROVER_zero_string_length(src)] = 0;
+  __CPROVER_is_zero_string(dst) = 1;
+  __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + s) || (dst >= src + s),
+    "strcpy src/dst overlap");
+  __CPROVER_size_t i = 0;
+  char ch;
+  do
+  {
+    ch = src[i];
+    dst[i] = ch;
+    i++;
+  } while(i < s && ch != (char)0);
+#endif
+  return dst;
+}
+
+/* FUNCTION: __builtin___strcat_chk */
+
+__inline char *__builtin___strcat_chk(char *dst, const char *src, __CPROVER_size_t s)
+{
+__CPROVER_HIDE:;
+
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_size_t new_size;
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(dst), "strcat zero-termination of 1st argument");
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src), "strcat zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) == s, "builtin object size");
+  new_size =
+    __CPROVER_zero_string_length(dst) + __CPROVER_zero_string_length(src);
+  __CPROVER_assert(
+    __CPROVER_buffer_size(dst) > new_size, "strcat buffer overflow");
+  __CPROVER_size_t old_size = __CPROVER_zero_string_length(dst);
+  //"  for(size_t i=0; i<__CPROVER_zero_string_length(src); i++)
+  //"    dst[old_size+i];
+  dst[new_size] = 0;
+  __CPROVER_is_zero_string(dst) = 1;
+  __CPROVER_zero_string_length(dst) = new_size;
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + s) || (dst >= src + s),
+    "strcat src/dst overlap");
+  __CPROVER_size_t i = 0;
+  while(dst[i] != 0)
+    i++;
+
+  __CPROVER_size_t j = 0;
+  char ch = 1;
+  for(; i < s && ch != (char)0; ++i, ++j)
+  {
+    ch = src[j];
+    dst[i] = ch;
+  }
+  dst[i] = '\0';
+#endif
+  return dst;
+}
+
+/* FUNCTION: __builtin___strncat_chk */
+
+__inline char *__builtin___strncat_chk(
+  char *dst, const char *src, __CPROVER_size_t n, __CPROVER_size_t s)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_size_t additional, new_size;
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(dst), "strncat zero-termination of 1st argument");
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src) || __CPROVER_buffer_size(src) >= n,
+    "strncat zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) == s, "builtin object size");
+  additional = (n < __CPROVER_zero_string_length(src))
+                 ? n
+                 : __CPROVER_zero_string_length(src);
+  new_size = __CPROVER_is_zero_string(dst) + additional;
+  __CPROVER_assert(
+    __CPROVER_buffer_size(dst) > new_size, "strncat buffer overflow");
+  __CPROVER_size_t dest_len = __CPROVER_zero_string_length(dst);
+  __CPROVER_size_t i;
+  for(i = 0; i < n && i < __CPROVER_zero_string_length(src); i++)
+    dst[dest_len + i] = src[i];
+  dst[dest_len + i] = 0;
+  __CPROVER_is_zero_string(dst) = 1;
+  __CPROVER_zero_string_length(dst) = new_size;
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + s) || (dst >= src + s),
+    "strncat src/dst overlap");
+
+  __CPROVER_size_t i = 0;
+  while(dst[i] != 0)
+    i++;
+
+  __CPROVER_size_t j = 0;
+  char ch = 1;
+  for(; i < s && j < n && ch != (char)0; ++i, ++j)
+  {
+    ch = src[j];
+    dst[i] = ch;
+  }
+  dst[i] = '\0';
+#endif
+  return dst;
+}
+
+/* FUNCTION: strcpy */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strcpy
+
+inline char *strcpy(char *dst, const char *src)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src), "strcpy zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) > __CPROVER_zero_string_length(src),
+    "strcpy buffer overflow");
+  dst[__CPROVER_zero_string_length(src)] = 0;
+  __CPROVER_is_zero_string(dst) = 1;
+  __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src),
+    "strcpy src/dst overlap");
+  __CPROVER_size_t i = 0;
+  char ch;
+  do
+  {
+    ch = src[i];
+    dst[i] = ch;
+    i++;
+  } while(ch != (char)0);
+#endif
+  return dst;
+}
+
+/* FUNCTION: strncpy */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strncpy
+
+inline char *strncpy(char *dst, const char *src, size_t n)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src), "strncpy zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) >= n, "strncpy buffer overflow");
+  __CPROVER_is_zero_string(dst) = __CPROVER_zero_string_length(src) < n;
+  __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + n) || (dst >= src + n),
+    "strncpy src/dst overlap");
+  __CPROVER_size_t i = 0;
+  char ch;
+  _Bool end;
+
+  // We use a single loop to make bounds checking etc easier.
+  // Note that strncpy _always_ writes 'n' characters into 'dst'.
+  for(end = 0; i < n; i++)
+  {
+    ch = end ? 0 : src[i];
+    dst[i] = ch;
+    end = end || ch == (char)0;
+  }
+#endif
+  return dst;
+}
+
+/* FUNCTION: __builtin___strncpy_chk */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+inline char *__builtin___strncpy_chk(char *dst, const char *src, size_t n, size_t object_size)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src), "strncpy zero-termination of 2nd argument");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) >= n, "strncpy buffer overflow");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) == object_size, "strncpy object size");
+  __CPROVER_is_zero_string(dst) = __CPROVER_zero_string_length(src) < n;
+  __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + n) || (dst >= src + n),
+    "strncpy src/dst overlap");
+  __CPROVER_size_t i = 0;
+  char ch;
+  _Bool end;
+  (void)object_size;
+
+  // We use a single loop to make bounds checking etc easier.
+  // Note that strncpy _always_ writes 'n' characters into 'dst'.
+  for(end = 0; i < n; i++)
+  {
+    ch = end ? 0 : src[i];
+    dst[i] = ch;
+    end = end || ch == (char)0;
+  }
+#endif
+  return dst;
+}
+
+/* FUNCTION: strcat */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strcat
+
+inline char *strcat(char *dst, const char *src)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_size_t new_size;
+  __CPROVER_precondition(__CPROVER_is_zero_string(dst),
+                         "strcat zero-termination of 1st argument");
+  __CPROVER_precondition(__CPROVER_is_zero_string(src),
+                         "strcat zero-termination of 2nd argument");
+  new_size=__CPROVER_zero_string_length(dst)+__CPROVER_zero_string_length(src);
+  __CPROVER_assert(__CPROVER_buffer_size(dst)>new_size,
+                   "strcat buffer overflow");
+  __CPROVER_size_t old_size=__CPROVER_zero_string_length(dst);
+  //"  for(size_t i=0; i<__CPROVER_zero_string_length(src); i++)
+  //"    dst[old_size+i];
+  dst[new_size]=0;
+  __CPROVER_is_zero_string(dst)=1;
+  __CPROVER_zero_string_length(dst)=new_size;
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src),
+    "strcat src/dst overlap");
+  __CPROVER_size_t i = 0;
+  while(dst[i] != 0)
+    i++;
+
+  __CPROVER_size_t j = 0;
+  char ch = 1;
+  for(; ch != (char)0; ++i, ++j)
+  {
+    ch = src[j];
+    dst[i] = ch;
+  }
+  dst[i] = '\0';
+#endif
+  return dst;
+}
+
+/* FUNCTION: strncat */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strncat
+
+inline char *strncat(char *dst, const char *src, size_t n)
+{
+__CPROVER_HIDE:;
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_size_t additional, new_size;
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(dst), "strncat zero-termination of 1st argument");
+  __CPROVER_precondition(
+    __CPROVER_is_zero_string(src) || __CPROVER_buffer_size(src) >= n,
+    "strncat zero-termination of 2nd argument");
+  additional = (n < __CPROVER_zero_string_length(src))
+                 ? n
+                 : __CPROVER_zero_string_length(src);
+  new_size = __CPROVER_is_zero_string(dst) + additional;
+  __CPROVER_assert(
+    __CPROVER_buffer_size(dst) > new_size, "strncat buffer overflow");
+  __CPROVER_size_t dest_len = __CPROVER_zero_string_length(dst);
+  __CPROVER_size_t i;
+  for(i = 0; i < n && i < __CPROVER_zero_string_length(src); i++)
+    dst[dest_len + i] = src[i];
+  dst[dest_len + i] = 0;
+  __CPROVER_is_zero_string(dst) = 1;
+  __CPROVER_zero_string_length(dst) = new_size;
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      (src >= dst + n) || (dst >= src + n),
+    "strncat src/dst overlap");
+
+  __CPROVER_size_t i = 0;
+  while(dst[i] != 0)
+    i++;
+
+  __CPROVER_size_t j = 0;
+  char ch = 1;
+  for(; j < n && ch != (char)0; ++i, ++j)
+  {
+    ch = src[j];
+    dst[i] = ch;
+  }
+  dst[i] = '\0';
+#endif
+  return dst;
+}
+
+/* FUNCTION: strcmp */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strcmp
+
+inline int strcmp(const char *s1, const char *s2)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  int retval;
+  __CPROVER_precondition(__CPROVER_is_zero_string(s1),
+                         "strcmp zero-termination of 1st argument");
+  __CPROVER_precondition(__CPROVER_is_zero_string(s2),
+                         "strcmp zero-termination of 2nd argument");
+
+  if(__CPROVER_zero_string_length(s1) != __CPROVER_zero_string_length(s2))
+    __CPROVER_assume(retval!=0);
+
+  return retval;
+  #else
+  __CPROVER_size_t i=0;
+  unsigned char ch1, ch2;
+  do
+  {
+    ch1=s1[i];
+    ch2=s2[i];
+
+    if(ch1==ch2)
+    {
+    }
+    else if(ch1<ch2)
+      return -1;
+    else
+      return 1;
+
+    i++;
+  }
+  while(ch1!=0 && ch2!=0);
+  return 0;
+  #endif
+}
+
+/* FUNCTION: strcasecmp */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strcasecmp
+
+inline int strcasecmp(const char *s1, const char *s2)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  int retval;
+  __CPROVER_precondition(__CPROVER_is_zero_string(s1),
+                         "strcasecmp zero-termination of 1st argument");
+  __CPROVER_precondition(__CPROVER_is_zero_string(s2),
+                         "strcasecmp zero-termination of 2nd argument");
+
+  if(__CPROVER_zero_string_length(s1) != __CPROVER_zero_string_length(s2))
+    __CPROVER_assume(retval!=0);
+
+  return retval;
+  #else
+  __CPROVER_size_t i=0;
+  unsigned char ch1, ch2;
+  do
+  {
+    ch1=s1[i];
+    ch2=s2[i];
+
+    if(ch1>='A' && ch1<='Z') ch1+=('a'-'A');
+    if(ch2>='A' && ch2<='Z') ch2+=('a'-'A');
+
+    if(ch1==ch2)
+    {
+    }
+    else if(ch1<ch2)
+      return -1;
+    else
+      return 1;
+
+    i++;
+  }
+  while(ch1!=0 && ch2!=0);
+  return 0;
+  #endif
+}
+
+/* FUNCTION: strncmp */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strncmp
+
+inline int strncmp(const char *s1, const char *s2, size_t n)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(s1) ||
+                         __CPROVER_buffer_size(s1)>=n,
+                         "strncmp zero-termination of 1st argument");
+  __CPROVER_precondition(__CPROVER_is_zero_string(s2) ||
+                         __CPROVER_buffer_size(s2)>=n,
+                         "strncmp zero-termination of 2nd argument");
+  #else
+  __CPROVER_size_t i=0;
+  unsigned char ch1, ch2;
+  if(n == 0)
+    return 0;
+  do
+  {
+    ch1=s1[i];
+    ch2=s2[i];
+
+    if(ch1==ch2)
+    {
+    }
+    else if(ch1<ch2)
+      return -1;
+    else
+      return 1;
+
+    i++;
+  }
+  while(ch1!=0 && ch2!=0 && i<n);
+  return 0;
+  #endif
+}
+
+/* FUNCTION: strncasecmp */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strncasecmp
+
+inline int strncasecmp(const char *s1, const char *s2, size_t n)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  int retval;
+  __CPROVER_precondition(__CPROVER_is_zero_string(s1),
+                         "strncasecmp zero-termination of 1st argument");
+  __CPROVER_precondition(__CPROVER_is_zero_string(s2),
+                         "strncasecmp zero-termination of 2nd argument");
+  return retval;
+  #else
+  __CPROVER_size_t i=0;
+  unsigned char ch1, ch2;
+  if(n == 0)
+    return 0;
+  do
+  {
+    ch1=s1[i];
+    ch2=s2[i];
+
+    if(ch1>='A' && ch1<='Z') ch1+=('a'-'A');
+    if(ch2>='A' && ch2<='Z') ch2+=('a'-'A');
+
+    if(ch1==ch2)
+    {
+    }
+    else if(ch1<ch2)
+      return -1;
+    else
+      return 1;
+
+    i++;
+  }
+  while(ch1!=0 && ch2!=0 && i<n);
+  return 0;
+  #endif
+}
+
+/* FUNCTION: strlen */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strlen
+
+inline size_t strlen(const char *s)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(s),
+                         "strlen zero-termination");
+  return __CPROVER_zero_string_length(s);
+  #else
+  __CPROVER_size_t len=0;
+  while(s[len]!=0) len++;
+  return len;
+  #endif
+}
+
+/* FUNCTION: strdup */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+#undef strdup
+#undef strcpy
+
+inline char *strdup(const char *str)
+{
+  __CPROVER_HIDE:;
+  __CPROVER_size_t bufsz;
+  bufsz=(strlen(str)+1);
+  char *cpy = (char *)calloc(bufsz * sizeof(char), sizeof(char));
+  if(cpy==((void *)0)) return 0;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assume(__CPROVER_buffer_size(cpy)==bufsz);
+  #endif
+  strcpy(cpy, str);
+  return cpy;
+}
+
+/* FUNCTION: memcpy */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef memcpy
+
+void *memcpy(void *dst, const void *src, size_t n)
+{
+__CPROVER_HIDE:;
+
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(src) >= n, "memcpy buffer overflow");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) >= n, "memcpy buffer overflow");
+  //  for(size_t i=0; i<n ; i++) dst[i]=src[i];
+  if(__CPROVER_is_zero_string(src) && n > __CPROVER_zero_string_length(src))
+  {
+    __CPROVER_is_zero_string(dst) = 1;
+    __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+  }
+  else if(!(__CPROVER_is_zero_string(dst) &&
+            n <= __CPROVER_zero_string_length(dst)))
+  {
+    __CPROVER_is_zero_string(dst) = 0;
+  }
+
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      ((const char *)src >= (const char *)dst + n) ||
+      ((const char *)dst >= (const char *)src + n),
+    "memcpy src/dst overlap");
+  __CPROVER_precondition(
+    __CPROVER_r_ok(src, n), "memcpy source region readable");
+  __CPROVER_precondition(
+    __CPROVER_w_ok(dst, n), "memcpy destination region writeable");
+
+  if(n > 0)
+  {
+    //for(__CPROVER_size_t i=0; i<n ; i++) ((char *)dst)[i]=((const char *)src)[i];
+    char src_n[n];
+    __CPROVER_array_copy(src_n, (char *)src);
+    __CPROVER_array_replace((char *)dst, src_n);
+  }
+#endif
+
+  return dst;
+}
+
+/* FUNCTION: __builtin___memcpy_chk */
+
+void *__builtin___memcpy_chk(void *dst, const void *src, __CPROVER_size_t n, __CPROVER_size_t size)
+{
+__CPROVER_HIDE:
+#ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(src) >= n, "memcpy buffer overflow");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) >= n, "memcpy buffer overflow");
+  __CPROVER_precondition(
+    __CPROVER_buffer_size(dst) == s, "builtin object size");
+  //  for(size_t i=0; i<n ; i++) dst[i]=src[i];
+  if(__CPROVER_is_zero_string(src) && n > __CPROVER_zero_string_length(src))
+  {
+    __CPROVER_is_zero_string(dst) = 1;
+    __CPROVER_zero_string_length(dst) = __CPROVER_zero_string_length(src);
+  }
+  else if(!(__CPROVER_is_zero_string(dst) &&
+            n <= __CPROVER_zero_string_length(dst)))
+  {
+    __CPROVER_is_zero_string(dst) = 0;
+  }
+#else
+  __CPROVER_precondition(
+    __CPROVER_POINTER_OBJECT(dst) != __CPROVER_POINTER_OBJECT(src) ||
+      ((const char *)src >= (const char *)dst + n) ||
+      ((const char *)dst >= (const char *)src + n),
+    "memcpy src/dst overlap");
+  __CPROVER_precondition(
+    __CPROVER_r_ok(src, n), "memcpy source region readable");
+  __CPROVER_precondition(
+    __CPROVER_w_ok(dst, n), "memcpy destination region writeable");
+  (void)size;
+
+  if(n > 0)
+  {
+    //for(__CPROVER_size_t i=0; i<n ; i++) ((char *)dst)[i]=((const char *)src)[i];
+    char src_n[n];
+    __CPROVER_array_copy(src_n, (char *)src);
+    __CPROVER_array_replace((char *)dst, src_n);
+  }
+#endif
+  return dst;
+}
+
+/* FUNCTION: memset */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef memset
+
+void *memset(void *s, int c, size_t n)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(s)>=n,
+                         "memset buffer overflow");
+  //  for(size_t i=0; i<n ; i++) s[i]=c;
+  if(__CPROVER_is_zero_string(s) &&
+     n > __CPROVER_zero_string_length(s))
+  {
+    __CPROVER_is_zero_string(s)=1;
+  }
+  else if(c==0)
+  {
+    __CPROVER_is_zero_string(s)=1;
+    __CPROVER_zero_string_length(s)=0;
+  }
+  else
+    __CPROVER_is_zero_string(s)=0;
+  #else
+  __CPROVER_precondition(__CPROVER_w_ok(s, n),
+                         "memset destination region writeable");
+
+  if(n > 0)
+  {
+    //char *sp=s;
+    //for(__CPROVER_size_t i=0; i<n ; i++) sp[i]=c;
+    unsigned char s_n[n];
+    __CPROVER_array_set(s_n, (unsigned char)c);
+    __CPROVER_array_replace((unsigned char *)s, s_n);
+  }
+  #endif
+  return s;
+}
+
+/* FUNCTION: __builtin_memset */
+
+void *__builtin_memset(void *s, int c, __CPROVER_size_t n)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(s)>=n,
+                         "memset buffer overflow");
+  //  for(size_t i=0; i<n ; i++) s[i]=c;
+  if(__CPROVER_is_zero_string(s) &&
+     n > __CPROVER_zero_string_length(s))
+  {
+    __CPROVER_is_zero_string(s)=1;
+  }
+  else if(c==0)
+  {
+    __CPROVER_is_zero_string(s)=1;
+    __CPROVER_zero_string_length(s)=0;
+  }
+  else
+  {
+    __CPROVER_is_zero_string(s)=0;
+  }
+  #else
+  __CPROVER_precondition(__CPROVER_w_ok(s, n),
+                         "memset destination region writeable");
+
+  if(n > 0)
+  {
+    //char *sp=s;
+    //for(__CPROVER_size_t i=0; i<n ; i++) sp[i]=c;
+    unsigned char s_n[n];
+    __CPROVER_array_set(s_n, (unsigned char)c);
+    __CPROVER_array_replace((unsigned char *)s, s_n);
+  }
+  #endif
+  return s;
+}
+
+/* FUNCTION: __builtin___memset_chk */
+
+void *__builtin___memset_chk(void *s, int c, __CPROVER_size_t n, __CPROVER_size_t size)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(s)>=n,
+                         "memset buffer overflow");
+  __CPROVER_precondition(__CPROVER_buffer_size(s)==size,
+                         "builtin object size");
+  //  for(size_t i=0; i<n ; i++) s[i]=c;
+  if(__CPROVER_is_zero_string(s) &&
+     n > __CPROVER_zero_string_length(s))
+  {
+    __CPROVER_is_zero_string(s)=1;
+  }
+  else if(c==0)
+  {
+    __CPROVER_is_zero_string(s)=1;
+    __CPROVER_zero_string_length(s)=0;
+  }
+  else
+    __CPROVER_is_zero_string(s)=0;
+  #else
+  __CPROVER_precondition(__CPROVER_w_ok(s, n),
+                         "memset destination region writeable");
+  (void)size;
+
+  if(n > 0)
+  {
+    //char *sp=s;
+    //for(__CPROVER_size_t i=0; i<n ; i++) sp[i]=c;
+    unsigned char s_n[n];
+    __CPROVER_array_set(s_n, (unsigned char)c);
+    __CPROVER_array_replace((unsigned char *)s, s_n);
+  }
+  #endif
+  return s;
+}
+
+/* FUNCTION: memmove */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef memmove
+
+void *memmove(void *dest, const void *src, size_t n)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(src)>=n,
+                         "memmove buffer overflow");
+  // dst = src (with overlap allowed)
+  if(__CPROVER_is_zero_string(src) &&
+     n > __CPROVER_zero_string_length(src))
+  {
+    __CPROVER_is_zero_string(src)=1;
+    __CPROVER_zero_string_length(dest)=__CPROVER_zero_string_length(src);
+  }
+  else
+    __CPROVER_is_zero_string(dest)=0;
+  #else
+  __CPROVER_precondition(__CPROVER_r_ok(src, n),
+                         "memmove source region readable");
+  __CPROVER_precondition(__CPROVER_w_ok(dest, n),
+                         "memmove destination region writeable");
+
+  if(n > 0)
+  {
+    char src_n[n];
+    __CPROVER_array_copy(src_n, (char *)src);
+    __CPROVER_array_replace((char *)dest, src_n);
+  }
+  #endif
+  return dest;
+}
+
+/* FUNCTION: __builtin___memmove_chk */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef memmove
+
+void *__builtin___memmove_chk(void *dest, const void *src, size_t n, __CPROVER_size_t size)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(src)>=n,
+                         "memmove buffer overflow");
+  __CPROVER_precondition(__CPROVER_buffer_size(dest)==size,
+                         "builtin object size");
+  // dst = src (with overlap allowed)
+  if(__CPROVER_is_zero_string(src) &&
+     n > __CPROVER_zero_string_length(src))
+  {
+    __CPROVER_is_zero_string(src)=1;
+    __CPROVER_zero_string_length(dest)=__CPROVER_zero_string_length(src);
+  }
+  else
+  {
+    __CPROVER_is_zero_string(dest)=0;
+  }
+  #else
+  __CPROVER_precondition(__CPROVER_r_ok(src, n),
+                         "memmove source region readable");
+  __CPROVER_precondition(__CPROVER_w_ok(dest, n),
+                         "memmove destination region writeable");
+  (void)size;
+
+  if(n > 0)
+  {
+    char src_n[n];
+    __CPROVER_array_copy(src_n, (char *)src);
+    __CPROVER_array_replace((char *)dest, src_n);
+  }
+  #endif
+  return dest;
+}
+
+/* FUNCTION: memcmp */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef memcmp
+
+inline int memcmp(const void *s1, const void *s2, size_t n)
+{
+  __CPROVER_HIDE:;
+  int res=0;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_buffer_size(s1)>=n,
+                         "memcmp buffer overflow of 1st argument");
+  __CPROVER_precondition(__CPROVER_buffer_size(s2)>=n,
+                         "memcmp buffer overflow of 2nd argument");
+  #else
+  __CPROVER_precondition(__CPROVER_r_ok(s1, n),
+                         "memcmp region 1 readable");
+  __CPROVER_precondition(__CPROVER_r_ok(s2, n),
+                         "memcpy region 2 readable");
+
+  const unsigned char *sc1=s1, *sc2=s2;
+  for(; n!=0; n--)
+  {
+    res = (*sc1++) - (*sc2++);
+    if (res != 0)
+      return res;
+  }
+  #endif
+  return res;
+}
+
+/* FUNCTION: strchr */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strchr
+
+inline char *strchr(const char *src, int c)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(src),
+                         "strchr zero-termination of string argument");
+  __CPROVER_bool found;
+  __CPROVER_size_t i;
+  return found?src+i:0;
+  #else
+  for(__CPROVER_size_t i=0; ; i++)
+  {
+    if(src[i]==(char)c)
+      return ((char *)src)+i; // cast away const-ness
+    if(src[i]==0) break;
+  }
+  return 0;
+  #endif
+}
+
+/* FUNCTION: strrchr */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+#undef strchr
+
+inline char *strrchr(const char *src, int c)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(src),
+                         "strrchr zero-termination of string argument");
+  __CPROVER_bool found;
+  __CPROVER_size_t i;
+  return found?((char *)src)+i:0;
+  #else
+  char *res=0;
+  for(__CPROVER_size_t i=0; ; i++)
+  {
+    if(src[i]==(char)c) res=((char *)src)+i;
+    if(src[i]==0) break;
+  }
+  return res;
+  #endif
+}
+
+/* FUNCTION: strerror */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+char *strerror(int errnum)
+{
+  __CPROVER_HIDE:;
+  (void)errnum;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "strerror_result");
+  char *strerror_result;
+  __CPROVER_set_must(strerror_result, "strerror_result");
+  return strerror_result;
+  #else
+  static char strerror_result[1];
+  return strerror_result;
+  #endif
+}
+/* FUNCTION: bzero */
+
+void bzero(void *s, __CPROVER_size_t n)
+{
+  for(__CPROVER_size_t i=0; i<n; i++)
+    ((char *)s)[i]=0;
+}
+/* FUNCTION: openlog */
+
+#ifndef __CPROVER_SYSLOG_H_INCLUDED
+#include <syslog.h>
+#define __CPROVER_SYSLOG_H_INCLUDED
+#endif
+
+void openlog(const char *ident, int option, int facility)
+{
+  (void)*ident;
+  (void)option;
+  (void)facility;
+}
+
+/* FUNCTION: closelog */
+
+#ifndef __CPROVER_SYSLOG_H_INCLUDED
+#include <syslog.h>
+#define __CPROVER_SYSLOG_H_INCLUDED
+#endif
+
+void closelog(void)
+{
+}
+
+/* FUNCTION: syslog */
+
+#ifndef __CPROVER_SYSLOG_H_INCLUDED
+#include <syslog.h>
+#define __CPROVER_SYSLOG_H_INCLUDED
+#endif
+
+void syslog(int priority, const char *format, ...)
+{
+  (void)priority;
+  (void)*format;
+}
+/* FUNCTION: thrd_create */
+
+// following http://en.cppreference.com/w/c/thread
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
+{
+}
+
+/* FUNCTION: thrd_equal */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int thrd_equal( thrd_t lhs, thrd_t rhs )
+{
+}
+
+/* FUNCTION: thrd_current */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+thrd_t thrd_current()
+{
+}
+
+/* FUNCTION: thrd_sleep */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int thrd_sleep(const struct timespec* time_point,
+               struct timespec* remaining)
+{
+}
+
+/* FUNCTION: thrd_yield */
+
+void thrd_yield()
+{
+}
+
+/* FUNCTION: thrd_exit */
+
+void thrd_exit(int res)
+{
+  __CPROVER_assume(0);
+}
+
+/* FUNCTION: mtx_init */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int mtx_init( mtx_t* mutex, int type )
+{
+}
+
+/* FUNCTION: mtx_lock */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int mtx_lock(mtx_t* mutex)
+{
+}
+
+/* FUNCTION: mtx_timedlock */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int mtx_timedlock(mtx_t *restrict mutex,
+                  const struct timespec *restrict time_point)
+{
+
+}
+
+/* FUNCTION: mtx_trylock */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int mtx_trylock(mtx_t *mutex)
+{
+}
+
+/* FUNCTION: mtx_unlock */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int mtx_unlock(mtx_t *mutex)
+{
+
+}
+
+/* FUNCTION: mtx_destroy */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+void mtx_destroy(mtx_t *mutex)
+{
+}
+
+/* FUNCTION: call_once */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+void call_once(once_flag* flag, void (*func)(void))
+{
+}
+
+/* FUNCTION: cnd_init */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int cnd_init(cnd_t* cond)
+{
+}
+
+/* FUNCTION: cnd_signal */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int cnd_signal(cnd_t *cond)
+{
+
+}
+
+/* FUNCTION: cnd_broadcast */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int cnd_broadcast(cnd_t *cond)
+{
+}
+
+/* FUNCTION: cnd_wait */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int cnd_wait(cnd_t* cond, mtx_t* mutex)
+{
+}
+
+/* FUNCTION: cnd_timedwait */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+int cnd_timedwait(cnd_t* restrict cond, mtx_t* restrict mutex,
+                  const struct timespec* restrict time_point)
+{
+}
+
+/* FUNCTION: cnd_destroy */
+
+#ifndef __CPROVER_THREADS_H_INCLUDED
+#include <threads.h>
+#define __CPROVER_THREADS_H_INCLUDED
+#endif
+
+void cnd_destroy(cnd_t* cond)
+{
+}
+/* FUNCTION: time */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef time
+
+time_t __VERIFIER_nondet_time_t();
+
+time_t time(time_t *tloc)
+{
+  time_t res=__VERIFIER_nondet_time_t();
+  if(!tloc) *tloc=res;
+  return res;
+}
+
+/* FUNCTION: gmtime */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef gmtime
+
+struct tm *gmtime(const time_t *clock)
+{
+  // not very general, may be too restrictive
+  // need to set the fields to something meaningful
+  (void)*clock;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "gmtime_result");
+  struct tm *gmtime_result;
+  __CPROVER_set_must(gmtime_result, "gmtime_result");
+  return gmtime_result;
+  #else
+  static struct tm return_value;
+  return &return_value;
+  #endif
+}
+
+/* FUNCTION: gmtime_r */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef gmtime
+
+struct tm *gmtime_r(const time_t *clock, struct tm *result)
+{
+  // need to set the fields to something meaningful
+  (void)*clock;
+  return result;
+}
+
+/* FUNCTION: localtime */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef localtime
+
+struct tm *localtime(const time_t *clock)
+{
+  // not very general, may be too restrictive
+  // need to set the fields to something meaningful
+  (void)*clock;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "localtime_result");
+  struct tm *localtime_result;
+  __CPROVER_set_must(localtime_result, "localtime_result");
+  return localtime_result;
+  #else
+  static struct tm return_value;
+  return &return_value;
+  #endif
+}
+
+/* FUNCTION: localtime_r */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef localtime
+
+struct tm *localtime_r(const time_t *clock, struct tm *result)
+{
+  // need to set the fields to something meaningful
+  (void)*clock;
+  return result;
+}
+
+/* FUNCTION: mktime */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef mktime
+
+time_t __VERIFIER_nondet_time_t();
+
+time_t mktime(struct tm *timeptr)
+{
+  (void)*timeptr;
+  time_t result=__VERIFIER_nondet_time_t();
+  return result;
+}
+
+/* FUNCTION: timegm */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+#undef timegm
+
+time_t __VERIFIER_nondet_time_t();
+
+time_t timegm(struct tm *timeptr)
+{
+  (void)*timeptr;
+  time_t result=__VERIFIER_nondet_time_t();
+  return result;
+}
+
+/* FUNCTION: asctime */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+char *asctime(const struct tm *timeptr)
+{
+  (void)*timeptr;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "asctime_result");
+  char *asctime_result;
+  __CPROVER_set_must(asctime_result, "asctime_result");
+  return asctime_result;
+  #else
+  static char asctime_result[1];
+  return asctime_result;
+  #endif
+}
+
+/* FUNCTION: ctime */
+
+#ifndef __CPROVER_TIME_H_INCLUDED
+#include <time.h>
+#define __CPROVER_TIME_H_INCLUDED
+#endif
+
+char *ctime(const time_t *clock)
+{
+  (void)*clock;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "ctime_result");
+  char *ctime_result;
+  __CPROVER_set_must(ctime_result, "ctime_result");
+  return ctime_result;
+  #else
+  static char ctime_result[1];
+  return ctime_result;
+  #endif
+}
+/* FUNCTION: sleep */
+
+unsigned __VERIFIER_nondet_unsigned();
+
+unsigned int sleep(unsigned int seconds)
+{
+  __CPROVER_HIDE:;
+  // do nothing, but return nondet value
+  unsigned remaining_time=__VERIFIER_nondet_unsigned();
+
+  if(remaining_time>seconds) remaining_time=seconds;
+
+  return remaining_time;
+}
+
+/* FUNCTION: _sleep */
+
+unsigned int sleep(unsigned int seconds);
+
+inline unsigned int _sleep(unsigned int seconds)
+{
+  __CPROVER_HIDE:;
+  return sleep(seconds);
+}
+
+/* FUNCTION: unlink */
+
+int __VERIFIER_nondet_int();
+
+int unlink(const char *s)
+{
+  __CPROVER_HIDE:;
+  (void)*s;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_precondition(__CPROVER_is_zero_string(s),
+                         "unlink zero-termination");
+  #endif
+  int retval=__VERIFIER_nondet_int();
+  return retval;
+}
+
+/* FUNCTION: pipe */
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+extern struct __CPROVER_pipet __CPROVER_pipes[];
+// offset to make sure we don't collide with other fds
+extern const int __CPROVER_pipe_offset;
+extern unsigned __CPROVER_pipe_count;
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
+int pipe(int fildes[2])
+{
+  __CPROVER_HIDE:;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  if(error)
+  {
+    errno=error==1 ? EMFILE : ENFILE;
+    return -1;
+  }
+
+  __CPROVER_atomic_begin();
+  __CPROVER_assume(__CPROVER_pipe_offset%2==0);
+  __CPROVER_assume(__CPROVER_pipe_offset<=(int)(__CPROVER_pipe_offset+__CPROVER_pipe_count));
+  fildes[0]=__CPROVER_pipe_offset+__CPROVER_pipe_count;
+  fildes[1]=__CPROVER_pipe_offset+__CPROVER_pipe_count+1;
+  __CPROVER_pipes[__CPROVER_pipe_count].widowed=0;
+  __CPROVER_pipes[__CPROVER_pipe_count].next_avail=0;
+  __CPROVER_pipes[__CPROVER_pipe_count].next_unread=0;
+  __CPROVER_pipe_count+=2;
+  __CPROVER_atomic_end();
+
+  __CPROVER_assume(fildes[0]!=0 && fildes[0]!=1 && fildes[0]!=2);
+  __CPROVER_assume(fildes[1]!=0 && fildes[1]!=1 && fildes[1]!=2);
+
+  return 0;
+}
+
+/* FUNCTION: _pipe */
+
+#ifdef _WIN32
+#undef pipe
+int pipe(int fildes[2]);
+
+int _pipe(int *pfds, unsigned int psize, int textmode)
+{
+__CPROVER_HIDE:;
+  (void)psize;
+  (void)textmode;
+  return pipe(pfds);
+}
+#endif
+
+/* FUNCTION: close */
+
+extern struct __CPROVER_pipet __CPROVER_pipes[];
+// offset to make sure we don't collide with other fds
+extern const int __CPROVER_pipe_offset;
+
+int close(int fildes)
+{
+  __CPROVER_HIDE:;
+  if((fildes>=0 && fildes<=2) || fildes < __CPROVER_pipe_offset)
+    return 0;
+
+  int retval=-1;
+  fildes-=__CPROVER_pipe_offset;
+  if(fildes%2==1)
+    --fildes;
+  __CPROVER_atomic_begin();
+  if(!__CPROVER_pipes[fildes].widowed)
+  {
+    __CPROVER_pipes[fildes].widowed=1;
+    __CPROVER_pipes[fildes].next_avail=__CPROVER_pipes[fildes].next_unread=0;
+    retval=0;
+  }
+  __CPROVER_atomic_end();
+  return retval;
+}
+
+/* FUNCTION: _close */
+
+int close(int fildes);
+
+inline int _close(int fildes)
+{
+  __CPROVER_HIDE:;
+  return close(fildes);
+}
+
+/* FUNCTION: write */
+
+// do not include unistd.h as this might trigger GCC asm renaming of
+// write to _write; this is covered by the explicit definition of
+// _write below
+#ifdef _MSC_VER
+#define ret_type int
+#define size_type unsigned
+#else
+#ifndef __CPROVER_SYS_TYPES_H_INCLUDED
+#include <sys/types.h>
+#define __CPROVER_SYS_TYPES_H_INCLUDED
+#endif
+#define ret_type ssize_t
+#define size_type size_t
+#endif
+
+extern struct __CPROVER_pipet __CPROVER_pipes[];
+// offset to make sure we don't collide with other fds
+extern const int __CPROVER_pipe_offset;
+
+ret_type __VERIFIER_nondet_ret_type();
+
+ret_type write(int fildes, const void *buf, size_type nbyte)
+{
+  __CPROVER_HIDE:;
+  if((fildes>=0 && fildes<=2) || fildes < __CPROVER_pipe_offset)
+  {
+    ret_type retval=__VERIFIER_nondet_ret_type();
+    __CPROVER_assume(retval>=-1 && retval<=(ret_type)nbyte);
+    return retval;
+  }
+
+  int retval=-1;
+  fildes-=__CPROVER_pipe_offset;
+  if(fildes%2==1)
+    --fildes;
+  __CPROVER_atomic_begin();
+  if(!__CPROVER_pipes[fildes].widowed &&
+      sizeof(__CPROVER_pipes[fildes].data) >=
+      __CPROVER_pipes[fildes].next_avail+nbyte)
+  {
+    for(size_type i=0; i<nbyte; ++i)
+      __CPROVER_pipes[fildes].data[i+__CPROVER_pipes[fildes].next_avail]=
+        ((char*)buf)[i];
+    __CPROVER_pipes[fildes].next_avail+=nbyte;
+    retval=nbyte;
+  }
+  __CPROVER_atomic_end();
+  return retval;
+}
+
+/* FUNCTION: _write */
+
+#ifdef _MSC_VER
+#define ret_type int
+#define size_type unsigned
+#else
+#ifndef __CPROVER_SYS_TYPES_H_INCLUDED
+#include <sys/types.h>
+#define __CPROVER_SYS_TYPES_H_INCLUDED
+#endif
+#define ret_type ssize_t
+#define size_type size_t
+#endif
+
+ret_type write(int fildes, const void *buf, size_type nbyte);
+
+inline ret_type _write(int fildes, const void *buf, size_type nbyte)
+{
+  __CPROVER_HIDE:;
+  return write(fildes, buf, nbyte);
+}
+
+/* FUNCTION: read */
+
+// do not include unistd.h as this might trigger GCC asm renaming of
+// read to _read; this is covered by the explicit definition of _read
+// below
+#ifdef _MSC_VER
+#define ret_type int
+#define size_type unsigned
+#else
+#ifndef __CPROVER_SYS_TYPES_H_INCLUDED
+#include <sys/types.h>
+#define __CPROVER_SYS_TYPES_H_INCLUDED
+#endif
+#define ret_type ssize_t
+#define size_type size_t
+#endif
+
+extern struct __CPROVER_pipet __CPROVER_pipes[];
+// offset to make sure we don't collide with other fds
+extern const int __CPROVER_pipe_offset;
+
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+ret_type __VERIFIER_nondet_ret_type();
+size_type __VERIFIER_nondet_size_type();
+
+ret_type read(int fildes, void *buf, size_type nbyte)
+{
+  __CPROVER_HIDE:;
+  if((fildes>=0 && fildes<=2) || fildes < __CPROVER_pipe_offset)
+  {
+    ret_type nread=__VERIFIER_nondet_ret_type();
+    __CPROVER_assume(0<=nread && (size_type)nread<=nbyte);
+
+    __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+#if 0
+    size_type i;
+    for(i=0; i<nbyte; i++)
+    {
+      char nondet_char;
+      ((char *)buf)[i]=nondet_char;
+    }
+#else
+    if(nbyte>0)
+    {
+      size_type str_length=__VERIFIER_nondet_size_type();
+      __CPROVER_assume(error ? str_length<=nbyte : str_length==nbyte);
+      // check that the memory is accessible
+      (void)*(char *)buf;
+      (void)*(((const char *)buf) + str_length - 1);
+      char contents_nondet[str_length];
+      __CPROVER_array_replace((char*)buf, contents_nondet);
+    }
+#endif
+
+    return error ? -1 : nread;
+  }
+
+  int retval=0;
+  fildes-=__CPROVER_pipe_offset;
+  if(fildes%2==1)
+    --fildes;
+  __CPROVER_atomic_begin();
+  if(!__CPROVER_pipes[fildes].widowed)
+  {
+    for(size_type i=0; i<nbyte &&
+      __CPROVER_pipes[fildes].next_unread <
+      __CPROVER_pipes[fildes].next_avail;
+      ++i)
+    {
+      ((char*)buf)[i]=__CPROVER_pipes[fildes].
+        data[__CPROVER_pipes[fildes].next_unread];
+      ++__CPROVER_pipes[fildes].next_unread;
+      ++retval;
+    }
+    if(__CPROVER_pipes[fildes].next_avail==
+        __CPROVER_pipes[fildes].next_unread)
+      __CPROVER_pipes[fildes].next_avail=__CPROVER_pipes[fildes].next_unread=0;
+  }
+  __CPROVER_atomic_end();
+  return retval;
+}
+
+/* FUNCTION: _read */
+
+#ifdef _MSC_VER
+#define ret_type int
+#define size_type unsigned
+#else
+#ifndef __CPROVER_SYS_TYPES_H_INCLUDED
+#include <sys/types.h>
+#define __CPROVER_SYS_TYPES_H_INCLUDED
+#endif
+#define ret_type ssize_t
+#define size_type size_t
+#endif
+
+ret_type read(int fildes, void *buf, size_type nbyte);
+
+inline ret_type _read(int fildes, void *buf, size_type nbyte)
+{
+  __CPROVER_HIDE:;
+  return read(fildes, buf, nbyte);
+}
+/* FUNCTION: QueryPerformanceFrequency */
+
+#ifdef _WIN32
+#include <windows.h>
+
+BOOL QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency)
+{
+  __CPROVER_HIDE:;
+  __int64 result;
+  lpFrequency->QuadPart=result;
+  __CPROVER_bool error;
+  if(error) return 0;
+  __CPROVER_assume(result!=0);
+  return 1;
+}
+#endif
+
+/* FUNCTION: ExitThread */
+
+#ifdef _WIN32
+#include <windows.h>
+
+inline VOID ExitThread(DWORD dwExitCode)
+{
+  // never returns
+  __CPROVER_assume(0);
+}
+#endif
+
+/* FUNCTION: CreateThread */
+
+#ifdef _WIN32
+#include <windows.h>
+
+inline HANDLE CreateThread(
+  LPSECURITY_ATTRIBUTES lpThreadAttributes,
+  SIZE_T dwStackSize,
+  LPTHREAD_START_ROUTINE lpStartAddress,
+  LPVOID lpParameter,
+  DWORD dwCreationFlags,
+  LPDWORD lpThreadId
+)
+{
+  __CPROVER_HIDE:;
+  DWORD thread_id;
+
+  if(lpThreadId) *lpThreadId=thread_id;
+  __CPROVER_ASYNC_1: lpStartAddress(lpParameter);
+
+  HANDLE handle;
+  return handle;
+}
+#endif
+
+/* FUNCTION: __asm_fnstcw */
+
+extern int __CPROVER_rounding_mode;
+
+inline void __asm_fnstcw(unsigned short *dest)
+{
+  // the rounding mode is bits 10 and 11 in the control word
+  *dest=__CPROVER_rounding_mode<<10;
+}
+
+/* FUNCTION: __asm_fstcw */
+
+extern int __CPROVER_rounding_mode;
+
+inline void __asm_fstcw(unsigned short *dest)
+{
+  // the rounding mode is bits 10 and 11 in the control word
+  *dest=__CPROVER_rounding_mode<<10;
+}
+
+/* FUNCTION: __asm_fldcw */
+
+extern int __CPROVER_rounding_mode;
+
+inline void __asm_fldcw(const unsigned short *src)
+{
+  // the rounding mode is bits 10 and 11 in the control word
+  __CPROVER_rounding_mode=((*src)>>10)&3;
+}
+
+/* FUNCTION: __asm_mfence */
+
+inline void __asm_mfence(void)
+{
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+}
+
+/* FUNCTION: __asm_sfence */
+
+inline void __asm_sfence(void)
+{
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+}
+
+/* FUNCTION: __asm_lfence */
+
+inline void __asm_lfence(void)
+{
+  __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence");
+}

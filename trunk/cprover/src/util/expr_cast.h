@@ -24,8 +24,8 @@ Author: Nathan Phillips <Nathan.Phillips@diffblue.com>
 ///
 ///   Implement template specializations of this function to enable casting
 ///
-/// \tparam T The exprt-derived class to check for
-/// \param base Reference to a generic \ref exprt
+/// \tparam T: The exprt-derived class to check for
+/// \param base: Reference to a generic \ref exprt
 /// \return true if \a base is of type \a T
 template<typename T> inline bool can_cast_expr(const exprt &base);
 
@@ -34,8 +34,8 @@ template<typename T> inline bool can_cast_expr(const exprt &base);
 ///
 ///   Implement template specializations of this function to enable casting
 ///
-/// \tparam T The typet-derived class to check for
-/// \param base Reference to a generic \ref typet
+/// \tparam T: The typet-derived class to check for
+/// \param base: Reference to a generic \ref typet
 /// \return true if \a base is of type \a T
 template <typename T>
 inline bool can_cast_type(const typet &base);
@@ -47,16 +47,6 @@ inline bool can_cast_type(const typet &base);
 /// these checks have been used historically, but it would be reasonable to
 /// validate objects in this way at any time.
 inline void validate_expr(const exprt &) {}
-
-/// Called after casting.  Provides a point to check data invariants on the
-/// structure of the typet. By default, this is a no-op, but you can provide an
-/// overload to validate particular types. Should always succeed unless the
-/// program has entered an invalid state. We validate objects at cast time as
-/// that is when these checks have been used historically, but it would be
-/// reasonable to validate objects in this way at any time.
-inline void validate_type(const typet &)
-{
-}
 
 namespace detail // NOLINT
 {
@@ -81,10 +71,10 @@ struct expr_try_dynamic_cast_return_typet final
 
 /// \brief Try to cast a reference to a generic exprt to a specific derived
 ///    class
-/// \tparam T The reference or const reference type to \a TUnderlying to cast
+/// \tparam T: The reference or const reference type to \a TUnderlying to cast
 ///    to
-/// \tparam TExpr The original type to cast from, either exprt or const exprt
-/// \param base Reference to a generic \ref exprt
+/// \tparam TExpr: The original type to cast from, either exprt or const exprt
+/// \param base: Reference to a generic \ref exprt
 /// \return Ptr to object of type \a TUnderlying
 ///   or nullptr if \a base is not an instance of \a TUnderlying
 template <typename T, typename TExpr>
@@ -107,12 +97,38 @@ auto expr_try_dynamic_cast(TExpr &base)
   return ret;
 }
 
+/// \brief Try to cast a generic exprt to a specific derived class.
+/// \tparam T: The type to cast the \p base param to.
+/// \tparam TType: The original type to cast from, must be a exprt rvalue.
+/// \param base: A generic \ref exprt rvalue.
+/// \return Cast value in an optionalt<T> or empty if \a base is not an instance
+///         of T.
+template <typename T, typename TExpr>
+optionalt<T> expr_try_dynamic_cast(TExpr &&base)
+{
+  static_assert(
+    std::is_rvalue_reference<decltype(base)>::value,
+    "This template overload must only match where base is an rvalue.");
+  static_assert(
+    std::is_base_of<exprt, typename std::decay<TExpr>::type>::value,
+    "Tried to expr_try_dynamic_cast from something that wasn't an exprt.");
+  static_assert(
+    std::is_base_of<exprt, T>::value,
+    "The template argument T must be derived from exprt.");
+  static_assert(!std::is_const<TExpr>::value, "Attempted to move from const.");
+  if(!can_cast_expr<T>(base))
+    return {};
+  optionalt<T> ret{static_cast<T &&>(base)};
+  validate_expr(*ret);
+  return ret;
+}
+
 /// \brief Try to cast a reference to a generic typet to a specific derived
-///    class
-/// \tparam T The reference or const reference type to \a TUnderlying to cast
-///    to
-/// \tparam TType The original type to cast from, either typet or const typet
-/// \param base Reference to a generic \ref typet
+///   class
+/// \tparam T: The reference or const reference type to \a TUnderlying to cast
+///   to
+/// \tparam TType: The original type to cast from, either typet or const typet
+/// \param base: Reference to a generic \ref typet
 /// \return Ptr to object of type \a TUnderlying
 ///   or nullptr if \a base is not an instance of \a TUnderlying
 template <typename T, typename TType>
@@ -129,8 +145,33 @@ auto type_try_dynamic_cast(TType &base) ->
     "The template argument T must be derived from typet.");
   if(!can_cast_type<typename std::remove_const<T>::type>(base))
     return nullptr;
-  const auto ret = static_cast<returnt>(&base);
-  validate_type(*ret);
+  TType::check(base);
+  return static_cast<returnt>(&base);
+}
+
+/// \brief Try to cast a generic typet to a specific derived class.
+/// \tparam T: The type to cast the \p base param to.
+/// \tparam TType: The original type to cast from, must be a typet rvalue.
+/// \param base: A generic \ref typet rvalue.
+/// \return Cast value in an optionalt<T> or empty if \a base is not an instance
+///         of T.
+template <typename T, typename TType>
+optionalt<T> type_try_dynamic_cast(TType &&base)
+{
+  static_assert(
+    std::is_rvalue_reference<decltype(base)>::value,
+    "This template overload must only match where base is an rvalue.");
+  static_assert(
+    std::is_base_of<typet, typename std::decay<TType>::type>::value,
+    "Tried to type_try_dynamic_cast from something that wasn't an typet.");
+  static_assert(
+    std::is_base_of<typet, T>::value,
+    "The template argument T must be derived from typet.");
+  static_assert(!std::is_const<TType>::value, "Attempted to move from const.");
+  if(!can_cast_type<T>(base))
+    return {};
+  TType::check(base);
+  optionalt<T> ret{static_cast<T &&>(base)};
   return ret;
 }
 
@@ -156,9 +197,10 @@ struct expr_dynamic_cast_return_typet final
 } // namespace detail
 
 /// \brief Cast a reference to a generic exprt to a specific derived class.
-/// \tparam T The reference or const reference type to \a TUnderlying to cast to
-/// \tparam TExpr The original type to cast from, either exprt or const exprt
-/// \param base Reference to a generic \ref exprt
+/// \tparam T: The reference or const reference type to \a TUnderlying to cast
+///   to
+/// \tparam TExpr: The original type to cast from, either exprt or const exprt
+/// \param base: Reference to a generic \ref exprt
 /// \return Reference to object of type \a T
 /// \throw std::bad_cast If \a base is not an instance of \a TUnderlying
 template<typename T, typename TExpr>
@@ -173,9 +215,10 @@ auto expr_dynamic_cast(TExpr &base)
 
 /// \brief Cast a reference to a generic exprt to a specific derived class.
 ///   Also assert that the expression has the expected type.
-/// \tparam T The reference or const reference type to \a TUnderlying to cast to
-/// \tparam TExpr The original type to cast from, either exprt or const exprt
-/// \param base Reference to a generic \ref exprt
+/// \tparam T: The reference or const reference type to \a TUnderlying to cast
+///   to
+/// \tparam TExpr: The original type to cast from, either exprt or const exprt
+/// \param base: Reference to a generic \ref exprt
 /// \return Reference to object of type \a T
 /// \throw std::bad_cast If \a base is not an instance of \a TUnderlying
 /// \remark If CBMC assertions (PRECONDITION) are set to abort then this will
@@ -190,9 +233,10 @@ auto expr_checked_cast(TExpr &base)
 
 /// \brief Cast a reference to a generic typet to a specific derived class and
 ///   checks that the type could be converted.
-/// \tparam T The reference or const reference type to \a TUnderlying to cast to
-/// \tparam TType The original type to cast from, either typet or const typet
-/// \param base Reference to a generic \ref typet
+/// \tparam T: The reference or const reference type to \a TUnderlying to cast
+///   to
+/// \tparam TType: The original type to cast from, either typet or const typet
+/// \param base: Reference to a generic \ref typet
 /// \return Reference to object of type \a T
 template <typename T, typename TType>
 auto type_checked_cast(TType &base) ->

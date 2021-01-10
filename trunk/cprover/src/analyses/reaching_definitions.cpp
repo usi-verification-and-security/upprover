@@ -26,15 +26,48 @@ Date: February 2013
 #include "is_threaded.h"
 #include "dirty.h"
 
+/// This ensures that all domains are constructed with the appropriate pointer
+/// back to the analysis engine itself.  Using a factory is a tad verbose
+/// but it works well with the ait infrastructure.
+class rd_range_domain_factoryt : public ai_domain_factoryt<rd_range_domaint>
+{
+public:
+  rd_range_domain_factoryt(
+    sparse_bitvector_analysist<reaching_definitiont> *_bv_container)
+    : bv_container(_bv_container)
+  {
+    PRECONDITION(bv_container != nullptr);
+  }
+
+  std::unique_ptr<statet> make(locationt) const override
+  {
+    auto p = util_make_unique<rd_range_domaint>(bv_container);
+    CHECK_RETURN(p->is_bottom());
+    return std::unique_ptr<statet>(p.release());
+  }
+
+private:
+  sparse_bitvector_analysist<reaching_definitiont> *const bv_container;
+};
+
 reaching_definitions_analysist::reaching_definitions_analysist(
-  const namespacet &_ns):
-    concurrency_aware_ait<rd_range_domaint>(),
+  const namespacet &_ns)
+  : concurrency_aware_ait<rd_range_domaint>(
+      util_make_unique<rd_range_domain_factoryt>(this)),
     ns(_ns)
 {
 }
 
 reaching_definitions_analysist::~reaching_definitions_analysist()=default;
 
+/// Given the passed variable name `identifier` it collects data from
+/// `bv_container` for each `ID` in `values[identifier]` and stores them into
+/// `export_cache[identifier]`. Namely, for each `reaching_definitiont` instance
+/// `rd` obtained from `bv_container` it associates `rd.definition_at` with the
+/// bit-range `(rd.bit_begin, rd.bit_end)`.
+///
+/// This function is only used to fill in the cache `export_cache` for the
+/// `output` method.
 void rd_range_domaint::populate_cache(const irep_idt &identifier) const
 {
   assert(bv_container);
@@ -56,7 +89,9 @@ void rd_range_domaint::populate_cache(const irep_idt &identifier) const
 }
 
 void rd_range_domaint::transform(
+  const irep_idt &function_from,
   locationt from,
+  const irep_idt &function_to,
   locationt to,
   ai_baset &ai,
   const namespacet &ns)
@@ -78,16 +113,16 @@ void rd_range_domaint::transform(
     transform_start_thread(ns, *rd);
   // do argument-to-parameter assignments
   else if(from->is_function_call())
-    transform_function_call(ns, from, to, *rd);
+    transform_function_call(ns, function_from, from, function_to, *rd);
   // cleanup parameters
   else if(from->is_end_function())
-    transform_end_function(ns, from, to, *rd);
+    transform_end_function(ns, function_from, from, function_to, to, *rd);
   // lhs assignments
   else if(from->is_assign())
-    transform_assign(ns, from, from, *rd);
+    transform_assign(ns, from, function_from, from, *rd);
   // initial (non-deterministic) value
   else if(from->is_decl())
-    transform_assign(ns, from, from, *rd);
+    transform_assign(ns, from, function_from, from, *rd);
 
 #if 0
   // handle return values
@@ -124,12 +159,13 @@ void rd_range_domaint::transform(
 #endif
 }
 
+/// Computes an instance obtained from a `*this` by transformation over `DEAD v`
+/// GOTO instruction. The operation simply removes `v` from `this->values`.
 void rd_range_domaint::transform_dead(
   const namespacet &,
   locationt from)
 {
-  const irep_idt &identifier=
-    to_symbol_expr(to_code_dead(from->code).symbol()).get_identifier();
+  const irep_idt &identifier = to_code_dead(from->code).get_identifier();
 
   valuest::iterator entry=values.find(identifier);
 
@@ -167,14 +203,15 @@ void rd_range_domaint::transform_start_thread(
 
 void rd_range_domaint::transform_function_call(
   const namespacet &ns,
+  const irep_idt &function_from,
   locationt from,
-  locationt to,
+  const irep_idt &function_to,
   reaching_definitions_analysist &rd)
 {
   const code_function_callt &code=to_code_function_call(from->code);
 
   // only if there is an actual call, i.e., we have a body
-  if(from->function != to->function)
+  if(function_from != function_to)
   {
     for(valuest::iterator it=values.begin();
         it!=values.end();
@@ -210,28 +247,30 @@ void rd_range_domaint::transform_function_call(
       if(identifier.empty())
         continue;
 
-      range_spect size=
-        to_range_spect(pointer_offset_bits(param.type(), ns));
-      gen(from, identifier, 0, size);
+      auto param_bits = pointer_offset_bits(param.type(), ns);
+      if(param_bits.has_value())
+        gen(from, identifier, 0, to_range_spect(*param_bits));
+      else
+        gen(from, identifier, 0, -1);
     }
   }
   else
   {
     // handle return values of undefined functions
-    const code_function_callt &code=to_code_function_call(from->code);
-
-    if(code.lhs().is_not_nil())
-      transform_assign(ns, from, from, rd);
+    if(to_code_function_call(from->code).lhs().is_not_nil())
+      transform_assign(ns, from, function_from, from, rd);
   }
 }
 
 void rd_range_domaint::transform_end_function(
   const namespacet &ns,
+  const irep_idt &function_from,
   locationt from,
+  const irep_idt &function_to,
   locationt to,
   reaching_definitions_analysist &rd)
 {
-  goto_programt::const_targett call=to;
+  locationt call = to;
   --call;
   const code_function_callt &code=to_code_function_call(call->code);
 
@@ -261,8 +300,7 @@ void rd_range_domaint::transform_end_function(
     }
   }
 
-  const code_typet &code_type=
-    to_code_type(ns.lookup(from->function).type);
+  const code_typet &code_type = to_code_type(ns.lookup(function_from).type);
 
   for(const auto &param : code_type.parameters())
   {
@@ -289,18 +327,19 @@ void rd_range_domaint::transform_end_function(
     assert(rd_state!=0);
     rd_state->
 #endif
-      transform_assign(ns, from, call, rd);
+    transform_assign(ns, from, function_to, call, rd);
   }
 }
 
 void rd_range_domaint::transform_assign(
   const namespacet &ns,
   locationt from,
+  const irep_idt &function_to,
   locationt to,
   reaching_definitions_analysist &rd)
 {
   rw_range_set_value_sett rw_set(ns, rd.get_value_sets());
-  goto_rw(to, rw_set);
+  goto_rw(function_to, to, rw_set);
   const bool is_must_alias=rw_set.get_w_set().size()==1;
 
   forall_rw_range_set_w_objects(it, rw_set)
@@ -463,6 +502,10 @@ void rd_range_domaint::kill_inf(
 #endif
 }
 
+/// A utility function which updates internal data structures by inserting a
+/// new reaching definition record, for the variable name `identifier`, written
+/// in given GOTO instruction referenced by `from`, at the range of bits defined
+/// by `range_start` and `range_end`.
 bool rd_range_domaint::gen(
   locationt from,
   const irep_idt &identifier,
@@ -664,8 +707,8 @@ bool rd_range_domaint::merge(
 /// \return returns true iff there is something new
 bool rd_range_domaint::merge_shared(
   const rd_range_domaint &other,
-  goto_programt::const_targett,
-  goto_programt::const_targett,
+  locationt,
+  locationt,
   const namespacet &ns)
 {
   // TODO: dirty vars

@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "set_properties.h"
 
+#include <util/exception_utils.h>
+
 #include <algorithm>
 #include <unordered_set>
 
@@ -32,7 +34,7 @@ void set_properties(
       property_set.find(property_id);
 
     if(c_it==property_set.end())
-      it->make_skip();
+      it->turn_into_skip();
     else
       property_set.erase(c_it);
   }
@@ -58,9 +60,9 @@ void label_properties(
     irep_idt function=it->source_location.get_function();
 
     std::string prefix=id2string(function);
-    if(it->source_location.get_property_class()!="")
+    if(!it->source_location.get_property_class().empty())
     {
-      if(prefix!="")
+      if(!prefix.empty())
         prefix+=".";
 
       std::string class_infix=
@@ -72,7 +74,7 @@ void label_properties(
       prefix+=class_infix;
     }
 
-    if(prefix!="")
+    if(!prefix.empty())
       prefix+=".";
 
     std::size_t &count=property_counters[prefix];
@@ -107,11 +109,12 @@ void set_properties(
   property_set.insert(properties.begin(), properties.end());
 
   Forall_goto_functions(it, goto_functions)
-    if(!it->second.is_inlined())
-      set_properties(it->second.body, property_set);
+    set_properties(it->second.body, property_set);
 
   if(!property_set.empty())
-    throw "property "+id2string(*property_set.begin())+" not found";
+    throw invalid_command_line_argument_exceptiont(
+      "property " + id2string(*property_set.begin()) + " unknown",
+      "--property id");
 }
 
 void label_properties(goto_functionst &goto_functions)
@@ -133,21 +136,12 @@ void make_assertions_false(goto_modelt &goto_model)
 void make_assertions_false(
   goto_functionst &goto_functions)
 {
-  for(goto_functionst::function_mapt::iterator
-      f_it=goto_functions.function_map.begin();
-      f_it!=goto_functions.function_map.end();
-      f_it++)
+  for(auto &f : goto_functions.function_map)
   {
-    goto_programt &goto_program=f_it->second.body;
-
-    for(goto_programt::instructionst::iterator
-        i_it=goto_program.instructions.begin();
-        i_it!=goto_program.instructions.end();
-        i_it++)
+    for(auto &i : f.second.body.instructions)
     {
-      if(!i_it->is_assert())
-        continue;
-      i_it->guard=false_exprt();
+      if(i.is_assert())
+        i.set_condition(false_exprt());
     }
   }
 }

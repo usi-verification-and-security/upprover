@@ -28,9 +28,13 @@ public:
   {
   }
 
-  void
-  transform(locationt from, locationt to, ai_baset &ai, const namespacet &ns)
-    final override;
+  void transform(
+    const irep_idt &function_from,
+    locationt from,
+    const irep_idt &function_to,
+    locationt to,
+    ai_baset &ai,
+    const namespacet &ns) final override;
 
   void output(
     std::ostream &out,
@@ -99,7 +103,7 @@ private:
   void get_rhs_aliases(const exprt &, std::set<irep_idt> &);
   void get_rhs_aliases_address_of(const exprt &, std::set<irep_idt> &);
   irep_idt get_function(const exprt &);
-  void check_lhs(const exprt &, std::set<irep_idt> &);
+  void check_lhs(const exprt &, std::set<irep_idt> &) const;
 
   friend class escape_analysist;
 

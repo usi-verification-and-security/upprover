@@ -20,6 +20,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/get_base_name.h>
 
 #include <linking/linking.h>
+#include <linking/remove_internal_symbols.h>
 
 #include <ansi-c/ansi_c_entry_point.h>
 #include <ansi-c/c_preprocess.h>
@@ -37,6 +38,7 @@ std::set<std::string> cpp_languaget::extensions() const
   s.insert("cpp");
   s.insert("CPP");
   s.insert("cc");
+  s.insert("cp");
   s.insert("c++");
   s.insert("ii");
   s.insert("cxx");
@@ -59,7 +61,7 @@ bool cpp_languaget::preprocess(
   const std::string &path,
   std::ostream &outstream)
 {
-  if(path=="")
+  if(path.empty())
     return c_preprocess(instream, outstream, get_message_handler());
 
   // check extension
@@ -122,7 +124,7 @@ bool cpp_languaget::typecheck(
   symbol_tablet &symbol_table,
   const std::string &module)
 {
-  if(module=="")
+  if(module.empty())
     return false;
 
   symbol_tablet new_symbol_table;
@@ -131,22 +133,22 @@ bool cpp_languaget::typecheck(
       cpp_parse_tree, new_symbol_table, module, get_message_handler()))
     return true;
 
+  remove_internal_symbols(new_symbol_table, get_message_handler(), false);
+
   return linking(symbol_table, new_symbol_table, get_message_handler());
 }
 
 bool cpp_languaget::generate_support_functions(
   symbol_tablet &symbol_table)
 {
-  return ansi_c_entry_point(symbol_table, get_message_handler());
+  return ansi_c_entry_point(
+    symbol_table, get_message_handler(), object_factory_params);
 }
 
 void cpp_languaget::show_parse(std::ostream &out)
 {
-  for(cpp_parse_treet::itemst::const_iterator it=
-      cpp_parse_tree.items.begin();
-      it!=cpp_parse_tree.items.end();
-      it++)
-    show_parse(out, *it);
+  for(const auto &i : cpp_parse_tree.items)
+    show_parse(out, i);
 }
 
 void cpp_languaget::show_parse(
@@ -158,14 +160,10 @@ void cpp_languaget::show_parse(
     const cpp_linkage_spect &linkage_spec=
       item.get_linkage_spec();
 
-    out << "LINKAGE " << linkage_spec.linkage().get("value")
-        << ":\n";
+    out << "LINKAGE " << linkage_spec.linkage().get(ID_value) << ":\n";
 
-    for(cpp_linkage_spect::itemst::const_iterator
-        it=linkage_spec.items().begin();
-        it!=linkage_spec.items().end();
-        it++)
-      show_parse(out, *it);
+    for(const auto &i : linkage_spec.items())
+      show_parse(out, i);
 
     out << '\n';
   }
@@ -177,11 +175,8 @@ void cpp_languaget::show_parse(
     out << "NAMESPACE " << namespace_spec.get_namespace()
         << ":\n";
 
-    for(cpp_namespace_spect::itemst::const_iterator
-        it=namespace_spec.items().begin();
-        it!=namespace_spec.items().end();
-        it++)
-      show_parse(out, *it);
+    for(const auto &i : namespace_spec.items())
+      show_parse(out, i);
 
     out << '\n';
   }

@@ -85,7 +85,7 @@ else
   endif
 endif
 ifeq ($(origin YACC),default)
-  YACC   = bison -y
+  YACC   = bison
 endif
   YFLAGS ?= -v
 ifeq ($(origin LEX),default)
@@ -195,13 +195,23 @@ ifneq ($(CADICAL),)
 endif
 
 
+ifneq ($(CUDD),)
+  CP_CXXFLAGS += -DHAVE_CUDD
+ifeq ($(CPROVER_DIR),)
+  INCLUDES += -I $(CUDD) -I $(CUDD)/cudd
+else
+  INCLUDES += -I ../$(CPROVER_DIR)/src/solvers/$(CUDD)
+  INCLUDES += -I ../$(CPROVER_DIR)/src/solvers/$(CUDD)/cudd
+endif
+endif
+
 
 first_target: all
 
 HOSTCXX ?= $(CXX)
 
-CP_CFLAGS += $(CFLAGS) $(INCLUDES)
-CP_CXXFLAGS += $(CXXFLAGS) $(INCLUDES)
+CP_CFLAGS += $(CFLAGS) $(CP_EXTRA_CFLAGS) $(INCLUDES)
+CP_CXXFLAGS += $(CXXFLAGS) $(CP_EXTRA_CXXFLAGS) $(INCLUDES)
 
 OBJ += $(patsubst %.cpp, %$(OBJEXT), $(filter %.cpp, $(SRC)))
 OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))

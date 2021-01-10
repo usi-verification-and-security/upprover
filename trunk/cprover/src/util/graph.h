@@ -19,6 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <list>
 #include <map>
 #include <queue>
+#include <sstream>
 #include <stack>
 #include <vector>
 
@@ -59,6 +60,39 @@ public:
   void erase_out(node_indext n)
   {
     out.erase(n);
+  }
+
+private:
+  /// \brief Node with attributes suitable for Graphviz DOT format
+  ///
+  /// Derived types may override this function to produce more informative DOT
+  /// diagrams than the default implementation, which displays only the node
+  /// index. The return value should be a list of node attributes within square
+  /// brackets that can be parsed by `dot`. Here is a sample implementation for
+  /// a fictional node type with `is_evil()` and `is_pink()` functions:
+  ///
+  ///     std::stringstream ss;
+  ///     ss << "[shape=\"" << is_evil() ? "box" : "diamond"
+  ///        << "\", color=\"" << is_pink() ? "#e91e63" : "#9c27b0"
+  ///        << "\", label=\"this is node " << std::to_string(idx)
+  ///        << "\"]";
+  ///     return ss.str();
+  ///
+  virtual std::string dot_attributes(const node_indext &) const
+  {
+    return "";
+  }
+
+public:
+  std::string pretty(const node_indext &idx) const
+  {
+    std::stringstream ss;
+    ss << std::to_string(idx) << " " << dot_attributes(idx);
+    return ss.str();
+  }
+
+  virtual ~graph_nodet()
+  {
   }
 };
 
@@ -143,10 +177,11 @@ protected:
   nodest nodes;
 
 public:
-  node_indext add_node()
+  template <typename... arguments>
+  node_indext add_node(arguments &&... values)
   {
     node_indext no=nodes.size();
-    nodes.push_back(nodet());
+    nodes.emplace_back(std::forward<arguments>(values)...);
     return no;
   }
 
@@ -326,8 +361,8 @@ protected:
 template<class N>
 void grapht<N>::add_undirected_edge(node_indext a, node_indext b)
 {
-  assert(a<nodes.size());
-  assert(b<nodes.size());
+  PRECONDITION(a < nodes.size());
+  PRECONDITION(b < nodes.size());
   nodet &na=nodes[a];
   nodet &nb=nodes[b];
   na.add_out(b);
@@ -463,7 +498,8 @@ void grapht<N>::shortest_path(
     path.push_front(dest);
     if(distance[dest]==0 ||
        previous[dest]==src) break; // we are there
-    assert(dest!=previous[dest]);
+    INVARIANT(
+      dest != previous[dest], "loops cannot be part of the shortest path");
     dest=previous[dest];
   }
 }
@@ -502,12 +538,20 @@ void grapht<N>::disconnect_unreachable(const std::vector<node_indext> &src)
   std::size_t reachable_idx = 0;
   for(std::size_t i = 0; i < nodes.size(); i++)
   {
+    // Holds since `reachable` contains node indices (i.e., all elements are
+    // smaller than `nodes.size()`), `reachable` is sorted, indices from `0` to
+    // `nodes.size()-1` are iterated over by variable i in order, and
+    // `reachable_idx` is only incremented when `i == reachable[reachable_idx]`
+    // holds.
+    INVARIANT(
+      reachable_idx >= reachable.size() || i <= reachable[reachable_idx],
+      "node index i is smaller or equal to the node index at "
+      "reachable[reachable_idx], when reachable_idx is within bounds");
+
     if(reachable_idx >= reachable.size())
       remove_edges(i);
     else if(i == reachable[reachable_idx])
       reachable_idx++;
-    else if(i > reachable[reachable_idx])
-      throw "error disconnecting unreachable nodes";
     else
       remove_edges(i);
   }
@@ -547,9 +591,9 @@ void get_reachable(
 
 /// Run depth-first search on the graph, starting from a single source
 /// node.
-/// \param src The node to start the search from.
-/// \param forwards true (false) if the forward (backward) reachability
-/// should be performed.
+/// \param src: The node to start the search from.
+/// \param forwards: true (false) if the forward (backward) reachability
+///   should be performed.
 template<class N>
 std::vector<typename N::node_indext>
 grapht<N>::get_reachable(node_indext src, bool forwards) const
@@ -562,9 +606,9 @@ grapht<N>::get_reachable(node_indext src, bool forwards) const
 
 /// Run depth-first search on the graph, starting from multiple source
 /// nodes.
-/// \param src The nodes to start the search from.
-/// \param forwards true (false) if the forward (backward) reachability
-/// should be performed.
+/// \param src: The nodes to start the search from.
+/// \param forwards: true (false) if the forward (backward) reachability
+///   should be performed.
 template <class N>
 std::vector<typename N::node_indext> grapht<N>::get_reachable(
   const std::vector<node_indext> &src,
@@ -599,8 +643,8 @@ std::vector<typename N::node_indext> grapht<N>::get_reachable(
 /// Run recursive depth-limited search on the graph, starting
 /// from multiple source nodes, to find the nodes reachable within n steps.
 /// This function initialises the search.
-/// \param src The node to start the search from.
-/// \param limit  limit on steps
+/// \param src: The node to start the search from.
+/// \param limit: limit on steps
 /// \return a vector of reachable node indices
 template <class N>
 std::vector<typename N::node_indext> grapht<N>::depth_limited_search(
@@ -614,8 +658,8 @@ std::vector<typename N::node_indext> grapht<N>::depth_limited_search(
 /// Run recursive depth-limited search on the graph, starting
 /// from multiple source nodes, to find the nodes reachable within n steps.
 /// This function initialises the search.
-/// \param src The nodes to start the search from.
-/// \param limit  limit on steps
+/// \param src: The nodes to start the search from.
+/// \param limit: limit on steps
 /// \return a vector of reachable node indices
 template <class N>
 std::vector<typename N::node_indext> grapht<N>::depth_limited_search(
@@ -634,10 +678,11 @@ std::vector<typename N::node_indext> grapht<N>::depth_limited_search(
 }
 
 /// Run recursive depth-limited search on the graph, starting
-// from multiple source nodes, to find the nodes reachable within n steps
-/// \param src The nodes to start the search from.
-/// \param limit  limit on steps
-/// \param visited vector of booleans indicating whether a node has been visited
+/// from multiple source nodes, to find the nodes reachable within n steps
+/// \param src: The nodes to start the search from.
+/// \param limit: limit on steps
+/// \param visited: vector of booleans indicating whether a node has been
+///   visited
 /// \return a vector of reachable node indices
 template <class N>
 std::vector<typename N::node_indext> grapht<N>::depth_limited_search(
@@ -753,7 +798,9 @@ void grapht<N>::tarjan(tarjant &t, node_indext v) const
   {
     while(true)
     {
-      assert(!t.scc_stack.empty());
+      INVARIANT(
+        !t.scc_stack.empty(),
+        "stack of strongly connected components should have another component");
       node_indext vp=t.scc_stack.top();
       t.scc_stack.pop();
       t.in_scc[vp]=false;
@@ -774,7 +821,7 @@ void grapht<N>::tarjan(tarjant &t, node_indext v) const
 /// Lower-numbered SCCs are closer to the leaves, so in the particular case
 /// of a DAG, sorting by SCC number gives a topological sort, and for a cyclic
 /// graph the SCCs are topologically sorted but arbitrarily ordered internally.
-/// \param subgraph_nr [in, out]: should be pre-allocated with enough storage
+/// \param [in,out] subgraph_nr: should be pre-allocated with enough storage
 ///   for one entry per graph node. Will be populated with the SCC indices of
 ///   each node.
 /// \return the number of distinct SCCs.
@@ -877,9 +924,11 @@ void output_dot_generic(
   const std::function<
     void(const node_index_type &, std::function<void(const node_index_type &)>)>
     &for_each_succ,
-  const std::function<std::string(const node_index_type &)> node_to_string)
+  const std::function<std::string(const node_index_type &)> node_to_string,
+  const std::function<std::string(const node_index_type &)> node_to_pretty)
 {
   for_each_node([&](const node_index_type &i) {
+    out << node_to_pretty(i) << ";\n";
     for_each_succ(i, [&](const node_index_type &n) {
       out << node_to_string(i) << " -> " << node_to_string(n) << '\n';
     });
@@ -914,7 +963,7 @@ template <class N>
 void grapht<N>::output_dot(std::ostream &out) const
 {
   const auto for_each_node =
-    [&](const std::function<void(const node_indext &)> &f) {
+    [this](const std::function<void(const node_indext &)> &f) {
       for(node_indext i = 0; i < nodes.size(); ++i)
         f(i);
     };
@@ -925,7 +974,11 @@ void grapht<N>::output_dot(std::ostream &out) const
   };
 
   const auto to_string = [](const node_indext &i) { return std::to_string(i); };
-  output_dot_generic<node_indext>(out, for_each_node, for_each_succ, to_string);
+  const auto to_pretty_string = [this](const node_indext &i) {
+    return nodes[i].pretty(i);
+  };
+  output_dot_generic<node_indext>(
+    out, for_each_node, for_each_succ, to_string, to_pretty_string);
 }
 
 #endif // CPROVER_UTIL_GRAPH_H

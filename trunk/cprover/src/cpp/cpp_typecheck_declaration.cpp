@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \********************************************************************/
 
-
 /// \file
 /// C++ Language Type Checking
 
@@ -31,9 +30,7 @@ void cpp_typecheckt::convert(cpp_declarationt &declaration)
     convert_non_template_declaration(declaration);
 }
 
-void cpp_typecheckt::convert_anonymous_union(
-  cpp_declarationt &declaration,
-  codet &code)
+codet cpp_typecheckt::convert_anonymous_union(cpp_declarationt &declaration)
 {
   codet new_code(ID_decl_block);
   new_code.reserve_operands(declaration.declarators().size());
@@ -41,12 +38,7 @@ void cpp_typecheckt::convert_anonymous_union(
   // unnamed object
   std::string identifier="#anon_union"+std::to_string(anon_counter++);
 
-  irept name(ID_name);
-  name.set(ID_identifier, identifier);
-  name.set(ID_C_source_location, declaration.source_location());
-
-  cpp_namet cpp_name;
-  cpp_name.move_to_sub(name);
+  const cpp_namet cpp_name(identifier, declaration.source_location());
   cpp_declaratort declarator;
   declarator.name()=cpp_name;
 
@@ -62,38 +54,34 @@ void cpp_typecheckt::convert_anonymous_union(
     throw 0;
   }
 
-  code_declt decl_statement(cpp_symbol_expr(symbol));
-
-  new_code.move_to_operands(decl_statement);
+  new_code.add_to_operands(code_declt(cpp_symbol_expr(symbol)));
 
   // do scoping
-  symbolt union_symbol=
-    *symbol_table.get_writeable(follow(symbol.type).get(ID_name));
-  const irept::subt &components=union_symbol.type.add(ID_components).get_sub();
+  symbolt union_symbol =
+    symbol_table.get_writeable_ref(follow(symbol.type).get(ID_name));
 
-  forall_irep(it, components)
+  for(const auto &c : to_union_type(union_symbol.type).components())
   {
-    if(it->find(ID_type).id()==ID_code)
+    if(c.type().id() == ID_code)
     {
       error().source_location=union_symbol.type.source_location();
-      error() << "anonymous union `" << union_symbol.base_name
+      error() << "anonymous union '" << union_symbol.base_name
               << "' shall not have function members" << eom;
       throw 0;
     }
 
-    const irep_idt &base_name=it->get(ID_base_name);
+    const irep_idt &base_name = c.get_base_name();
 
     if(cpp_scopes.current_scope().contains(base_name))
     {
       error().source_location=union_symbol.type.source_location();
-      error() << "identifier `" << base_name << "' already in scope"
-              << eom;
+      error() << "identifier '" << base_name << "' already in scope" << eom;
       throw 0;
     }
 
     cpp_idt &id=cpp_scopes.current_scope().insert(base_name);
     id.id_class = cpp_idt::id_classt::SYMBOL;
-    id.identifier=it->get(ID_name);
+    id.identifier = c.get_name();
     id.class_identifier=union_symbol.name;
     id.is_member=true;
   }
@@ -101,7 +89,7 @@ void cpp_typecheckt::convert_anonymous_union(
   symbol_table.get_writeable_ref(union_symbol.name)
     .type.set(ID_C_unnamed_object, symbol.base_name);
 
-  code.swap(new_code);
+  return new_code;
 }
 
 void cpp_typecheckt::convert_non_template_declaration(
@@ -127,7 +115,7 @@ void cpp_typecheckt::convert_non_template_declaration(
 
   // mark as 'already typechecked'
   if(!declaration.declarators().empty())
-    make_already_typechecked(declaration_type);
+    already_typechecked_typet::make_already_typechecked(declaration_type);
 
   // Special treatment for anonymous unions
   if(declaration.declarators().empty() &&
@@ -143,8 +131,7 @@ void cpp_typecheckt::convert_non_template_declaration(
       throw 0;
     }
 
-    codet dummy;
-    convert_anonymous_union(declaration, dummy);
+    convert_anonymous_union(declaration);
   }
 
   // do the declarators (optional)
@@ -178,11 +165,15 @@ void cpp_typecheckt::convert_non_template_declaration(
     if(symbol.is_lvalue &&
        declarator.init_args().has_operands())
     {
-      symbol.value=
-        cpp_constructor(
-          symbol.location,
-          cpp_symbol_expr(symbol),
-          declarator.init_args().operands());
+      auto constructor = cpp_constructor(
+        symbol.location,
+        cpp_symbol_expr(symbol),
+        declarator.init_args().operands());
+
+      if(constructor.has_value())
+        symbol.value = constructor.value();
+      else
+        symbol.value = nil_exprt();
     }
   }
 }

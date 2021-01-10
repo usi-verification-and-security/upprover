@@ -13,52 +13,60 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <string>
 
-#include <util/type.h>
+#include <util/cprover_prefix.h>
 #include <util/std_types.h>
+#include <util/type.h>
 
 static std::string do_prefix(const std::string &s)
 {
-  if(s.find(',')!=std::string::npos ||
-     (s!="" && isdigit(s[0])))
+  if(s.find(',') != std::string::npos || (!s.empty() && isdigit(s[0])))
     return std::to_string(s.size())+"_"+s;
 
   return s;
 }
 
-static void irep2name(const irept &irep, std::string &result)
+static std::string irep2name(const irept &irep)
 {
-  result="";
+  std::string result;
 
   if(is_reference(static_cast<const typet&>(irep)))
     result+="reference";
 
-  if(irep.id()!="")
+  if(is_rvalue_reference(static_cast<const typet &>(irep)))
+    result += "rvalue_reference";
+
+  if(irep.id() == ID_frontend_pointer)
+  {
+    if(irep.get_bool(ID_C_reference))
+      result += "reference";
+
+    if(irep.get_bool(ID_C_rvalue_reference))
+      result += "rvalue_reference";
+  }
+  else if(!irep.id().empty())
     result+=do_prefix(irep.id_string());
 
-  if(irep.get_named_sub().empty() &&
-     irep.get_sub().empty() &&
-     irep.get_comments().empty())
-    return;
+  if(irep.get_named_sub().empty() && irep.get_sub().empty())
+    return result;
 
   result+='(';
   bool first=true;
 
   forall_named_irep(it, irep.get_named_sub())
-  {
-    if(first)
-      first=false;
-    else
-      result+=',';
+    if(!irept::is_comment(it->first))
+    {
+      if(first)
+        first = false;
+      else
+        result += ',';
 
-    result+=do_prefix(name2string(it->first));
+      result += do_prefix(name2string(it->first));
 
-    result+='=';
-    std::string tmp;
-    irep2name(it->second, tmp);
-    result+=tmp;
-  }
+      result += '=';
+      result += irep2name(it->second);
+    }
 
-  forall_named_irep(it, irep.get_comments())
+  forall_named_irep(it, irep.get_named_sub())
     if(it->first==ID_C_constant ||
        it->first==ID_C_volatile ||
        it->first==ID_C_restricted)
@@ -69,9 +77,7 @@ static void irep2name(const irept &irep, std::string &result)
         result+=',';
       result+=do_prefix(name2string(it->first));
       result+='=';
-      std::string tmp;
-      irep2name(it->second, tmp);
-      result+=tmp;
+      result += irep2name(it->second);
     }
 
   forall_irep(it, irep.get_sub())
@@ -80,12 +86,12 @@ static void irep2name(const irept &irep, std::string &result)
       first=false;
     else
       result+=',';
-    std::string tmp;
-    irep2name(*it, tmp);
-    result+=tmp;
+    result += irep2name(*it);
   }
 
   result+=')';
+
+  return result;
 }
 
 std::string cpp_type2name(const typet &type)
@@ -103,8 +109,10 @@ std::string cpp_type2name(const typet &type)
 
   if(type.id()==ID_empty || type.id()==ID_void)
     result+="void";
-  else if(type.id()==ID_bool)
+  else if(type.id() == ID_c_bool)
     result+="bool";
+  else if(type.id() == ID_bool)
+    result += CPROVER_PREFIX "bool";
   else if(type.id()==ID_pointer)
   {
     if(is_reference(type))
@@ -162,9 +170,7 @@ std::string cpp_type2name(const typet &type)
   else
   {
     // give up
-    std::string tmp;
-    irep2name(type, tmp);
-    return tmp;
+    return irep2name(type);
   }
 
   return result;
@@ -172,7 +178,5 @@ std::string cpp_type2name(const typet &type)
 
 std::string cpp_expr2name(const exprt &expr)
 {
-  std::string tmp;
-  irep2name(expr, tmp);
-  return tmp;
+  return irep2name(expr);
 }

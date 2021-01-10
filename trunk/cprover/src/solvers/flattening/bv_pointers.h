@@ -17,7 +17,10 @@ Author: Daniel Kroening, kroening@kroening.com
 class bv_pointerst:public boolbvt
 {
 public:
-  bv_pointerst(const namespacet &_ns, propt &_prop);
+  bv_pointerst(
+    const namespacet &_ns,
+    propt &_prop,
+    message_handlert &message_handler);
 
   void post_process() override;
 
@@ -40,6 +43,7 @@ protected:
   bvt convert_bitvector(const exprt &expr) override; // no cache
 
   exprt bv_get_rec(
+    const exprt &expr,
     const bvt &bv,
     const std::vector<bool> &unknown,
     std::size_t offset,

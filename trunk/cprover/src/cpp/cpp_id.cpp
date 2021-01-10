@@ -13,6 +13,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <ostream>
 
+#include <util/invariant.h>
+
 #include "cpp_scope.h"
 
 cpp_idt::cpp_idt():
@@ -34,10 +36,8 @@ void cpp_idt::print(std::ostream &out, unsigned indent) const
 
   if(!sub.empty())
   {
-    for(cpp_id_mapt::const_iterator it=sub.begin();
-        it!=sub.end();
-        it++)
-      it->second.print(out, indent+2);
+    for(const auto &s : sub)
+      s.second.print(out, indent + 2);
 
     out << '\n';
   }
@@ -45,43 +45,37 @@ void cpp_idt::print(std::ostream &out, unsigned indent) const
 
 void cpp_idt::print_fields(std::ostream &out, unsigned indent) const
 {
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "**identifier=" << identifier << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  prefix=" << prefix << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  suffix=" << suffix << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  base_name=" << base_name << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  method=" << is_method << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  class_identifier=" << class_identifier << '\n';
 
-  for(scope_listt::const_iterator
-      it=secondary_scopes.begin();
-      it!=secondary_scopes.end();
-      it++)
+  for(const auto &s : secondary_scopes)
   {
-    for(unsigned i=0; i<indent; i++) out << ' ';
-    out << "  secondary_scope=" << (*it)->identifier << '\n';
+    out << std::string(indent, ' ');
+    out << "  secondary_scope=" << s->identifier << '\n';
   }
 
-  for(scope_listt::const_iterator
-      it=using_scopes.begin();
-      it!=using_scopes.end();
-      it++)
+  for(const auto &s : using_scopes)
   {
-    for(unsigned i=0; i<indent; i++) out << ' ';
-    out << "  using_scope=" << (*it)->identifier << '\n';
+    out << std::string(indent, ' ');
+    out << "  using_scope=" << s->identifier << '\n';
   }
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  flags:";
   if(is_constructor)
     out << " constructor";
@@ -93,7 +87,7 @@ void cpp_idt::print_fields(std::ostream &out, unsigned indent) const
     out << " static_member";
   out << '\n';
 
-  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << std::string(indent, ' ');
   out << "  id_class=" << id_class << '\n';
 }
 
@@ -105,6 +99,7 @@ std::ostream &operator<<(std::ostream &out, const cpp_idt &cpp_id)
 
 std::ostream &operator<<(std::ostream &out, const cpp_idt::id_classt &id_class)
 {
+  // clang-format off
   switch(id_class)
   {
   case cpp_idt::id_classt::UNKNOWN:           return out<<"UNKNOWN";
@@ -117,6 +112,9 @@ std::ostream &operator<<(std::ostream &out, const cpp_idt::id_classt &id_class)
   case cpp_idt::id_classt::BLOCK_SCOPE:       return out<<"BLOCK_SCOPE";
   case cpp_idt::id_classt::TEMPLATE_SCOPE:    return out<<"TEMPLATE_SCOPE";
   case cpp_idt::id_classt::NAMESPACE:         return out<<"NAMESPACE";
-  default: return out << "(OTHER)";
+  case cpp_idt::id_classt::ENUM:              return out<<"ENUM";
   }
+  // clang-format on
+
+  UNREACHABLE;
 }

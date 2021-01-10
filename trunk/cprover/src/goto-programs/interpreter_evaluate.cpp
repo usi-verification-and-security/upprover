@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "interpreter_class.h"
 
+#include <util/byte_operators.h>
 #include <util/fixedbv.h>
 #include <util/ieee_float.h>
 #include <util/pointer_offset_size.h>
@@ -18,6 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/string_container.h>
 
 #include <langapi/language_util.h>
+#include <util/expr_util.h>
 
 /// Reads a memory address and loads it into the `dest` variable.
 /// Marks cell as `READ_BEFORE_WRITTEN` if cell has never been written.
@@ -32,7 +34,8 @@ void interpretert::read(
 
     if((address+i)<memory.size())
     {
-      const memory_cellt &cell=memory[integer2ulong(address+i)];
+      const memory_cellt &cell =
+        memory[numeric_cast_v<std::size_t>(address + i)];
       value=cell.value;
       if(cell.initialized==memory_cellt::initializedt::UNKNOWN)
         cell.initialized=memory_cellt::initializedt::READ_BEFORE_WRITTEN;
@@ -49,7 +52,7 @@ void interpretert::read_unbounded(
   mp_vectort &dest) const
 {
   // copy memory region
-  std::size_t address_val=integer2size_t(address);
+  std::size_t address_val = numeric_cast_v<std::size_t>(address);
   const mp_integer offset=address_to_offset(address_val);
   const mp_integer alloc_size=
     base_address_to_actual_size(address_val-offset);
@@ -60,7 +63,8 @@ void interpretert::read_unbounded(
 
     if((address+i)<memory.size())
     {
-      const memory_cellt &cell=memory[integer2size_t(address+i)];
+      const memory_cellt &cell =
+        memory[numeric_cast_v<std::size_t>(address + i)];
       value=cell.value;
       if(cell.initialized==memory_cellt::initializedt::UNKNOWN)
         cell.initialized=memory_cellt::initializedt::READ_BEFORE_WRITTEN;
@@ -82,7 +86,7 @@ void interpretert::allocate(
   {
     if((address+i)<memory.size())
     {
-      memory_cellt &cell=memory[integer2ulong(address+i)];
+      memory_cellt &cell = memory[numeric_cast_v<std::size_t>(address + i)];
       cell.value=0;
       cell.initialized=memory_cellt::initializedt::UNKNOWN;
     }
@@ -161,18 +165,18 @@ bool interpretert::byte_offset_to_memory_offset(
 
     for(const auto &comp : st.components())
     {
-      const mp_integer comp_offset = member_offset(st, comp.get_name(), ns);
+      const auto comp_offset = member_offset(st, comp.get_name(), ns);
 
-      const mp_integer component_byte_size =
-        pointer_offset_size(comp.type(), ns);
-      if(component_byte_size<0)
+      const auto component_byte_size = pointer_offset_size(comp.type(), ns);
+
+      if(!comp_offset.has_value() && !component_byte_size.has_value())
         return true;
 
-      if(comp_offset + component_byte_size > offset)
+      if(*comp_offset + *component_byte_size > offset)
       {
         mp_integer subtype_result;
-        bool ret=byte_offset_to_memory_offset(
-          comp.type(), offset - comp_offset, subtype_result);
+        bool ret = byte_offset_to_memory_offset(
+          comp.type(), offset - *comp_offset, subtype_result);
         result=previous_member_offsets+subtype_result;
         return ret;
       }
@@ -190,25 +194,30 @@ bool interpretert::byte_offset_to_memory_offset(
   else if(source_type.id()==ID_array)
   {
     const auto &at=to_array_type(source_type);
+
     mp_vectort array_size_vec;
     evaluate(at.size(), array_size_vec);
+
     if(array_size_vec.size()!=1)
       return true;
+
     mp_integer array_size=array_size_vec[0];
-    mp_integer elem_size_bytes=pointer_offset_size(at.subtype(), ns);
-    if(elem_size_bytes<=0)
+    auto elem_size_bytes = pointer_offset_size(at.subtype(), ns);
+    if(!elem_size_bytes.has_value() || *elem_size_bytes == 0)
       return true;
+
     mp_integer elem_size_leaves;
     if(count_type_leaves(at.subtype(), elem_size_leaves))
       return true;
-    mp_integer this_idx=offset/elem_size_bytes;
+
+    mp_integer this_idx = offset / (*elem_size_bytes);
     if(this_idx>=array_size_vec[0])
       return true;
+
     mp_integer subtype_result;
-    bool ret=byte_offset_to_memory_offset(
-      at.subtype(),
-      offset%elem_size_bytes,
-      subtype_result);
+    bool ret = byte_offset_to_memory_offset(
+      at.subtype(), offset % (*elem_size_bytes), subtype_result);
+
     result=subtype_result+(elem_size_leaves*this_idx);
     return ret;
   }
@@ -246,7 +255,10 @@ bool interpretert::memory_offset_to_byte_offset(
         mp_integer subtype_result;
         bool ret=memory_offset_to_byte_offset(
           comp.type(), cell_offset, subtype_result);
-        result = member_offset(st, comp.get_name(), ns) + subtype_result;
+        const auto member_offset_result =
+          member_offset(st, comp.get_name(), ns);
+        CHECK_RETURN(member_offset_result.has_value());
+        result = member_offset_result.value() + subtype_result;
         return ret;
       }
       else
@@ -260,26 +272,31 @@ bool interpretert::memory_offset_to_byte_offset(
   else if(source_type.id()==ID_array)
   {
     const auto &at=to_array_type(source_type);
+
     mp_vectort array_size_vec;
     evaluate(at.size(), array_size_vec);
     if(array_size_vec.size()!=1)
       return true;
-    mp_integer elem_size=pointer_offset_size(at.subtype(), ns);
-    if(elem_size==-1)
+
+    auto elem_size = pointer_offset_size(at.subtype(), ns);
+    if(!elem_size.has_value())
       return true;
+
     mp_integer elem_count;
     if(count_type_leaves(at.subtype(), elem_count))
       return true;
+
     mp_integer this_idx=full_cell_offset/elem_count;
     if(this_idx>=array_size_vec[0])
       return true;
+
     mp_integer subtype_result;
     bool ret=
       memory_offset_to_byte_offset(
         at.subtype(),
         full_cell_offset%elem_count,
         subtype_result);
-    result=subtype_result+(elem_size*this_idx);
+    result = subtype_result + ((*elem_size) * this_idx);
     return ret;
   }
   else
@@ -301,7 +318,7 @@ void interpretert::evaluate(
   {
     if(expr.type().id()==ID_struct)
     {
-      dest.reserve(integer2size_t(get_size(expr.type())));
+      dest.reserve(numeric_cast_v<std::size_t>(get_size(expr.type())));
       bool error=false;
 
       forall_operands(it, expr)
@@ -330,19 +347,31 @@ void interpretert::evaluate(
 
       dest.clear();
     }
-    else if((expr.type().id()==ID_pointer)
-         || (expr.type().id()==ID_address_of))
+    else if(expr.type().id() == ID_pointer)
     {
-      mp_integer i=0;
-      if(expr.has_operands() && expr.op0().id()==ID_address_of)
+      if(expr.has_operands())
       {
-        evaluate(expr.op0(), dest);
-        return;
+        const exprt &object = skip_typecast(to_unary_expr(expr).op());
+        if(object.id() == ID_address_of)
+        {
+          evaluate(object, dest);
+          return;
+        }
+        else if(const auto i = numeric_cast<mp_integer>(object))
+        {
+          dest.push_back(*i);
+          return;
+        }
       }
-      if(expr.has_operands() && !to_integer(expr.op0(), i))
+      // check if expression is constant null pointer without operands
+      else
       {
-        dest.push_back(i);
-        return;
+        const auto i = numeric_cast<mp_integer>(expr);
+        if(i && i->is_zero())
+        {
+          dest.push_back(*i);
+          return;
+        }
       }
     }
     else if(expr.type().id()==ID_floatbv)
@@ -362,7 +391,8 @@ void interpretert::evaluate(
     else if(expr.type().id()==ID_c_bool)
     {
       const irep_idt &value=to_constant_expr(expr).get_value();
-      dest.push_back(binary2integer(id2string(value), false));
+      const auto width = to_c_bool_type(expr.type()).get_width();
+      dest.push_back(bvrep2integer(value, width, false));
       return;
     }
     else if(expr.type().id()==ID_bool)
@@ -381,10 +411,9 @@ void interpretert::evaluate(
     }
     else
     {
-      mp_integer i;
-      if(!to_integer(expr, i))
+      if(const auto i = numeric_cast<mp_integer>(expr))
       {
-        dest.push_back(i);
+        dest.push_back(*i);
         return;
       }
     }
@@ -392,7 +421,7 @@ void interpretert::evaluate(
   else if(expr.id()==ID_struct)
   {
     if(!unbounded_size(expr.type()))
-      dest.reserve(integer2size_t(get_size(expr.type())));
+      dest.reserve(numeric_cast_v<std::size_t>(get_size(expr.type())));
 
     bool error=false;
 
@@ -441,7 +470,8 @@ void interpretert::evaluate(
       num_dynamic_objects++;
       buffer << "interpreter::dynamic_object" << num_dynamic_objects;
       irep_idt id(buffer.str().c_str());
-      mp_integer address=build_memory_map(id, expr.type().subtype());
+      mp_integer address =
+        build_memory_map(symbol_exprt{id, expr.type().subtype()});
       // TODO: check array of type
       // TODO: interpret zero-initialization argument
       dest.push_back(address);
@@ -502,100 +532,88 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_bitnot)
   {
-    if(expr.operands().size()!=1)
-      throw id2string(expr.id())+" expects one operand";
     mp_vectort tmp;
-    evaluate(expr.op0(), tmp);
+    evaluate(to_bitnot_expr(expr).op(), tmp);
     if(tmp.size()==1)
     {
-      dest.push_back(bitwise_neg(tmp.front()));
+      const auto width =
+        to_bitvector_type(to_bitnot_expr(expr).op().type()).get_width();
+      const mp_integer mask = power(2, width) - 1;
+      dest.push_back(bitwise_xor(tmp.front(), mask));
       return;
     }
   }
   else if(expr.id()==ID_shl)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_shl_expr(expr).op0(), tmp0);
+    evaluate(to_shl_expr(expr).op1(), tmp1);
     if(tmp0.size()==1 && tmp1.size()==1)
     {
-      mp_integer final=arith_left_shift(
+      mp_integer final = arith_left_shift(
         tmp0.front(),
         tmp1.front(),
-        to_bitvector_type(expr.op0().type()).get_width());
+        to_bitvector_type(to_shl_expr(expr).op0().type()).get_width());
       dest.push_back(final);
       return;
     }
   }
-  else if((expr.id()==ID_shr) || (expr.id()==ID_lshr))
+  else if(expr.id() == ID_shr || expr.id() == ID_lshr)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_shift_expr(expr).op0(), tmp0);
+    evaluate(to_shift_expr(expr).op1(), tmp1);
     if(tmp0.size()==1 && tmp1.size()==1)
     {
-      mp_integer final=logic_right_shift(
+      mp_integer final = logic_right_shift(
         tmp0.front(),
         tmp1.front(),
-        to_bitvector_type(expr.op0().type()).get_width());
+        to_bitvector_type(to_shift_expr(expr).op0().type()).get_width());
       dest.push_back(final);
       return;
     }
   }
   else if(expr.id()==ID_ashr)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_shift_expr(expr).op0(), tmp0);
+    evaluate(to_shift_expr(expr).op1(), tmp1);
     if(tmp0.size()==1 && tmp1.size()==1)
     {
-      mp_integer final=arith_right_shift(
+      mp_integer final = arith_right_shift(
         tmp0.front(),
         tmp1.front(),
-        to_bitvector_type(expr.op0().type()).get_width());
+        to_bitvector_type(to_shift_expr(expr).op0().type()).get_width());
       dest.push_back(final);
       return;
     }
   }
   else if(expr.id()==ID_ror)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_binary_expr(expr).op0(), tmp0);
+    evaluate(to_binary_expr(expr).op1(), tmp1);
     if(tmp0.size()==1 && tmp1.size()==1)
     {
-      mp_integer final=rotate_right(tmp0.front(),
+      mp_integer final = rotate_right(
+        tmp0.front(),
         tmp1.front(),
-        to_bitvector_type(expr.op0().type()).get_width());
+        to_bitvector_type(to_binary_expr(expr).op0().type()).get_width());
       dest.push_back(final);
       return;
     }
   }
   else if(expr.id()==ID_rol)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_binary_expr(expr).op0(), tmp0);
+    evaluate(to_binary_expr(expr).op1(), tmp1);
     if(tmp0.size()==1 && tmp1.size()==1)
     {
-      mp_integer final=rotate_left(tmp0.front(),
+      mp_integer final = rotate_left(
+        tmp0.front(),
         tmp1.front(),
-        to_bitvector_type(expr.op0().type()).get_width());
+        to_bitvector_type(to_binary_expr(expr).op0().type()).get_width());
       dest.push_back(final);
       return;
     }
@@ -607,12 +625,9 @@ void interpretert::evaluate(
           expr.id()==ID_lt ||
           expr.id()==ID_gt)
   {
-    if(expr.operands().size()!=2)
-      throw id2string(expr.id())+" expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_binary_expr(expr).op0(), tmp0);
+    evaluate(to_binary_expr(expr).op1(), tmp1);
 
     if(tmp0.size()==1 && tmp1.size()==1)
     {
@@ -660,18 +675,17 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_if)
   {
-    if(expr.operands().size()!=3)
-      throw "if expects three operands";
+    const auto &if_expr = to_if_expr(expr);
 
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
+    evaluate(if_expr.cond(), tmp0);
 
     if(tmp0.size()==1)
     {
       if(tmp0.front()!=0)
-        evaluate(expr.op1(), tmp1);
+        evaluate(if_expr.true_case(), tmp1);
       else
-        evaluate(expr.op2(), tmp1);
+        evaluate(if_expr.false_case(), tmp1);
     }
 
     if(tmp1.size()==1)
@@ -704,11 +718,8 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_not)
   {
-    if(expr.operands().size()!=1)
-      throw id2string(expr.id())+" expects one operand";
-
     mp_vectort tmp;
-    evaluate(expr.op0(), tmp);
+    evaluate(to_not_expr(expr).op(), tmp);
 
     if(tmp.size()==1)
       dest.push_back(tmp.front()==0);
@@ -786,12 +797,9 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_minus)
   {
-    if(expr.operands().size()!=2)
-      throw "- expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_minus_expr(expr).op0(), tmp0);
+    evaluate(to_minus_expr(expr).op1(), tmp1);
 
     if(tmp0.size()==1 && tmp1.size()==1)
       dest.push_back(tmp0.front()-tmp1.front());
@@ -799,12 +807,9 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_div)
   {
-    if(expr.operands().size()!=2)
-      throw "/ expects two operands";
-
     mp_vectort tmp0, tmp1;
-    evaluate(expr.op0(), tmp0);
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_div_expr(expr).op0(), tmp0);
+    evaluate(to_div_expr(expr).op1(), tmp1);
 
     if(tmp0.size()==1 && tmp1.size()==1)
       dest.push_back(tmp0.front()/tmp1.front());
@@ -812,11 +817,8 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_unary_minus)
   {
-    if(expr.operands().size()!=1)
-      throw "unary- expects one operand";
-
     mp_vectort tmp0;
-    evaluate(expr.op0(), tmp0);
+    evaluate(to_unary_minus_expr(expr).op(), tmp0);
 
     if(tmp0.size()==1)
       dest.push_back(-tmp0.front());
@@ -824,20 +826,20 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_address_of)
   {
-    if(expr.operands().size()!=1)
-      throw "address_of expects one operand";
-
-    dest.push_back(evaluate_address(expr.op0()));
+    dest.push_back(evaluate_address(to_address_of_expr(expr).op()));
     return;
   }
   else if(expr.id()==ID_pointer_offset)
   {
     if(expr.operands().size()!=1)
       throw "pointer_offset expects one operand";
-    if(expr.op0().type().id()!=ID_pointer)
+
+    if(to_unary_expr(expr).op().type().id() != ID_pointer)
       throw "pointer_offset expects a pointer operand";
+
     mp_vectort result;
-    evaluate(expr.op0(), result);
+    evaluate(to_unary_expr(expr).op(), result);
+
     if(result.size()==1)
     {
       // Return the distance, in bytes, between the address returned
@@ -845,7 +847,7 @@ void interpretert::evaluate(
       mp_integer address=result[0];
       if(address>0 && address<memory.size())
       {
-        auto obj_type=get_type(address_to_identifier(address));
+        auto obj_type = address_to_symbol(address).type();
 
         mp_integer offset=address_to_offset(address);
         mp_integer byte_offset;
@@ -858,12 +860,13 @@ void interpretert::evaluate(
   else if(expr.id()==ID_byte_extract_little_endian ||
           expr.id()==ID_byte_extract_big_endian)
   {
-    if(expr.operands().size()!=2)
-      throw "byte_extract should have two operands";
+    const auto &byte_extract_expr = to_byte_extract_expr(expr);
+
     mp_vectort extract_offset;
-    evaluate(expr.op1(), extract_offset);
+    evaluate(byte_extract_expr.op1(), extract_offset);
     mp_vectort extract_from;
-    evaluate(expr.op0(), extract_from);
+    evaluate(byte_extract_expr.op0(), extract_from);
+
     if(extract_offset.size()==1 && extract_from.size()!=0)
     {
       const typet &target_type=expr.type();
@@ -871,9 +874,7 @@ void interpretert::evaluate(
       // If memory offset is found (which should normally be the case)
       // extract the corresponding data from the appropriate memory location
       if(!byte_offset_to_memory_offset(
-           expr.op0().type(),
-           extract_offset[0],
-           memory_offset))
+           byte_extract_expr.op0().type(), extract_offset[0], memory_offset))
       {
         mp_integer target_type_leaves;
         if(!count_type_leaves(target_type, target_type_leaves) &&
@@ -895,6 +896,7 @@ void interpretert::evaluate(
     mp_integer address=evaluate_address(
       expr,
       true); // fail quietly
+
     if(address.is_zero())
     {
       exprt simplified;
@@ -902,13 +904,13 @@ void interpretert::evaluate(
       // simplify.
       if(expr.id() == ID_index)
       {
-        exprt evaluated_index = expr;
+        index_exprt evaluated_index = to_index_expr(expr);
         mp_vectort idx;
-        evaluate(expr.op1(), idx);
+        evaluate(to_index_expr(expr).index(), idx);
         if(idx.size() == 1)
         {
-          evaluated_index.op1() =
-            constant_exprt(integer2string(idx[0]), expr.op1().type());
+          evaluated_index.index() =
+            from_integer(idx[0], to_index_expr(expr).index().type());
         }
         simplified = simplify_expr(evaluated_index, ns);
       }
@@ -932,7 +934,7 @@ void interpretert::evaluate(
     {
       if(!unbounded_size(expr.type()))
       {
-        dest.resize(integer2size_t(get_size(expr.type())));
+        dest.resize(numeric_cast_v<std::size_t>(get_size(expr.type())));
         read(address, dest);
       }
       else
@@ -944,11 +946,8 @@ void interpretert::evaluate(
   }
   else if(expr.id()==ID_typecast)
   {
-    if(expr.operands().size()!=1)
-      throw "typecast expects one operand";
-
     mp_vectort tmp;
-    evaluate(expr.op0(), tmp);
+    evaluate(to_typecast_expr(expr).op(), tmp);
 
     if(tmp.size()==1)
     {
@@ -961,16 +960,16 @@ void interpretert::evaluate(
       }
       else if(expr.type().id()==ID_signedbv)
       {
-        const std::string s=
-          integer2binary(value, to_signedbv_type(expr.type()).get_width());
-        dest.push_back(binary2integer(s, true));
+        const auto width = to_signedbv_type(expr.type()).get_width();
+        const auto s = integer2bvrep(value, width);
+        dest.push_back(bvrep2integer(s, width, true));
         return;
       }
       else if(expr.type().id()==ID_unsignedbv)
       {
-        const std::string s=
-          integer2binary(value, to_unsignedbv_type(expr.type()).get_width());
-        dest.push_back(binary2integer(s, false));
+        const auto width = to_unsignedbv_type(expr.type()).get_width();
+        const auto s = integer2bvrep(value, width);
+        dest.push_back(bvrep2integer(s, width, false));
         return;
       }
       else if((expr.type().id()==ID_bool) || (expr.type().id()==ID_c_bool))
@@ -999,9 +998,9 @@ void interpretert::evaluate(
 
     if(size.size()==1)
     {
-      std::size_t size_int=integer2size_t(size[0]);
+      std::size_t size_int = numeric_cast_v<std::size_t>(size[0]);
       for(std::size_t i=0; i<size_int; ++i)
-        evaluate(expr.op0(), dest);
+        evaluate(to_array_of_expr(expr).op(), dest);
       return;
     }
   }
@@ -1025,10 +1024,11 @@ void interpretert::evaluate(
       mp_integer need_size=(where_idx+1)*subtype_size;
 
       if(dest.size()<need_size)
-        dest.resize(integer2size_t(need_size), 0);
+        dest.resize(numeric_cast_v<std::size_t>(need_size), 0);
 
       for(std::size_t i=0; i<new_value.size(); ++i)
-        dest[integer2size_t((where_idx*subtype_size)+i)]=new_value[i];
+        dest[numeric_cast_v<std::size_t>((where_idx * subtype_size) + i)] =
+          new_value[i];
 
       return;
     }
@@ -1077,42 +1077,33 @@ mp_integer interpretert::evaluate_address(
         return m_it2->second;
     }
     mp_integer address=memory.size();
-    build_memory_map(to_symbol_expr(expr).get_identifier(), expr.type());
+    build_memory_map(to_symbol_expr(expr));
     return address;
   }
   else if(expr.id()==ID_dereference)
   {
-    if(expr.operands().size()!=1)
-      throw "dereference expects one operand";
-
     mp_vectort tmp0;
-    evaluate(expr.op0(), tmp0);
+    evaluate(to_dereference_expr(expr).op(), tmp0);
 
     if(tmp0.size()==1)
       return tmp0.front();
   }
   else if(expr.id()==ID_index)
   {
-    if(expr.operands().size()!=2)
-      throw "index expects two operands";
-
     mp_vectort tmp1;
-    evaluate(expr.op1(), tmp1);
+    evaluate(to_index_expr(expr).index(), tmp1);
 
     if(tmp1.size()==1)
     {
-      auto base=evaluate_address(expr.op0(), fail_quietly);
+      auto base = evaluate_address(to_index_expr(expr).array(), fail_quietly);
       if(!base.is_zero())
         return base+tmp1.front();
     }
   }
   else if(expr.id()==ID_member)
   {
-    if(expr.operands().size()!=1)
-      throw "member expects one operand";
-
-    const struct_typet &struct_type=
-      to_struct_type(ns.follow(expr.op0().type()));
+    const struct_typet &struct_type =
+      to_struct_type(ns.follow(to_member_expr(expr).compound().type()));
 
     const irep_idt &component_name=
       to_member_expr(expr).get_component_name();
@@ -1127,45 +1118,44 @@ mp_integer interpretert::evaluate_address(
       offset+=get_size(comp.type());
     }
 
-    auto base=evaluate_address(expr.op0(), fail_quietly);
+    auto base = evaluate_address(to_member_expr(expr).compound(), fail_quietly);
     if(!base.is_zero())
       return base+offset;
   }
   else if(expr.id()==ID_byte_extract_little_endian ||
           expr.id()==ID_byte_extract_big_endian)
   {
-    if(expr.operands().size()!=2)
-      throw "byte_extract should have two operands";
+    const auto &byte_extract_expr = to_byte_extract_expr(expr);
     mp_vectort extract_offset;
-    evaluate(expr.op1(), extract_offset);
+    evaluate(byte_extract_expr.op1(), extract_offset);
     mp_vectort extract_from;
-    evaluate(expr.op0(), extract_from);
+    evaluate(byte_extract_expr.op0(), extract_from);
     if(extract_offset.size()==1 && !extract_from.empty())
     {
       mp_integer memory_offset;
-      if(!byte_offset_to_memory_offset(expr.op0().type(),
-        extract_offset[0], memory_offset))
-        return evaluate_address(expr.op0(), fail_quietly)+memory_offset;
+      if(!byte_offset_to_memory_offset(
+           byte_extract_expr.op0().type(), extract_offset[0], memory_offset))
+        return evaluate_address(byte_extract_expr.op0(), fail_quietly) +
+               memory_offset;
     }
   }
   else if(expr.id()==ID_if)
   {
     mp_vectort result;
+    const auto &if_expr = to_if_expr(expr);
     if_exprt address_cond(
-      expr.op0(),
-      address_of_exprt(expr.op1()),
-      address_of_exprt(expr.op2()));
+      if_expr.cond(),
+      address_of_exprt(if_expr.true_case()),
+      address_of_exprt(if_expr.false_case()));
     evaluate(address_cond, result);
     if(result.size()==1)
       return result[0];
   }
   else if(expr.id()==ID_typecast)
   {
-    if(expr.operands().size()!=1)
-      throw "typecast expects one operand";
-
-    return evaluate_address(expr.op0(), fail_quietly);
+    return evaluate_address(to_typecast_expr(expr).op(), fail_quietly);
   }
+
   if(!fail_quietly)
   {
     error() << "!! failed to evaluate address: "

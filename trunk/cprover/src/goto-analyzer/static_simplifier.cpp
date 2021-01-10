@@ -25,7 +25,7 @@ Author: Martin Brain, martin.brain@cs.ox.ac.uk
 /// \param options: the parsed user options
 /// \param message_handler: the system message handler
 /// \param out: output stream for the simplified program
-/// \return: false on success with the domain printed to out
+/// \return false on success with the domain printed to out
 bool static_simplifier(
   goto_modelt &goto_model,
   const ai_baset &ai,
@@ -65,37 +65,49 @@ bool static_simplifier(
 
       if(i_it->is_assert())
       {
-        bool unchanged =
-          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
+        exprt cond = i_it->get_condition();
+
+        bool unchanged = ai.abstract_state_before(i_it)->ai_simplify(cond, ns);
 
         if(unchanged)
           unmodified.asserts++;
         else
+        {
           simplified.asserts++;
+          i_it->set_condition(cond);
+        }
       }
       else if(i_it->is_assume())
       {
-        bool unchanged =
-          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
+        exprt cond = i_it->get_condition();
+
+        bool unchanged = ai.abstract_state_before(i_it)->ai_simplify(cond, ns);
 
         if(unchanged)
           unmodified.assumes++;
         else
+        {
           simplified.assumes++;
+          i_it->set_condition(cond);
+        }
       }
       else if(i_it->is_goto())
       {
-        bool unchanged =
-          ai.abstract_state_before(i_it)->ai_simplify(i_it->guard, ns);
+        exprt cond = i_it->get_condition();
+
+        bool unchanged = ai.abstract_state_before(i_it)->ai_simplify(cond, ns);
 
         if(unchanged)
           unmodified.gotos++;
         else
+        {
           simplified.gotos++;
+          i_it->set_condition(cond);
+        }
       }
       else if(i_it->is_assign())
       {
-        code_assignt &assign=to_code_assign(i_it->code);
+        auto assign = i_it->get_assign();
 
         // Simplification needs to be aware of which side of the
         // expression it is handling as:
@@ -111,11 +123,14 @@ bool static_simplifier(
         if(unchanged_lhs && unchanged_rhs)
           unmodified.assigns++;
         else
+        {
           simplified.assigns++;
+          i_it->set_assign(assign);
+        }
       }
       else if(i_it->is_function_call())
       {
-        code_function_callt &fcall=to_code_function_call(i_it->code);
+        auto fcall = i_it->get_function_call();
 
         bool unchanged =
           ai.abstract_state_before(i_it)->ai_simplify(fcall.function(), ns);
@@ -128,7 +143,10 @@ bool static_simplifier(
         if(unchanged)
           unmodified.function_calls++;
         else
+        {
           simplified.function_calls++;
+          i_it->set_function_call(fcall);
+        }
       }
     }
   }

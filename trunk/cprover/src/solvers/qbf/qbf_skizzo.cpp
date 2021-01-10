@@ -8,11 +8,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "qbf_skizzo.h"
 
-#include <cassert>
 #include <cstdlib>
 #include <fstream>
 
-qbf_skizzot::qbf_skizzot()
+#include <util/invariant.h>
+
+qbf_skizzot::qbf_skizzot(message_handlert &message_handler)
+  : qdimacs_cnft(message_handler)
 {
   // skizzo crashes on broken lines
   break_lines=false;
@@ -24,8 +26,7 @@ qbf_skizzot::~qbf_skizzot()
 
 tvt qbf_skizzot::l_get(literalt) const
 {
-  assert(false);
-  return tvt(false);
+  UNREACHABLE;
 }
 
 const std::string qbf_skizzot::solver_text()
@@ -40,10 +41,8 @@ propt::resultt qbf_skizzot::prop_solve()
     return resultt::P_SATISFIABLE;
 
   {
-    messaget::status() <<
-      "Skizzo: " <<
-      no_variables() << " variables, " <<
-      no_clauses() << " clauses" << eom;
+    log.status() << "Skizzo: " << no_variables() << " variables, "
+                 << no_clauses() << " clauses" << messaget::eom;
   }
 
   std::string qbf_tmp_file="sKizzo.qdimacs";
@@ -56,7 +55,7 @@ propt::resultt qbf_skizzot::prop_solve()
     write_qdimacs_cnf(out);
   }
 
-  std::string options="";
+  std::string options;
 
   // solve it
   int res=system((
@@ -76,7 +75,7 @@ propt::resultt qbf_skizzot::prop_solve()
 
       std::getline(in, line);
 
-      if(line!="" && line[line.size()-1]=='\r')
+      if(!line.empty() && line[line.size() - 1] == '\r')
         line.resize(line.size()-1);
 
       if(line=="The instance evaluates to TRUE.")
@@ -95,19 +94,19 @@ propt::resultt qbf_skizzot::prop_solve()
 
     if(!result_found)
     {
-      messaget::error() << "Skizzo failed: unknown result" << eom;
+      log.error() << "Skizzo failed: unknown result" << messaget::eom;
       return resultt::P_ERROR;
     }
   }
 
   if(result)
   {
-    messaget::status() << "Skizzo: TRUE" << eom;
+    log.status() << "Skizzo: TRUE" << messaget::eom;
     return resultt::P_SATISFIABLE;
   }
   else
   {
-    messaget::status() << "Skizzo: FALSE" << eom;
+    log.status() << "Skizzo: FALSE" << messaget::eom;
     return resultt::P_UNSATISFIABLE;
   }
 

@@ -5,12 +5,20 @@ BUILD_ENV = AUTO
 ifeq ($(BUILD_ENV),MSVC)
   #CXXFLAGS += /Wall /WX
 else
-  CXXFLAGS += -Wall -pedantic -Werror -Wno-deprecated-declarations
+  CXXFLAGS += -Wall -pedantic -Werror -Wno-deprecated-declarations -Wswitch-enum
+endif
+
+ifeq ($(CPROVER_WITH_PROFILING),1)
+  CXXFLAGS += -fprofile-arcs -ftest-coverage
+  LINKFLAGS += -lgcov -fprofile-arcs
 endif
 
 # Select optimisation or debug info
 #CXXFLAGS += -O2 -DNDEBUG
 #CXXFLAGS += -O0 -g
+
+# With GCC this adds function names in stack backtraces
+#LINKFLAGS = -rdynamic
 
 # If GLPK is available; this is used by goto-instrument and musketeer.
 #LIB_GLPK = -lglpk
@@ -25,10 +33,6 @@ endif
 #IPASIR = ../../ipasir
 #GLUCOSE = ../../glucose-syrup
 #CADICAL = ../../cadical
-
-# Extra library for SAT solver. This should link to the archive file to be used
-# when linking against an IPASIR solver.
-LIBSOLVER =
 
 # select default solver to be minisat2 if no other is specified
 ifeq ($(BOOLEFORCE)$(CHAFF)$(GLUCOSE)$(IPASIR)$(LINGELING)$(MINISAT)$(MINISAT2)$(PICOSAT)$(CADICAL),)
@@ -72,4 +76,7 @@ endif
 OSX_IDENTITY="Developer ID Application: Daniel Kroening"
 
 # Detailed version information
-CBMC_VERSION = 5.10
+CBMC_VERSION = 5.12
+
+# Use the CUDD library for BDDs, can be installed using `make -C src cudd-download`
+# CUDD = ../../cudd-3.0.0

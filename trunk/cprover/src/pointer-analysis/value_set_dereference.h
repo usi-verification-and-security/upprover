@@ -19,37 +19,29 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "dereference_callback.h"
 
 class symbol_tablet;
-class guardt;
 class optionst;
-class modet;
 class symbolt;
 
-/*! \brief TO_BE_DOCUMENTED
-*/
-class value_set_dereferencet
+/// Wrapper for a function dereferencing pointer expressions using a value set.
+class value_set_dereferencet final
 {
 public:
-  /*! \brief Constructor
-   * \param _ns Namespace
-   * \param _new_symbol_table A symbol_table to store new symbols in
-   * \param _options Options, in particular whether pointer checks are
-            to be performed
-   * \param _dereference_callback Callback object for error reporting
-   * \param _language_mode Mode for any new symbols created to represent
-            a dereference failure
-   * \param _exclude_null_derefs Ignore value-set entries that indicate a given
-            dereference may follow a null pointer
-  */
+  /// \param _ns: Namespace
+  /// \param _new_symbol_table: A symbol_table to store new symbols in
+  /// \param _dereference_callback: Callback object for getting the set of
+  ///   objects a given pointer may point to.
+  /// \param _language_mode: Mode for any new symbols created to represent a
+  ///   dereference failure
+  /// \param _exclude_null_derefs: Ignore value-set entries that indicate a
+  //    given dereference may follow a null pointer
   value_set_dereferencet(
     const namespacet &_ns,
     symbol_tablet &_new_symbol_table,
-    const optionst &_options,
     dereference_callbackt &_dereference_callback,
     const irep_idt _language_mode,
     bool _exclude_null_derefs):
     ns(_ns),
     new_symbol_table(_new_symbol_table),
-    options(_options),
     dereference_callback(_dereference_callback),
     language_mode(_language_mode),
     exclude_null_derefs(_exclude_null_derefs)
@@ -57,33 +49,55 @@ public:
 
   virtual ~value_set_dereferencet() { }
 
-  enum class modet { READ, WRITE };
+  /// Dereference the given pointer-expression. Any errors are
+  /// reported to the callback method given in the constructor.
+  /// \param pointer: A pointer-typed expression, to be dereferenced.
+  exprt dereference(const exprt &pointer);
 
-  /*!
-   * The method 'dereference' dereferences the
-   * given pointer-expression. Any errors are
-   * reported to the callback method given in the
-   * constructor.
-   *
-   * \param pointer A pointer-typed expression, to
-            be dereferenced.
-   * \param guard A guard, which is assumed to hold when
-            dereferencing.
-   * \param mode Indicates whether the dereferencing
-            is a load or store.
-  */
+  /// Return value for `build_reference_to`; see that method for documentation.
+  class valuet
+  {
+  public:
+    exprt value;
+    exprt pointer;
+    exprt pointer_guard;
 
-  virtual exprt dereference(
+    valuet()
+      : value{nil_exprt{}}, pointer{nil_exprt{}}, pointer_guard{false_exprt{}}
+    {
+    }
+  };
+
+  static bool should_ignore_value(
+    const exprt &what,
+    bool exclude_null_derefs,
+    const irep_idt &language_mode);
+
+  static valuet build_reference_to(
+    const exprt &what,
     const exprt &pointer,
-    const guardt &guard,
-    const modet mode);
+    const namespacet &ns);
 
-  typedef std::unordered_set<exprt, irep_hash> expr_sett;
+  static bool dereference_type_compare(
+    const typet &object_type,
+    const typet &dereference_type,
+    const namespacet &ns);
+
+  static bool memory_model(
+    exprt &value,
+    const typet &type,
+    const exprt &offset,
+    const namespacet &ns);
+
+  static bool memory_model_bytes(
+    exprt &value,
+    const typet &type,
+    const exprt &offset,
+    const namespacet &ns);
 
 private:
   const namespacet &ns;
   symbol_tablet &new_symbol_table;
-  const optionst &options;
   dereference_callbackt &dereference_callback;
   /// language_mode: ID_java, ID_C or another language identifier
   /// if we know the source language in use, irep_idt() otherwise.
@@ -91,83 +105,6 @@ private:
   /// Flag indicating whether `value_set_dereferencet::dereference` should
   /// disregard an apparent attempt to dereference NULL
   const bool exclude_null_derefs;
-  static unsigned invalid_counter;
-
-  bool dereference_type_compare(
-    const typet &object_type,
-    const typet &dereference_type) const;
-
-  void offset_sum(
-    exprt &dest,
-    const exprt &offset) const;
-
-  /// Return value for `build_reference_to`; see that method for documentation.
-  class valuet
-  {
-  public:
-    exprt value;
-    exprt pointer_guard;
-    bool ignore;
-
-    valuet():value(nil_exprt()), pointer_guard(false_exprt()), ignore(false)
-    {
-    }
-  };
-
-  /// Get a guard and expression to access `what` under `guard`.
-  /// \param what: value set entry to convert to an expression: either
-  ///   ID_unknown, ID_invalid, or an object_descriptor_exprt giving a referred
-  ///   object and offset.
-  /// \param mode: whether the pointer is being read or written; used to create
-  ///   pointer validity checks if need be
-  /// \param pointer: pointer expression that may point to `what`
-  /// \param guard: guard under which the pointer is dereferenced
-  /// \return
-  ///    * If we were explicitly instructed to ignore `what` as a possible
-  ///        pointer target: a `valuet` with `ignore` = true, and `value` and
-  ///        `pointer_guard` set to nil.
-  ///    * If we could build an expression corresponding to `what`:
-  ///        A `valuet` with non-nil `value`, and `pointer_guard` set to an
-  ///        appropriate check to determine if `pointer_expr` really points to
-  ///        `what` (for example, we might return
-  ///        `{.value = global, .pointer_guard = (pointer_expr == &global)}`
-  ///    * Otherwise, if we couldn't build an expression (e.g. for `what` ==
-  ///        ID_unknown), a `valuet` with nil `value` and `ignore` == false.
-  valuet build_reference_to(
-    const exprt &what,
-    const modet mode,
-    const exprt &pointer,
-    const guardt &guard);
-
-  bool get_value_guard(
-    const exprt &symbol,
-    const exprt &premise,
-    exprt &value);
-
-  static const exprt &get_symbol(const exprt &object);
-
-  void bounds_check(const index_exprt &expr, const guardt &guard);
-  void valid_check(const exprt &expr, const guardt &guard, const modet mode);
-
-  void invalid_pointer(const exprt &expr, const guardt &guard);
-
-  bool memory_model(
-    exprt &value,
-    const typet &type,
-    const guardt &guard,
-    const exprt &offset);
-
-  bool memory_model_conversion(
-    exprt &value,
-    const typet &type,
-    const guardt &guard,
-    const exprt &offset);
-
-  bool memory_model_bytes(
-    exprt &value,
-    const typet &type,
-    const guardt &guard,
-    const exprt &offset);
 };
 
 #endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_DEREFERENCE_H

@@ -8,8 +8,9 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include "satcheck_lingeling.h"
 
-#include <cassert>
+#include <algorithm>
 
+#include <util/invariant.h>
 #include <util/threeval.h>
 
 extern "C"
@@ -62,16 +63,16 @@ void satcheck_lingelingt::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_lingelingt::prop_solve()
+propt::resultt satcheck_lingelingt::do_prop_solve()
 {
-  assert(status!=ERROR);
+  PRECONDITION(status != ERROR);
 
   // We start counting at 1, thus there is one variable fewer.
   {
     std::string msg=
       std::to_string(no_variables()-1)+" variables, "+
       std::to_string(clause_counter)+" clauses";
-    messaget::status() << msg << messaget::eom;
+    log.statistics() << msg << messaget::eom;
   }
 
   std::string msg;
@@ -80,18 +81,20 @@ propt::resultt satcheck_lingelingt::prop_solve()
     lglassume(solver, it->dimacs());
 
   const int res=lglsat(solver);
+  CHECK_RETURN(res == 10 || res == 20);
+
   if(res==10)
   {
     msg="SAT checker: instance is SATISFIABLE";
-    messaget::status() << msg << messaget::eom;
+    log.status() << msg << messaget::eom;
     status=SAT;
     return P_SATISFIABLE;
   }
   else
   {
-    assert(res==20);
+    INVARIANT(res == 20, "result value is either 10 or 20");
     msg="SAT checker: instance is UNSATISFIABLE";
-    messaget::status() << msg << messaget::eom;
+    log.status() << msg << messaget::eom;
   }
 
   status=UNSAT;
@@ -100,7 +103,7 @@ propt::resultt satcheck_lingelingt::prop_solve()
 
 void satcheck_lingelingt::set_assignment(literalt a, bool value)
 {
-  assert(false);
+  UNREACHABLE;
 }
 
 satcheck_lingelingt::satcheck_lingelingt() :
@@ -118,8 +121,12 @@ void satcheck_lingelingt::set_assumptions(const bvt &bv)
 {
   assumptions=bv;
 
-  forall_literals(it, assumptions)
-    assert(!it->is_constant());
+  INVARIANT(
+    std::all_of(
+      assumptions.begin(),
+      assumptions.end(),
+      [](const literalt &l) { return !l.is_constant(); }),
+    "assumptions should be non-constant");
 }
 
 void satcheck_lingelingt::set_frozen(literalt a)
@@ -134,6 +141,6 @@ void satcheck_lingelingt::set_frozen(literalt a)
 /// assertion failure in lingeling.
 bool satcheck_lingelingt::is_in_conflict(literalt a) const
 {
-  assert(!a.is_constant());
+  PRECONDITION(!a.is_constant());
   return lglfailed(solver, a.dimacs())!=0;
 }

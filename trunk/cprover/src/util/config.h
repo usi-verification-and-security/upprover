@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "ieee_float.h"
 #include "irep.h"
+#include "optional.h"
 
 class cmdlinet;
 class symbol_tablet;
@@ -43,7 +44,7 @@ public:
     bool char_is_unsigned, wchar_t_is_unsigned;
     bool for_has_scope;
     bool ts_18661_3_Floatn_types; // ISO/IEC TS 18661-3:2015
-    bool Float128_type;
+    bool gcc__float128_type;      // __float128, a gcc extension since 4.3/4.5
     bool single_precision_constant;
     enum class c_standardt { C89, C99, C11 } c_standard;
     static c_standardt default_c_standard();
@@ -92,6 +93,7 @@ public:
     void set_arch_spec_arm(const irep_idt &subarch);
     void set_arch_spec_alpha();
     void set_arch_spec_mips(const irep_idt &subarch);
+    void set_arch_spec_riscv64();
     void set_arch_spec_s390();
     void set_arch_spec_s390x();
     void set_arch_spec_sparc(const irep_idt &subarch);
@@ -168,7 +170,7 @@ public:
   } bv_encoding;
 
   // this is the function to start executing
-  std::string main;
+  optionalt<std::string> main;
 
   void set_arch(const irep_idt &);
 

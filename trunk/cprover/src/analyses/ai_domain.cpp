@@ -19,7 +19,7 @@ jsont ai_domain_baset::output_json(const ai_baset &ai, const namespacet &ns)
   std::ostringstream out;
   output(out, ai, ns);
   json_stringt json(out.str());
-  return json;
+  return std::move(json);
 }
 
 xmlt ai_domain_baset::output_xml(const ai_baset &ai, const namespacet &ns) const
@@ -35,8 +35,8 @@ xmlt ai_domain_baset::output_xml(const ai_baset &ai, const namespacet &ns) const
 /// an assignment. This for example won't simplify symbols to their values, but
 /// does simplify indices in arrays, members of structs and dereferencing of
 /// pointers
-/// \param condition: the expression to simplify
-/// \param ns: the namespace
+/// \param condition: The expression to simplify
+/// \param ns: The namespace
 /// \return True if condition did not change. False otherwise. condition will be
 ///   updated with the simplified condition if it has worked
 bool ai_domain_baset::ai_simplify_lhs(exprt &condition, const namespacet &ns)
@@ -48,7 +48,7 @@ bool ai_domain_baset::ai_simplify_lhs(exprt &condition, const namespacet &ns)
     index_exprt ie = to_index_expr(condition);
     bool no_simplification = ai_simplify(ie.index(), ns);
     if(!no_simplification)
-      condition = simplify_expr(ie, ns);
+      condition = simplify_expr(std::move(ie), ns);
 
     return no_simplification;
   }
@@ -57,7 +57,7 @@ bool ai_domain_baset::ai_simplify_lhs(exprt &condition, const namespacet &ns)
     dereference_exprt de = to_dereference_expr(condition);
     bool no_simplification = ai_simplify(de.pointer(), ns);
     if(!no_simplification)
-      condition = simplify_expr(de, ns); // So *(&x) -> x
+      condition = simplify_expr(std::move(de), ns); // So *(&x) -> x
 
     return no_simplification;
   }
@@ -70,7 +70,7 @@ bool ai_domain_baset::ai_simplify_lhs(exprt &condition, const namespacet &ns)
     // must also be addressable
     bool no_simplification = ai_simplify_lhs(me.compound(), ns);
     if(!no_simplification)
-      condition = simplify_expr(me, ns);
+      condition = simplify_expr(std::move(me), ns);
 
     return no_simplification;
   }

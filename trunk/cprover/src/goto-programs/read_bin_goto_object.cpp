@@ -19,11 +19,12 @@ Date: June 2006
 #include <util/irep_serialization.h>
 
 #include "goto_functions.h"
+#include "write_goto_binary.h"
 
-/// read goto binary format v4
+/// read goto binary format
 /// \par parameters: input stream, symbol_table, functions
 /// \return true on error, false otherwise
-static bool read_bin_goto_object_v4(
+static bool read_bin_goto_object(
   std::istream &in,
   symbol_tablet &symbol_table,
   goto_functionst &functions,
@@ -35,9 +36,10 @@ static bool read_bin_goto_object_v4(
   {
     symbolt sym;
 
-    irepconverter.reference_convert(in, sym.type);
-    irepconverter.reference_convert(in, sym.value);
-    irepconverter.reference_convert(in, sym.location);
+    sym.type = static_cast<const typet &>(irepconverter.reference_convert(in));
+    sym.value = static_cast<const exprt &>(irepconverter.reference_convert(in));
+    sym.location = static_cast<const source_locationt &>(
+      irepconverter.reference_convert(in));
 
     sym.name = irepconverter.read_string_ref(in);
     sym.module = irepconverter.read_string_ref(in);
@@ -70,10 +72,12 @@ static bool read_bin_goto_object_v4(
 
     if(!sym.is_type && sym.type.id()==ID_code)
     {
-      // makes sure there is an empty function
-      // for every function symbol and fixes
-      // the function types.
-      functions.function_map[sym.name].type=to_code_type(sym.type);
+      // makes sure there is an empty function for every function symbol
+      auto entry = functions.function_map.emplace(sym.name, goto_functiont());
+
+      const code_typet &code_type = to_code_type(sym.type);
+      entry.first->second.type = code_type;
+      entry.first->second.set_parameter_identifiers(code_type);
     }
 
     symbol_table.add(sym);
@@ -81,7 +85,7 @@ static bool read_bin_goto_object_v4(
 
   count=irepconverter.read_gb_word(in); // # of functions
 
-  for(std::size_t i=0; i<count; i++)
+  for(std::size_t fct_index = 0; fct_index < count; ++fct_index)
   {
     irep_idt fname=irepconverter.read_gb_string(in);
     goto_functionst::goto_functiont &f = functions.function_map[fname];
@@ -94,19 +98,19 @@ static bool read_bin_goto_object_v4(
     bool hidden=false;
 
     std::size_t ins_count = irepconverter.read_gb_word(in); // # of instructions
-    for(std::size_t i=0; i<ins_count; i++)
+    for(std::size_t ins_index = 0; ins_index < ins_count; ++ins_index)
     {
       goto_programt::targett itarget = f.body.add_instruction();
       goto_programt::instructiont &instruction=*itarget;
 
-      irepconverter.reference_convert(in, instruction.code);
-      instruction.function = irepconverter.read_string_ref(in);
-      irepconverter.reference_convert(in, instruction.source_location);
+      instruction.code =
+        static_cast<const codet &>(irepconverter.reference_convert(in));
+      instruction.source_location = static_cast<const source_locationt &>(
+        irepconverter.reference_convert(in));
       instruction.type = (goto_program_instruction_typet)
                               irepconverter.read_gb_word(in);
-      instruction.guard.make_nil();
-      irepconverter.reference_convert(in, instruction.guard);
-      irepconverter.read_string_ref(in); // former event
+      instruction.guard =
+        static_cast<const exprt &>(irepconverter.reference_convert(in));
       instruction.target_number = irepconverter.read_gb_word(in);
       if(instruction.is_target() &&
          rev_target_map.insert(
@@ -125,7 +129,7 @@ static bool read_bin_goto_object_v4(
       {
         irep_idt label=irepconverter.read_string_ref(in);
         instruction.labels.push_back(label);
-        if(label=="__CPROVER_HIDE")
+        if(label == CPROVER_PREFIX "HIDE")
           hidden=true;
         // The above info is normally in the type of the goto_functiont object,
         // which should likely be stored in the binary.
@@ -145,7 +149,10 @@ static bool read_bin_goto_object_v4(
       {
         unsigned n=*nit;
         rev_target_mapt::const_iterator entry=rev_target_map.find(n);
-        assert(entry!=rev_target_map.end());
+        INVARIANT(
+          entry != rev_target_map.end(),
+          "something from the target map should also be in the reverse target "
+          "map");
         ins->targets.push_back(entry->second);
       }
     }
@@ -153,7 +160,15 @@ static bool read_bin_goto_object_v4(
     f.body.update();
 
     if(hidden)
+    {
       f.make_hidden();
+      // can be removed with the next goto-binary version update as the
+      // information is guaranteed to be stored in the symbol table
+#if GOTO_BINARY_VERSION > 5
+#error This code should be removed
+#endif
+      symbol_table.get_writeable_ref(fname).set_hidden();
+    }
   }
 
   functions.compute_location_numbers();
@@ -192,9 +207,9 @@ bool read_bin_goto_object(
       }
       else if(hdr[0]==0x7f && hdr[1]=='E' && hdr[2]=='L' && hdr[3]=='F')
       {
-        if(filename!="")
-          message.error() << "Sorry, but I can't read ELF binary `"
-                          << filename << "'" << messaget::eom;
+        if(!filename.empty())
+          message.error() << "Sorry, but I can't read ELF binary '" << filename
+                          << "'" << messaget::eom;
         else
           message.error() << "Sorry, but I can't read ELF binaries"
                           << messaget::eom;
@@ -203,7 +218,7 @@ bool read_bin_goto_object(
       }
       else
       {
-        message.error() << "`" << filename << "' is not a goto-binary"
+        message.error() << "'" << filename << "' is not a goto-binary"
                         << messaget::eom;
         return true;
       }
@@ -217,22 +232,19 @@ bool read_bin_goto_object(
   {
     std::size_t version=irepconverter.read_gb_word(in);
 
-    switch(version)
+    if(version < GOTO_BINARY_VERSION)
     {
-    case 1:
-    case 2:
-    case 3:
       message.error() <<
           "The input was compiled with an old version of "
           "goto-cc; please recompile" << messaget::eom;
       return true;
-
-    case 4:
-      return read_bin_goto_object_v4(
-        in, symbol_table, functions, irepconverter);
-      break;
-
-    default:
+    }
+    else if(version == GOTO_BINARY_VERSION)
+    {
+      return read_bin_goto_object(in, symbol_table, functions, irepconverter);
+    }
+    else
+    {
       message.error() <<
           "The input was compiled with an unsupported version of "
           "goto-cc; please recompile" << messaget::eom;

@@ -1,8 +1,8 @@
 /*******************************************************************\
 
- Module: GOTO Program Utilities
+Module: GOTO Program Utilities
 
- Author: Diffblue Ltd.
+Author: Diffblue Ltd.
 
 \*******************************************************************/
 
@@ -10,27 +10,12 @@
 
 #include "resolve_inherited_component.h"
 
-/// See the operator() method comment.
-/// \param symbol_table: The symbol table to resolve the component against
-resolve_inherited_componentt::resolve_inherited_componentt(
-  const symbol_tablet &symbol_table):
-    symbol_table(symbol_table)
-{
-  class_hierarchy(symbol_table);
-}
-
 /// See the operator() method comment
 /// \param symbol_table: The symbol table to resolve the component against
-/// \param class_hierarchy: A prebuilt class_hierachy based on the symbol_table
-///
 resolve_inherited_componentt::resolve_inherited_componentt(
-  const symbol_tablet &symbol_table, const class_hierarchyt &class_hierarchy):
-    class_hierarchy(class_hierarchy),
-    symbol_table(symbol_table)
+  const symbol_tablet &symbol_table)
+  : symbol_table(symbol_table)
 {
-  // We require the class_hierarchy to be already populated if we are being
-  // supplied it.
-  PRECONDITION(!class_hierarchy.class_map.empty());
 }
 
 /// Given a class and a component, identify the concrete field or method it is
@@ -43,11 +28,11 @@ resolve_inherited_componentt::resolve_inherited_componentt(
 /// \param include_interfaces: If true, consider inheritance from interfaces
 ///   (parent types other than the first listed)
 /// \return The concrete component that has been resolved
-resolve_inherited_componentt::inherited_componentt
-  resolve_inherited_componentt::operator()(
-    const irep_idt &class_id,
-    const irep_idt &component_name,
-    bool include_interfaces)
+optionalt<resolve_inherited_componentt::inherited_componentt>
+resolve_inherited_componentt::operator()(
+  const irep_idt &class_id,
+  const irep_idt &component_name,
+  bool include_interfaces)
 {
   PRECONDITION(!class_id.empty());
   PRECONDITION(!component_name.empty());
@@ -67,22 +52,31 @@ resolve_inherited_componentt::inherited_componentt
       return inherited_componentt(current_class, component_name);
     }
 
-    const class_hierarchyt::idst &parents=
-      class_hierarchy.class_map[current_class].parents;
+    const auto current_class_symbol_it =
+      symbol_table.symbols.find(current_class);
 
-    if(include_interfaces)
+    if(current_class_symbol_it != symbol_table.symbols.end())
     {
-      classes_to_visit.insert(
-        classes_to_visit.end(), parents.begin(), parents.end());
-    }
-    else
-    {
-      if(!parents.empty())
-        classes_to_visit.push_back(parents.front());
+      const auto parents =
+        make_range(to_struct_type(current_class_symbol_it->second.type).bases())
+          .map([](const struct_typet::baset &base) {
+            return base.type().get_identifier();
+          });
+
+      if(include_interfaces)
+      {
+        classes_to_visit.insert(
+          classes_to_visit.end(), parents.begin(), parents.end());
+      }
+      else
+      {
+        if(!parents.empty())
+          classes_to_visit.push_back(*parents.begin());
+      }
     }
   }
 
-  return inherited_componentt();
+  return {};
 }
 
 /// Build a component name as found in a GOTO symbol table equivalent to the
@@ -107,11 +101,4 @@ irep_idt resolve_inherited_componentt::inherited_componentt::
 {
   return resolve_inherited_componentt::build_full_component_identifier(
     class_identifier, component_identifier);
-}
-
-/// Use to check if this inherited_componentt has been fully constructed.
-/// \return True if this represents a real concrete component
-bool resolve_inherited_componentt::inherited_componentt::is_valid() const
-{
-  return !class_identifier.empty();
 }

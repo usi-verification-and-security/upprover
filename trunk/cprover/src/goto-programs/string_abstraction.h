@@ -19,6 +19,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_model.h"
 
+/// Replace all uses of `char *` by a struct that carries that string, and also
+/// the underlying allocation and the C string length.
+/// This will become useful (with some modifications) for supporting strings in
+/// the C frontend, as the string solver expects a struct that bundles the
+/// string length and the underlying character array.
 class string_abstractiont:public messaget
 {
 public:
@@ -52,9 +57,6 @@ protected:
 
   bool is_char_type(const typet &type) const
   {
-    if(type.id() == ID_symbol_type)
-      return is_char_type(ns.follow(type));
-
     if(type.id()!=ID_signedbv &&
        type.id()!=ID_unsignedbv)
       return false;
@@ -68,7 +70,7 @@ protected:
   {
     if(dest.is_not_nil() &&
        ns.follow(dest.type())!=ns.follow(type))
-      dest.make_typecast(type);
+      dest = typecast_exprt(dest, type);
   }
 
   goto_programt::targett abstract(

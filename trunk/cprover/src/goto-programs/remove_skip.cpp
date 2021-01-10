@@ -15,12 +15,12 @@ Author: Daniel Kroening, kroening@kroening.com
 /// Determine whether the instruction is semantically equivalent to a skip
 /// (no-op).  This includes a skip, but also if(false) goto ..., goto next;
 ///  next: ..., and (void)0.
-/// \param body  goto program containing the instruction
-/// \param it  instruction iterator that is tested for being a skip (or
-/// equivalent)
-/// \param ignore_labels  If the caller takes care of moving labels, then even
-/// skip statements carrying labels can be treated as skips (even though they
-/// may carry key information such as error labels).
+/// \param body: goto program containing the instruction
+/// \param it: instruction iterator that is tested for being a skip (or
+///   equivalent)
+/// \param ignore_labels: If the caller takes care of moving labels, then even
+///   skip statements carrying labels can be treated as skips (even though they
+///   may carry key information such as error labels).
 /// \return True, iff it is equivalent to a skip.
 bool is_skip(
   const goto_programt &body,
@@ -35,7 +35,7 @@ bool is_skip(
 
   if(it->is_goto())
   {
-    if(it->guard.is_false())
+    if(it->get_condition().is_false())
       return true;
 
     goto_programt::const_targett next_it = it;
@@ -46,16 +46,15 @@ bool is_skip(
 
     // A branch to the next instruction is a skip
     // We also require the guard to be 'true'
-    return it->guard.is_true() &&
-           it->get_target()==next_it;
+    return it->get_condition().is_true() && it->get_target() == next_it;
   }
 
   if(it->is_other())
   {
-    if(it->code.is_nil())
+    if(it->get_other().is_nil())
       return true;
 
-    const irep_idt &statement=it->code.get_statement();
+    const irep_idt &statement = it->get_other().get_statement();
 
     if(statement==ID_skip)
       return true;
@@ -79,10 +78,10 @@ bool is_skip(
 }
 
 /// remove unnecessary skip statements
-/// \param goto_program  goto program containing the instructions to be cleaned
-/// in the range [begin, end)
-/// \param begin  iterator pointing to first instruction to be considered
-/// \param end  iterator pointing beyond last instruction to be considered
+/// \param goto_program: goto program containing the instructions to be cleaned
+///   in the range [begin, end)
+/// \param begin: iterator pointing to first instruction to be considered
+/// \param end: iterator pointing beyond last instruction to be considered
 void remove_skip(
   goto_programt &goto_program,
   goto_programt::targett begin,

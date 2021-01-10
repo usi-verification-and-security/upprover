@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/std_expr.h>
 
-static exprt make_member_expr(
+static member_exprt make_member_expr(
   const exprt &struct_union,
   const struct_union_typet::componentt &component,
   const namespacet &ns)
@@ -29,10 +29,11 @@ static exprt make_member_expr(
   const typet &type=
     ns.follow(struct_union.type());
 
-  if(result.get_bool(ID_C_constant) ||
-     type.get_bool(ID_C_constant) ||
-     struct_union.type().get_bool(ID_C_constant))
-    result.set(ID_C_constant, true);
+  if(
+    type.get_bool(ID_C_constant) || struct_union.type().get_bool(ID_C_constant))
+  {
+    result.type().set(ID_C_constant, true);
+  }
 
   return result;
 }
@@ -50,16 +51,17 @@ exprt get_component_rec(
 
   for(const auto &comp : components)
   {
-    const typet &type=ns.follow(comp.type());
+    const typet &type = comp.type();
 
     if(comp.get_name()==component_name)
     {
-      return make_member_expr(struct_union, comp, ns);
+      return std::move(make_member_expr(struct_union, comp, ns));
     }
-    else if(comp.get_anonymous() &&
-            (type.id()==ID_struct || type.id()==ID_union))
+    else if(
+      comp.get_anonymous() &&
+      (type.id() == ID_struct_tag || type.id() == ID_union_tag))
     {
-      exprt tmp=make_member_expr(struct_union, comp, ns);
+      const member_exprt tmp = make_member_expr(struct_union, comp, ns);
       exprt result=get_component_rec(tmp, component_name, ns);
       if(result.is_not_nil())
         return result;

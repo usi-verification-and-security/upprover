@@ -26,12 +26,12 @@ static std::string type2name(
   const namespacet &ns,
   symbol_numbert &symbol_number);
 
-static std::string type2name_symbol(
-  const typet &type,
+static std::string type2name_tag(
+  const tag_typet &type,
   const namespacet &ns,
   symbol_numbert &symbol_number)
 {
-  const irep_idt &identifier=type.get(ID_identifier);
+  const irep_idt &identifier = type.get_identifier();
 
   const symbolt *symbol;
 
@@ -44,40 +44,25 @@ static std::string type2name_symbol(
      symbol->type.id()!=ID_union)
     return type2name(symbol->type, ns, symbol_number);
 
-  std::string result;
-
   // assign each symbol a number when seen for the first time
   std::pair<symbol_numbert::iterator, bool> entry=
     symbol_number.insert(std::make_pair(
         identifier,
         std::make_pair(symbol_number.size(), true)));
 
+  std::string result = "SYM" +
+                       id2string(to_struct_union_type(symbol->type).get_tag()) +
+                       '#' + std::to_string(entry.first->second.first);
+
   // new entry, add definition
   if(entry.second)
   {
-    result="SYM#"+std::to_string(entry.first->second.first);
     result+="={";
     result+=type2name(symbol->type, ns, symbol_number);
     result+='}';
 
     entry.first->second.second=false;
   }
-#if 0
-  // in recursion, print the shorthand only
-  else if(entry.first->second.second)
-    result="SYM#"+std::to_string(entry.first->second.first);
-  // entering recursion
-  else
-  {
-    entry.first->second.second=true;
-    result=type2name(symbol->type, ns, symbol_number);
-    entry.first->second.second=false;
-  }
-#else
-  // shorthand only as structs/unions are always symbols
-  else
-    result="SYM#"+std::to_string(entry.first->second.first);
-#endif
 
   return result;
 }
@@ -86,12 +71,11 @@ static std::string pointer_offset_bits_as_string(
   const typet &type,
   const namespacet &ns)
 {
-  mp_integer bits = pointer_offset_bits(type, ns);
-  CHECK_RETURN(bits != -1);
-  return integer2string(bits);
+  auto bits = pointer_offset_bits(type, ns);
+  CHECK_RETURN(bits.has_value());
+  return integer2string(*bits);
 }
 
-static bool parent_is_sym_check=false;
 static std::string type2name(
   const typet &type,
   const namespacet &ns,
@@ -178,71 +162,83 @@ static std::string type2name(
   }
   else if(type.id()==ID_array)
   {
-    const array_typet &t=to_array_type(type);
-    mp_integer size;
-    if(t.size().id()==ID_symbol)
-      result += "ARR" + id2string(to_symbol_expr(t.size()).get_identifier());
-    else if(to_integer(t.size(), size))
-      result+="ARR?";
+    const exprt &size = to_array_type(type).size();
+
+    if(size.id() == ID_symbol)
+      result += "ARR" + id2string(to_symbol_expr(size).get_identifier());
     else
-      result+="ARR"+integer2string(size);
+    {
+      const auto size_int = numeric_cast<mp_integer>(size);
+
+      if(!size_int.has_value())
+        result += "ARR?";
+      else
+        result += "ARR" + integer2string(*size_int);
+    }
   }
   else if(
-    type.id() == ID_symbol_type || type.id() == ID_c_enum_tag ||
-    type.id() == ID_struct_tag || type.id() == ID_union_tag)
+    type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
+    type.id() == ID_union_tag)
   {
-    parent_is_sym_check=true;
-    result+=type2name_symbol(type, ns, symbol_number);
+    result += type2name_tag(to_tag_type(type), ns, symbol_number);
   }
   else if(type.id()==ID_struct ||
           type.id()==ID_union)
   {
-    assert(parent_is_sym_check);
-    parent_is_sym_check=false;
-    if(type.id()==ID_struct)
-      result+="ST";
-    if(type.id()==ID_union)
-      result+="UN";
-    const struct_union_typet &t=to_struct_union_type(type);
-    const struct_union_typet::componentst &components = t.components();
-    result+='[';
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    const auto &struct_union_type = to_struct_union_type(type);
+
+    if(struct_union_type.is_incomplete())
     {
-      if(it!=components.begin())
-        result+='|';
-      result+=type2name(it->type(), ns, symbol_number);
-      irep_idt component_name = it->get_name();
-      CHECK_RETURN(!component_name.empty());
-      result+="'"+id2string(component_name)+"'";
+      if(type.id() == ID_struct)
+        result += "ST?";
+      else if(type.id() == ID_union)
+        result += "UN?";
     }
-    result+=']';
+    else
+    {
+      if(type.id() == ID_struct)
+        result += "ST";
+      if(type.id() == ID_union)
+        result += "UN";
+      result += '[';
+      bool first = true;
+      for(const auto &c : struct_union_type.components())
+      {
+        if(!first)
+          result += '|';
+        else
+          first = false;
+
+        result += type2name(c.type(), ns, symbol_number);
+        const irep_idt &component_name = c.get_name();
+        CHECK_RETURN(!component_name.empty());
+        result += "'" + id2string(component_name) + "'";
+      }
+      result += ']';
+    }
   }
-  else if(type.id()==ID_incomplete_struct)
-    result +="ST?";
-  else if(type.id()==ID_incomplete_union)
-    result +="UN?";
   else if(type.id()==ID_c_enum)
   {
-    result +="EN";
     const c_enum_typet &t=to_c_enum_type(type);
-    const c_enum_typet::memberst &members=t.members();
-    result+='[';
-    for(c_enum_typet::memberst::const_iterator
-        it=members.begin();
-        it!=members.end();
-        ++it)
+
+    if(t.is_incomplete())
+      result += "EN?";
+    else
     {
-      if(it!=members.begin())
-        result+='|';
-      result+=id2string(it->get_value());
-      result+="'"+id2string(it->get_identifier())+"'";
+      result += "EN";
+      const c_enum_typet::memberst &members = t.members();
+      result += '[';
+      for(c_enum_typet::memberst::const_iterator it = members.begin();
+          it != members.end();
+          ++it)
+      {
+        if(it != members.begin())
+          result += '|';
+        result += id2string(it->get_value());
+        result += "'" + id2string(it->get_identifier()) + "'";
+      }
     }
   }
-  else if(type.id()==ID_incomplete_c_enum)
-    result +="EN?";
   else if(type.id()==ID_c_bit_field)
     result+="BF"+pointer_offset_bits_as_string(type, ns);
   else if(type.id()==ID_vector)
@@ -273,13 +269,6 @@ static std::string type2name(
 
 std::string type2name(const typet &type, const namespacet &ns)
 {
-  parent_is_sym_check=true;
   symbol_numbert symbol_number;
   return type2name(type, ns, symbol_number);
-}
-
-std::string type2name(const typet &type)
-{
-  symbol_tablet symbol_table;
-  return type2name(type, namespacet(symbol_table));
 }

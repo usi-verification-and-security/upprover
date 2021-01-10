@@ -11,9 +11,10 @@ Author: Norbert Manthey, nmanthey@amazon.com
 #endif
 
 #include <algorithm>
-#include <cassert>
 #include <stack>
 
+#include <util/exception_utils.h>
+#include <util/invariant.h>
 #include <util/threeval.h>
 
 #include "satcheck_ipasir.h"
@@ -92,22 +93,19 @@ void satcheck_ipasirt::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_ipasirt::prop_solve()
+propt::resultt satcheck_ipasirt::do_prop_solve()
 {
   INVARIANT(status!=statust::ERROR, "there cannot be an error");
 
-  {
-    messaget::status() <<
-      (no_variables()-1) << " variables, " <<
-      clause_counter << " clauses" << eom;
-  }
+  log.statistics() << (no_variables() - 1) << " variables, " << clause_counter
+                   << " clauses" << messaget::eom;
 
   // use the internal representation, as ipasir does not support reporting the
   // status
   if(status==statust::UNSAT)
   {
-    messaget::status() <<
-      "SAT checker inconsistent: instance is UNSATISFIABLE" << eom;
+    log.status() << "SAT checker inconsistent: instance is UNSATISFIABLE"
+                 << messaget::eom;
   }
   else
   {
@@ -118,8 +116,8 @@ propt::resultt satcheck_ipasirt::prop_solve()
 
     if(has_false)
     {
-      messaget::status() <<
-        "got FALSE as assumption: instance is UNSATISFIABLE" << eom;
+      log.status() << "got FALSE as assumption: instance is UNSATISFIABLE"
+                   << messaget::eom;
     }
     else
     {
@@ -131,21 +129,21 @@ propt::resultt satcheck_ipasirt::prop_solve()
       int solver_state=ipasir_solve(solver);
       if(10==solver_state)
       {
-        messaget::status() <<
-          "SAT checker: instance is SATISFIABLE" << eom;
+        log.status() << "SAT checker: instance is SATISFIABLE" << messaget::eom;
         status=statust::SAT;
         return resultt::P_SATISFIABLE;
       }
       else if(20==solver_state)
       {
-        messaget::status() <<
-          "SAT checker: instance is UNSATISFIABLE" << eom;
+        log.status() << "SAT checker: instance is UNSATISFIABLE"
+                     << messaget::eom;
       }
       else
       {
-        messaget::status() <<
-          "SAT checker: solving returned without solution" << eom;
-        throw "solving inside IPASIR SAT solver has been interrupted";
+        log.status() << "SAT checker: solving returned without solution"
+                     << messaget::eom;
+        throw analysis_exceptiont(
+          "solving inside IPASIR SAT solver has been interrupted");
       }
     }
   }

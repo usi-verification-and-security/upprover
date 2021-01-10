@@ -17,9 +17,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <stack>
 
+#include <goto-programs/cfg.h>
+#include <goto-programs/remove_calls_no_body.h>
 #include <goto-programs/remove_skip.h>
 #include <goto-programs/remove_unreachable.h>
-#include <goto-programs/cfg.h>
+
+#include <util/exception_utils.h>
+#include <util/message.h>
 
 #include "full_slicer_class.h"
 #include "reachability_slicer_class.h"
@@ -27,51 +31,59 @@ Author: Daniel Kroening, kroening@kroening.com
 /// Get the set of nodes that correspond to the given criterion, or that can
 /// appear in concurrent execution. None of these should be sliced away so
 /// they are used as a basis for the search.
-/// \param is_threaded Instructions that might be executed concurrently
-/// \param criterion The criterion we care about
+/// \param is_threaded: Instructions that might be executed concurrently
+/// \param criterion: The criterion we care about
 std::vector<reachability_slicert::cfgt::node_indext>
 reachability_slicert::get_sources(
   const is_threadedt &is_threaded,
-  slicing_criteriont &criterion)
+  const slicing_criteriont &criterion)
 {
   std::vector<cfgt::node_indext> sources;
-  for(const auto &e_it : cfg.entry_map)
+  for(const auto &e_it : cfg.entries())
   {
-    if(criterion(e_it.first) || is_threaded(e_it.first))
+    if(
+      criterion(cfg[e_it.second].function_id, e_it.first) ||
+      is_threaded(e_it.first))
       sources.push_back(e_it.second);
+  }
+
+  if(sources.empty())
+  {
+    throw invalid_command_line_argument_exceptiont{
+      "no slicing criterion found",
+      "--property",
+      "provide at least one property using --property <property>"};
   }
 
   return sources;
 }
 
-static bool is_same_target(
+bool reachability_slicert::is_same_target(
   goto_programt::const_targett it1,
-  goto_programt::const_targett it2)
+  goto_programt::const_targett it2) const
 {
   // Avoid comparing iterators belonging to different functions, and therefore
   // different std::lists.
-  return it1->function == it2->function && it1 == it2;
+  const auto &node1 = cfg.get_node(it1);
+  const auto &node2 = cfg.get_node(it2);
+  return node1.function_id == node2.function_id && it1 == it2;
 }
 
-/// Perform backwards depth-first search of the control-flow graph of the
-/// goto program, starting from the nodes corresponding to the criterion and
-/// the instructions that might be executed concurrently. Set reaches_assertion
-/// to true for every instruction visited.
-/// \param is_threaded Instructions that might be executed concurrently
-/// \param criterion the criterion we are trying to hit
-void reachability_slicert::fixedpoint_to_assertions(
-  const is_threadedt &is_threaded,
-  slicing_criteriont &criterion)
+/// Perform backward depth-first search of the control-flow graph of the
+/// goto program, starting from a given set of nodes. At call sites this walks
+/// to all possible callers, and at return sites it remembers the site but
+/// doesn't walk in (this will be done in `backward_inwards_walk_from` below).
+/// \param stack: nodes to start from
+/// \return vector of return-site nodes encountered during the walk
+std::vector<reachability_slicert::cfgt::node_indext>
+reachability_slicert::backward_outwards_walk_from(
+  std::vector<cfgt::node_indext> stack)
 {
-  std::vector<search_stack_entryt> stack;
-  std::vector<cfgt::node_indext> sources = get_sources(is_threaded, criterion);
-  for(const auto source : sources)
-    stack.emplace_back(source, false);
+  std::vector<cfgt::node_indext> return_sites;
 
   while(!stack.empty())
   {
-    auto &node = cfg[stack.back().node_index];
-    const auto caller_is_known = stack.back().caller_is_known;
+    auto &node = cfg[stack.back()];
     stack.pop_back();
 
     if(node.reaches_assertion)
@@ -85,49 +97,155 @@ void reachability_slicert::fixedpoint_to_assertions(
       if(pred_node.PC->is_end_function())
       {
         // This is an end-of-function -> successor-of-callsite edge.
-        // Queue both the caller and the end of the callee.
+        // Record the return site for later investigation and step over it:
+        return_sites.push_back(edge.first);
+
         INVARIANT(
           std::prev(node.PC)->is_function_call(),
           "all function return edges should point to the successor of a "
           "FUNCTION_CALL instruction");
-        stack.emplace_back(edge.first, true);
-        stack.emplace_back(
-          cfg.entry_map[std::prev(node.PC)], caller_is_known);
-      }
-      else if(pred_node.PC->is_function_call())
-      {
-        // Skip this predecessor, unless this is a bodyless function, or we
-        // don't know who our callee was:
-        if(!caller_is_known || is_same_target(std::next(pred_node.PC), node.PC))
-          stack.emplace_back(edge.first, caller_is_known);
+
+        stack.push_back(cfg.get_node_index(std::prev(node.PC)));
       }
       else
       {
-        stack.emplace_back(edge.first, caller_is_known);
+        stack.push_back(edge.first);
+      }
+    }
+  }
+
+  return return_sites;
+}
+
+/// Perform backward depth-first search of the control-flow graph of the
+/// goto program, starting from a given set of nodes. This walks into return
+/// sites but *not* out of call sites; this is the opposite of
+/// `backward_outwards_walk_from` above. Note since the two functions use the
+/// same `reaches_assertion` flag to track where they have been, it is important
+/// the outwards walk is performed before the inwards walk, as encountering a
+/// function while walking outwards visits strictly more code than when walking
+/// inwards.
+/// \param stack: nodes to start from
+void reachability_slicert::backward_inwards_walk_from(
+  std::vector<cfgt::node_indext> stack)
+{
+  while(!stack.empty())
+  {
+    auto &node = cfg[stack.back()];
+    stack.pop_back();
+
+    if(node.reaches_assertion)
+      continue;
+    node.reaches_assertion = true;
+
+    for(const auto &edge : node.in)
+    {
+      const auto &pred_node = cfg[edge.first];
+
+      if(pred_node.PC->is_end_function())
+      {
+        // This is an end-of-function -> successor-of-callsite edge.
+        // Walk into the called function, and then walk from the callsite
+        // backward:
+        stack.push_back(edge.first);
+
+        INVARIANT(
+          std::prev(node.PC)->is_function_call(),
+          "all function return edges should point to the successor of a "
+          "FUNCTION_CALL instruction");
+
+        stack.push_back(cfg.get_node_index(std::prev(node.PC)));
+      }
+      else if(pred_node.PC->is_function_call())
+      {
+        // Skip -- the callsite relevant to this function was already queued
+        // when we processed the return site.
+      }
+      else
+      {
+        stack.push_back(edge.first);
       }
     }
   }
 }
 
-/// Perform forwards depth-first search of the control-flow graph of the
+/// Perform backward depth-first search of the control-flow graph of the
 /// goto program, starting from the nodes corresponding to the criterion and
 /// the instructions that might be executed concurrently. Set reaches_assertion
 /// to true for every instruction visited.
-/// \param is_threaded Instructions that might be executed concurrently
-/// \param criterion the criterion we are trying to hit
-void reachability_slicert::fixedpoint_from_assertions(
+/// \param is_threaded: Instructions that might be executed concurrently
+/// \param criterion: the criterion we are trying to hit
+void reachability_slicert::fixedpoint_to_assertions(
   const is_threadedt &is_threaded,
-  slicing_criteriont &criterion)
+  const slicing_criteriont &criterion)
 {
-  std::vector<search_stack_entryt> stack;
   std::vector<cfgt::node_indext> sources = get_sources(is_threaded, criterion);
-  for(const auto source : sources)
-    stack.emplace_back(source, false);
+
+  // First walk outwards towards __CPROVER_start, visiting all possible callers
+  // and stepping over but recording callees as we go:
+  std::vector<cfgt::node_indext> return_sites =
+    backward_outwards_walk_from(sources);
+
+  // Now walk into those callees, restricting our walk to the known callsites:
+  backward_inwards_walk_from(return_sites);
+}
+
+/// Process a call instruction during a forwards reachability walk.
+/// \param call_node: function-call graph node. Its single successor will be
+///   the head of the callee if the callee body exists, or the call
+///   instruction's immediate successor otherwise.
+/// \param callsite_successor_stack: The index of the callsite's local successor
+///   node will be added to this vector if it is reachable.
+/// \param callee_head_stack: The index of the callee body head node will be
+///   added to this vector if the callee has a body.
+void reachability_slicert::forward_walk_call_instruction(
+  const cfgt::nodet &call_node,
+  std::vector<cfgt::node_indext> &callsite_successor_stack,
+  std::vector<cfgt::node_indext> &callee_head_stack)
+{
+  // Get the instruction's natural successor (function head, or next
+  // instruction if the function is bodyless)
+  INVARIANT(call_node.out.size() == 1, "Call sites should have one successor");
+  const auto successor_index = call_node.out.begin()->first;
+
+  auto callsite_successor_pc = std::next(call_node.PC);
+
+  auto successor_pc = cfg[successor_index].PC;
+  if(!is_same_target(successor_pc, callsite_successor_pc))
+  {
+    // Real call -- store the callee head node:
+    callee_head_stack.push_back(successor_index);
+
+    // Check if it can return, and if so store the callsite's successor:
+    while(!successor_pc->is_end_function())
+      ++successor_pc;
+
+    if(!cfg.get_node(successor_pc).out.empty())
+      callsite_successor_stack.push_back(
+        cfg.get_node_index(callsite_successor_pc));
+  }
+  else
+  {
+    // Bodyless function -- mark the successor instruction only.
+    callsite_successor_stack.push_back(successor_index);
+  }
+}
+
+/// Perform forwards depth-first search of the control-flow graph of the
+/// goto program, starting from a given set of nodes. Steps over and records
+/// callsites for a later inwards walk; explores all possible callers at return
+/// sites, eventually walking out into __CPROVER__start.
+/// \param stack: nodes to start from
+/// \return vector of encounted callee head nodes
+std::vector<reachability_slicert::cfgt::node_indext>
+reachability_slicert::forward_outwards_walk_from(
+  std::vector<cfgt::node_indext> stack)
+{
+  std::vector<cfgt::node_indext> called_function_heads;
 
   while(!stack.empty())
   {
-    auto &node = cfg[stack.back().node_index];
-    const auto caller_is_known = stack.back().caller_is_known;
+    auto &node = cfg[stack.back()];
     stack.pop_back();
 
     if(node.reachable_from_assertion)
@@ -136,36 +254,46 @@ void reachability_slicert::fixedpoint_from_assertions(
 
     if(node.PC->is_function_call())
     {
-      // Queue the instruction's natural successor (function head, or next
-      // instruction if the function is bodyless)
-      INVARIANT(node.out.size() == 1, "Call sites should have one successor");
-      const auto successor_index = node.out.begin()->first;
-
-      // If the function has a body, mark the function head, but note that we
-      // have already taken care of the return site.
-      const auto &callee_head_node = cfg[successor_index];
-      auto callee_it = callee_head_node.PC;
-      if(!is_same_target(callee_it, std::next(node.PC)))
-      {
-        stack.emplace_back(successor_index, true);
-
-        // Check if it can return, and if so mark the callsite's successor:
-        while(!callee_it->is_end_function())
-          ++callee_it;
-
-        if(!cfg[cfg.entry_map[callee_it]].out.empty())
-        {
-          stack.emplace_back(
-            cfg.entry_map[std::next(node.PC)], caller_is_known);
-        }
-      }
-      else
-      {
-        // Bodyless function -- mark the successor instruction only.
-        stack.emplace_back(successor_index, caller_is_known);
-      }
+      // Store the called function head for the later inwards walk;
+      // visit the call instruction's local successor now.
+      forward_walk_call_instruction(node, stack, called_function_heads);
     }
-    else if(node.PC->is_end_function() && caller_is_known)
+    else
+    {
+      // General case, including end of function: queue all successors.
+      for(const auto &edge : node.out)
+        stack.push_back(edge.first);
+    }
+  }
+
+  return called_function_heads;
+}
+
+/// Perform forwards depth-first search of the control-flow graph of the
+/// goto program, starting from a given set of nodes. Steps into callsites;
+/// ignores return sites, which have been taken care of by
+/// `forward_outwards_walk_from`. Note it is important this is done *after*
+/// the outwards walk, because the outwards walk visits strictly more functions
+/// as it visits all possible callers.
+/// \param stack: nodes to start from
+void reachability_slicert::forward_inwards_walk_from(
+  std::vector<cfgt::node_indext> stack)
+{
+  while(!stack.empty())
+  {
+    auto &node = cfg[stack.back()];
+    stack.pop_back();
+
+    if(node.reachable_from_assertion)
+      continue;
+    node.reachable_from_assertion = true;
+
+    if(node.PC->is_function_call())
+    {
+      // Visit both the called function head and the callsite successor:
+      forward_walk_call_instruction(node, stack, stack);
+    }
+    else if(node.PC->is_end_function())
     {
       // Special case -- the callsite successor was already queued when entering
       // this function, more precisely than we can see from the function return
@@ -173,12 +301,32 @@ void reachability_slicert::fixedpoint_from_assertions(
     }
     else
     {
-      // General case, including end-of-function where we don't know our caller.
-      // Queue all successors.
+      // General case: queue all successors.
       for(const auto &edge : node.out)
-        stack.emplace_back(edge.first, caller_is_known);
+        stack.push_back(edge.first);
     }
   }
+}
+
+/// Perform forwards depth-first search of the control-flow graph of the
+/// goto program, starting from the nodes corresponding to the criterion and
+/// the instructions that might be executed concurrently. Set reaches_assertion
+/// to true for every instruction visited.
+/// \param is_threaded: Instructions that might be executed concurrently
+/// \param criterion: the criterion we are trying to hit
+void reachability_slicert::fixedpoint_from_assertions(
+  const is_threadedt &is_threaded,
+  const slicing_criteriont &criterion)
+{
+  std::vector<cfgt::node_indext> sources = get_sources(is_threaded, criterion);
+
+  // First walk outwards towards __CPROVER_start, visiting all possible callers
+  // and stepping over but recording callees as we go:
+  std::vector<cfgt::node_indext> return_sites =
+    forward_outwards_walk_from(sources);
+
+  // Now walk into those callees, restricting our walk to the known callsites:
+  forward_inwards_walk_from(return_sites);
 }
 
 /// This function removes all instructions that have the flag
@@ -193,11 +341,14 @@ void reachability_slicert::slice(goto_functionst &goto_functions)
     {
       Forall_goto_program_instructions(i_it, f_it->second.body)
       {
-        const cfgt::nodet &e=cfg[cfg.entry_map[i_it]];
+        cfgt::nodet &e = cfg.get_node(i_it);
         if(
           !e.reaches_assertion && !e.reachable_from_assertion &&
           !i_it->is_end_function())
-          i_it->make_assumption(false_exprt());
+        {
+          *i_it = goto_programt::make_assumption(
+            false_exprt(), i_it->source_location);
+        }
       }
 
       // replace unreachable code by skip
@@ -210,10 +361,10 @@ void reachability_slicert::slice(goto_functionst &goto_functions)
 
 /// Perform reachability slicing on goto_model, with respect to the
 /// criterion given by all properties.
-/// \param goto_model Goto program to slice
-/// \param include_forward_reachability Determines if only instructions
-/// from which the criterion is reachable should be kept (false) or also
-/// those reachable from the criterion (true)
+/// \param goto_model: Goto program to slice
+/// \param include_forward_reachability: Determines if only instructions
+///   from which the criterion is reachable should be kept (false) or also
+///   those reachable from the criterion (true)
 void reachability_slicer(
   goto_modelt &goto_model,
   const bool include_forward_reachability)
@@ -224,12 +375,12 @@ void reachability_slicer(
 }
 
 /// Perform reachability slicing on goto_model for selected properties.
-/// \param goto_model Goto program to slice
-/// \param properties The properties relevant for the slicing (i.e. starting
-/// point for the search in the cfg)
-/// \param include_forward_reachability Determines if only instructions
-/// from which the criterion is reachable should be kept (false) or also
-/// those reachable from the criterion (true)
+/// \param goto_model: Goto program to slice
+/// \param properties: The properties relevant for the slicing (i.e. starting
+///   point for the search in the cfg)
+/// \param include_forward_reachability: Determines if only instructions
+///   from which the criterion is reachable should be kept (false) or also
+///   those reachable from the criterion (true)
 void reachability_slicer(
   goto_modelt &goto_model,
   const std::list<std::string> &properties,
@@ -240,10 +391,33 @@ void reachability_slicer(
   s(goto_model.goto_functions, p, include_forward_reachability);
 }
 
+/// Perform reachability slicing on goto_model for selected functions.
+/// \param goto_model: Goto program to slice
+/// \param functions_list: The functions relevant for the slicing (i.e. starting
+///   point for the search in the CFG). Anything that is reachable in the CFG
+///   starting from these functions will be kept.
+void function_path_reachability_slicer(
+  goto_modelt &goto_model,
+  const std::list<std::string> &functions_list)
+{
+  for(const auto &function : functions_list)
+  {
+    in_function_criteriont matching_criterion(function);
+    reachability_slicert slicer;
+    slicer(goto_model.goto_functions, matching_criterion, true);
+  }
+
+  remove_calls_no_bodyt remove_calls_no_body;
+  remove_calls_no_body(goto_model.goto_functions);
+
+  goto_model.goto_functions.update();
+  goto_model.goto_functions.compute_loop_numbers();
+}
+
 /// Perform reachability slicing on goto_model, with respect to criterion
 /// comprising all properties. Only instructions from which the criterion
 /// is reachable will be kept.
-/// \param goto_model Goto program to slice
+/// \param goto_model: Goto program to slice
 void reachability_slicer(goto_modelt &goto_model)
 {
   reachability_slicer(goto_model, false);
@@ -251,9 +425,9 @@ void reachability_slicer(goto_modelt &goto_model)
 
 /// Perform reachability slicing on goto_model for selected properties. Only
 /// instructions from which the criterion is reachable will be kept.
-/// \param goto_model Goto program to slice
-/// \param properties The properties relevant for the slicing (i.e. starting
-/// point for the search in the cfg)
+/// \param goto_model: Goto program to slice
+/// \param properties: The properties relevant for the slicing (i.e. starting
+///   point for the search in the cfg)
 void reachability_slicer(
   goto_modelt &goto_model,
   const std::list<std::string> &properties)

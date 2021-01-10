@@ -12,35 +12,40 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_PROP_COVER_GOALS_H
 #define CPROVER_SOLVERS_PROP_COVER_GOALS_H
 
-#include <util/message.h>
+#include <list>
 
-#include "prop_conv.h"
+#include <solvers/decision_procedure.h>
+
+#include <util/expr.h>
+
+class message_handlert;
 
 /// Try to cover some given set of goals incrementally. This can be seen as a
 /// heuristic variant of SAT-based set-cover. No minimality guarantee.
-class cover_goalst:public messaget
+class cover_goalst
 {
 public:
-  explicit cover_goalst(prop_convt &_prop_conv):
-    _number_covered(0),
-    _iterations(0),
-    prop_conv(_prop_conv)
+  explicit cover_goalst(decision_proceduret &_decision_procedure)
+    : _number_covered(0),
+      _iterations(0),
+      decision_procedure(_decision_procedure)
   {
   }
 
   virtual ~cover_goalst();
 
   // returns result of last run on success
-  decision_proceduret::resultt operator()();
+  decision_proceduret::resultt operator()(message_handlert &);
 
   // the goals
 
   struct goalt
   {
-    literalt condition;
+    exprt condition;
     enum class statust { UNKNOWN, COVERED, UNCOVERED, ERROR } status;
 
-    goalt():status(statust::UNKNOWN)
+    explicit goalt(exprt _condition)
+      : condition(std::move(_condition)), status(statust::UNKNOWN)
     {
     }
   };
@@ -67,10 +72,9 @@ public:
 
   // managing the goals
 
-  void add(const literalt condition)
+  void add(exprt condition)
   {
-    goals.push_back(goalt());
-    goals.back().condition=condition;
+    goals.emplace_back(std::move(condition));
   }
 
   // register an observer if you want to be told
@@ -91,7 +95,7 @@ public:
 protected:
   std::size_t _number_covered;
   unsigned _iterations;
-  prop_convt &prop_conv;
+  decision_proceduret &decision_procedure;
 
   typedef std::vector<observert *> observerst;
   observerst observers;
@@ -99,7 +103,6 @@ protected:
 private:
   void mark();
   void constraint();
-  void freeze_goal_variables();
 };
 
 #endif // CPROVER_SOLVERS_PROP_COVER_GOALS_H

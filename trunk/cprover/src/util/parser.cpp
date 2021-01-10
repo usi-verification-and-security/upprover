@@ -32,15 +32,15 @@ void parsert::parse_error(
   const std::string &before)
 {
   std::string tmp=message;
-  if(before!="")
-    tmp+=" before `"+before+"'";
+  if(!before.empty())
+    tmp += " before '" + before + "'";
 
-  #if 0
+#if 0
   source_locationt tmp_source_location=source_location;
   tmp_source_location.set_column(column-before.size());
   print(1, tmp, -1, tmp_source_location);
-  #else
+#else
   error().source_location=source_location;
   error() << tmp << eom;
-  #endif
+#endif
 }

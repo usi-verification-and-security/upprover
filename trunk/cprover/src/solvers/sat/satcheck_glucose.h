@@ -27,26 +27,33 @@ template<typename T>
 class satcheck_glucose_baset:public cnf_solvert
 {
 public:
-  explicit satcheck_glucose_baset(T *);
+  satcheck_glucose_baset(T *, message_handlert &message_handler);
   virtual ~satcheck_glucose_baset();
 
-  virtual resultt prop_solve();
-  virtual tvt l_get(literalt a) const;
+  tvt l_get(literalt a) const override;
 
-  virtual void lcnf(const bvt &bv);
-  virtual void set_assignment(literalt a, bool value);
+  void lcnf(const bvt &bv) override;
+  void set_assignment(literalt a, bool value) override;
 
   // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt &_assumptions);
+  void set_assumptions(const bvt &_assumptions) override;
 
   // extra MiniSat feature: default branching decision
   void set_polarity(literalt a, bool value);
 
-  virtual bool is_in_conflict(literalt a) const;
-  virtual bool has_set_assumptions() const { return true; }
-  virtual bool has_is_in_conflict() const { return true; }
+  bool is_in_conflict(literalt a) const override;
+  bool has_set_assumptions() const override
+  {
+    return true;
+  }
+  bool has_is_in_conflict() const override
+  {
+    return true;
+  }
 
 protected:
+  resultt do_prop_solve() override;
+
   T *solver;
 
   void add_variables();
@@ -57,17 +64,17 @@ class satcheck_glucose_no_simplifiert:
   public satcheck_glucose_baset<Glucose::Solver>
 {
 public:
-  satcheck_glucose_no_simplifiert();
-  virtual const std::string solver_text();
+  explicit satcheck_glucose_no_simplifiert(message_handlert &message_handler);
+  const std::string solver_text() override;
 };
 
 class satcheck_glucose_simplifiert:
   public satcheck_glucose_baset<Glucose::SimpSolver>
 {
 public:
-  satcheck_glucose_simplifiert();
-  virtual const std::string solver_text();
-  virtual void set_frozen(literalt a);
+  explicit satcheck_glucose_simplifiert(message_handlert &message_handler);
+  const std::string solver_text() override;
+  void set_frozen(literalt a) override;
   bool is_eliminated(literalt a) const;
 };
 

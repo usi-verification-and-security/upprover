@@ -14,20 +14,27 @@ Date: June 2006
 #ifndef CPROVER_GOTO_CC_COMPILE_H
 #define CPROVER_GOTO_CC_COMPILE_H
 
-#include <util/symbol.h>
+#include <util/cmdline.h>
+#include <util/message.h>
 #include <util/rename_symbol.h>
 
-#include <langapi/language_ui.h>
 #include <goto-programs/goto_model.h>
 
-class compilet:public language_uit
+class language_filest;
+class languaget;
+
+class compilet : public messaget
 {
 public:
+  // compilation results
   namespacet ns;
-  goto_functionst compiled_functions;
+  goto_modelt goto_model;
+
+  // configuration
   bool echo_file_name;
   std::string working_directory;
   std::string override_language;
+  bool validate_goto_model = false;
 
   enum { PREPROCESS_ONLY, // gcc -E
          COMPILE_ONLY, // gcc -c
@@ -50,7 +57,7 @@ public:
   // the two options below are mutually exclusive -- use either or
   std::string output_file_object, output_directory_object;
 
-  compilet(cmdlinet &_cmdline, ui_message_handlert &mh, bool Werror);
+  compilet(cmdlinet &_cmdline, message_handlert &mh, bool Werror);
 
   ~compilet();
 
@@ -58,23 +65,15 @@ public:
   bool find_library(const std::string &);
   bool add_files_from_archive(const std::string &file_name, bool thin_archive);
 
-  bool parse(const std::string &filename);
-  bool parse_stdin();
+  bool parse(const std::string &filename, language_filest &);
+  bool parse_stdin(languaget &);
   bool doit();
   bool compile();
   bool link();
 
   bool parse_source(const std::string &);
 
-  bool write_object_file(
-    const std::string &,
-    const symbol_tablet &,
-    goto_functionst &);
-
-  bool write_bin_object_file(
-    const std::string &,
-    const symbol_tablet &,
-    goto_functionst &);
+  bool write_bin_object_file(const std::string &, const goto_modelt &);
 
   /// \brief Has this compiler written any object files?
   bool wrote_object_files() const { return wrote_object; }
@@ -82,8 +81,8 @@ public:
   /// \brief `__CPROVER_...` macros written to object files and their arities
   ///
   /// \return A mapping from every `__CPROVER` macro that this compiler
-  /// wrote to one or more object files, to how many parameters that
-  /// `__CPROVER` macro has.
+  ///   wrote to one or more object files, to how many parameters that
+  ///   `__CPROVER` macro has.
   void cprover_macro_arities(std::map<irep_idt,
                                       std::size_t> &cprover_macros) const
   {
@@ -97,9 +96,15 @@ protected:
   cmdlinet &cmdline;
   bool warning_is_fatal;
 
-  unsigned function_body_count(const goto_functionst &) const;
+  /// \brief Whether to keep implementations of file-local symbols
+  const bool keep_file_local;
 
-  void add_compiler_specific_defines(class configt &config) const;
+  /// \brief String to include in all mangled names
+  const std::string file_local_mangle_suffix;
+
+  std::size_t function_body_count(const goto_functionst &) const;
+
+  void add_compiler_specific_defines() const;
 
   void convert_symbols(goto_functionst &dest);
 

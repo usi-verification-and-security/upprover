@@ -8,14 +8,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "bv_refinement.h"
 
-#include <iostream>
-
 #include <util/xml.h>
 
-bv_refinementt::bv_refinementt(const infot &info):
-  bv_pointerst(*info.ns, *info.prop),
-  progress(false),
-  config_(info)
+bv_refinementt::bv_refinementt(const infot &info)
+  : bv_pointerst(*info.ns, *info.prop, *info.message_handler),
+    progress(false),
+    config_(info)
 {
   // check features we need
   PRECONDITION(prop.has_set_assumptions());
@@ -26,10 +24,10 @@ bv_refinementt::bv_refinementt(const infot &info):
 decision_proceduret::resultt bv_refinementt::dec_solve()
 {
   // do the usual post-processing
-  status() << "BV-Refinement: post-processing" << eom;
+  log.status() << "BV-Refinement: post-processing" << messaget::eom;
   post_process();
 
-  debug() << "Solving with " << prop.solver_text() << eom;
+  log.debug() << "Solving with " << prop.solver_text() << messaget::eom;
 
   unsigned iteration=0;
 
@@ -38,14 +36,14 @@ decision_proceduret::resultt bv_refinementt::dec_solve()
   {
     iteration++;
 
-    status() << "BV-Refinement: iteration " << iteration << eom;
+    log.status() << "BV-Refinement: iteration " << iteration << messaget::eom;
 
     // output the very same information in a structured fashion
-    if(config_.ui==ui_message_handlert::uit::XML_UI)
+    if(config_.output_xml)
     {
       xmlt xml("refinement-iteration");
       xml.data=std::to_string(iteration);
-      status() << xml << '\n';
+      log.status() << xml << '\n';
     }
 
     switch(prop_solve())
@@ -54,30 +52,33 @@ decision_proceduret::resultt bv_refinementt::dec_solve()
       check_SAT();
       if(!progress)
       {
-        status() << "BV-Refinement: got SAT, and it simulates => SAT" << eom;
-        status() << "Total iterations: " << iteration << eom;
+        log.status() << "BV-Refinement: got SAT, and it simulates => SAT"
+                     << messaget::eom;
+        log.status() << "Total iterations: " << iteration << messaget::eom;
         return resultt::D_SATISFIABLE;
       }
       else
-        status() << "BV-Refinement: got SAT, and it is spurious, refining"
-                 << eom;
+        log.status() << "BV-Refinement: got SAT, and it is spurious, refining"
+                     << messaget::eom;
       break;
 
     case resultt::D_UNSATISFIABLE:
       check_UNSAT();
       if(!progress)
       {
-        status() << "BV-Refinement: got UNSAT, and the proof passes => UNSAT"
-                 << eom;
-        status() << "Total iterations: " << iteration << eom;
+        log.status()
+          << "BV-Refinement: got UNSAT, and the proof passes => UNSAT"
+          << messaget::eom;
+        log.status() << "Total iterations: " << iteration << messaget::eom;
         return resultt::D_UNSATISFIABLE;
       }
       else
-        status() << "BV-Refinement: got UNSAT, and the proof fails, refining"
-                 << eom;
+        log.status()
+          << "BV-Refinement: got UNSAT, and the proof fails, refining"
+          << messaget::eom;
       break;
 
-    default:
+    case resultt::D_ERROR:
       return resultt::D_ERROR;
     }
   }
@@ -86,7 +87,7 @@ decision_proceduret::resultt bv_refinementt::dec_solve()
 decision_proceduret::resultt bv_refinementt::prop_solve()
 {
   // this puts the underapproximations into effect
-  bvt assumptions=parent_assumptions;
+  std::vector<exprt> assumptions;
 
   for(const approximationt &approximation : approximations)
   {
@@ -100,16 +101,20 @@ decision_proceduret::resultt bv_refinementt::prop_solve()
       approximation.under_assumptions.end());
   }
 
-  prop.set_assumptions(assumptions);
+  push(assumptions);
   propt::resultt result=prop.prop_solve();
-  prop.set_assumptions(parent_assumptions);
+  pop();
 
+  // clang-format off
   switch(result)
   {
-    case propt::resultt::P_SATISFIABLE: return resultt::D_SATISFIABLE;
-    case propt::resultt::P_UNSATISFIABLE: return resultt::D_UNSATISFIABLE;
-    default: return resultt::D_ERROR;
+  case propt::resultt::P_SATISFIABLE: return resultt::D_SATISFIABLE;
+  case propt::resultt::P_UNSATISFIABLE: return resultt::D_UNSATISFIABLE;
+  case propt::resultt::P_ERROR: return resultt::D_ERROR;
   }
+  // clang-format off
+
+  UNREACHABLE;
 }
 
 void bv_refinementt::check_SAT()
@@ -128,10 +133,4 @@ void bv_refinementt::check_UNSAT()
 
   for(approximationt &approximation : this->approximations)
     check_UNSAT(approximation);
-}
-
-void bv_refinementt::set_assumptions(const bvt &_assumptions)
-{
-  parent_assumptions=_assumptions;
-  prop.set_assumptions(_assumptions);
 }

@@ -41,7 +41,7 @@ public:
   void operator()(
     goto_functionst &goto_functions,
     const namespacet &ns,
-    slicing_criteriont &criterion);
+    const slicing_criteriont &criterion);
 
 protected:
   struct cfg_nodet
@@ -51,6 +51,7 @@ protected:
     }
 
     bool node_required;
+    irep_idt function_id;
 #ifdef DEBUG_FULL_SLICERT
     std::set<unsigned> required_by;
 #endif
@@ -99,6 +100,8 @@ protected:
   {
 #ifdef DEBUG_FULL_SLICERT
     cfg[entry].required_by.insert(reason->location_number);
+#else
+    (void)reason; // unused parameter
 #endif
     queue.push(entry);
   }
@@ -107,10 +110,29 @@ protected:
 class assert_criteriont:public slicing_criteriont
 {
 public:
-  virtual bool operator()(goto_programt::const_targett target)
+  virtual bool
+  operator()(const irep_idt &, goto_programt::const_targett target) const
   {
     return target->is_assert();
   }
+};
+
+class in_function_criteriont : public slicing_criteriont
+{
+public:
+  explicit in_function_criteriont(const std::string &function_name)
+    : target_function(function_name)
+  {
+  }
+
+  virtual bool
+  operator()(const irep_idt &function_id, goto_programt::const_targett) const
+  {
+    return function_id == target_function;
+  }
+
+protected:
+  const irep_idt target_function;
 };
 
 class properties_criteriont:public slicing_criteriont
@@ -122,7 +144,8 @@ public:
   {
   }
 
-  virtual bool operator()(goto_programt::const_targett target)
+  virtual bool
+  operator()(const irep_idt &, goto_programt::const_targett target) const
   {
     if(!target->is_assert())
       return false;

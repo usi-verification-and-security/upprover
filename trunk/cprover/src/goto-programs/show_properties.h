@@ -32,22 +32,20 @@ class message_handlert;
 
 void show_properties(
   const goto_modelt &,
-  message_handlert &message_handler,
-  ui_message_handlert::uit ui);
+  ui_message_handlert &ui_message_handler);
 
 void show_properties(
   const namespacet &ns,
-  message_handlert &message_handler,
-  ui_message_handlert::uit ui,
+  ui_message_handlert &ui_message_handler,
   const goto_functionst &goto_functions);
 
 /// \brief Returns a source_locationt that corresponds
 /// to the property given by an irep_idt.
-/// \param property irep_idt that identifies property
-/// \param goto_functions  program in which to search for
+/// \param property: irep_idt that identifies property
+/// \param goto_functions: program in which to search for
 ///   the property
 /// \return optional<source_locationt> the location of the
-/// property, if found.
+///   property, if found.
 optionalt<source_locationt> find_property(
     const irep_idt &property,
     const goto_functionst &goto_functions);

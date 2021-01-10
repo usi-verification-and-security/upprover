@@ -54,9 +54,9 @@ void cpp_typecheckt::typecheck()
   for(auto &item : cpp_parse_tree.items)
     convert(item);
 
-  typecheck_method_bodies();
-
   static_and_dynamic_initialization();
+
+  typecheck_method_bodies();
 
   do_not_typechecked();
 
@@ -156,7 +156,7 @@ void cpp_typecheckt::static_and_dynamic_initialization()
 
   for(const irep_idt &d_it : dynamic_initializations)
   {
-    const symbolt &symbol=*symbol_table.lookup(d_it);
+    const symbolt &symbol = symbol_table.lookup_ref(d_it);
 
     if(symbol.is_extern)
       continue;
@@ -176,8 +176,7 @@ void cpp_typecheckt::static_and_dynamic_initialization()
     {
       // This will be a constructor call,
       // which we execute.
-      assert(symbol.value.id()==ID_code);
-      init_block.copy_to_operands(symbol.value);
+      init_block.add(to_code(symbol.value));
 
       // Make it nil to get zero initialization by
       // __CPROVER_initialize
@@ -188,17 +187,14 @@ void cpp_typecheckt::static_and_dynamic_initialization()
       // use default constructor
       exprt::operandst ops;
 
-      codet call=
-        cpp_constructor(symbol.location, symbol_expr, ops);
+      auto call = cpp_constructor(symbol.location, symbol_expr, ops);
 
-      if(call.is_not_nil())
-        init_block.move_to_operands(call);
+      if(call.has_value())
+        init_block.add(call.value());
     }
   }
 
   dynamic_initializations.clear();
-
-  // block_sini.move_to_operands(block_dini);
 
   // Create the dynamic initialization procedure
   symbolt init_symbol;
@@ -208,8 +204,7 @@ void cpp_typecheckt::static_and_dynamic_initialization()
   init_symbol.value.swap(init_block);
   init_symbol.mode=ID_cpp;
   init_symbol.module=module;
-  init_symbol.type=code_typet();
-  init_symbol.type.add(ID_return_type)=typet(ID_constructor);
+  init_symbol.type = code_typet({}, typet(ID_constructor));
   init_symbol.is_type=false;
   init_symbol.is_macro=false;
 
@@ -230,11 +225,12 @@ void cpp_typecheckt::do_not_typechecked()
     {
       const symbolt &symbol=named_symbol.second;
 
-      if(symbol.value.id()=="cpp_not_typechecked" &&
-         symbol.value.get_bool("is_used"))
+      if(
+        symbol.value.id() == ID_cpp_not_typechecked &&
+        symbol.value.get_bool(ID_is_used))
       {
         assert(symbol.type.id()==ID_code);
-        symbolt &symbol=*symbol_table.get_writeable(named_symbol.first);
+        exprt value = symbol.value;
 
         if(symbol.base_name=="operator=")
         {
@@ -242,19 +238,21 @@ void cpp_typecheckt::do_not_typechecked()
           declarator.add_source_location() = symbol.location;
           default_assignop_value(
             lookup(symbol.type.get(ID_C_member_name)), declarator);
-          symbol.value.swap(declarator.value());
-          convert_function(symbol);
+          value.swap(declarator.value());
           cont=true;
         }
         else if(symbol.value.operands().size()==1)
         {
-          exprt tmp = symbol.value.op0();
-          symbol.value.swap(tmp);
-          convert_function(symbol);
+          value = to_unary_expr(symbol.value).op();
           cont=true;
         }
         else
           UNREACHABLE; // Don't know what to do!
+
+        symbolt &writable_symbol =
+          symbol_table.get_writeable_ref(named_symbol.first);
+        writable_symbol.value.swap(value);
+        convert_function(writable_symbol);
       }
     }
   }
@@ -262,7 +260,7 @@ void cpp_typecheckt::do_not_typechecked()
 
   for(const auto &named_symbol : symbol_table.symbols)
   {
-    if(named_symbol.second.value.id()=="cpp_not_typechecked")
+    if(named_symbol.second.value.id() == ID_cpp_not_typechecked)
       symbol_table.get_writeable_ref(named_symbol.first).value.make_nil();
   }
 }
@@ -278,13 +276,10 @@ void cpp_typecheckt::clean_up()
 
     const symbolt &symbol=cur_it->second;
 
-    // erase templates
-    if(symbol.type.get_bool(ID_is_template) ||
-       // Remove all symbols that have not been converted.
-       //   In particular this includes symbols created for functions
-       //   during template instantiation that are never called,
-       //   and hence, their bodies have not been converted.
-       contains_cpp_name(symbol.value))
+    // erase templates and all member functions that have not been converted
+    if(
+      symbol.type.get_bool(ID_is_template) ||
+      deferred_typechecking.find(symbol.name) != deferred_typechecking.end())
     {
       symbol_table.erase(cur_it);
       continue;
@@ -339,8 +334,11 @@ bool cpp_typecheckt::contains_cpp_name(const exprt &expr)
 {
   if(expr.id() == ID_cpp_name || expr.id() == ID_cpp_declaration)
     return true;
-  forall_operands(it, expr)
-    if(contains_cpp_name(*it))
+
+  for(const exprt &op : expr.operands())
+  {
+    if(contains_cpp_name(op))
       return true;
+  }
   return false;
 }

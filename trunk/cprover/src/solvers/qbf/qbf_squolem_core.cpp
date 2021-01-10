@@ -189,11 +189,12 @@ const exprt qbf_squolem_coret::f_get(literalt l)
 {
   if(squolem->isUniversal(l.var_no()))
   {
-    assert(l.var_no()!=0);
+    INVARIANT_WITH_DIAGNOSTICS(
+      l.var_no() != 0, "unknown variable: ", std::to_string(l.var_no()));
     variable_mapt::const_iterator it=variable_map.find(l.var_no());
 
-    if(it==variable_map.end())
-      throw "variable map error";
+    INVARIANT(
+      it != variable_map.end(), "variable not found in the variable map");
 
     const exprt &sym=it->second.first;
     unsigned index=it->second.second;
@@ -261,7 +262,7 @@ const exprt qbf_squolem_coret::f_get_cnf(WitnessStack *wsp)
       exprt subf=f_get(literalt(var(lit), isPositive(lit))); // negated!
       if(find(clause.operands().begin(), clause.operands().end(), subf)==
          clause.operands().end())
-        clause.move_to_operands(subf);
+        clause.add_to_operands(std::move(subf));
     }
 
     if(clause.operands().empty())
@@ -303,7 +304,7 @@ const exprt qbf_squolem_coret::f_get_dnf(WitnessStack *wsp)
       exprt subf=f_get(literalt(var(lit), !isPositive(lit)));
       if(find(cube.operands().begin(), cube.operands().end(), subf)==
          cube.operands().end())
-        cube.move_to_operands(subf);
+        cube.add_to_operands(std::move(subf));
 
       simplify_extractbits(cube);
     }
