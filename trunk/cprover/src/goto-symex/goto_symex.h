@@ -102,6 +102,9 @@ public:
   /// \return A delegate to retrieve function bodies from the given
   ///   goto_functionst
   
+  //Non-static method for HiFrog/UpProver
+  goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
+  
   static get_goto_functiont get_goto_function(abstract_goto_modelt &goto_model);
 
   /// \brief Symbolically execute the entire program starting from entry point
@@ -181,7 +184,7 @@ public:
 
 protected:
   /// The configuration to use for this symbolic execution
-  const symex_configt symex_config;
+  symex_configt symex_config;
 
   /// Initialize the symbolic execution and the given state with
   /// the beginning of the entry point function.

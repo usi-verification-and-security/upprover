@@ -496,6 +496,14 @@ goto_symext::get_goto_function(abstract_goto_modelt &goto_model)
   };
 }
 
+goto_symext::get_goto_functiont goto_symext::construct_get_goto_function( //hkd!
+        const goto_functionst &goto_functions)
+{
+    return [&goto_functions](
+            const irep_idt &key) -> const goto_functionst::goto_functiont & {
+        return goto_functions.function_map.at(key);
+    };
+}
 messaget::mstreamt &
 goto_symext::print_callstack_entry(const symex_targett::sourcet &source)
 {

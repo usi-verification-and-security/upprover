@@ -122,6 +122,8 @@ public:
     bool allow_pointer_unsoundness = false);
 
   field_sensitivityt field_sensitivity;
+  
+  void get_l1_name(exprt &expr) const; //HiFrog needs to be public, not sttaic
 
 protected:
   template <levelt>

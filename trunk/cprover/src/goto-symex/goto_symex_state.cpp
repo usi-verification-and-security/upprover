@@ -30,7 +30,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <analyses/dirty.h>
 #include <pointer-analysis/add_failed_symbols.h>
 
-static void get_l1_name(exprt &expr);
 
 goto_symex_statet::goto_symex_statet(
   const symex_targett::sourcet &_source,
@@ -743,7 +742,7 @@ void goto_symex_statet::rename(
     l1_type_entry.first->second=type;
 }
 
-static void get_l1_name(exprt &expr)
+void goto_symex_statet::get_l1_name(exprt &expr) const
 {
   // do not reset the type !
 
