@@ -1,11 +1,11 @@
 set(HIFROG_SOURCE_FILES
-        nopartition/core_checker_no_partition.cpp
-        nopartition/prepare_formula_no_partition.cpp
-        nopartition/prepare_formula_no_partition.h
-        nopartition/hifrog_symex_target_equation_no_partition.cpp
-        nopartition/hifrog_symex_target_equation_no_partition.h
-        nopartition/symex_no_partition.cpp
-        nopartition/symex_no_partition.h
+#        nopartition/core_checker_no_partition.cpp
+#        nopartition/prepare_formula_no_partition.cpp
+#        nopartition/prepare_formula_no_partition.h
+#        nopartition/hifrog_symex_target_equation_no_partition.cpp
+#        nopartition/hifrog_symex_target_equation_no_partition.h
+#        nopartition/symex_no_partition.cpp
+#        nopartition/symex_no_partition.h
         assertion_info.h
         call_stack.h
         check_claims.cpp
