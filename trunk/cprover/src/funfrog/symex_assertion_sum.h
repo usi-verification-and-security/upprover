@@ -1,9 +1,9 @@
 /*******************************************************************
  Module: Symbolic execution and deciding of a given goto-program
- using and generating function summaries. Based on symex_asserion.h.
-
- Author: Ondrej Sery
-
+ using and generating function summaries. Based on CPROVER goto_symex
+ Author: Ondrej Sery, Karine Mendoza, Martin Blicha, Sepideh Asadi
+This takes a goto-program and translates it to an equation system by traversing the program.
+The output of symbolic execution is a system of equations, asserations and assumptions;
  \*******************************************************************/
 
 #ifndef CPROVER_SYMEX_ASSERTION_SUM_H
@@ -15,7 +15,6 @@
 #include "partition_fwd.h"
 #include <queue>
 #include <funfrog/summary_store.h>
-//#define DEBUG_PARTITIONING // Debug this class
 
 class goto_programt;
 class goto_functionst;
@@ -30,36 +29,81 @@ using partition_iface_ptrst = std::list<partition_ifacet*>;
 class symex_assertion_sumt : public goto_symext
 {
 public:
-  symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _call_info,
-                       const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
-                       partitioning_target_equationt & _target,
-                       message_handlert & _message_handler, const goto_programt & _goto_program,
-                       unsigned _last_assertion_loc, bool _single_assertion_check,
-                       bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops,
-                       guard_managert guard_manager);
-  
-    symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const optionst &, path_storaget &,
-            const symbol_tablet&, partitioning_target_equationt&, message_handlert&,
+/*******************************************************************
+Function: symex_assertion_sumt::symex_assertion_sumt
+
+Constructor
+/// Construct a goto_symext to execute a particular program
+/// \param mh: The message handler to use for log messages
+/// \param outer_symbol_table: The symbol table for the program to be
+///   executed, excluding any symbols added during the symbolic execution
+/// \param _target: Where to store the equation built up by this execution
+/// \param options: The options to use to configure this execution
+/// \param path_storage: Place to storage symbolic execution paths that have
+/// been halted and can be resumed later
+/// \param guard_manager: Manager for creating guards
+
+///The state that symbolic execution maintains is not a member anymore.
+///Symbolic execution state for current instruction will be pass around
+\*******************************************************************/
+  symex_assertion_sumt(
+    const goto_functionst & _goto_functions,
+    call_tree_nodet & _call_info,
+    const optionst &_options,
+    path_storaget &_path_storage,
+    const symbol_tablet & outer_symbol_table,
+    partitioning_target_equationt & _target,
+    message_handlert & _message_handler,
+    const goto_programt & _goto_program,
+    unsigned _last_assertion_loc,
+    bool _single_assertion_check,
+    bool _do_guard_expl,
+    unsigned int _max_unwind, bool partial_loops,
+    guard_managert & guard_manager)
+    : goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage, guard_manager),
+      goto_functions(_goto_functions),
+      call_tree_root(_call_info),
+      current_call_tree_node(&_call_info),
+      equation(_target),
+      goto_program(_goto_program),
+      last_assertion_loc(_last_assertion_loc),
+      single_assertion_check(_single_assertion_check),
+      do_guard_expl(_do_guard_expl),
+      max_unwind(_max_unwind),
+    {
+      analyze_globals();
+    }
+    
+  // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
+  symex_assertion_sumt(
+  const goto_functionst &, call_tree_nodet &, const optionst &, path_storaget &,
+  const symbol_tablet&, partitioning_target_equationt&, message_handlert&,
   const goto_programt&, unsigned int,
-  bool, bool, bool, bool) = delete; // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
+  bool, bool, bool, bool) = delete;
           
   virtual ~symex_assertion_sumt() override;
 
-  // Generate SSA statements for the program starting from the root 
+  // Generate SSA statements for the program starting from the root
   // stored in goto_program.
   bool prepare_SSA();
   
-  //usage in upgrade check; Generate SSA statements for the subtree of a specific function and
-  // compare to its summary
+  // usage in upgrade check; Generate SSA statements for the subtree
+  // of a specific function and compare to its summary
   bool prepare_subtree_SSA();
 
-  // Generate SSA statements for the refined program starting from the given 
+  // Generate SSA statements for the refined program starting from the given
   // set of functions.
   bool refine_SSA(const std::list<call_tree_nodet *> & refined_function);
   
-  virtual void symex_step(
-    const get_goto_functiont &get_goto_function,
-    statet &state) override;
+  /// \brief Called for each step in the symbolic execution
+  /// This calls \ref print_symex_step to print symex's current instruction if
+  /// required, then \ref execute_next_instruction to execute the actual
+  /// instruction body.
+  /// \param get_goto_function: The delegate to retrieve function bodies (see
+  ///   \ref get_goto_functiont)
+  /// \param state: Symbolic execution state for current instruction
+  virtual void
+  symex_step(const get_goto_functiont &get_goto_function, statet &state) override;
 
   const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
     auto it = partition_iface_map.find(call_tree_node);
@@ -80,10 +124,9 @@ public:
   }
 
 protected:
-
-  
   // Symex state holding the renaming levels
-  statet state;
+  statet state; //HiFrog specific.
+  
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
@@ -117,7 +160,8 @@ protected:
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;
 
-  // Store for the symex result
+  // Store the symex result (The output of symbolic execution is a system of equations)
+  //SSA equation
   partitioning_target_equationt &equation;
 
   // Artificial identifiers for which we do not need Phi function
@@ -283,7 +327,7 @@ protected:
 
   // Dead identifiers do not need to be considered in Phi function generation
   bool is_dead_identifier(const irep_idt& identifier) {
-    if (identifier == guard_identifier)
+    if (identifier == goto_symext::statet::guard_identifier())
       return true;
 
     return dead_identifiers.find(identifier) != dead_identifiers.end();
@@ -395,7 +439,9 @@ private:
   ssa_exprt get_current_version(const symbolt & symbol);
 
   void stop_constant_propagation_for(const irep_idt & id) {
-    state.propagation.remove(id);
+    //state.propagation.remove(id);
+    state.propagation.erase_if_exists(id);
+    
   }
 
   // this works only for identifiers of artificial symbols
@@ -431,7 +477,7 @@ private:
 
   void turn_off_recording_events() {
     // turns off doing some book-keeping related to handling multiple threads by CProver
-    state.record_events = false;
+    state.record_events.push(false);
   }
 };
 #endif
