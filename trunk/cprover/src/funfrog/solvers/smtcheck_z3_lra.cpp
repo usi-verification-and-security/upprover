@@ -2,6 +2,7 @@
 
 #include <util/std_expr.h>
 #include <util/type.h>
+#include <util/mathematical_types.h>
 #include <funfrog/utils/naming_helpers.h>
 #include "../utils/naming_helpers.h"
 

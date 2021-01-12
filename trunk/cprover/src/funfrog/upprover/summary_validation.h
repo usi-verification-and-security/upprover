@@ -16,7 +16,7 @@ class summary_validationt : public core_checkert
 {
 public:
 	summary_validationt(
-            const goto_modelt & _goto_model,
+            const goto_modelt & _goto_model, //goto_model_new
             //const goto_functionst &_goto_functions,
             //const namespacet &_ns,
             optionst & _options,

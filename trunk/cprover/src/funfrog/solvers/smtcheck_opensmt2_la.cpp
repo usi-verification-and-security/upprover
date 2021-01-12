@@ -6,6 +6,7 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 #include "smtcheck_opensmt2_la.h"
 #include <util/type.h>
 #include <funfrog/utils/naming_helpers.h>
+#include "util/mathematical_types.h"
 
 
 // Debug flags of this class:
@@ -537,7 +538,7 @@ void smtcheck_opensmt2t_la::add_constraints2type(const exprt & expr, const PTRef
 #endif
 
     //gets the property
-    int size = var_type.get_unsigned_int("width");
+    int size = var_type.get_size_t("width");
     bool is_non_det = (expr.id() == ID_nondet_symbol);
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     bool is_add_constraints = false;
@@ -658,7 +659,7 @@ void smtcheck_opensmt2t_la::add_constraints2type(const exprt & expr, const PTRef
     if (is_add_constraints)
     	cout << "; Add bounds constraints for type "
             << var_type.get("#c_type") << " "
-            << var_type.get_unsigned_int("width") << "bits"
+            << var_type.get_size_t("width") << "bits"
             << endl;
 #endif
 }

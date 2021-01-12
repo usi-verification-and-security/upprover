@@ -8,6 +8,7 @@
 #include "../utils/string_utils.h"
 #include "smt_itp_z3.h"
 #include "solver_options.h"
+#include <util/mathematical_types.h>
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -125,7 +126,7 @@ exprt smtcheck_z3t::get_value(const exprt &expr)
             irep_idt value = ptref_eval.to_string();
 
             // Create the expr with it
-            constant_exprt tmp;
+            constant_exprt tmp(value, expr.type());
             tmp.set_value(value);
 
             return tmp;
@@ -1085,7 +1086,7 @@ void smtcheck_z3t::add_constraints2type(const exprt & expr, const z3::expr var)
 #endif
 
     //gets the property
-    int size = var_type.get_unsigned_int("width");
+    int size = var_type.get_size_t("width");
     bool is_non_det = (expr.id() == ID_nondet_symbol);
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     bool is_add_constraints = false;
@@ -1206,7 +1207,7 @@ void smtcheck_z3t::add_constraints2type(const exprt & expr, const z3::expr var)
     if (is_add_constraints)
     	cout << "; Add bounds constraints for type "
             << var_type.get("#c_type") << " "
-            << var_type.get_unsigned_int("width") << "bits"
+            << var_type.get_size_t("width") << "bits"
             << endl;
 #endif
 }

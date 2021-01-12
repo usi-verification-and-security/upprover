@@ -11,7 +11,7 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include "../utils/naming_helpers.h"
 #include <funfrog/utils/containers_utils.h>
 #include <funfrog/utils/SummaryInvalidException.h>
-
+#include <util/mathematical_types.h>
 #include <smt2newcontext.h>
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -716,7 +716,7 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
                     smtcheck_opensmt2t::get_value_from_solver(ptref);
 
             // Create the expr with it
-            constant_exprt tmp;
+            constant_exprt tmp(value, expr.type());
             tmp.set_value(value);
 
             return tmp;
@@ -728,7 +728,7 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
                     smtcheck_opensmt2t::get_value_from_solver(ptref);
 
             // Create the expr with it
-            constant_exprt tmp;
+            constant_exprt tmp(value, expr.type());
             tmp.set_value(value);
 
             return tmp;

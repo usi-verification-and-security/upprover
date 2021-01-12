@@ -6,6 +6,7 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
 #include "smtcheck_opensmt2_uf.h"
 #include <util/std_expr.h>
+#include <util/mathematical_types.h>
 #include <funfrog/utils/naming_helpers.h>
 
 // Debug flags of this class:

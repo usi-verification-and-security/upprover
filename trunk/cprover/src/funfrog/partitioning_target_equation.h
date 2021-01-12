@@ -3,16 +3,15 @@
 Module: Symex target equation which tracks different partitions for
 different deferred functions.
 
+ The output of symbolic execution is a system of equations, asserations
+ and assumptions; an object of type symex_target_equationt, containing
+ a list of  CPROVER::symex_target_equationt::SSA_stept,
+ each of which are equalities between exprt expressions.
+ --This class provides Implementation of functions to build SSA equation
 \*******************************************************************/
 
 #ifndef CPROVER_PARTITIONING_TARGET_EQUATION_H
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
-
-// Debugging flags:
-//#define DEBUG_SSA // General debug prints
-//#define DEBUG_ENCODING
-//#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
-// End of working debugging flags
 
 #include <util/symbol.h>
 #ifdef DISABLE_OPTIMIZATIONS

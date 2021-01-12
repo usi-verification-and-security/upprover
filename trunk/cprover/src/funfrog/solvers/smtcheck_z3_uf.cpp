@@ -2,6 +2,7 @@
 
 #include <opensmt/Vec.h>
 #include "../utils/naming_helpers.h"
+#include <util/mathematical_types.h>
 
 const char* smtcheck_z3_uft::tk_sort_unumber = "U"; // Not to collide with the sort definitions in the solver
 const char* smtcheck_z3_uft::tk_mult = "fU*";
