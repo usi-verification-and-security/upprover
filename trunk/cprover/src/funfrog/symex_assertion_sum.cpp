@@ -38,6 +38,31 @@
 #include <util/format_expr.h>
 #endif
 
+symex_assertion_sumt::symex_assertion_sumt(
+	const goto_functionst & _goto_functions,
+	call_tree_nodet & _call_info,
+	const optionst & _options,
+	path_storaget & _path_storage,
+	const symbol_tablet & outer_symbol_table,
+	partitioning_target_equationt & _target,
+	message_handlert & _message_handler,
+	const goto_programt & _goto_program, unsigned int _last_assertion_loc,
+	bool _single_assertion_check, bool _do_guard_expl, unsigned int _max_unwind,
+	bool partial_loops, guard_managert & guard_manager)
+	: goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage, guard_manager),
+	  goto_functions(_goto_functions),
+	  call_tree_root(_call_info),
+	  current_call_tree_node(&_call_info),
+	  equation(_target),
+	  goto_program(_goto_program),
+	  last_assertion_loc(_last_assertion_loc),
+	  single_assertion_check(_single_assertion_check),
+	  do_guard_expl(_do_guard_expl),
+	  max_unwind(_max_unwind)
+{
+	analyze_globals();
+}
+
 /*******************************************************************
 
  Function: symex_assertion_sumt::~symex_assertion_sumt
@@ -77,21 +102,17 @@ bool symex_assertion_sumt::prepare_SSA()
     return true;
   }
 
-  // Clear the state
   reset_state();
-  add_globals_to_state(state);
+  add_globals_to_state(*state);
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
-  produce_callsite_symbols(partition_iface, state); // MB: adding producing call site symbols for top level (nil) function to avoid nil symbols in conversion
+  produce_callsite_symbols(partition_iface, *state); // MB: adding producing call site symbols for top level (nil) function to avoid nil symbols in conversion
   defer_function(deferred_functiont(call_tree_root, partition_iface));
   equation.select_partition(partition_iface.partition_id);
 
-  // Old: ??? state.value_set = value_sets;
-  state.source.pc = goto_program.instructions.begin();
-  
   loc = 0;
-  return process_planned(state);
+  return process_planned(*state);
 }
 /*******************************************************************
 
@@ -107,7 +128,7 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
   
   // Clear the state
   reset_state();
-  add_globals_to_state(state);
+  add_globals_to_state(*state);
   
   // Prepare a partition for the ROOT function and defer
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
@@ -117,18 +138,14 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
   
   // Make all the interface symbols shared between
   // the inverted summary and the function.
-  prepare_fresh_arg_symbols(state, partition_iface);
-  
-  // Prepare a partition for the inverted SUMMARY
-//  fill_inverted_summary(call_tree_root, state, partition_iface);
-  
-  // Old: ??? state.value_set = value_sets;
-  state.source.pc = goto_program.instructions.begin();
+  prepare_fresh_arg_symbols(*state, partition_iface);
+
+  state->source.pc = goto_program.instructions.begin();
   
   // Plan the function for processing
-  dequeue_deferred_function(state); // This does all the necessary things, such as setting loc and selecting partition
+  dequeue_deferred_function(*state); // This does all the necessary things, such as setting loc and selecting partition
   
-  return process_planned(state);
+  return process_planned(*state);
 }
 /*******************************************************************
 
@@ -176,9 +193,9 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
   }
   
   // Plan the function for processing
-  dequeue_deferred_function(state);
+  dequeue_deferred_function(*state);
   
-  return process_planned(state);
+  return process_planned(*state);
 }
 
 /*******************************************************************\
@@ -908,8 +925,11 @@ void symex_assertion_sumt::clear_locals_versions(statet &state)
         //returns null if not found
       // FIXME: MB:SA test if this behaviour is correct
       if(it2) {
-        state.get_level2().current_names.[local_id].first.remove_level_2(); //fixme: map changed to sharing_mapt since cprover5.12
-        //state.get_level2().current_names.find(local_id)->get().first.remove_level_2();
+		// fixme: test this; map changed to sharing_mapt since cprover5.12
+		// MB: hack to do what we were doing before, but not sure why we do it
+      	symex_level2t & mutable_level = const_cast<symex_level2t&>(state.get_level2());
+      	ssa_exprt ssa_copy = it2->get().first;
+      	mutable_level.current_names.update(local_id, [](std::pair<ssa_exprt, size_t>& val) { val.first.remove_level_2(); });
       }
     }
   }
@@ -1243,7 +1263,7 @@ void symex_assertion_sumt::raw_assignment(
   assert(!lhs.get_level_2().empty());
 
   exprt ssa_rhs=rhs;
-  state.rename(ssa_rhs, ns);
+  ssa_rhs = state.rename(ssa_rhs, ns).get();
   do_simplify(ssa_rhs);
 
   // the following block is what we want from state.assign
@@ -1285,17 +1305,16 @@ void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
   statet &dest_state)
 {
-  // go over all variables to see what changed
-  std::unordered_set<ssa_exprt, irep_hash> variables;
-  
-  //goto_state.level2_get_variables(variables);
-  goto_state.level2.get_variables(variables); //fixme: in renaming_level.h get_variables is marked deprecated https://github.com/diffblue/cbmc/commit/abb3fd9407f3c234ad3af8ac797a6b5cf03e6519
-  dest_state.get_level2().get_variables(variables);
+
+	symex_renaming_levelt::delta_viewt delta_view;
+	goto_state.get_level2().current_names.get_delta_view(
+		dest_state.get_level2().current_names, delta_view, false);
+
   
   //guardt diff_guard; CProver 5.12 needs arg
   guardt diff_guard{true_exprt{}, guard_manager};
   
-  if(!variables.empty())
+  if(!delta_view.empty())
   {
     diff_guard=goto_state.guard;
     
@@ -1303,12 +1322,16 @@ void symex_assertion_sumt::phi_function(
     diff_guard-=dest_state.guard;
   }
   
-  for(const auto & variable : variables)
+  for(const auto &delta_item : delta_view)
   {
-    const irep_idt l1_identifier = variable.get_identifier();
-    const irep_idt &obj_identifier = variable.get_object_name();
+	if(delta_item.is_in_both_maps())
+		continue;
+
+	const ssa_exprt &ssa = delta_item.m.first;
+    const irep_idt l1_identifier = ssa.get_identifier();
+    const irep_idt &obj_identifier = ssa.get_object_name();
     
-    if(obj_identifier == state.guard_identifier()) //goto_symext::statet::guard_identifier()
+    if(obj_identifier == state->guard_identifier()) //goto_symext::statet::guard_identifier()
       continue; // just a guard, don't bother
     
     if(goto_state.get_level2().latest_index(l1_identifier)==
@@ -1334,12 +1357,12 @@ void symex_assertion_sumt::phi_function(
     // may have been introduced by symex_start_thread (and will
     // only later be removed from level2.current_names by pop_frame
     // once the thread is executed)
-    if(!variable.get_level_0().empty() &&
-       variable.get_level_0()!=std::to_string(dest_state.source.thread_nr))
+    if(!ssa.get_level_0().empty() &&
+       ssa.get_level_0()!=std::to_string(dest_state.source.thread_nr))
       continue;
     
-    exprt goto_state_rhs = variable;
-    exprt dest_state_rhs = variable;
+    exprt goto_state_rhs = ssa;
+    exprt dest_state_rhs = ssa;
     
     {
       auto p_it= goto_state.propagation.find(l1_identifier);
@@ -1385,10 +1408,10 @@ void symex_assertion_sumt::phi_function(
       do_simplify(rhs);
     }
     
-    ssa_exprt new_lhs = variable;
+    ssa_exprt new_lhs = ssa;
     //const bool record_events_bak = dest_state.record_events; //CProver 5.12 Replace record_events by a stack
     dest_state.record_events.push(false);
-    dest_state.assignment(new_lhs, rhs, ns, true, true); // ++counter l2
+    new_lhs = dest_state.assignment(new_lhs, rhs, ns, true, true).get(); // ++counter l2
     //dest_state.record_events=record_events_bak;
     dest_state.record_events.pop();
     
@@ -1531,7 +1554,7 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
   stop_constant_propagation_for(ssa.get_identifier());
   // get the current L2 version of the L1 symbol
   // state.rename(ssa, ns, goto_symex_statet::levelt::L2);
-  state.rename(ssa.type(), ssa.get_identifier(), ns); //SA: double check
+  state->rename(ssa.type(), ssa.get_identifier(), ns); //SA: double check; MB: may be also rename<L2>(ssa, bs);
   return ssa;
 }
 
@@ -1544,14 +1567,13 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
   // get the current L1 version of the symbol
+  auto ssa = get_l1_ssa(symbol);
   auto ssa_l1_identifier = get_l1_identifier(symbol);
   //assert(state.get_level2().current_names.find(ssa_l1_identifier) != state.get_level2().current_names.end());
   //assert(state.get_level2().current_names.find(ssa_l1_identifier) != state.get_level2().current_names.end());
-  const auto p_it = state.get_level2().current_names.find(ssa_l1_identifier);
+  const auto p_it = state->get_level2().current_names.find(ssa_l1_identifier);
   assert(p_it.has_value());
-  //*p_it
-  state.level2.increase_counter(ssa_l1_identifier); //fixme now it's symex_level2t::increase_generation
-  //state.get_level2().increase_generation (ssa_l1_identifier); //SA : ??
+  const_cast<symex_level2t&>(state->get_level2()).increase_generation(ssa_l1_identifier, ssa, state->get_l2_name_provider()); //fixme now it's symex_level2t::increase_generation
   // get the correct L2 version after incrementing  the counter
   return get_current_version(symbol);
 }
@@ -1600,7 +1622,7 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   auto l1_id = l1_ssa.get_l1_object_identifier();
   //assert(state.get_level2().current_names.find(l1_id) == state.get_level2().current_names.end()); ///.has_value
   // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but I fail to see the reason
-  state.get_level2().current_names[l1_id] = std::make_pair(l1_ssa,0); //fixme
+  const_cast<symex_level2t&>(state->get_level2()).current_names.insert(l1_id,std::make_pair(l1_ssa,0)); //fixme
 }
 
 
@@ -1697,15 +1719,15 @@ void symex_assertion_sumt::add_globals_to_state(statet & state) {
 //        MB: we declare ALL globals, since if symex is not run from top, their declaration would not be encountered -> problem
             // the following is taken from goto_symext::symex_decl
             ssa_exprt ssa(symbol.symbol_expr());
-            state.rename(ssa, ns, goto_symex_statet::L1); //fixme
+            ssa = state.rename_ssa<L1>(ssa, ns).get(); //fixme
             const auto & l1_identifier = ssa.get_identifier();
             state.rename(ssa.type(), l1_identifier, ns);
             ssa.update_type();
             // end of section taken from CPROVER
             //assert(state.get_level2().current_names.find(l1_identifier) == state.get_level2().current_names.end());
             const auto p_it = state.get_level2().current_names.find(l1_identifier);
-            assert(p_it.has_value());
-            state.get_level2().current_names[l1_identifier] = std::make_pair(ssa, 0); //fixme
+            assert(!p_it);
+            const_cast<symex_level2t&>(state.get_level2()).current_names.insert(l1_identifier,std::make_pair(ssa, 0)); //fixme
 //        }
     }
 }

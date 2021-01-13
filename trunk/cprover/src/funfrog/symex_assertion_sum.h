@@ -59,20 +59,7 @@ Constructor
     bool _single_assertion_check,
     bool _do_guard_expl,
     unsigned int _max_unwind, bool partial_loops,
-    guard_managert & guard_manager)
-    : goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage, guard_manager),
-      goto_functions(_goto_functions),
-      call_tree_root(_call_info),
-      current_call_tree_node(&_call_info),
-      equation(_target),
-      goto_program(_goto_program),
-      last_assertion_loc(_last_assertion_loc),
-      single_assertion_check(_single_assertion_check),
-      do_guard_expl(_do_guard_expl),
-      max_unwind(_max_unwind),
-    {
-      analyze_globals();
-    }
+    guard_managert & guard_manager);
     
   // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
   symex_assertion_sumt(
@@ -124,9 +111,8 @@ Constructor
   }
 
 protected:
-  // Symex state holding the renaming levels
-  statet state; //HiFrog specific.
-  
+  std::unique_ptr<statet> state; //HiFrog specific.
+
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
@@ -397,8 +383,8 @@ protected:
   // const symbol_tablet &outer_symbol_table; <--- this is a const method in goto_symex.h
 //  symbol_tablet* symex_symbol_table;  // We use this to all our dynamic allocations! (as done in bmc.h
 
-    symbol_tablet& get_symbol_table() { return state.symbol_table; }
-    const symbol_tablet& get_symbol_table() const { return state.symbol_table; }
+    symbol_tablet& get_symbol_table() { return state->symbol_table; }
+    const symbol_tablet& get_symbol_table() const { return state->symbol_table; }
 
 private:
 
@@ -440,7 +426,7 @@ private:
 
   void stop_constant_propagation_for(const irep_idt & id) {
     //state.propagation.remove(id);
-    state.propagation.erase_if_exists(id);
+    state->propagation.erase_if_exists(id);
     
   }
 
@@ -457,8 +443,8 @@ private:
   // Get L1 version of a symbol
   ssa_exprt get_l1_ssa(const symbolt & symbol) {
     ssa_exprt ssa { symbol.symbol_expr() };
-    state.rename(ssa, ns, statet::levelt::L1);
-    return ssa;
+    auto res = state->rename_ssa<L1>(ssa, ns);
+    return res.get();
   }
 
   dstringt get_l1_identifier(const symbolt & symbol) {
@@ -469,15 +455,21 @@ private:
 
   // to be able to start with a fresh state
   void reset_state(){
-    state = goto_symext::statet();
-    ns = namespacet{outer_symbol_table, state.symbol_table};
-    // since not supporting multiple threads, we do not need to record events;
-    turn_off_recording_events();
+  auto* storage = &this->path_storage;
+  // Clear the state
+  auto state = std::unique_ptr<statet>(new statet(
+	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
+	  symex_config.max_field_sensitivity_array_size,
+	  guard_manager,
+	  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
+	ns = namespacet{outer_symbol_table, state->symbol_table};
+	// since not supporting multiple threads, we do not need to record events;
+	turn_off_recording_events();
   }
 
   void turn_off_recording_events() {
-    // turns off doing some book-keeping related to handling multiple threads by CProver
-    state.record_events.push(false);
+  	// turns off doing some book-keeping related to handling multiple threads by CProver
+	state->record_events.push(false);
   }
 };
 #endif
