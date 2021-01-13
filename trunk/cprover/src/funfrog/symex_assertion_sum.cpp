@@ -1569,11 +1569,12 @@ ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
   // get the current L1 version of the symbol
   auto ssa = get_l1_ssa(symbol);
   auto ssa_l1_identifier = get_l1_identifier(symbol);
-  //assert(state.get_level2().current_names.find(ssa_l1_identifier) != state.get_level2().current_names.end());
+  //safety
   //assert(state.get_level2().current_names.find(ssa_l1_identifier) != state.get_level2().current_names.end());
   const auto p_it = state->get_level2().current_names.find(ssa_l1_identifier);
   assert(p_it.has_value());
-  const_cast<symex_level2t&>(state->get_level2()).increase_generation(ssa_l1_identifier, ssa, state->get_l2_name_provider()); //fixme now it's symex_level2t::increase_generation
+  
+  const_cast<symex_level2t&>(state->get_level2()).increase_generation(ssa_l1_identifier, ssa, state->get_l2_name_provider());
   // get the correct L2 version after incrementing  the counter
   return get_current_version(symbol);
 }
