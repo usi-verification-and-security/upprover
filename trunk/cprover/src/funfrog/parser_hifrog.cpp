@@ -286,131 +286,7 @@ int parser_hifrogt::doit()
     if(set_properties(goto_model))
         return CPROVER_EXIT_SET_PROPERTIES_FAILED;
     
-    if(
-            options.get_bool_option("program-only") ||
-            options.get_bool_option("show-vcc"))
-    {
-        if(options.get_bool_option("paths"))
-        {
-            all_properties_verifiert<single_path_symex_only_checkert> verifier(
-                    options, ui_message_handler, goto_model);
-            (void)verifier();
-        }
-        else
-        {
-            all_properties_verifiert<multi_path_symex_only_checkert> verifier(
-                    options, ui_message_handler, goto_model);
-            (void)verifier();
-        }
-        
-        return CPROVER_EXIT_SUCCESS;
-    }
-    
-    if(
-            options.get_bool_option("dimacs") || !options.get_option("outfile").empty())
-    {
-        if(options.get_bool_option("paths"))
-        {
-            stop_on_fail_verifiert<single_path_symex_checkert> verifier(
-                    options, ui_message_handler, goto_model);
-            (void)verifier();
-        }
-        else
-        {
-            stop_on_fail_verifiert<multi_path_symex_checkert> verifier(
-                    options, ui_message_handler, goto_model);
-            (void)verifier();
-        }
-        
-        return CPROVER_EXIT_SUCCESS;
-    }
 
-//    if(options.is_set("cover"))
-//    {
-//        cover_goals_verifier_with_trace_storaget<multi_path_symex_checkert>
-//                verifier(options, ui_message_handler, goto_model);
-//        (void)verifier();
-//        verifier.report();
-//
-//        c_test_input_generatort test_generator(ui_message_handler, options);
-//        test_generator(verifier.get_traces());
-//
-//        return CPROVER_EXIT_SUCCESS;
-//    }
-    
-    std::unique_ptr<goto_verifiert> verifier = nullptr;
-    
-    if(options.is_set("incremental-loop"))
-    {
-        if(options.get_bool_option("stop-on-fail"))
-        {
-            verifier = util_make_unique<
-                    stop_on_fail_verifiert<single_loop_incremental_symex_checkert>>(
-                    options, ui_message_handler, goto_model);
-        }
-        else
-        {
-            verifier = util_make_unique<all_properties_verifier_with_trace_storaget<
-                    single_loop_incremental_symex_checkert>>(
-                    options, ui_message_handler, goto_model);
-        }
-    }
-    else if(
-            options.get_bool_option("stop-on-fail") && options.get_bool_option("paths"))
-    {
-        verifier =
-                util_make_unique<stop_on_fail_verifiert<single_path_symex_checkert>>(
-                options, ui_message_handler, goto_model);
-    }
-    else if(
-            options.get_bool_option("stop-on-fail") &&
-            !options.get_bool_option("paths"))
-    {
-        if(options.get_bool_option("localize-faults"))
-        {
-            verifier =
-                    util_make_unique<stop_on_fail_verifier_with_fault_localizationt<
-                            multi_path_symex_checkert>>(options, ui_message_handler, goto_model);
-        }
-        else
-        {
-            verifier =
-                    util_make_unique<stop_on_fail_verifiert<multi_path_symex_checkert>>(
-                    options, ui_message_handler, goto_model);
-        }
-    }
-    else if(
-            !options.get_bool_option("stop-on-fail") &&
-            options.get_bool_option("paths"))
-    {
-        verifier = util_make_unique<
-                all_properties_verifier_with_trace_storaget<single_path_symex_checkert>>(
-                options, ui_message_handler, goto_model);
-    }
-    else if(
-            !options.get_bool_option("stop-on-fail") &&
-            !options.get_bool_option("paths"))
-    {
-        if(options.get_bool_option("localize-faults"))
-        {
-            verifier =
-                    util_make_unique<all_properties_verifier_with_fault_localizationt<
-                            multi_path_symex_checkert>>(options, ui_message_handler, goto_model);
-        }
-        else
-        {
-            verifier = util_make_unique<
-                    all_properties_verifier_with_trace_storaget<multi_path_symex_checkert>>(
-                    options, ui_message_handler, goto_model);
-        }
-    }
-    else
-    {
-        UNREACHABLE;
-    }
-    
-    const resultt result = (*verifier)();
-    verifier->report();
     
     //stream_message_handlert mh(std::cout);
     //set_message_handler(ui_message_handler);
@@ -450,5 +326,5 @@ int parser_hifrogt::doit()
     
     log.status() <<"#X: Done." << messaget::eom;
     
-    return result_to_exit_code(result);
+    return CPROVER_EXIT_SUCCESS;
 }

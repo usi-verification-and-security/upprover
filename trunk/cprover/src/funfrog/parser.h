@@ -52,18 +52,6 @@
 #include <ansi-c/c_preprocess.h>
 #include <langapi/language.h>
 #include <langapi/mode.h>
-#include <goto-checker/multi_path_symex_checker.h>
-#include <goto-checker/multi_path_symex_only_checker.h>
-#include <goto-checker/properties.h>
-#include <goto-checker/single_loop_incremental_symex_checker.h>
-#include <goto-checker/single_path_symex_checker.h>
-#include <goto-checker/single_path_symex_only_checker.h>
-#include <goto-checker/stop_on_fail_verifier.h>
-#include <goto-checker/stop_on_fail_verifier_with_fault_localization.h>
-#include <goto-checker/all_properties_verifier_with_trace_storage.h>
-#include <goto-checker/all_properties_verifier_with_fault_localization.h>
-#include <goto-checker/all_properties_verifier.h>
-#include <goto-checker/cover_goals_verifier_with_trace_storage.h>
 
 
 
