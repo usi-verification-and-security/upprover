@@ -523,6 +523,11 @@ Purpose:  Get a Goto-Program; initialize_goto_model does the whole job.
 
 Note: In CBMC5.12 this method is static, but UpProver needs non-static
  to have two goto-programs at the same time
+ 
+GOTO programs are commonly produced using the `initialize_goto_model` function,
+which combines the complete process from command-line arguments specifying
+source code files, through parsing and generating a symbol table, to finally
+producing GOTO functions.
 
 \*******************************************************************/
 int parser_baset::get_goto_program( goto_modelt &goto_model,
@@ -537,13 +542,16 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
         log.error() << "Please provide a program to verify" << messaget::eom;
         return CPROVER_EXIT_INCORRECT_TASK;
     }
+    // (core) to produce GOTO programs.
+    goto_model = initialize_goto_model(cmdline.args, ui_message_handler, options);
+    
     if(cmdline.isset("show-symbol-table"))
     {
         show_symbol_table(goto_model, ui_message_handler);
         return CPROVER_EXIT_SUCCESS;
     }
     
-    //if(process_goto_program(goto_model, options, log))
+    //(core) post-convert transformations
     if (process_goto_program(cmdline, options, goto_model, *this ))
         return CPROVER_EXIT_INTERNAL_ERROR;
     
@@ -575,10 +583,10 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
     
 //    try
 //    {
-//        //goto model is obtained completely
-//        goto_model = initialize_goto_model(cmdline.args, ui_message_handler, options);
-//        if(process_goto_program(cmdline, options, goto_model, *this ))
-//            return true;
+        //goto model is obtained completely
+        goto_model = initialize_goto_model(cmdline.args, ui_message_handler, options);
+        if(process_goto_program(cmdline, options, goto_model, *this ))
+            return true;
 //    }
 //
 //    catch(const char *e)
