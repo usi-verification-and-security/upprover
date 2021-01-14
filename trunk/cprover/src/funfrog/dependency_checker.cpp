@@ -6,6 +6,7 @@
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
+#include <iostream>
 #endif
 
 #include "nopartition/hifrog_symex_target_equation_no_partition.h"
@@ -541,7 +542,7 @@ void dependency_checkert::print_SSA_steps()
 {
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
-      it->output(ns, std::cout);
+      it->output(std::cout);
     }
 }
 #endif
