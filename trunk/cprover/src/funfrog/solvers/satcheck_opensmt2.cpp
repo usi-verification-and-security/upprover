@@ -18,8 +18,8 @@ Author: Grigory Fedyukovich
 satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options,
                                        const char * name, const namespacet & ns,
                                        message_handlert & message_handler)
-        : check_opensmt2t(),
-          cnf_solvert(message_handler)
+        : cnf_solvert(message_handler),
+          check_opensmt2t()
 {
     logic.reset(new Logic());
     initializeSolver(solver_options, name);
