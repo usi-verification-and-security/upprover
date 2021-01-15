@@ -1554,8 +1554,8 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
   stop_constant_propagation_for(ssa.get_identifier());
   // get the current L2 version of the L1 symbol
   // state.rename(ssa, ns, goto_symex_statet::levelt::L2);
-  state->rename(ssa.type(), ssa.get_identifier(), ns); //SA: double check; MB: may be also rename<L2>(ssa, bs);
-  return ssa;
+  auto res = state->rename<L2>(ssa, ns).get();
+  return to_ssa_expr(res);
 }
 
 /*******************************************************************
@@ -1615,7 +1615,8 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   symbol.type = type;
   symbol.is_thread_local = true;
 
-  get_symbol_table().add(symbol);
+  bool error = get_symbol_table().add(symbol);
+  assert(!error); (void)error;
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version

@@ -15,6 +15,7 @@ The output of symbolic execution is a system of equations, asserations and assum
 #include "partition_fwd.h"
 #include <queue>
 #include <funfrog/summary_store.h>
+#include <iostream>
 
 class goto_programt;
 class goto_functionst;
@@ -442,9 +443,9 @@ private:
 
   // Get L1 version of a symbol
   ssa_exprt get_l1_ssa(const symbolt & symbol) {
-    ssa_exprt ssa { symbol.symbol_expr() };
-    auto res = state->rename_ssa<L1>(ssa, ns);
-    return res.get();
+    ssa_exprt ssa(symbol.symbol_expr());
+    auto res = state->rename_ssa<L1>(ssa, ns).get();
+    return res;
   }
 
   dstringt get_l1_identifier(const symbolt & symbol) {
@@ -457,7 +458,7 @@ private:
   void reset_state(){
   auto* storage = &this->path_storage;
   // Clear the state
-  auto state = std::unique_ptr<statet>(new statet(
+  state = std::unique_ptr<statet>(new statet(
 	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
 	  symex_config.max_field_sensitivity_array_size,
 	  guard_manager,
