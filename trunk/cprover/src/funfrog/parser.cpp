@@ -4,8 +4,7 @@
 #include <goto-symex/path_storage.h>
 #include <goto-instrument/cover.h>
 #include <goto-programs/loop_ids.h>
-
-
+#include <remove_asm.h>
 
 /*******************************************************************\
 
@@ -954,8 +953,8 @@ void parser_baset::set_options(const cmdlinet &cmdline)
 
  Function: standalone process_goto_program
 
- Purpose: SA: This standalone function used to be a member function of parse;
- but now inorder to be reusebale for several goto_model we took it out of parser_hifrog class.
+Note: This function used to be a member function of parser_baset class,
+ but in order to be reusebale for several goto_model we made it standalone.
 
  Note: KE: Previously was inspired by: cbmc_parseoptionst::process_goto_program
 
@@ -964,28 +963,29 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
                           messaget &msg) {
     try
     {
+        // Remove inline assembler; this needs to happen before
+        // adding the library.
+        remove_asm(goto_model);
         // Only to prop logic
-        if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-        {
-            if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")  //TODO extend it to other logics as well
-            {
+//        if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
+//        {   //TODO extend it to other logics as well
+//            if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
+//            {
                 // add the library
-                link_to_library(
-                        goto_model, msg.get_message_handler(), cprover_cpp_library_factory);
-                link_to_library(
-                        goto_model, msg.get_message_handler(), cprover_c_library_factory);
-            }
-            else
-            {
-                // use message for printing instead of cbmc_status_interface
-//      cbmc_status_interface("Ignoring CPROVER library");
-                msg.status() << "Ignoring CPROVER library" << msg.eom;
-            }
-        }
-        else
-        {
+//                 link_to_library(
+//                         goto_model, msg.get_message_handler(), cprover_cpp_library_factory);
+//                 link_to_library(
+//                         goto_model, msg.get_message_handler(), cprover_c_library_factory);
+//              }
+//            else
+//            {
+//                msg.status() << "Ignoring CPROVER library" << msg.eom;
+//            }
+//        }
+//        else
+//        {
             msg.status() << "Ignoring CPROVER library" << msg.eom;
-        }
+//        }
         
         if (cmdline.isset("string-abstraction"))
             string_instrumentation(
@@ -1037,8 +1037,10 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
         // needs to be done before pointer analysis
         add_failed_symbols(goto_model.symbol_table);
         
-        //use CPROVER goto-instrument style to unwind the loops in the pre-processing before performing symbolic execution in symex
-        //The reason is we want to differentiate each function call inside a loop so that later each of which would have a single function summary.
+        //use CPROVER goto-instrument style to unwind the loops in the pre-processing 
+        //before performing symbolic execution in symex
+        //The reason is we want to differentiate each function call inside a loop so that later 
+        //each of which would have a single function summary.
         if (cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("sanity-check"))
         {
             unwindsett unwindset;
