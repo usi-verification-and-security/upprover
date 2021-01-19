@@ -417,7 +417,7 @@ protected:
   /// Merge the SSA assignments from goto_state into dest_state
   /// \param goto_state: A state to be merged into this location
   /// \param dest_state: Symbolic execution state to be updated
-  void phi_function(const goto_statet &goto_state, statet &dest_state);
+  virtual void phi_function(const goto_statet &goto_state, statet &dest_state);
 
   /// Determine whether to unwind a loop
   /// \param source

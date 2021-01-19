@@ -27,7 +27,9 @@ goto-symex/goto_symex_state.cpp  removed static keyword from the function in got
 4- make a private method as public symex_assignt::assign_symbol
 
 
-5- goto-symex/goto_symex.h.  Removed const keyword : symex_configt symex_config;  
+5- goto-symex/goto_symex.h  Removed const keyword : symex_configt symex_config;  
+
+6-  goto-symex/goto_symex.h make phi_function virtual to allow our code to be executed, not cbmc's
 
 ----------------------------------
 Some important git diff from CBMC code
