@@ -99,6 +99,8 @@ public:
 
   std::size_t get_number_of_solver_calls() const override;
 
+  public: propt &prop; // change for hifrog
+  
 protected:
   virtual void post_process();
 
@@ -124,7 +126,7 @@ protected:
 
   virtual void ignoring(const exprt &expr);
 
-  propt &prop;
+  //propt &prop;
 
   messaget log;
 
