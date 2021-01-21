@@ -27,7 +27,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/prefix.h>
 #include <util/std_expr.h>
 
-#include <analyses/dirty.h>
+//#include <analyses/dirty.h> Remove dirty check
 #include <pointer-analysis/add_failed_symbols.h>
 
 
@@ -363,9 +363,9 @@ bool goto_symex_statet::l2_thread_read_encoding(
   // is it a shared object?
   PRECONDITION(dirty != nullptr);
   const irep_idt &obj_identifier=expr.get_object_name();
-  if(
-    obj_identifier == guard_identifier() ||
-    (!ns.lookup(obj_identifier).is_shared() && !(*dirty)(obj_identifier)))
+  if(obj_identifier == "goto_symex::\\guard" || !ns.lookup(obj_identifier).is_shared())
+//    obj_identifier == guard_identifier() ||  \\Remove dirty flags
+//    (!ns.lookup(obj_identifier).is_shared() && !(*dirty)(obj_identifier)))
   {
     return false;
   }
@@ -491,9 +491,9 @@ goto_symex_statet::write_is_shared_resultt goto_symex_statet::write_is_shared(
 
   PRECONDITION(dirty != nullptr);
   const irep_idt &obj_identifier = expr.get_object_name();
-  if(
-    obj_identifier == guard_identifier() ||
-    (!ns.lookup(obj_identifier).is_shared() && !(*dirty)(obj_identifier)))
+  if(obj_identifier == "goto_symex::\\guard" || !ns.lookup(obj_identifier).is_shared())
+//    obj_identifier == guard_identifier() || Remove dirty stuff
+//    (!ns.lookup(obj_identifier).is_shared() && !(*dirty)(obj_identifier)))
   {
     return write_is_shared_resultt::NOT_SHARED;
   }

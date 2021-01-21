@@ -14,22 +14,28 @@ SA's approach for update:
 ----------------------------------
 File Changed in CProver's code:
 =============
-1- /cprover/src/util/arith_tools.h/cpp --> Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
+1- src/solvers/prop/prop_conv_solver.h  move to public: propt &prop; 
+ 
+2- goto-symex/goto_symex.h make phi_function virtual to allow our code to be executed, not cbmc's
 
-2- goto_symex directory : change static method'construct_get_goto_function' expose them for HiFrog/UpProver
-  goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
-void goto_symex_statet::get_l1_name(exprt &expr) const;
+3- goto-symex/goto_symex_state.cpp  remove static keyword and move the method to public to expose it for HiFrog/UpProver: void goto_symex_statet::get_l1_name(exprt &expr) const;
 
-3-
-goto-symex/goto_symex_state.cpp  removed static keyword from the function in goto_symex_state and exposed it in the interface of goto_symex_state. 
-  static void get_l1_name(exprt &expr) --> public --> void goto_symex_statet::get_l1_name(exprt &expr) const
+4- goto_symex directory  following previous hacks add goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
+  
+5- Make a private method as public symex_assignt::assign_symbol
 
-4- make a private method as public symex_assignt::assign_symbol
+6- goto-symex/goto_symex.h  Removed const keyword : symex_configt symex_config;  
 
+7- src/goto-checker/symex_bmc.h (remove debug massege to show progress: void symex_bmct::symex_step).
 
-5- goto-symex/goto_symex.h  Removed const keyword : symex_configt symex_config;  
+8- goto_symex_state.cpp Remove #include <analyses/dirty.h> Remove dirty check and fix issue in the affected methods in the following files: 
+  cprover/src/goto-symex/goto_symex_state.cpp     
+  cprover/src/goto-symex/symex_decl.cpp           
+  cprover/src/goto-symex/symex_function_call.cpp  
+  cprover/src/goto-symex/symex_goto.cpp           
+  cprover/src/goto-symex/symex_main.cpp 
 
-6-  goto-symex/goto_symex.h make phi_function virtual to allow our code to be executed, not cbmc's
+9- src/util/arith_tools.h/cpp  Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
 
 ----------------------------------
 Some important git diff from CBMC code
@@ -52,6 +58,10 @@ get_unsigned_int was deprecated. Use get_size_t instead.
 using symex_renaming_levelt =
   sharing_mapt<irep_idt, std::pair<ssa_exprt, std::size_t>>;
 
+Remove unused case of return assignment in symex (unresolved in hifrog yet)
+https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034 
+
+
 ---------------------------------------------------------------------
 =====================================================================
 ---------------------------------------------------------------------
@@ -61,13 +71,18 @@ Date: 22/08/2018
 File Changed:
 ------------
 - trunk/cprover/src/solvers/prop/prop_conv.h (move to public: propt &prop; // KE: change for hifrog)
-- trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method) + declare constuct_get_goto_function method
+- trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method) + declare construct_get_goto_function method
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name() + try to remove dirty class, unless till stable!)
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations) + KE: remove dirty analysis
-- trunk/cprover/src/goto-symex/syme_main.cpp // goto_symext::get_goto_functiont goto_symext::constuct_get_goto_function // to allow out symex to work//modified version of goto_symext::get_goto_functiont get_function_from_goto_functions.
+
+- trunk/cprover/src/goto-symex/syme_main.cpp // goto_symext::get_goto_functiont goto_symext::constuct_get_goto_function // to allow out symex to work //modified version of goto_symext::get_goto_functiont get_function_from_goto_functions.
+
 - trunk/cprover/src/goto-symex/symex_function_call.cpp // Add assert(0) - bool goto_symext::get_unwind_recursion, as long as the return is false.
+
 - trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
+
 - trunk/cprover/src/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
+
 - Remove dirty - once found
 
 minisat-2.2.1:

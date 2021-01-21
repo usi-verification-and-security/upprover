@@ -58,11 +58,12 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
     state.source,
     hidden ? symex_targett::assignment_typet::HIDDEN
            : symex_targett::assignment_typet::STATE);
-
-  if(path_storage.dirty(ssa.get_object_name()) && state.atomic_section_id == 0)
+  
+  //Remove Dirty flags for multi-threading
+  /* if(path_storage.dirty(ssa.get_object_name()) && state.atomic_section_id == 0)
     target.shared_write(
       state.guard.as_expr(),
       ssa,
       state.atomic_section_id,
-      state.source);
+      state.source); */
 }

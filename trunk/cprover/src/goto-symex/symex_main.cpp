@@ -445,9 +445,9 @@ std::unique_ptr<goto_symext::statet> goto_symext::initialize_entry_point_state(
   if(emplace_safe_pointers_result.second)
     emplace_safe_pointers_result.first->second(start_function->body);
 
-  path_storage.dirty.populate_dirty_for_function(
-    entry_point_id, *start_function);
-  state->dirty = &path_storage.dirty;
+//  path_storage.dirty.populate_dirty_for_function(
+//    entry_point_id, *start_function);
+//  state->dirty = &path_storage.dirty;
 
   // Only enable loop analysis when complexity is enabled.
   if(symex_config.complexity_limits_active)
