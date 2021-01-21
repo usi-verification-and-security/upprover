@@ -22,6 +22,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "expr_skeleton.h"
 #include "symex_assign.h"
+#include "base_type.h"
 
 static void locality(
   const irep_idt &function_identifier,

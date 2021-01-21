@@ -472,5 +472,9 @@ private:
   	// turns off doing some book-keeping related to handling multiple threads by CProver
 	state->record_events.push(false);
   }
+    /// Assuming the program counter of \p state is currently pointing to a return
+    /// instruction, assign the value in that return to the top frame's
+    /// \p return_value field.
+    void return_assignment(statet &);
 };
 #endif
