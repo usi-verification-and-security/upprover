@@ -393,6 +393,15 @@ void symex_assertion_sumt::symex_step(
       // This case should have been removed by return-value removal
       UNREACHABLE;
       break;
+      //this part of the code has been removed in CBMC5.12 //fixme
+      // https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034
+//      if(!state.guard.is_false())
+//      {
+//        return_assignment(state);
+//      }
+//
+//      symex_transition(state);
+//      break;
     
     case ASSIGN: //original
       if(state.reachable)
