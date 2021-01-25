@@ -389,9 +389,17 @@ void symex_assertion_sumt::symex_step(
       symex_transition(state);
       break;
     
-    case RETURN: //original
-      // This case should have been removed by return-value removal
-      UNREACHABLE;
+    case RETURN:
+      //in native CBMC This case should have been removed by return-value removal
+      //so this part of the code has been marked unreachable in CBMC5.12
+      //But Upprover/HiFrog needs the return assignment for the summaries.
+      // so return_assignment is now local for us.
+      if(!state.guard.is_false())
+      {
+        return_assignment(state);
+      }
+
+      symex_transition(state);
       break;
       //this part of the code has been removed in CBMC5.12 //fixme
       // https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034
@@ -916,7 +924,7 @@ void symex_assertion_sumt::clear_locals_versions(statet &state)
 {
   if (current_call_tree_node->get_function_id() != ID_nil) {
 #   ifdef DEBUG_PARTITIONING
-    std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
+    std::cerr << "Level2 size: " << state.get_level2().current_names.size() << std::endl;
 #   endif
     // Clear locals from l2 cache
     for (const auto & local_id : state.call_stack().top().local_objects) {
@@ -1809,4 +1817,50 @@ void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
     assert(modified.empty());
     std::copy(std::begin(globals_written), std::end(globals_written),
               std::back_inserter(modified));
+}
+
+/*******************************************************************\
+Purpose: Upprover/HiFrog needs the return assignment for the summaries.
+ The idea is to add a new assignment with a new value of the return that
+ you fabricated and then use it to connect the rest of the code.
+Note:
+ Inspired from the removed code in
+ https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034
+\*******************************************************************/
+void symex_assertion_sumt::return_assignment(statet &state)
+{
+  const framet &frame = state.call_stack().top();
+  
+  const goto_programt::instructiont &instruction = *state.source.pc;
+  PRECONDITION(instruction.is_return());
+  const code_returnt &code = to_code_return(instruction.code);
+  
+  target.location(state.guard.as_expr(), state.source);
+  
+  if(code.operands().size() == 1)
+  {
+    //exprt value=code.op0();//SA: not public anymore
+    exprt value = code.return_value();
+    
+    if(frame.return_value.is_not_nil())
+    {
+      code_assignt assignment(frame.return_value, value);
+      
+      if(!base_type_eq(assignment.lhs().type(),
+                       assignment.rhs().type(), ns))
+        throw
+            "goto_symext::return_assignment type mismatch at "+
+            instruction.source_location.as_string()+":\n"+
+            "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
+            "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
+      
+      //Fabricate the assignment itself by L2-rename
+      symex_assign(state, assignment);
+    }
+  }
+  else
+  {
+    if(frame.return_value.is_not_nil())
+      throw "return with unexpected value";
+  }
 }
