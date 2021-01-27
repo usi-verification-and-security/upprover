@@ -1005,7 +1005,8 @@ bool process_goto_program(const cmdlinet &cmdline, const optionst &options, goto
         instrument_preconditions(goto_model);
         
         // remove returns, gcc vectors, complex
-        // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
+        // remove_returns(symbol_table, goto_functions);//causes issues with theoref/HiFrog/UpProver;
+        // we handle return values separately in symex_assertion_sum.cpp (see case RETURN).
         remove_vector(goto_model);
         remove_complex(goto_model);
         rewrite_union(goto_model);
