@@ -1441,20 +1441,19 @@ void symex_assertion_sumt::vcc(
   const std::string &msg,
   statet &state)
 {
-    goto_symext::vcc(vcc_expr, msg, state);
-//  total_vccs++;
-//
-//  exprt expr=vcc_expr;
-//
-//  state.rename(expr, ns);
-//
-//  if(expr.is_true())
-//    return;
-//
-//  state.guard.guard_expr(expr);
-//
-//  remaining_vccs++;
-//  target.assertion(state.guard.as_expr(), expr, msg, state.source);
+  _total_vccs++;
+
+  exprt expr=vcc_expr;
+
+  state.rename(expr, ns);
+
+  if(expr.is_true())
+    return;
+
+  state.guard.guard_expr(expr);
+
+  _remaining_vccs++;
+  target.assertion(state.guard.as_expr(), expr, msg, state.source);
 }
 
 /*******************************************************************\
