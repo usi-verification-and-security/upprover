@@ -1428,32 +1428,29 @@ void symex_assertion_sumt::phi_function(
   }
 }
 /*******************************************************************\
-
-Function: symex_assertion_sumt::claim
-
- Purpose: vcc and claim is the same (one is in the old version
- and one is in the new version)
-
+ 
+ Purpose: symex of verification condition (claim)
+ 
 \*******************************************************************/
 
 void symex_assertion_sumt::vcc(
-  const exprt &vcc_expr,
+  const exprt &condition,
   const std::string &msg,
   statet &state)
 {
-  _total_vccs++;
-
-  exprt expr=vcc_expr;
-
-  state.rename(expr, ns);
-
-  if(expr.is_true())
+  state.total_vccs++;
+  
+  // get the current L2 version of the L1 symbol
+  exprt expr_l2 = state.rename<L2>(condition, ns).get(); //TBC:state.rename(expr, ns);
+  
+  
+  if(expr_l2.is_true())
     return;
-
-  state.guard.guard_expr(expr);
-
-  _remaining_vccs++;
-  target.assertion(state.guard.as_expr(), expr, msg, state.source);
+  
+  const exprt guarded_condition = state.guard.guard_expr(expr_l2);
+  
+  state.remaining_vccs++;
+  target.assertion(state.guard.as_expr(), guarded_condition, msg, state.source);
 }
 
 /*******************************************************************\
