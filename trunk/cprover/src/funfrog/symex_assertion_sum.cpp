@@ -335,43 +335,54 @@ void symex_assertion_sumt::symex_step(
         symex_assume(state, instruction.get_condition());
       symex_transition(state);
       break;
-  
-    case ASSERT: //different in Hifrog than CBMC
-      if (state.reachable && !ignore_assertions)
+
+    case ASSERT:
+      if(state.reachable && !ignore_assertions) //different in HiFrog vs CBMC
       {
         if (get_current_deferred_function().call_tree_node.is_assertion_enabled(state.source.pc))
         {
           // Skip asserts that are not currently being checked
           if (current_assertion->assertion_matches(state.depth, state.source.pc))
           {
-            symex_assert(instruction, state);
+            // code from goto_symext::symex_assert
+            exprt condition = clean_expr(instruction.get_condition(), state, false);
+            // now rename, enables propagation //SA: make sure propagation not to mess locality of partitions
+            exprt l2_condition = state.rename(std::move(condition), ns).get();
+  
+            //do_simplify(l2_condition); don't simplify, else evaluates every assert to true
+  
+            std::string msg = id2string(state.source.pc->source_location.get_comment());
+            if(msg.empty()) {
+              msg = "assertion";
+            }
+            vcc(l2_condition, msg, state);
           
             // Checks which assert it is, and if we end the loop here
 #ifdef DEBUG_PARTITIONING
             bool is_exit =
-                 ((single_assertion_check
-                    && (!is_unwind_loop(state))
-                    && (!get_current_deferred_function().call_tree_node.is_in_loop()))
-                  || (loc >= last_assertion_loc && (max_unwind == 1)));
-                
-                std::cout << "Parsing Assert: " <<
-                "\n  file " << state.source.pc->source_location.get_file() <<
-                " line " << state.source.pc->source_location.get_line() <<
-                " function " << state.source.pc->source_location.get_function() <<
-                "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
-                "\n  " << from_expr(ns, "", state.source.pc->guard) <<
-                "\n  " << (is_exit ? "End before in location :" : "Current location ")
-                       << loc << " (out of " << last_assertion_loc << ")"
-                       << " is in loop? " << state.source.pc->loop_number // Check when this will become active
-                       << std::endl;
+                ((single_assertion_check
+                  && (!is_unwind_loop(state))
+                  && (!get_current_deferred_function().call_tree_node.is_in_loop()))
+                 || (loc >= last_assertion_loc && (max_unwind == 1)));
+            
+            //if there is no verification condition created, it's simply evaluated to true(you get SAT),
+            // thus you don't see full info of this print!
+            std::cout << "Parsing Assert: " <<
+                      "\n  file " << state.source.pc->source_location.get_file() <<
+                      " line " << state.source.pc->source_location.get_line() <<
+                      " function " << state.source.pc->source_location.get_function() <<
+                      "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
+                      "\n  " << from_expr(ns, "", state.source.pc->guard) <<
+                      "\n  " << (is_exit ? "End before in location :" : "Current location ")
+                      << loc << " (out of " << last_assertion_loc << ")"
+                      << " is in loop? " << state.source.pc->loop_number // Check when this will become active
+                      << std::endl;
 #endif
-            /* Optimization to remove code that after the current checked assert + remove any other asserts */
-            // KE: change later (when supported) to state.source.pc->loop_number
-            // KE: Use get_current_unwind(state), if greater than 0 it is inside a loop
+            // Optimization to remove code that after the current checked assert + remove any other asserts
             if ((single_assertion_check
                  && (!is_unwind_loop(state))
                  && (!get_current_deferred_function().call_tree_node.is_in_loop()))
-                || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
+                || (loc >= last_assertion_loc && (max_unwind == 1)))
             {
               end_symex(state);
               return;
