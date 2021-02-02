@@ -276,7 +276,11 @@ void symex_assertion_sumt::symex_step(
   if(!symex_config.doing_path_exploration)
     merge_gotos(state);
     
-    // actually do instruction
+  // actually do instruction
+  //the "reachable" flag is set false whenever an unwind/depth
+  //limit break OR an ASSUME false happens, so
+  // ASSUME false implied unreachability but had no effect on the guard
+  //--unwind or --depth being exceeded usually meant setting the guard false
   switch(instruction.type) {
     case SKIP:
       if (state.reachable)
@@ -330,9 +334,14 @@ void symex_assertion_sumt::symex_step(
 //          symex_unreachable_goto(state);
 //      break;
   
-    case ASSUME:
-      if (state.reachable)
-        symex_assume(state, instruction.get_condition());
+    case ASSUME: //different in HiFrog vs CBMC
+      if (state.reachable) //old cprover:  if(!state.guard.is_false())
+      {
+        const exprt cond = instruction.get_condition();
+        exprt simplified_cond = clean_expr(cond, state, false);
+        simplified_cond = state.rename<L2>(std::move(simplified_cond), ns).get();
+        symex_assume_l2(state, simplified_cond);
+      }
       symex_transition(state);
       break;
 
