@@ -5,10 +5,17 @@
 #ifndef PROJECT_CONVERSION_UTILS_H
 #define PROJECT_CONVERSION_UTILS_H
 
+//#define DEBUG_SMT_ENCODING
+
+#ifdef DEBUG_SMT_ENCODING
+#include <iostream>
+#endif
+
 #include <solvers/prop/literal.h>
 #include <util/expr.h>
 #include <funfrog/interface/convertor.h>
 #include <util/std_expr.h>
+
 namespace hifrog {
 
 inline FlaRef convert_expr(convertort &decider, const exprt &expr) {
@@ -31,6 +38,11 @@ void convert_assignments(convertort & decider, Iter const & beg, Iter const & en
     for (auto it = beg; it != end; ++it) {
         if (it->is_assignment() && !it->ignore) {
             decider.set_to_true(it->cond_expr);
+#ifdef DEBUG_SMT_ENCODING
+            std::cout << "************debug convert_assignments***********\n";
+            std::cout << it->cond_expr.pretty() << std::endl;
+            std::cout << "\n";
+#endif
         }
     }
 }

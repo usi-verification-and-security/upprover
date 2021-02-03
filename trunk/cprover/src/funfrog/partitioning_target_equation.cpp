@@ -367,7 +367,8 @@ void partitioning_target_equationt::print_partition() {
     out_basic.clear();
     terms_counter = 0;
 }
-
+//print SSA forms into file __SSA_query_default_1.smt2
+#ifdef DISABLE_OPTIMIZATIONS
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
@@ -383,7 +384,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // print each partition
     out << decl_buf.str() << out_partition.str() << "(check-sat)\n";
 }
-
+#endif
 void partitioning_target_equationt::getFirstCallExpr() 
 {
 //    saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);

@@ -146,7 +146,8 @@ renamedt<ssa_exprt, L2> goto_symex_statet::assignment(
 
   return l2_lhs;
 }
-
+/// Version of rename which is specialized for SSA exprt.
+/// Implementation only exists for level L0 and L1.
 template <levelt level>
 renamedt<ssa_exprt, level>
 goto_symex_statet::rename_ssa(ssa_exprt ssa, const namespacet &ns)

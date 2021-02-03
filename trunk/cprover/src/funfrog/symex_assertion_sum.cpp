@@ -172,7 +172,7 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
                     log.status() << "Refining partition: " << partition_iface->partition_id
                     << " associated with " << refined_function->get_function_id().c_str()<< messaget::eom;
                  
-                  // Marks the given partition as invalid. This is used in incremental SSA
+                  // Refine the given partition since invalid. This is used in incremental SSA
                   // generation to replace previously summarized partitions
                     equation.refine_partition(partition_iface->partition_id);
                 }

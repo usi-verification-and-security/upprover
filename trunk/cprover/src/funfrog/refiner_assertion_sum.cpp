@@ -105,7 +105,9 @@ void refiner_assertion_sumt::reset_inline_wrt_slicing(
         partitiont part = parts[i];
         if (!part.ignore && (part.has_abstract_representation())) {
             partition_ifacet ipart = part.get_iface();
-            //std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
+#ifdef DISABLE_OPTIMIZATIONS
+            status()<< "*** checking " << ipart.function_id << ":" << eom;
+#endif
             //filter out function calls which do not affect satisfiability of the assertion.
             // e.g: fun(); int x =0; assert(x>=0); no need to inline fun() as it does n't matter
             if (solver.is_assignment_true(ipart.callstart_literal)) { //if partition was sliced out will not pass this
