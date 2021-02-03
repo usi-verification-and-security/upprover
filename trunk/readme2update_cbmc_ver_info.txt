@@ -36,8 +36,6 @@ File Changed in CProver's code:
   cprover/src/goto-symex/symex_main.cpp 
 
 9- src/util/arith_tools.h/cpp  Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
-
-10- /src/util/expr.h add a full method for constant conversion: std::string print_number_2smt(const exprt & expr) const; // hifrog hack!!
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0

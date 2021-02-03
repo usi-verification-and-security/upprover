@@ -31,6 +31,8 @@ inline bool is_global(const exprt& expr){
     return to_ssa_expr(expr).get_level_0().empty();
 }
 
+const std::string print_number_2smt(const exprt &expr);
+
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::extract_expr_str_number
@@ -48,7 +50,7 @@ Function: smtcheck_opensmt2t::extract_expr_str_number
 \*******************************************************************/
 inline std::string extract_expr_str_number(const exprt &expr)
 {
-    std::string const_val = expr.print_number_2smt(expr); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
+    std::string const_val = print_number_2smt(expr); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
     //(unless upgrade, please keep the checks/assert!)
     // If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV

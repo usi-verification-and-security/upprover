@@ -266,7 +266,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         return get_bv_const("0");
     // KE: not sure about this code, DO NOT add is_one and is_zero, why? think of a shift op in 64 or 32 bit of 1.
     
-    std::string str = expr.print_number_2smt(expr);
+    std::string str = print_number_2smt(expr);
     int isFirstchSign = (str[0] == '-' || str[0] == '+')? 1 : 0;
     assert("Check support for new data-type in Const converstion." && str.size() != 0);
      
@@ -397,7 +397,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
             if (expr.type().get_size_t("width") > this->bitwidth)
             {
                 std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                std::cout << "\n  Data " << expr.print_number_2smt(expr) << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
+                std::cout << "\n  Data " << print_number_2smt(expr) << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
                         << (-max_num) << " and " << (max_num-1) << std::endl;
                 exit(0);
             }
