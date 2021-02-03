@@ -136,7 +136,6 @@ protected:
   partition_idt current_partition_id;
 
 #ifdef DISABLE_OPTIMIZATIONS  
-  // KE: shall go to the reporter class!
   // FIXME: move to SSA_Reportert class
   bool dump_SSA_tree;
   std::string ssa_tree_file_name;

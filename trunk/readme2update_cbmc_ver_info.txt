@@ -36,7 +36,6 @@ File Changed in CProver's code:
   cprover/src/goto-symex/symex_main.cpp 
 
 9- src/util/arith_tools.h/cpp  Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
-
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0
@@ -61,6 +60,13 @@ using symex_renaming_levelt =
 Remove unused case of return assignment in symex (unresolved in hifrog yet)
 https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034 
 
+
+in symect_assertion_sum.cpp
+  // get the current L2 version of the L1 symbol
+ //state.rename(expr, ns); deprecated
+  use the following:
+  exprt res = state.rename<L2>(expr, ns).get();
+  to_ssa_expr(res);
 
 ---------------------------------------------------------------------
 =====================================================================

@@ -141,15 +141,17 @@ void parser_upprovert::trigger_upprover(const goto_modelt &goto_model_old) {
         else {
             new_filepath = cmdline.get_value("summary-validation");
         }
-        status() << std::string("Loading a changed version: `") + new_filepath + "' ...\n";
+        status() << std::string("Loading a changed version: `") + new_filepath + "' ..."<< messaget::eom;;
         
         auto old_args = cmdline.args;  //old file path
         cmdline.args = {new_filepath};
         goto_modelt goto_model_new;     // 2nd goto model associated with changed version
         
-        if (get_goto_program(goto_model_new, options, cmdline, ui_message_handler)) {
-            return;
-        }
+        int get_goto_program_ret =
+          get_goto_program(goto_model_new, options, cmdline, ui_message_handler);
+  
+        if(get_goto_program_ret!=-1)
+          return; //error
     
         launch_upprover(
                 // OLD!

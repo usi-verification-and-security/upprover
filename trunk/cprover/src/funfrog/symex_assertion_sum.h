@@ -409,7 +409,7 @@ private:
 
   // this should be used only for symbols that we have created with create_new_artificial_symbol method
   const symbolt & get_artificial_symbol(const irep_idt & id){
-    const auto * symbol_p = get_symbol_table().lookup(id);
+    const symbolt * symbol_p = get_symbol_table().lookup(id);
     if(symbol_p){
       return *symbol_p;
     }
@@ -424,11 +424,20 @@ private:
 
   // NOTE: use only when versions for interface symbols are needed!
   ssa_exprt get_current_version(const symbolt & symbol);
-
-  void stop_constant_propagation_for(const irep_idt & id) {
+    
+// Note from CPROVER 5.12 about const propagation:
+// We cannot remove the object from the L1 renaming map, because L1 renaming
+// information is not local to a path, but removing it from the propagation
+// map and value-set is safe as 1) it is local to a path and 2) this
+// instance can no longer appear.
+// Remove from the local L2 renaming map; this means any reads from the dead
+// identifier will use generation 0 (e.g. x!N@M#0, where N and M are
+// positive integers), which is never defined by any write, and will be
+// dropped by `goto_symext::merge_goto` on merging with branches where the
+// identifier is still live.
+  void  stop_constant_propagation_for(const irep_idt & id) {
     //state.propagation.remove(id);
     state->propagation.erase_if_exists(id);
-    
   }
 
   // this works only for identifiers of artificial symbols

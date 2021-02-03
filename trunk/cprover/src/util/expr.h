@@ -247,8 +247,6 @@ public:
   bool is_one() const;
   bool is_boolean() const;
   
-  const std::string print_number_2smt() const; // hifrog hckd!!
-  
   const source_locationt &find_source_location() const;
 
   const source_locationt &source_location() const
