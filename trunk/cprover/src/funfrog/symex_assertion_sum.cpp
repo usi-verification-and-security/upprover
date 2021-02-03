@@ -42,6 +42,9 @@
 #include <util/format_expr.h>
 #endif
 
+//debug constant propagation
+//#define DEBUG_CONST_PROPAGATION
+
 symex_assertion_sumt::symex_assertion_sumt(
 	const goto_functionst & _goto_functions,
 	call_tree_nodet & _call_info,
@@ -518,19 +521,19 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     equation.prepare_partitions();
    
 #   ifdef DEBUG_PARTITIONING
-    std::cerr << std::endl << "Current names L2 (" <<
-            state.get_level2().current_names.size() << "):" << std::endl;
+//    std::cerr << std::endl << "Current names L2 (" <<
+//            state.get_level2().current_names.size() << "):" << std::endl;
 //    for (statet::level2t::current_namest::const_iterator it =
 //            state.get_level2().current_names.begin();
 //            it != state.get_level2().current_names.end(); ++it) {
 //      std::cerr << it->first.c_str() << " : " << it->second.count << std::endl;
 //    } //iterate
-    symex_renaming_levelt::viewt view;
-    state.get_level2().current_names.get_view(view);
-    for(const auto &pair : view)
-    {
-      std::cerr << pair.first.c_str() << " : " << pair.second.second << std::endl;
-    }
+//    symex_renaming_levelt::viewt view;
+//    state.get_level2().current_names.get_view(view);
+//    for(const auto &pair : view)
+//    {
+//      std::cerr << pair.first.c_str() << " : " << pair.second.second << std::endl;
+//    }
 //    std::cerr << std::endl << "Current names L1 (" <<
 //            state.call_stack().top().level1.current_names.size() << "):" << std::endl;
 //    for (statet::level1t::current_namest::const_iterator it =
@@ -539,7 +542,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 //            ++it) {
 //      std::cerr << it->first.c_str() << " : " << it->second << std::endl;
 //    }
-    std::cerr <<"\n**********************"<< std::endl;
+//    std::cerr <<"\n**********************"<< std::endl;
 #   endif
     return;
   }
@@ -686,10 +689,15 @@ void symex_assertion_sumt::assign_function_arguments(
   mark_accessed_global_symbols(identifier, partition_iface);
   
   if (goto_function.type.return_type().id() != ID_empty) {
-    // Needs: DISABLE_OPTIMIZATIONS to work
-    //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
-    //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
-    //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
+
+#ifdef DEBUG_SSA
+    std::cout << "\n**********************\n** Assign_function_arguments \n"
+    //<< (function_call.lhs().is_nil())
+    << std::endl;
+    expr_pretty_print(std::cout << "**check: ", function_call); std::cout << std::endl;
+    //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") <<
+    //" and code: " << function_call.pretty() << std::endl;
+#endif
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
@@ -703,8 +711,20 @@ void symex_assertion_sumt::assign_function_arguments(
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
   
   symex_config.constant_propagation = old_cp;
-}
+  
+#ifdef DEBUG_CONST_PROPAGATION
+/// Print the constant propagation map in a human-friendly format.
+/// This is primarily for use from the debugger;
+      std::cout << "**********************\nConstant Propagation DEBUG\n";
+      sharing_mapt<irep_idt, exprt>::viewt view;
+      state.propagation.get_view(view);
 
+      for(const auto &name_value : view)
+      {
+        std::cout << name_value.first << " <- " << format(name_value.second) << "\n";
+      }
+#endif
+}
 /*******************************************************************
 
  Function: symex_assertion_sumt::mark_argument_symbols
@@ -830,7 +850,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     code_assignt assignment(*lhs, retval_symbol);
     
 #ifdef DISABLE_OPTIMIZATIONS
-    expr_pretty_print(std::cout << "** lhs: ", assignment.lhs()); std::cout << std::endl;//e.g., lhs: |return'|, |main::1::y|
+    expr_pretty_print(std::cout << "** lhs: ", assignment.lhs()); std::cout << std::endl;//e.g: lhs: |return'|, |main::1::y|
     expr_pretty_print(std::cout << "** rhs: ", assignment.rhs()); std::cout << std::endl;//rhs: |main::#return_value!0#1|
 #endif
 
@@ -838,13 +858,14 @@ void symex_assertion_sumt::return_assignment_and_mark(
                         assignment.rhs().type(), ns));
 
     bool old_cp = symex_config.constant_propagation;
+    //stop constant propagation
     symex_config.constant_propagation = false;
+    
     symex_assign(state, assignment);
     symex_config.constant_propagation = old_cp;
   }
 # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol); //e.g. |myfunc::#return_value!0#1|
-  //expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp); tmp is created in create_new_artificial_symbol
+  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol); //e.g: |myfunc::#return_value!0#1|
   std::cout << '\n';
 # endif
   partition_iface.retval_symbol = retval_symbol;
@@ -1082,9 +1103,11 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-  //log.statistics() << " for partition-ID: " << partition_iface.partition_id << " sumID "<<
-  // partition_iface.call_tree_node.get_node_sumID() << log.eom;
   
+#ifdef DPRINT_DEBUG_UPPROVER
+  log.statistics() << " for partition-ID: " << partition_iface.partition_id << " sumID "<<
+  partition_iface.call_tree_node.get_node_sumID() << log.eom;
+#endif
   //SA: use node in fill_summary_partition not function-name
   call_tree_nodet& node = partition_iface.call_tree_node;
   equation.fill_summary_partition(partition_id, node);
@@ -1308,8 +1331,6 @@ void symex_assertion_sumt::raw_assignment(
     state.source,
     symex_targett::assignment_typet::STATE);
 #ifdef DISABLE_OPTIMIZATIONS
-  expr_pretty_print(std::cout << "** l1_lhs: ", l1_lhs); std::cout << std::endl; //|main::#return_value!0|
-  expr_pretty_print(std::cout << "** l1_rhs: ", l1_rhs); std::cout << std::endl; //|main::$tmp::return_value|
   expr_pretty_print(std::cout << "** ssa_rhs: ", ssa_rhs); std::cout << std::endl; //value 0
   expr_pretty_print(std::cout << "** lhs L2: ", lhs); std::cout << std::endl;//L2 |main::#return_value!0#1|
 #endif
@@ -1588,7 +1609,8 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
 ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
   // get the current L1 version of the symbol
   ssa_exprt ssa = get_l1_ssa(symbol);
-  irep_idt ssa_l1_identifier = get_l1_identifier(symbol); //e.g., "hifrog::fun_start!0"
+  irep_idt ssa_l1_identifier = get_l1_identifier(symbol); //e.g: "hifrog::fun_start!0"
+  
   //safety
   //assert(state.get_level2().current_names.find(ssa_l1_identifier) != state.get_level2().current_names.end());
   const auto p_it = state->get_level2().current_names.find(ssa_l1_identifier);
