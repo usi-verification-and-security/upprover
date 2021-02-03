@@ -247,7 +247,7 @@ public:
   bool is_one() const;
   bool is_boolean() const;
   
-  const std::string print_number_2smt() const; // hifrog hckd!!
+  const std::string print_number_2smt(const exprt & expr) const; // hifrog hack for constant conversion!!
   
   const source_locationt &find_source_location() const;
 

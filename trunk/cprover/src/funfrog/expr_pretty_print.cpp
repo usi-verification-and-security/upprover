@@ -75,7 +75,7 @@ expr_pretty_printt::convertBinaryIntoDec(const exprt &expr)
         return last_convered_value;
     }
 
-    std::string test = expr.print_number_2smt();
+    std::string test = expr.print_number_2smt(expr);
     if (!test.empty())
     {
         return stod(test);

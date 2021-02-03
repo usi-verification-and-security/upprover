@@ -225,14 +225,15 @@ bool exprt::is_one() const
 
 /*******************************************************************\
 
-Function: exprt::print_number - hckd¬!!
+Function: exprt::print_number - hacked!!
 
  Purpose: HiFrog hack
-
+inspired from expr2ct::convert_constant
 \*******************************************************************/
 
-const std::string exprt::print_number_2smt() const
+const std::string exprt::print_number_2smt(const exprt &expr) const
 {
+    const constant_exprt src = to_constant_expr(expr);
     if(is_constant())
     {
         const std::string &value=get_string(ID_value);
@@ -268,9 +269,16 @@ const std::string exprt::print_number_2smt() const
                  type_id==ID_signedbv ||
                  type_id==ID_c_bit_field ||
                  type_id==ID_c_bool)
-        { // from expre2c.cpp code
-            mp_integer int_value=binary2integer(id2string(value),
-                                                type_id==ID_signedbv);
+        { // from expr2c.cpp code
+//            mp_integer int_value=binary2integer(id2string(value),
+//                                                type_id==ID_signedbv);
+          const typet &type = src.type();
+  
+          const auto width = to_bitvector_type(type).get_width();
+  
+          mp_integer int_value =
+              bvrep2integer(value, width, type.id() == ID_signedbv);
+          
             return integer2string(int_value);
             
         }
