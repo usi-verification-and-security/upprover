@@ -994,12 +994,7 @@ void symex_assertion_sumt::handle_function_call(
    
     if (function_call.lhs().is_not_nil())
     {
-      exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
-      //rhs.set(ID_identifier, "symex::" + std::to_string(nondet_count++));
-      rhs.set(ID_identifier, path_storage.build_symex_nondet(rhs.type(), rhs.source_location())); //SA:double check
-      
-      rhs.add_source_location() = function_call.source_location(); 
-      
+      exprt rhs = path_storage.build_symex_nondet(function_call.lhs().type(), function_call.source_location());
       code_assignt code(function_call.lhs(), rhs);
       symex_assign(state, code);
 #ifdef DISABLE_OPTIMIZATIONS
