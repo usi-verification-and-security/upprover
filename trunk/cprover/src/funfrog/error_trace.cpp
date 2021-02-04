@@ -94,7 +94,8 @@ void error_tracet::build_goto_trace(
             goto_trace_step.get_lhs_object() = ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
         }
     } else {
-        goto_trace_step.get_lhs_object().value().make_nil();
+        // TODO: what to do here?
+//        goto_trace_step.get_lhs_object().value().make_nil(); // MB: this crashes
     }
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
