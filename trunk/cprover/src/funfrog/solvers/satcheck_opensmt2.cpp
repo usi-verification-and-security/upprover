@@ -423,7 +423,7 @@ Function: satcheck_opensmt2t::prop_solve
 
 \*******************************************************************/
 
-propt::resultt satcheck_opensmt2t::prop_solve() {
+propt::resultt satcheck_opensmt2t::do_prop_solve() {
 
 #ifdef DISABLE_OPTIMIZATIONS   
   if (dump_queries){

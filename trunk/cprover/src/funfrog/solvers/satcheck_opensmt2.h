@@ -51,7 +51,6 @@ public:
 
     //bool is_overapproximating() const override {return false;}
 
-    virtual resultt prop_solve();
     virtual tvt l_get(literalt a) const override;
 
     bool is_assignment_true(FlaRef l) const override {
@@ -151,11 +150,7 @@ public:
     literalt new_variable() override;
 
 protected:
-    resultt do_prop_solve() override
-    {
-        return resultt::P_ERROR;
-    }
-    // Use in the convert from SSA -> SMT-prop encoding
+    resultt do_prop_solve() override;
 
     // Solver verbosity
     unsigned solver_verbosity;
