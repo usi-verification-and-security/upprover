@@ -699,6 +699,7 @@ void smtcheck_opensmt2t::store_to_cache(const exprt & expr, PTRef ptref) {
 
 exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
     PTRef ptref = get_from_cache(expr);
+    std::cout << "Heyyy "<< expr.pretty() <<"\n";
     if (ptref != PTRef_Undef) {
         // Get the value of the PTRef
         if (logic->isTrue(ptref)) //true only

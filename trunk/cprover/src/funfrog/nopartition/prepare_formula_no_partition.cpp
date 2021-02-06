@@ -82,15 +82,16 @@ bool prepare_formula_no_partitiont::is_satisfiable(
     }
 }
 
-void prepare_formula_no_partitiont::error_trace(solvert &solver, const namespacet &ns,
+void prepare_formula_no_partitiont::error_trace(ssa_solvert &decider, const namespacet &ns,
                                               std::map<irep_idt, std::string> &guard_expln)
-{      
-    // Only if can build an error trace - give notice to the user
+{
+  solvert* solver = decider.get_solver();
+  convertort* convertor = decider.get_convertor();
+  // Only if can build an error trace - give notice to the user
     status() << ("Building error trace") << eom;
     
     error_tracet error_trace;
-    
-    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(solver, get_steps_exec_order());
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
@@ -99,7 +100,7 @@ void prepare_formula_no_partitiont::error_trace(solvert &solver, const namespace
         return; // Cannot really print a trace
     }
 
-    error_trace.build_goto_trace(get_steps_exec_order(), solver);
+    error_trace.build_goto_trace(get_steps_exec_order(), decider);
 
     result() << "\nCounterexample:" << eom;
     error_trace.show_goto_trace(result(), ns, guard_expln);

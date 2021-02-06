@@ -9,6 +9,7 @@
 #include "error_trace.h"
 #include <funfrog/utils/time_utils.h>
 #include "partitioning_target_equation.h"
+#include "interface/ssa_solvert.h"
 
 /*******************************************************************
  Purpose: Converts SSA form to SMT formula
@@ -54,15 +55,16 @@ bool formula_managert::is_satisfiable(solvert& decider)
  Purpose:
 
 \*******************************************************************/
-void formula_managert::error_trace(solvert &solver, const namespacet &ns,
+void formula_managert::error_trace(ssa_solvert &decider, const namespacet &ns,
                                    std::map<irep_idt, std::string> &guard_expln)
 {      
     // Only if can build an error trace - give notice to the user
     message.status() << ("Building error trace") << message.eom;
     
     error_tracet error_trace;
+    solvert* solver = decider.get_solver();
     
-    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(solver, equation.get_steps_exec_order());
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, equation.get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
@@ -71,7 +73,7 @@ void formula_managert::error_trace(solvert &solver, const namespacet &ns,
         return; // Cannot really print a trace
     }
 
-    error_trace.build_goto_trace(equation.get_steps_exec_order(), solver);
+    error_trace.build_goto_trace(equation.get_steps_exec_order(), decider);
 
     message.result () << "\nCounterexample:\n";
     error_trace.show_goto_trace(message.result(), ns, guard_expln);

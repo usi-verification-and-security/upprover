@@ -4,11 +4,13 @@
 #include <util/expr.h>
 #include <goto-programs/goto_trace.h>
 #include <funfrog/interface/solver/solver.h>
+#include <funfrog/interface/ssa_solvert.h>
 #include "partitioning_target_equation.h"
 
 class hifrog_symex_target_equationt;
 class partitioning_target_equationt;
 class solvert;
+class ssa_solvert;
 
 class error_tracet {
 public:
@@ -25,14 +27,14 @@ public:
 
 	void build_goto_trace(
 			const SSA_steps_orderingt &SSA_steps,
-			solvert &solver);
+			ssa_solvert &decider);
         
 	void show_goto_trace(
       messaget::mstreamt &out,
 	  const namespacet &ns,
 	  std::map<irep_idt, std::string> &guard_expln); // MAIN: from prepare_smt_formula
 
-    error_tracet::isOverAppoxt is_trace_overapprox(solvert &solver, const SSA_steps_orderingt &SSA_steps);
+    error_tracet::isOverAppoxt is_trace_overapprox(ssa_solvert &decider, const SSA_steps_orderingt &SSA_steps);
 
 	void build_goto_trace_formula(
             std::vector<exprt> &exprs,

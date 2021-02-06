@@ -11,6 +11,7 @@ class partitioning_target_equationt;
 class interpolating_solvert;
 class solvert;
 class convertort;
+class ssa_solvert;
 
 class formula_managert
 {
@@ -24,7 +25,7 @@ public:
     
     void convert_to_formula(convertort &convertor, interpolating_solvert &interpolator);
 
-    void error_trace(solvert &solver, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
+    void error_trace(ssa_solvert &decider, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
 
     bool is_satisfiable(solvert & decider);
 private:
@@ -34,6 +35,5 @@ private:
     partitioning_target_equationt &equation;
 
 };
-
 #endif
 

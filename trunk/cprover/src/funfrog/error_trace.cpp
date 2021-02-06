@@ -34,16 +34,18 @@ Function: error_trace::build_exec_order_goto_trace
 \*******************************************************************/
 void error_tracet::build_goto_trace(
         const SSA_steps_orderingt &SSA_steps,
-        solvert &solver)
+        ssa_solvert &decider)
 {
-
+  auto convertor = decider.get_convertor();
+  solvert* solver = decider.get_solver();
   unsigned step_nr=0;
 
   for(auto ssa_step_ptr : SSA_steps)
   {
     const auto & SSA_step = *ssa_step_ptr;
     //if(!solver.is_assignment_true(literal_to_flaref(SSA_step.guard_handle)))
-    if(!solver.get_value(SSA_step.guard_handle).is_true())
+    if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
+    //if(!solver->get_value(SSA_step.guard_handle).is_true(SSA_step.guard_handle))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -101,7 +103,7 @@ void error_tracet::build_goto_trace(
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
         goto_trace_step.full_lhs_value = is_index_member_symbol(SSA_step.ssa_full_lhs) ?
-                                         solver.get_value(SSA_step.ssa_full_lhs) : solver.get_value(SSA_step.ssa_lhs);
+                                         solver->get_value(SSA_step.ssa_full_lhs) : solver->get_value(SSA_step.ssa_lhs);
     }
 
     /* Print nice return value info */
@@ -120,7 +122,7 @@ void error_tracet::build_goto_trace(
         goto_trace_step.io_args.push_back(arg);
       else
       {
-        exprt tmp=solver.get_value(arg);
+        exprt tmp=solver->get_value(arg);
         goto_trace_step.io_args.push_back(tmp);
       }
     }
@@ -129,9 +131,11 @@ void error_tracet::build_goto_trace(
     if(SSA_step.is_assert() || SSA_step.is_assume())
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
-      goto_trace_step.cond_value=
-    		  solver.get_value(SSA_step.cond_handle).is_true();
-
+//      goto_trace_step.cond_value =
+//    		  solver->get_value(SSA_step.cond_handle).is_true();
+      goto_trace_step.cond_value = solver->is_assignment_true(
+          convertor->convert_bool_expr(SSA_step.cond_handle));
+      
       // we stop after a violated assertion
       if(SSA_step.is_assert() && !goto_trace_step.cond_value)
     	  break;
@@ -316,9 +320,11 @@ Function: error_trace::show_trace_vars_value
  Purpose: To check that it is really a full concrete path
 
 \*******************************************************************/
-error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(solvert &solver, const SSA_steps_orderingt &SSA_steps)
+error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(ssa_solvert &decider, const SSA_steps_orderingt &SSA_steps)
 {
-    if (solver.is_overapprox_encoding())
+    solvert* solver = decider.get_solver();
+    convertort* convertor = decider.get_convertor();
+    if (solver->is_overapprox_encoding())
     {
         // Check the error trace symbols, 
         for(SSA_steps_orderingt::const_iterator
@@ -327,7 +333,8 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(solvert &solver, co
             it++)
         {
             const SSA_stept &SSA_step=**it;
-            if(!solver.get_value(SSA_step.guard_handle).is_true())
+            //if(!solver->get_value(SSA_step.guard_handle).is_true())
+            if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
                 continue;
             if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
                 continue;
