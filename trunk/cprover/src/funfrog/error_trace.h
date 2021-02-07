@@ -74,7 +74,6 @@ private:
         const namespacet &ns,
         const optionalt<symbol_exprt> &lhs_object,
         const exprt &full_lhs,
-        const exprt &value,
         bool is_removed);
 
 	bool is_index_member_symbol(const exprt &src);

@@ -88,22 +88,14 @@ void error_tracet::build_goto_trace(
     goto_trace_step.formatted = SSA_step.formatted;
     goto_trace_step.called_function = SSA_step.called_function;
 
-    if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find(CProverStringConstants::GOTO_GUARD) == 0){
-            goto_trace_step.get_lhs_object() = SSA_step.ssa_lhs;
-        } else {
-            //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
-            goto_trace_step.get_lhs_object() = ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
-        }
-    } else {
-        // TODO: what to do here?
-//        goto_trace_step.get_lhs_object().value().make_nil(); // MB: this crashes
+    if(SSA_step.original_full_lhs.is_not_nil())
+    {
+        goto_trace_step.full_lhs = SSA_step.original_full_lhs;
     }
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
-        goto_trace_step.full_lhs_value = is_index_member_symbol(SSA_step.ssa_full_lhs) ?
-                                         solver->get_value(SSA_step.ssa_full_lhs) : solver->get_value(SSA_step.ssa_lhs);
+        goto_trace_step.full_lhs_value = solver->get_value(SSA_step.ssa_full_lhs);
     }
 
     /* Print nice return value info */
@@ -569,9 +561,9 @@ void error_tracet::show_var_value(
 //        identifier = lhs_object->get_identifier();
     
     out << "  ";
-    show_expr(out, ns, lhs_object, full_lhs, value, false);
+    show_expr(out, ns, lhs_object, full_lhs, false);
     out << " = ";
-    show_expr(out, ns, lhs_object, value, value, value.is_nil());
+    show_expr(out, ns, lhs_object, value, value.is_nil());
     out << "\n";
 }
 
@@ -587,7 +579,6 @@ void error_tracet::show_expr(
     const namespacet &ns,
     const optionalt<symbol_exprt> &lhs_object,
     const exprt &full_lhs,
-    const exprt &value,
     bool is_removed)
 {
     irep_idt identifier;
@@ -607,12 +598,8 @@ void error_tracet::show_expr(
 
     if (is_removed) // only for the value check
         out << "(assignment removed)";
-    else if (value.id() == ID_nil)
-        out << CProverStringConstants::NIL;
-    else if (value.id() == ID_constant)
-        out << value.get(ID_value);
     else
-        out << from_expr(ns, identifier, value);
+        out << from_expr(ns, identifier, full_lhs);
 }
 /*******************************************************************\
 
