@@ -598,6 +598,8 @@ void error_tracet::show_expr(
 
     if (is_removed) // only for the value check
         out << "(assignment removed)";
+    else if (full_lhs.id() == ID_constant)
+      out << full_lhs.get(ID_value); //used in CEX of QF_UF eg: n0, n1
     else
         out << from_expr(ns, identifier, full_lhs);
 }
