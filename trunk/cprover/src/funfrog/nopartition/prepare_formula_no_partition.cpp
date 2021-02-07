@@ -85,8 +85,6 @@ bool prepare_formula_no_partitiont::is_satisfiable(
 void prepare_formula_no_partitiont::error_trace(ssa_solvert &decider, const namespacet &ns,
                                               std::map<irep_idt, std::string> &guard_expln)
 {
-  solvert* solver = decider.get_solver();
-  convertort* convertor = decider.get_convertor();
   // Only if can build an error trace - give notice to the user
     status() << ("Building error trace") << eom;
     

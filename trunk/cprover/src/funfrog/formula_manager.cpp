@@ -62,7 +62,6 @@ void formula_managert::error_trace(ssa_solvert &decider, const namespacet &ns,
     message.status() << ("Building error trace") << message.eom;
     
     error_tracet error_trace;
-    solvert* solver = decider.get_solver();
     
     error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, equation.get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
