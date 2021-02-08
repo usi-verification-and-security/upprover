@@ -672,9 +672,9 @@ void core_checkert::assertion_violated (formula_managert& prop,
 {
     if (!options.get_bool_option("no-error-trace"))
     {
-        auto solver = decider->get_solver();
+        solvert* solver = decider->get_solver();
         assert(solver);
-        prop.error_trace(*solver, ns, guard_expln);
+        prop.error_trace(*decider, ns, guard_expln);
         if (solver->is_overapprox_encoding()){
             status() << "\nA bug found." << eom;
             status() << "WARNING: Possibly due to the Theory conversion." << eom;
