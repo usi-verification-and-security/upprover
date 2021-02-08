@@ -77,15 +77,11 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
 void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
-    if (partition.get_iface().call_tree_node.node_has_summary()) {
-        if (!partition.has_abstract_representation()) {
-            throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
-        }
-        partition.remove_abstract_representation();
-        //partition.partition_summary_ID_vec.clear();
-        //partition.partition_summary_ID_set.clear();
-        partition.partition_summaryID = 0;
+    if (!partition.has_abstract_representation()) {
+        throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
     }
+    partition.remove_abstract_representation();
+    partition.partition_summaryID = 0;
 }
 
 
