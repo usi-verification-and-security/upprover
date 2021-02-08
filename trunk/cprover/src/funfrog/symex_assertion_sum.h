@@ -341,11 +341,6 @@ protected:
    
 protected:
   // KE: override from goto_symex.h
-  void phi_function(
-    const statet::goto_statet &goto_state,
-    statet &state) override;
-
-  // KE: override from goto_symex.h
   void vcc(
     const exprt &expr,
     const std::string &msg,
