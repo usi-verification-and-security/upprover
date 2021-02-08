@@ -253,7 +253,7 @@ void error_tracet::show_goto_trace(
 
                     std::string str = guard_expln[step.get_lhs_object()->get_identifier()];
 #ifdef DEBUG_TRACE
-                    std::cout << "guar expalain first: " << guard_expln.begin()->first.c_str() << " second: "<< guard_expln.begin()->second.c_str() << "\n";
+                    std::cout << "guar explain first: " << guard_expln.begin()->first.c_str() << " second: "<< guard_expln.begin()->second.c_str() << "\n";
 #endif
                     if (str != "")
                         show_guard_value(out, str, step.full_lhs_value);
@@ -452,7 +452,8 @@ void error_tracet::build_goto_trace_formula(
       // store the max value among n-values (will be used after the loop):
       if (ptr > max_interp_value) max_interp_value = ptr;
     } else if (val_val[0] == 'a'){
-      ptr = 777; // value just for fun
+      //show the example if reaches here
+      assert(0);
     } else if (val_val[0] == 'u'){
       if (non_interp_classes.find(val_val) == non_interp_classes.end()){
         non_interp_classes[val_val] = new std::vector<exprt>();
@@ -472,19 +473,19 @@ void error_tracet::build_goto_trace_formula(
   }
   
   // computing interpretations for u-values:
-  for (std::map<const irep_idt, std::vector<exprt>*>::iterator
-           it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
+    for (auto & item: non_interp_classes){
     int l1 = ++max_interp_value;
-    for (unsigned int i = 0; i < it->second->size(); i++){
-      model[it->second->at(i)] = l1;
+    for (unsigned int i = 0; i < item.second->size(); i++)
+    {
+      model[item.second->at(i)] = l1;
     }
   }
 }
 
 /*******************************************************************\
  * experimental LRA-version of the CE-formula (obsolete).
- * Only used for debugging / comparison with CUF-version (see next method)
-(SA: Currently this is not in the theory-refinement core algorithm, but DONOT delete it)
+ * Only used for debugging / comparison with CUF-version
+ Currently this is not in the theory-refinement core algorithm
 \*******************************************************************/
 /*
 void error_tracet::build_goto_trace_formula (
