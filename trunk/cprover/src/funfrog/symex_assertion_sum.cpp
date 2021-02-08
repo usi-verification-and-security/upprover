@@ -531,6 +531,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Prepare (and empty) the current state
   state.guard = guardt(true_exprt(), guard_manager);
+  state.reachable = true;
     
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
