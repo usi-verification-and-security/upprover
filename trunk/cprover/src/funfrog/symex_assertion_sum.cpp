@@ -1114,7 +1114,7 @@ void symex_assertion_sumt::produce_callsite_symbols(
   if(!knows_artificial_symbol(callstart_id)){
     create_new_artificial_symbol(callstart_id, typet(ID_bool), true);
   }
-  // create if not created identifier: hifrog::fun_start
+  // create if not created identifier: hifrog::fun_end
   if(!knows_artificial_symbol(callend_id)){
     create_new_artificial_symbol(callend_id, typet(ID_bool), true);
   }
@@ -1143,8 +1143,7 @@ void symex_assertion_sumt::produce_callsite_symbols(
 void symex_assertion_sumt::produce_callend_assumption(
         const partition_ifacet& partition_iface, statet& state)
 {
-  exprt tmp(partition_iface.callend_symbol);
-  state.guard.guard_expr(tmp);
+  exprt tmp = state.guard.guard_expr(partition_iface.callend_symbol);
   target.assumption(state.guard.as_expr(), tmp, state.source);
 }
 
