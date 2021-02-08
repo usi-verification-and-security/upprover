@@ -299,39 +299,15 @@ void symex_assertion_sumt::symex_step(
       symex_transition(state);
       break;
   
-    case GOTO: //different in Hifrog than CBMC
-      if (do_guard_expl) {
-        bool store_expln;
-        std::string str;
-      
-        store_expln = state.source.pc->guard.has_operands();
-        if (store_expln) {
-          try { str = from_expr(state.source.pc->guard.op0()); }
-          catch (const std::string &s) {
-            // TODO: MB: investigate why this happens, I encountered this in s3.c
-            // assert(false);
-            str = "";
-          }
-        }
-      
-        prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
-        symex_goto(state); // Original code from Cprover follow with break
-      
-        if (do_guard_expl && store_expln && !str.empty()) {
-          guard_expln[state.guard.as_expr().get("identifier")] = str;
-        }
+    case GOTO:
+      prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
+      if (state.reachable) { //code from cprover 5.12
+        symex_goto(state); 
       } else {
-        prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
-        symex_goto(state); // Original code from Cprover follow with break
+        symex_unreachable_goto(state);
       }
-    
       break;
-//      if(state.reachable) //cprover5.12
-//          symex_goto(state);
-//      else
-//          symex_unreachable_goto(state);
-//      break;
-  
+    
     case ASSUME: //different in HiFrog vs CBMC
       if (state.reachable) //old cprover:  if(!state.guard.is_false())
       {
