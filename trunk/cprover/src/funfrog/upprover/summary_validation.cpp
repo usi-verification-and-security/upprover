@@ -481,7 +481,10 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                 summary_store->remove_summary(summary_id);
                 node.remove_node_sumID(summary_id);
                 //notify partitions about removal of summaries
-                equation.refine_partition(entry_partition.get_iface().partition_id);
+                //equation.refine_partition(entry_partition.get_iface().partition_id);
+                // SA: show me example if you found example requires refine_partition!
+                //The method returns right after this point and the equation is destroyed.
+                //So no point of calling refine_partition
             }
             return false;
         }
