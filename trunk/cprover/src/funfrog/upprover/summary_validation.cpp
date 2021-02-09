@@ -408,7 +408,8 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     decider->get_solver()->reset_solver();
     
     partitioning_target_equationt equation(ns, *summary_store, true, message_handler);
-    std::unique_ptr<path_storaget> worklist;
+    auto exploration_strategy = "fifo";
+    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
     guard_managert guard_manager;
     symex_assertion_sumt symex{get_goto_functions(),
                                node,

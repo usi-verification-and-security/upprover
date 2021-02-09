@@ -460,9 +460,10 @@ private:
 
   // to be able to start with a fresh state
   void reset_state(){
-  auto* storage = &this->path_storage;
-  // Clear the state
-  state = std::unique_ptr<statet>(new statet(
+    auto* storage = &this->path_storage;
+    assert(storage);
+    // Clear the state
+    state = std::unique_ptr<statet>(new statet(
 	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
 	  symex_config.max_field_sensitivity_array_size,
 	  guard_manager,
