@@ -43,6 +43,9 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
     // elaborate any class template instances given as bases
     elaborate_class_template(base_symbol_expr.type());
 
+    if(base_symbol_expr.type().id() == ID_symbol_type)
+      base_symbol_expr.type().id(ID_struct_tag);
+
     if(base_symbol_expr.type().id() != ID_struct_tag)
     {
       error().source_location=name.source_location();
@@ -53,18 +56,17 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
     const symbolt &base_symbol =
       lookup(to_struct_tag_type(base_symbol_expr.type()));
 
-    if(base_symbol.type.id() != ID_struct)
-    {
-      error().source_location=name.source_location();
-      error() << "expected struct or class as base, but got '"
-              << to_string(base_symbol.type) << "'" << eom;
-      throw 0;
-    }
-
-    if(to_struct_type(base_symbol.type).is_incomplete())
+    if(base_symbol.type.id()==ID_incomplete_struct)
     {
       error().source_location=name.source_location();
       error() << "base type is incomplete" << eom;
+      throw 0;
+    }
+    else if(base_symbol.type.id()!=ID_struct)
+    {
+      error().source_location=name.source_location();
+      error() << "expected struct or class as base, but got `"
+              << to_string(base_symbol.type) << "'" << eom;
       throw 0;
     }
 

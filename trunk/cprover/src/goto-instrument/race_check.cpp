@@ -13,12 +13,9 @@ Date: February 2006
 
 #include "race_check.h"
 
-#include <util/prefix.h>
-
 #include <goto-programs/remove_skip.h>
 
 #include <linking/static_lifetime_init.h>
-#include <util/pointer_predicates.h>
 
 #include "rw_set.h"
 
@@ -99,14 +96,15 @@ void w_guardst::add_initialization(goto_programt &goto_program) const
   {
     exprt symbol=ns.lookup(*it).symbol_expr();
 
-    t = goto_program.insert_before(
-      t, goto_programt::make_assignment(symbol, false_exprt()));
+    t=goto_program.insert_before(t);
+    t->type=ASSIGN;
+    t->code=code_assignt(symbol, false_exprt());
 
     t++;
   }
 }
 
-static std::string comment(const rw_set_baset::entryt &entry, bool write)
+std::string comment(const rw_set_baset::entryt &entry, bool write)
 {
   std::string result;
   if(write)
@@ -119,24 +117,29 @@ static std::string comment(const rw_set_baset::entryt &entry, bool write)
   return result;
 }
 
-static bool is_shared(const namespacet &ns, const symbol_exprt &symbol_expr)
+bool is_shared(
+  const namespacet &ns,
+  const symbol_exprt &symbol_expr)
 {
   const irep_idt &identifier=symbol_expr.get_identifier();
 
-  if(
-    identifier == CPROVER_PREFIX "alloc" ||
-    identifier == CPROVER_PREFIX "alloc_size" || identifier == "stdin" ||
-    identifier == "stdout" || identifier == "stderr" ||
-    identifier == "sys_nerr" ||
-    has_prefix(id2string(identifier), "symex::invalid_object") ||
-    has_prefix(id2string(identifier), SYMEX_DYNAMIC_PREFIX "dynamic_object"))
+  if(identifier==CPROVER_PREFIX "alloc" ||
+     identifier==CPROVER_PREFIX "alloc_size" ||
+     identifier=="stdin" ||
+     identifier=="stdout" ||
+     identifier=="stderr" ||
+     identifier=="sys_nerr" ||
+     has_prefix(id2string(identifier), "symex::invalid_object") ||
+     has_prefix(id2string(identifier), "symex_dynamic::dynamic_object"))
     return false; // no race check
 
   const symbolt &symbol=ns.lookup(identifier);
   return symbol.is_shared();
 }
 
-static bool has_shared_entries(const namespacet &ns, const rw_set_baset &rw_set)
+bool has_shared_entries(
+  const namespacet &ns,
+  const rw_set_baset &rw_set)
 {
   for(rw_set_baset::entriest::const_iterator
       it=rw_set.r_entries.begin();
@@ -155,17 +158,12 @@ static bool has_shared_entries(const namespacet &ns, const rw_set_baset &rw_set)
   return false;
 }
 
-// clang-format off
-// clang-format is confused by the L_M_ARG macro and wants to indent the line
-// after
-static void race_check(
+void race_check(
   value_setst &value_sets,
   symbol_tablet &symbol_table,
-  const irep_idt &function_id,
   L_M_ARG(const goto_functionst::goto_functiont &goto_function)
   goto_programt &goto_program,
   w_guardst &w_guards)
-// clang-format on
 {
   namespacet ns(symbol_table);
 
@@ -179,8 +177,7 @@ static void race_check(
 
     if(instruction.is_assign())
     {
-      rw_set_loct rw_set(
-        ns, value_sets, function_id, i_it L_M_LAST_ARG(local_may));
+      rw_set_loct rw_set(ns, value_sets, i_it L_M_LAST_ARG(local_may));
 
       if(!has_shared_entries(ns, rw_set))
         continue;
@@ -188,8 +185,7 @@ static void race_check(
       goto_programt::instructiont original_instruction;
       original_instruction.swap(instruction);
 
-      instruction =
-        goto_programt::make_skip(original_instruction.source_location);
+      instruction.make_skip();
       i_it++;
 
       // now add assignments for what is written -- set
@@ -198,12 +194,14 @@ static void race_check(
         if(!is_shared(ns, e_it->second.symbol_expr))
           continue;
 
-        goto_programt::targett t = goto_program.insert_before(
-          i_it,
-          goto_programt::make_assignment(
-            w_guards.get_w_guard_expr(e_it->second),
-            e_it->second.guard,
-            original_instruction.source_location));
+        goto_programt::targett t=goto_program.insert_before(i_it);
+
+        t->type=ASSIGN;
+        t->code=code_assignt(
+          w_guards.get_w_guard_expr(e_it->second),
+          e_it->second.guard);
+
+        t->source_location=original_instruction.source_location;
         i_it=++t;
       }
 
@@ -220,13 +218,15 @@ static void race_check(
         if(!is_shared(ns, e_it->second.symbol_expr))
           continue;
 
-        goto_programt::targett t = goto_program.insert_before(
-          i_it,
-          goto_programt::make_assignment(
-            w_guards.get_w_guard_expr(e_it->second),
-            false_exprt(),
-            original_instruction.source_location));
-        i_it = std::next(t);
+        goto_programt::targett t=goto_program.insert_before(i_it);
+
+        t->type=ASSIGN;
+        t->code=code_assignt(
+          w_guards.get_w_guard_expr(e_it->second),
+          false_exprt());
+
+        t->source_location=original_instruction.source_location;
+        i_it=++t;
       }
 
       // now add assertions for what is read and written
@@ -235,11 +235,10 @@ static void race_check(
         if(!is_shared(ns, e_it->second.symbol_expr))
           continue;
 
-        goto_programt::targett t = goto_program.insert_before(
-          i_it,
-          goto_programt::make_assertion(
-            w_guards.get_assertion(e_it->second),
-            original_instruction.source_location));
+        goto_programt::targett t=goto_program.insert_before(i_it);
+
+        t->make_assertion(w_guards.get_assertion(e_it->second));
+        t->source_location=original_instruction.source_location;
         t->source_location.set_comment(comment(e_it->second, false));
         i_it=++t;
       }
@@ -249,11 +248,10 @@ static void race_check(
         if(!is_shared(ns, e_it->second.symbol_expr))
           continue;
 
-        goto_programt::targett t = goto_program.insert_before(
-          i_it,
-          goto_programt::make_assertion(
-            w_guards.get_assertion(e_it->second),
-            original_instruction.source_location));
+        goto_programt::targett t=goto_program.insert_before(i_it);
+
+        t->make_assertion(w_guards.get_assertion(e_it->second));
+        t->source_location=original_instruction.source_location;
         t->source_location.set_comment(comment(e_it->second, true));
         i_it=++t;
       }
@@ -268,7 +266,6 @@ static void race_check(
 void race_check(
   value_setst &value_sets,
   symbol_tablet &symbol_table,
-  const irep_idt &function_id,
 #ifdef LOCAL_MAY
   const goto_functionst::goto_functiont &goto_function,
 #endif
@@ -279,8 +276,8 @@ void race_check(
   race_check(
     value_sets,
     symbol_table,
-    function_id,
-    L_M_ARG(goto_function) goto_program,
+    L_M_ARG(goto_function)
+    goto_program,
     w_guards);
 
   w_guards.add_initialization(goto_program);
@@ -299,8 +296,8 @@ void race_check(
       race_check(
         value_sets,
         goto_model.symbol_table,
-        f_it->first,
-        L_M_ARG(f_it->second) f_it->second.body,
+        L_M_ARG(f_it->second)
+        f_it->second.body,
         w_guards);
 
   // get "main"

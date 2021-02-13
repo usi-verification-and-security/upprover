@@ -107,8 +107,7 @@ public:
 
   bool generate_support_functions(symbol_tablet &symbol_table);
 
-  bool
-  typecheck(symbol_tablet &symbol_table, const bool keep_file_local = false);
+  bool typecheck(symbol_tablet &symbol_table);
 
   bool final(symbol_table_baset &symbol_table);
 
@@ -142,13 +141,11 @@ public:
 protected:
   bool typecheck_module(
     symbol_tablet &symbol_table,
-    language_modulet &module,
-    const bool keep_file_local);
+    language_modulet &module);
 
   bool typecheck_module(
     symbol_tablet &symbol_table,
-    const std::string &module,
-    const bool keep_file_local);
+    const std::string &module);
 };
 
 #endif // CPROVER_UTIL_LANGUAGE_FILE_H

@@ -14,21 +14,24 @@ Author: Daniel Kroening, kroening@kroening.com
 
 literalt boolbvt::convert_overflow(const exprt &expr)
 {
+  const exprt::operandst &operands=expr.operands();
+
   if(expr.id()==ID_overflow_plus ||
      expr.id()==ID_overflow_minus)
   {
-    const auto &overflow_expr = to_binary_expr(expr);
+    DATA_INVARIANT(
+      operands.size() == 2,
+      "expression " + expr.id_string() + " should have two operands");
 
-    const bvt &bv0 = convert_bv(overflow_expr.lhs());
-    const bvt &bv1 = convert_bv(overflow_expr.rhs());
+    const bvt &bv0=convert_bv(operands[0]);
+    const bvt &bv1=convert_bv(operands[1]);
 
     if(bv0.size()!=bv1.size())
       return SUB::convert_rest(expr);
 
-    bv_utilst::representationt rep =
-      overflow_expr.lhs().type().id() == ID_signedbv
-        ? bv_utilst::representationt::SIGNED
-        : bv_utilst::representationt::UNSIGNED;
+    bv_utilst::representationt rep=
+      expr.op0().type().id()==ID_signedbv?bv_utilst::representationt::SIGNED:
+                                          bv_utilst::representationt::UNSIGNED;
 
     return expr.id()==ID_overflow_minus?
       bv_utils.overflow_sub(bv0, bv1, rep):
@@ -36,23 +39,23 @@ literalt boolbvt::convert_overflow(const exprt &expr)
   }
   else if(expr.id()==ID_overflow_mult)
   {
-    const auto &overflow_expr = to_binary_expr(expr);
+    DATA_INVARIANT(
+      operands.size() == 2,
+      "overflow_mult expression should have two operands");
 
-    if(
-      overflow_expr.lhs().type().id() != ID_unsignedbv &&
-      overflow_expr.lhs().type().id() != ID_signedbv)
+    if(operands[0].type().id()!=ID_unsignedbv &&
+       operands[0].type().id()!=ID_signedbv)
       return SUB::convert_rest(expr);
 
-    bvt bv0 = convert_bv(overflow_expr.lhs());
-    bvt bv1 = convert_bv(overflow_expr.rhs(), bv0.size());
+    bvt bv0=convert_bv(operands[0]);
+    bvt bv1 = convert_bv(operands[1], bv0.size());
 
-    bv_utilst::representationt rep =
-      overflow_expr.lhs().type().id() == ID_signedbv
-        ? bv_utilst::representationt::SIGNED
-        : bv_utilst::representationt::UNSIGNED;
+    bv_utilst::representationt rep=
+      operands[0].type().id()==ID_signedbv?bv_utilst::representationt::SIGNED:
+                                           bv_utilst::representationt::UNSIGNED;
 
     DATA_INVARIANT(
-      overflow_expr.lhs().type() == overflow_expr.rhs().type(),
+      operands[0].type() == operands[1].type(),
       "operands of overflow_mult expression shall have same type");
 
     std::size_t old_size=bv0.size();
@@ -93,27 +96,28 @@ literalt boolbvt::convert_overflow(const exprt &expr)
   }
   else if(expr.id() == ID_overflow_shl)
   {
-    const auto &overflow_expr = to_binary_expr(expr);
+    DATA_INVARIANT(
+      operands.size() == 2, "overflow_shl expression should have two operands");
 
-    const bvt &bv0 = convert_bv(overflow_expr.lhs());
-    const bvt &bv1 = convert_bv(overflow_expr.rhs());
+    const bvt &bv0=convert_bv(operands[0]);
+    const bvt &bv1=convert_bv(operands[1]);
 
     std::size_t old_size = bv0.size();
     std::size_t new_size = old_size * 2;
 
-    bv_utilst::representationt rep =
-      overflow_expr.lhs().type().id() == ID_signedbv
-        ? bv_utilst::representationt::SIGNED
-        : bv_utilst::representationt::UNSIGNED;
+    bv_utilst::representationt rep=
+      operands[0].type().id()==ID_signedbv?bv_utilst::representationt::SIGNED:
+                                           bv_utilst::representationt::UNSIGNED;
 
     bvt bv_ext=bv_utils.extension(bv0, new_size, rep);
 
     bvt result=bv_utils.shift(bv_ext, bv_utilst::shiftt::SHIFT_LEFT, bv1);
 
     // a negative shift is undefined; yet this isn't an overflow
-    literalt neg_shift = overflow_expr.lhs().type().id() == ID_unsignedbv
-                           ? const_literal(false)
-                           : bv1.back(); // sign bit
+    literalt neg_shift =
+      operands[1].type().id() == ID_unsignedbv ?
+        const_literal(false) :
+        bv1.back(); // sign bit
 
     // an undefined shift of a non-zero value always results in overflow; the
     // use of unsigned comparision is safe here as we cover the signed negative
@@ -158,9 +162,11 @@ literalt boolbvt::convert_overflow(const exprt &expr)
   }
   else if(expr.id()==ID_overflow_unary_minus)
   {
-    const auto &overflow_expr = to_unary_expr(expr);
+    DATA_INVARIANT(
+      operands.size() == 1,
+      "overflow_unary_minus expression should have one operand");
 
-    const bvt &bv = convert_bv(overflow_expr.op());
+    const bvt &bv=convert_bv(operands[0]);
 
     return bv_utils.overflow_negate(bv);
   }

@@ -48,11 +48,22 @@ std::set<exprt> collect_conditions(const exprt &src)
 
 std::set<exprt> collect_conditions(const goto_programt::const_targett t)
 {
-  std::set<exprt> result;
+  switch(t->type)
+  {
+  case GOTO:
+  case ASSERT:
+    return collect_conditions(t->guard);
 
-  t->apply([&result](const exprt &e) { collect_conditions_rec(e, result); });
+  case ASSIGN:
+  case FUNCTION_CALL:
+    return collect_conditions(t->code);
 
-  return result;
+  default:
+  {
+  }
+  }
+
+  return std::set<exprt>();
 }
 
 void collect_operands(const exprt &src, std::vector<exprt> &dest)
@@ -81,7 +92,7 @@ void collect_decisions_rec(const exprt &src, std::set<exprt> &dest)
     }
     else if(src.id() == ID_not)
     {
-      collect_decisions_rec(to_not_expr(src).op(), dest);
+      collect_decisions_rec(src.op0(), dest);
     }
     else
     {
@@ -95,11 +106,29 @@ void collect_decisions_rec(const exprt &src, std::set<exprt> &dest)
   }
 }
 
-std::set<exprt> collect_decisions(const goto_programt::const_targett t)
+std::set<exprt> collect_decisions(const exprt &src)
 {
   std::set<exprt> result;
-
-  t->apply([&result](const exprt &e) { collect_decisions_rec(e, result); });
-
+  collect_decisions_rec(src, result);
   return result;
+}
+
+std::set<exprt> collect_decisions(const goto_programt::const_targett t)
+{
+  switch(t->type)
+  {
+  case GOTO:
+  case ASSERT:
+    return collect_decisions(t->guard);
+
+  case ASSIGN:
+  case FUNCTION_CALL:
+    return collect_decisions(t->code);
+
+  default:
+  {
+  }
+  }
+
+  return std::set<exprt>();
 }

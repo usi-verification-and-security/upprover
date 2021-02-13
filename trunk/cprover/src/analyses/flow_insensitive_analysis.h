@@ -47,10 +47,8 @@ public:
 
   virtual bool transform(
     const namespacet &ns,
-    const irep_idt &function_from,
     locationt from,
-    const irep_idt &function_to,
-    locationt to) = 0;
+    locationt to)=0;
 
   virtual ~flow_insensitive_abstract_domain_baset()
   {
@@ -128,8 +126,8 @@ public:
 
   virtual void update(const goto_functionst &goto_functions);
 
-  virtual void
-  operator()(const irep_idt &function_id, const goto_programt &goto_program);
+  virtual void operator()(
+    const goto_programt &goto_program);
 
   virtual void operator()(
     const goto_functionst &goto_functions);
@@ -148,12 +146,19 @@ public:
     std::ostream &out);
 
   virtual void output(
-    const irep_idt &function_id,
     const goto_programt &goto_program,
-    std::ostream &out);
+    std::ostream &out)
+  {
+    output(goto_program, "", out);
+  }
 
 protected:
   const namespacet &ns;
+
+  virtual void output(
+    const goto_programt &goto_program,
+    const irep_idt &identifier,
+    std::ostream &out) const;
 
   typedef std::priority_queue<locationt> working_sett;
 
@@ -168,7 +173,6 @@ protected:
 
   // true = found something new
   bool fixedpoint(
-    const irep_idt &function_id,
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
 
@@ -181,7 +185,6 @@ protected:
 
   // true = found something new
   bool visit(
-    const irep_idt &function_id,
     locationt l,
     working_sett &working_set,
     const goto_programt &goto_program,
@@ -203,7 +206,6 @@ protected:
 
   // function calls
   bool do_function_call_rec(
-    const irep_idt &calling_function,
     locationt l_call,
     const exprt &function,
     const exprt::operandst &arguments,
@@ -211,7 +213,6 @@ protected:
     const goto_functionst &goto_functions);
 
   bool do_function_call(
-    const irep_idt &calling_function,
     locationt l_call,
     const goto_functionst &goto_functions,
     const goto_functionst::function_mapt::const_iterator f_it,

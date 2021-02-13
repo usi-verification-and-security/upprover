@@ -15,7 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 #include <util/base_exceptions.h>
-#include <util/byte_operators.h>
+#include <util/base_type.h>
 #include <util/c_types.h>
 #include <util/expr_util.h>
 #include <util/namespace.h>
@@ -29,7 +29,7 @@ Author: Daniel Kroening, kroening@kroening.com
 void inv_object_storet::output(std::ostream &out) const
 {
   for(std::size_t i=0; i<entries.size(); i++)
-    out << "STORE " << i << ": " << map[i] << '\n';
+    out << "STORE " << i << ": " << to_string(i, "") << '\n';
 }
 
 bool inv_object_storet::get(const exprt &expr, unsigned &n)
@@ -64,7 +64,8 @@ bool inv_object_storet::get(const exprt &expr, unsigned &n)
 unsigned inv_object_storet::add(const exprt &expr)
 {
   std::string s=build_string(expr);
-  CHECK_RETURN(!s.empty());
+
+  assert(s!="");
 
   mapt::number_type n=map.number(s);
 
@@ -133,11 +134,12 @@ std::string inv_object_storet::build_string(const exprt &expr) const
       return integer2string(*i);
   }
 
-  // we also like "address_of" if the object is constant
+  // we also like "address_of" and "reference_to"
+  // if the object is constant
   // we don't know what mode (language) we are in, so we rely on the default
   // language to be reasonable for from_expr
   if(is_constant_address(expr))
-    return from_expr(ns, irep_idt(), expr);
+    return from_expr(ns, "", expr);
 
   if(expr.id()==ID_member)
   {
@@ -155,7 +157,8 @@ bool invariant_sett::get_object(
   const exprt &expr,
   unsigned &n) const
 {
-  return object_store.get(expr, n);
+  PRECONDITION(object_store!=nullptr);
+  return object_store->get(expr, n);
 }
 
 bool inv_object_storet::is_constant_address(const exprt &expr)
@@ -218,7 +221,7 @@ void invariant_sett::add_eq(const std::pair<unsigned, unsigned> &p)
   {
     if(eq_set.find(i)==r)
     {
-      if(object_store.is_constant(i))
+      if(object_store->is_constant(i))
       {
         if(constant_seen)
         {
@@ -311,13 +314,18 @@ tvt invariant_sett::is_le(std::pair<unsigned, unsigned> p) const
   return tvt::unknown();
 }
 
-void invariant_sett::output(std::ostream &out) const
+void invariant_sett::output(
+  const irep_idt &identifier,
+  std::ostream &out) const
 {
   if(is_false)
   {
     out << "FALSE\n";
     return;
   }
+
+  INVARIANT_STRUCTURED(
+    object_store!=nullptr, nullptr_exceptiont, "Object store is null");
 
   for(std::size_t i=0; i<eq_set.size(); i++)
     if(eq_set.is_root(i) &&
@@ -332,7 +340,7 @@ void invariant_sett::output(std::ostream &out) const
           else
             out << " = ";
 
-          out << to_string(j);
+          out << to_string(j, identifier);
         }
 
       out << '\n';
@@ -340,17 +348,23 @@ void invariant_sett::output(std::ostream &out) const
 
   for(const auto &bounds : bounds_map)
   {
-    out << to_string(bounds.first) << " in " << bounds.second << '\n';
+    out << to_string(bounds.first, identifier)
+        << " in " << bounds.second
+        << '\n';
   }
 
   for(const auto &le : le_set)
   {
-    out << to_string(le.first) << " <= " << to_string(le.second) << '\n';
+    out << to_string(le.first, identifier)
+        << " <= " << to_string(le.second, identifier)
+        << '\n';
   }
 
   for(const auto &ne : ne_set)
   {
-    out << to_string(ne.first) << " != " << to_string(ne.second) << '\n';
+    out << to_string(ne.first, identifier)
+        << " != " << to_string(ne.second, identifier)
+        << '\n';
   }
 }
 
@@ -387,8 +401,8 @@ void invariant_sett::strengthen_rec(const exprt &expr)
     throw "non-Boolean argument to strengthen()";
 
   #if 0
-  std::cout << "S: " << from_expr(*ns, irep_idt(), expr) << '\n';
-#endif
+  std::cout << "S: " << from_expr(*ns, "", expr) << '\n';
+  #endif
 
   if(is_false)
   {
@@ -422,13 +436,13 @@ void invariant_sett::strengthen_rec(const exprt &expr)
     // special rule: x <= (a & b)
     // implies:      x<=a && x<=b
 
-    if(rel.rhs().id() == ID_bitand)
+    if(rel.op1().id() == ID_bitand)
     {
       const exprt &bitand_op = rel.op1();
 
       forall_operands(it, bitand_op)
       {
-        auto tmp(rel);
+        exprt tmp(expr);
         tmp.op1()=*it;
         strengthen_rec(tmp);
       }
@@ -472,11 +486,12 @@ void invariant_sett::strengthen_rec(const exprt &expr)
   {
     const auto &equal_expr = to_equal_expr(expr);
 
-    const typet &op_type = equal_expr.op0().type();
+    const typet &op_type = ns->follow(equal_expr.op0().type());
 
-    if(op_type.id() == ID_struct || op_type.id() == ID_struct_tag)
+    if(op_type.id()==ID_struct)
     {
-      const struct_typet &struct_type = to_struct_type(ns.follow(op_type));
+      const struct_typet &struct_type=to_struct_type(op_type);
+
 
       for(const auto &comp : struct_type.components())
       {
@@ -503,7 +518,7 @@ void invariant_sett::strengthen_rec(const exprt &expr)
 
       forall_operands(it, bitand_op)
       {
-        auto tmp(equal_expr);
+        exprt tmp(equal_expr);
         tmp.op1()=*it;
         tmp.id(ID_le);
         strengthen_rec(tmp);
@@ -513,7 +528,7 @@ void invariant_sett::strengthen_rec(const exprt &expr)
     }
     else if(equal_expr.op0().id() == ID_bitand)
     {
-      auto tmp(equal_expr);
+      exprt tmp(equal_expr);
       std::swap(tmp.op0(), tmp.op1());
       strengthen_rec(tmp);
       return;
@@ -590,8 +605,8 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
     throw "implies: non-Boolean expression";
 
   #if 0
-  std::cout << "I: " << from_expr(*ns, irep_idt(), expr) << '\n';
-#endif
+  std::cout << "I: " << from_expr(*ns, "", expr) << '\n';
+  #endif
 
   if(is_false) // can't get any stronger
     return tvt(true);
@@ -625,8 +640,8 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
 
     std::pair<unsigned, unsigned> p;
 
-    bool ob0 = get_object(rel.lhs(), p.first);
-    bool ob1 = get_object(rel.rhs(), p.second);
+    bool ob0 = get_object(rel.op0(), p.first);
+    bool ob1 = get_object(rel.op1(), p.second);
 
     if(ob0 || ob1)
       return tvt::unknown();
@@ -674,7 +689,7 @@ void invariant_sett::get_bounds(unsigned a, boundst &bounds) const
   bounds=boundst();
 
   {
-    const exprt &e_a = object_store.get_expr(a);
+    const exprt &e_a=object_store->get_expr(a);
     const auto tmp = numeric_cast<mp_integer>(e_a);
     if(tmp.has_value())
     {
@@ -738,8 +753,9 @@ void invariant_sett::nnf(exprt &expr, bool negate)
       typecast_expr.op().type().id() == ID_unsignedbv ||
       typecast_expr.op().type().id() == ID_signedbv)
     {
-      equal_exprt tmp(
-        typecast_expr.op(), from_integer(0, typecast_expr.op().type()));
+      equal_exprt tmp;
+      tmp.lhs() = typecast_expr.op();
+      tmp.rhs() = from_integer(0, typecast_expr.op().type());
       nnf(tmp, !negate);
       expr.swap(tmp);
     }
@@ -754,8 +770,7 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     {
       // !a<=b <-> !b=>a <-> b<a
       expr.id(ID_lt);
-      auto &rel = to_binary_relation_expr(expr);
-      std::swap(rel.lhs(), rel.rhs());
+      std::swap(expr.op0(), expr.op1());
     }
   }
   else if(expr.id()==ID_lt)
@@ -764,8 +779,7 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     {
       // !a<b <-> !b>a <-> b<=a
       expr.id(ID_le);
-      auto &rel = to_binary_relation_expr(expr);
-      std::swap(rel.lhs(), rel.rhs());
+      std::swap(expr.op0(), expr.op1());
     }
   }
   else if(expr.id()==ID_ge)
@@ -775,8 +789,7 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     else
     {
       expr.id(ID_le);
-      auto &rel = to_binary_relation_expr(expr);
-      std::swap(rel.lhs(), rel.rhs());
+      std::swap(expr.op0(), expr.op1());
     }
   }
   else if(expr.id()==ID_gt)
@@ -786,8 +799,7 @@ void invariant_sett::nnf(exprt &expr, bool negate)
     else
     {
       expr.id(ID_lt);
-      auto &rel = to_binary_relation_expr(expr);
-      std::swap(rel.lhs(), rel.rhs());
+      std::swap(expr.op0(), expr.op1());
     }
   }
   else if(expr.id()==ID_equal)
@@ -845,12 +857,11 @@ exprt invariant_sett::get_constant(const exprt &expr) const
     for(std::size_t i=0; i<eq_set.size(); i++)
       if(eq_set.find(i)==r)
       {
-        const exprt &e = object_store.get_expr(i);
+        const exprt &e=object_store->get_expr(i);
 
         if(e.is_constant())
         {
-          const mp_integer value =
-            numeric_cast_v<mp_integer>(to_constant_expr(e));
+          const mp_integer value = numeric_cast_v<mp_integer>(e);
 
           if(expr.type().id()==ID_pointer)
           {
@@ -860,7 +871,7 @@ exprt invariant_sett::get_constant(const exprt &expr) const
           else
             return from_integer(value, expr.type());
         }
-        else if(object_store.is_constant_address(e))
+        else if(object_store->is_constant_address(e))
         {
           if(e.type()==expr.type())
             return e;
@@ -873,14 +884,19 @@ exprt invariant_sett::get_constant(const exprt &expr) const
   return static_cast<const exprt &>(get_nil_irep());
 }
 
-std::string inv_object_storet::to_string(unsigned a) const
+std::string inv_object_storet::to_string(
+  unsigned a,
+  const irep_idt &) const
 {
   return id2string(map[a]);
 }
 
-std::string invariant_sett::to_string(unsigned a) const
+std::string invariant_sett::to_string(
+  unsigned a,
+  const irep_idt &identifier) const
 {
-  return object_store.to_string(a);
+  PRECONDITION(object_store!=nullptr);
+  return object_store->to_string(a, identifier);
 }
 
 bool invariant_sett::make_union(const invariant_sett &other)
@@ -1000,13 +1016,15 @@ void invariant_sett::modifies(const exprt &lhs)
   else if(lhs.id()==ID_if)
   {
     // we just assume both are changed
-    modifies(to_if_expr(lhs).op1());
-    modifies(to_if_expr(lhs).op2());
+    assert(lhs.operands().size()==3);
+    modifies(lhs.op1());
+    modifies(lhs.op2());
   }
   else if(lhs.id()==ID_typecast)
   {
     // just go down
-    modifies(to_typecast_expr(lhs).op());
+    assert(lhs.operands().size()==1);
+    modifies(lhs.op0());
   }
   else if(lhs.id()=="valid_object")
   {
@@ -1018,7 +1036,8 @@ void invariant_sett::modifies(const exprt &lhs)
           lhs.id()==ID_byte_extract_big_endian)
   {
     // just go down
-    modifies(to_byte_extract_expr(lhs).op0());
+    assert(lhs.operands().size()==2);
+    modifies(lhs.op0());
   }
   else if(lhs.id() == ID_null_object ||
           lhs.id() == "is_zero_string" ||
@@ -1035,11 +1054,13 @@ void invariant_sett::assignment(
   const exprt &lhs,
   const exprt &rhs)
 {
-  equal_exprt equality(lhs, rhs);
+  equal_exprt equality;
+  equality.lhs()=lhs;
+  equality.rhs()=rhs;
 
   // first evaluate RHS
   simplify(equality.rhs());
-  ::simplify(equality.rhs(), ns);
+  ::simplify(equality.rhs(), *ns);
 
   // now kill LHS
   modifies(lhs);

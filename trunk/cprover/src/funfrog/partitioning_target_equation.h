@@ -20,7 +20,7 @@ different deferred functions.
 #endif
 
 #include <goto-symex/symex_target_equation.h>
-#include <goto-symex/ssa_step.h>
+//#include <goto-symex/ssa_step.h>
 #include <funfrog/interface/convertor.h>
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
@@ -30,7 +30,7 @@ different deferred functions.
 class partition_ifacet;
 class interpolating_solvert;
 
-typedef std::vector<SSA_stept*> SSA_steps_orderingt;
+typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -184,7 +184,8 @@ protected:
 
   virtual void goto_instruction(
     const exprt &guard,
-    const renamedt<exprt, L2> &cond, //const exprt &cond,
+    const exprt &cond,
+    //const renamedt<exprt, L2> &cond, //const exprt &cond,
     const sourcet &source) override {}
 
     void close_current_partition();

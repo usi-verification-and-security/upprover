@@ -12,10 +12,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #ifndef CPROVER_CPP_CPP_TYPECHECK_H
 #define CPROVER_CPP_CPP_TYPECHECK_H
 
+#include <cassert>
+#include <set>
 #include <list>
 #include <map>
-#include <set>
-#include <unordered_set>
 
 #include <util/std_code.h>
 #include <util/std_types.h>
@@ -124,7 +124,9 @@ protected:
 
   void convert_pmop(exprt &expr);
 
-  codet convert_anonymous_union(cpp_declarationt &declaration);
+  void convert_anonymous_union(
+    cpp_declarationt &declaration,
+    codet &new_code);
 
   void convert_anon_struct_union_member(
     const cpp_declarationt &declaration,
@@ -216,11 +218,11 @@ protected:
     const symbolt &symbol,
     const cpp_template_args_tct &specialization_template_args,
     const cpp_template_args_tct &full_template_args,
-    const typet &specialization = uninitialized_typet{});
+    const typet &specialization=typet(ID_nil));
 
   void elaborate_class_template(
     const source_locationt &source_location,
-    const struct_tag_typet &type);
+    const symbol_typet &type);
 
   unsigned template_counter;
   unsigned anon_counter;
@@ -230,15 +232,12 @@ protected:
   std::string template_suffix(
     const cpp_template_args_tct &template_args);
 
-  cpp_scopet &sub_scope_for_instantiation(
-    cpp_scopet &template_scope,
-    const std::string &suffix);
-
-  void
-  convert_parameters(const irep_idt &current_mode, code_typet &function_type);
+  void convert_parameters(
+    const irep_idt &mode,
+    code_typet &function_type);
 
   void convert_parameter(
-    const irep_idt &current_mode,
+    const irep_idt &mode,
     code_typet::parametert &parameter);
 
   //
@@ -261,7 +260,7 @@ protected:
 
   void default_dtor(const symbolt &symb, cpp_declarationt &dtor);
 
-  codet dtor(const symbolt &symb, const symbol_exprt &this_expr);
+  codet dtor(const symbolt &symb);
 
   void check_member_initializers(
     const struct_typet::basest &bases,
@@ -428,7 +427,7 @@ protected:
   void typecheck_block(code_blockt &) override;
   void typecheck_ifthenelse(code_ifthenelset &) override;
   void typecheck_while(code_whilet &) override;
-  void typecheck_switch(codet &) override;
+  void typecheck_switch(code_switcht &) override;
 
   const struct_typet &this_struct_type();
 
@@ -592,7 +591,6 @@ private:
   typedef std::list<irep_idt> dynamic_initializationst;
   dynamic_initializationst dynamic_initializations;
   bool disable_access_control;           // Disable protect and private
-  std::unordered_set<irep_idt> deferred_typechecking;
 };
 
 #endif // CPROVER_CPP_CPP_TYPECHECK_H

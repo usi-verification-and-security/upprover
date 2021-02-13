@@ -16,20 +16,6 @@ extern char *yyjsiltext;
 #include <util/string_constant.h>
 
 #include "jsil_y.tab.h"
-
-#ifdef _MSC_VER
-// possible loss of data
-#pragma warning(disable:4242)
-// possible loss of data
-#pragma warning(disable:4244)
-// signed/unsigned mismatch
-#pragma warning(disable:4365)
-// switch with default but no case labels
-#pragma warning(disable:4065)
-// unreachable code
-#pragma warning(disable:4702)
-#endif
-
 /*** token declaration **************************************************/
 %}
 
@@ -114,6 +100,7 @@ extern char *yyjsiltext;
 
 %start program
 
+%error-verbose
 %expect 0
 
 %%
@@ -130,29 +117,29 @@ procedure_decl: TOK_PROCEDURE proc_ident '(' parameters_opt ')'
                   TOK_THROWS TOK_IDENTIFIER TOK_TO TOK_IDENTIFIER
                   '{' statements_opt '}'
               {
-                symbol_exprt proc(to_symbol_expr(parser_stack($2)));
-                code_typet::parameterst parameters;
-                forall_operands(it, parser_stack($4))
+                symbol_exprt proc(to_symbol_expr(stack($2)));
+                code_typet ct;
+                forall_operands(it, stack($4))
                 {
                   symbol_exprt s(to_symbol_expr(*it));
-                  code_typet::parametert p(typet{});
+                  code_typet::parametert p;
                   p.set_identifier(s.get_identifier());
-                  parameters.push_back(p);
+                  ct.parameters().push_back(p);
                 }
-                proc.type() = code_typet(std::move(parameters), typet());
+                proc.type().swap(ct);
 
-                symbol_exprt rv(to_symbol_expr(parser_stack($7)));
-                symbol_exprt rl(to_symbol_expr(parser_stack($9)));
+                symbol_exprt rv(to_symbol_expr(stack($7)));
+                symbol_exprt rl(to_symbol_expr(stack($9)));
 
-                symbol_exprt tv(to_symbol_expr(parser_stack($11)));
-                symbol_exprt tl(to_symbol_expr(parser_stack($13)));
+                symbol_exprt tv(to_symbol_expr(stack($11)));
+                symbol_exprt tl(to_symbol_expr(stack($13)));
 
                 jsil_declarationt decl;
                 decl.add_declarator(proc);
                 decl.add_returns(rv.get_identifier(), rl.get_identifier());
                 decl.add_throws(tv.get_identifier(), tl.get_identifier());
-                if(parser_stack($15).is_not_nil())
-                  decl.add_value(to_code_block(to_code(parser_stack($15))));
+                if(stack($15).is_not_nil())
+                  decl.add_value(to_code_block(to_code(stack($15))));
 
                 PARSER.parse_tree.items.push_back(decl);
               }
@@ -161,25 +148,24 @@ procedure_decl: TOK_PROCEDURE proc_ident '(' parameters_opt ')'
 proc_ident: TOK_IDENTIFIER
           | TOK_EVAL
           {
-            symbol_exprt e = symbol_exprt::typeless("eval");
+            symbol_exprt e("eval");
             newstack($$).swap(e);
           }
           | TOK_BUILTIN_IDENTIFIER
           {
-            parser_stack($$).set("proc_type", "builtin");
+            stack($$).set("proc_type", "builtin");
           }
           | TOK_SPEC_IDENTIFIER
           {
-            parser_stack($$).set("proc_type", "spec");
+            stack($$).set("proc_type", "spec");
           }
           ;
 
 proc_ident_expr: proc_ident
                | TOK_STRING
                {
-                 symbol_exprt s = symbol_exprt::typeless(
-                   to_string_constant(parser_stack($$)).get_value());
-                 parser_stack($$).swap(s);
+                 symbol_exprt s(to_string_constant(stack($$)).get_value());
+                 stack($$).swap(s);
                }
                ;
 
@@ -193,12 +179,12 @@ parameters_opt: /* empty */
 parameters: TOK_IDENTIFIER
           {
             newstack($$).id(ID_parameters);
-            parser_stack($$).add_to_operands(std::move(parser_stack($1)));
+            stack($$).move_to_operands(stack($1));
           }
           | parameters ',' TOK_IDENTIFIER
           {
             $$=$1;
-            parser_stack($$).add_to_operands(std::move(parser_stack($3)));
+            stack($$).move_to_operands(stack($3));
           }
           ;
 
@@ -211,13 +197,14 @@ statements_opt: /* empty */
 
 statements: statement
           {
-            code_blockt b({static_cast<codet &>(parser_stack($1))});
-            newstack($$).swap(b);
+            newstack($$).id(ID_code);
+            to_code(stack($$)).set_statement(ID_block);
+            stack($$).move_to_operands(stack($1));
           }
           | statements statement
           {
             $$=$1;
-            parser_stack($$).add_to_operands(std::move(parser_stack($2)));
+            stack($$).move_to_operands(stack($2));
           }
           ;
 
@@ -234,21 +221,21 @@ statement: TOK_NEWLINE
 instruction: TOK_LABEL TOK_IDENTIFIER
            {
              code_labelt l(
-               to_symbol_expr(parser_stack($2)).get_identifier(),
+               to_symbol_expr(stack($2)).get_identifier(),
                code_skipt());
              newstack($$).swap(l);
            }
            | TOK_GOTO TOK_IDENTIFIER
            {
-             code_gotot g(to_symbol_expr(parser_stack($2)).get_identifier());
+             code_gotot g(to_symbol_expr(stack($2)).get_identifier());
              newstack($$).swap(g);
            }
            | TOK_GOTO '[' expression ']' TOK_IDENTIFIER ',' TOK_IDENTIFIER
            {
-             code_gotot lt(to_symbol_expr(parser_stack($5)).get_identifier());
-             code_gotot lf(to_symbol_expr(parser_stack($7)).get_identifier());
+             code_gotot lt(to_symbol_expr(stack($5)).get_identifier());
+             code_gotot lf(to_symbol_expr(stack($7)).get_identifier());
 
-             code_ifthenelset ite(parser_stack($3), std::move(lt), std::move(lf));
+             code_ifthenelset ite(stack($3), std::move(lt), std::move(lf));
 
              newstack($$).swap(ite);
            }
@@ -258,13 +245,13 @@ instruction: TOK_LABEL TOK_IDENTIFIER
            }
            | TOK_IDENTIFIER TOK_DEFEQ rhs
            {
-             code_assignt a(parser_stack($1), parser_stack($3));
+             code_assignt a(stack($1), stack($3));
              newstack($$).swap(a);
            }
            | '[' expression ',' expression ']' TOK_DEFEQ expression
            {
-             index_exprt i(parser_stack($2), parser_stack($4));
-             code_assignt a(i, parser_stack($7));
+             index_exprt i(stack($2), stack($4));
+             code_assignt a(i, stack($7));
              newstack($$).swap(a);
            }
            ;
@@ -272,16 +259,17 @@ instruction: TOK_LABEL TOK_IDENTIFIER
 rhs: expression
    | proc_ident_expr '(' expressions_opt ')' with_opt
    {
-     side_effect_expr_function_callt f(parser_stack($1), {}, typet{}, {});
-     if(parser_stack($3).is_not_nil())
-       f.arguments().swap(parser_stack($3).operands());
+     side_effect_expr_function_callt f;
+     f.function().swap(stack($1));
+     if(stack($3).is_not_nil())
+       f.arguments().swap(stack($3).operands());
 
      newstack($$).swap(f);
 
-     if(parser_stack($5).is_not_nil())
+     if(stack($5).is_not_nil())
      {
-       with_exprt w(parser_stack($$), parser_stack($5), nil_exprt());
-       parser_stack($$).swap(w);
+       with_exprt w(stack($$), stack($5), nil_exprt());
+       stack($$).swap(w);
      }
    }
    | TOK_NEW '(' ')'
@@ -292,33 +280,37 @@ rhs: expression
    | TOK_HAS_FIELD '(' expression ',' expression ')'
    {
      exprt has_field("hasField");
-     has_field.add_to_operands(std::move(parser_stack($3)), std::move(parser_stack($5)));
+     has_field.move_to_operands(stack($3));
+     has_field.move_to_operands(stack($5));
 
      newstack($$).swap(has_field);
    }
    | '[' expression ',' expression ']'
    {
-     index_exprt i(parser_stack($2), parser_stack($4));
+     index_exprt i(stack($2), stack($4));
      newstack($$).swap(i);
    }
    | TOK_DELETE '(' expression ',' expression ')'
    {
      exprt d("delete");
-     d.add_to_operands(std::move(parser_stack($3)), std::move(parser_stack($5)));
+     d.move_to_operands(stack($3));
+     d.move_to_operands(stack($5));
 
      newstack($$).swap(d);
    }
    | TOK_PROTO_FIELD '(' expression ',' expression ')'
    {
      exprt proto_field("protoField");
-     proto_field.add_to_operands(std::move(parser_stack($3)), std::move(parser_stack($5)));
+     proto_field.move_to_operands(stack($3));
+     proto_field.move_to_operands(stack($5));
 
      newstack($$).swap(proto_field);
    }
    | TOK_PROTO_OBJ '(' expression ',' expression ')'
    {
      exprt proto_obj("protoObj");
-     proto_obj.add_to_operands(std::move(parser_stack($3)), std::move(parser_stack($5)));
+     proto_obj.move_to_operands(stack($3));
+     proto_obj.move_to_operands(stack($5));
 
      newstack($$).swap(proto_obj);
    }
@@ -344,12 +336,12 @@ expressions_opt: /* empty */
 expressions: expression
            {
              newstack($$).id(ID_expression_list);
-             parser_stack($$).add_to_operands(std::move(parser_stack($1)));
+             stack($$).move_to_operands(stack($1));
            }
            | expressions ',' expression
            {
              $$=$1;
-             parser_stack($$).add_to_operands(std::move(parser_stack($3)));
+             stack($$).move_to_operands(stack($3));
            }
            ;
 
@@ -357,7 +349,8 @@ expression: atom_expression
           | expression binary_op atom_expression
           {
             $$=$2;
-            parser_stack($$).add_to_operands(std::move(parser_stack($1)), std::move(parser_stack($3)));
+            stack($$).move_to_operands(stack($1));
+            stack($$).move_to_operands(stack($3));
           }
           ;
 
@@ -365,7 +358,7 @@ atom_expression: literal
                | unary_op atom_expression
                {
                  $$=$1;
-                 parser_stack($$).add_to_operands(std::move(parser_stack($2)));
+                 stack($$).move_to_operands(stack($2));
                }
                | '(' expression ')'
                {
@@ -374,31 +367,30 @@ atom_expression: literal
                | TOK_REF '(' expression ',' expression ',' ref_type ')'
                {
                  exprt ref("ref");
-                 ref.add_to_operands(
-                   std::move(parser_stack($3)),
-                   std::move(parser_stack($5)),
-                   std::move(parser_stack($7)));
+                 ref.move_to_operands(stack($3));
+                 ref.move_to_operands(stack($5));
+                 ref.move_to_operands(stack($7));
 
                  newstack($$).swap(ref);
                }
                | TOK_FIELD '(' expression ')'
                {
                  exprt field("field");
-                 field.add_to_operands(std::move(parser_stack($3)));
+                 field.move_to_operands(stack($3));
 
                  newstack($$).swap(field);
                }
                | TOK_BASE '(' expression ')'
                {
                  exprt base(ID_base);
-                 base.add_to_operands(std::move(parser_stack($3)));
+                 base.move_to_operands(stack($3));
 
                  newstack($$).swap(base);
                }
                | TOK_TYPEOF '(' expression ')'
                {
                  exprt typeof_expr(ID_typeof);
-                 typeof_expr.add_to_operands(std::move(parser_stack($3)));
+                 typeof_expr.move_to_operands(stack($3));
 
                  newstack($$).swap(typeof_expr);
                }
@@ -428,9 +420,9 @@ literal: TOK_IDENTIFIER
        | TOK_FLOATING
        | TOK_STRING
        {
-         constant_exprt c(to_string_constant(parser_stack($$))
+         constant_exprt c(to_string_constant(stack($$))
            .get_value(), string_typet());
-         parser_stack($$).swap(c);
+         stack($$).swap(c);
        }
        | TOK_BUILTIN_LOC
        | jsil_type

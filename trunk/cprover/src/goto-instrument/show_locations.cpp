@@ -58,7 +58,7 @@ void show_locations(
                 << it->source_location << '\n';
       break;
 
-    case ui_message_handlert::uit::JSON_UI:
+    default:
       UNREACHABLE;
     }
   }

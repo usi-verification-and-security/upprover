@@ -11,12 +11,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "dump_c.h"
 
+#include <util/base_type.h>
 #include <util/config.h>
 #include <util/find_symbols.h>
-#include <util/get_base_name.h>
 #include <util/invariant.h>
 #include <util/replace_symbol.h>
-#include <util/string_utils.h>
 
 #include <ansi-c/ansi_c_language.h>
 #include <cpp/cpp_language.h>
@@ -25,16 +24,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "dump_c_class.h"
 #include "goto_program2code.h"
-
-dump_c_configurationt dump_c_configurationt::default_configuration =
-  dump_c_configurationt();
-
-dump_c_configurationt dump_c_configurationt::type_header_configuration =
-  dump_c_configurationt()
-    .disable_include_function_decls()
-    .disable_include_function_bodies()
-    .disable_include_global_vars()
-    .enable_include_headers();
 
 inline std::ostream &operator << (std::ostream &out, dump_ct &src)
 {
@@ -48,7 +37,6 @@ void dump_ct::operator()(std::ostream &os)
   std::stringstream compound_body_stream;
   std::stringstream global_var_stream;
   std::stringstream global_decl_stream;
-  std::stringstream global_decl_header_stream;
   std::stringstream func_body_stream;
   local_static_declst local_static_decls;
 
@@ -73,10 +61,10 @@ void dump_ct::operator()(std::ostream &os)
     {
       typet &type=it2->type();
 
-      if(type.id() == ID_union_tag && type.get_bool(ID_C_transparent_union))
+      if(type.id() == ID_symbol_type && type.get_bool(ID_C_transparent_union))
       {
-        symbolt new_type_sym =
-          ns.lookup(to_union_tag_type(type).get_identifier());
+        symbolt new_type_sym=
+          ns.lookup(to_symbol_type(type).get_identifier());
 
         new_type_sym.name=id2string(new_type_sym.name)+"$transparent";
         new_type_sym.type.set(ID_C_transparent_union, true);
@@ -84,7 +72,7 @@ void dump_ct::operator()(std::ostream &os)
         // we might have it already, in which case this has no effect
         symbols_transparent.add(new_type_sym);
 
-        to_union_tag_type(type).set_identifier(new_type_sym.name);
+        to_symbol_type(type).set_identifier(new_type_sym.name);
         type.remove(ID_C_transparent_union);
       }
     }
@@ -102,7 +90,7 @@ void dump_ct::operator()(std::ostream &os)
   std::set<std::string> symbols_sorted;
   for(const auto &named_symbol : copied_symbol_table.symbols)
   {
-    symbolt &symbol = copied_symbol_table.get_writeable_ref(named_symbol.first);
+    symbolt &symbol=*copied_symbol_table.get_writeable(named_symbol.first);
     bool tag_added=false;
 
     // TODO we could get rid of some of the ID_anonymous by looking up
@@ -172,7 +160,6 @@ void dump_ct::operator()(std::ostream &os)
 
   // collect all declarations we might need, include local static variables
   bool skip_function_main=false;
-  std::vector<std::string> header_files;
   for(std::set<std::string>::const_iterator
       it=symbols_sorted.begin();
       it!=symbols_sorted.end();
@@ -184,7 +171,9 @@ void dump_ct::operator()(std::ostream &os)
     if(symbol.is_type &&
        symbol.location.get_function().empty() &&
        (type_id==ID_struct ||
+        type_id==ID_incomplete_struct ||
         type_id==ID_union ||
+        type_id==ID_incomplete_union ||
         type_id==ID_c_enum))
     {
       if(!system_symbols.is_symbol_internal_symbol(symbol, system_headers))
@@ -192,41 +181,14 @@ void dump_ct::operator()(std::ostream &os)
         global_decl_stream << "// " << symbol.name << '\n';
         global_decl_stream << "// " << symbol.location << '\n';
 
-        std::string location_file =
-          get_base_name(id2string(symbol.location.get_file()), false);
-        // collect header the types are borrowed from
-        // expect header files to end in .h
-        if(
-          location_file.length() > 1 &&
-          location_file[location_file.length() - 1] == 'h')
-        {
-          std::vector<std::string>::iterator it =
-            find(header_files.begin(), header_files.end(), location_file);
-          if(it == header_files.end())
-          {
-            header_files.push_back(location_file);
-            global_decl_header_stream << "#include \"" << location_file
-                                      << "\"\n";
-          }
-        }
-
         if(type_id==ID_c_enum)
           convert_compound_enum(symbol.type, global_decl_stream);
-        else if(type_id == ID_struct)
-        {
-          global_decl_stream << type_to_string(struct_tag_typet{symbol.name})
-                             << ";\n\n";
-        }
         else
-        {
-          global_decl_stream << type_to_string(union_tag_typet{symbol.name})
+          global_decl_stream << type_to_string(symbol_typet(symbol.name))
                              << ";\n\n";
-        }
       }
     }
-    else if(
-      symbol.is_static_lifetime && symbol.type.id() != ID_code &&
-      !symbol.type.get_bool(ID_C_do_not_dump))
+    else if(symbol.is_static_lifetime && symbol.type.id()!=ID_code)
       convert_global_variable(
           symbol,
           global_var_stream,
@@ -236,14 +198,12 @@ void dump_ct::operator()(std::ostream &os)
       goto_functionst::function_mapt::const_iterator func_entry=
         goto_functions.function_map.find(symbol.name);
 
-      if(
-        !harness && func_entry != goto_functions.function_map.end() &&
-        func_entry->second.body_available() &&
-        (symbol.name == ID_main ||
-         (config.main.has_value() && symbol.name == config.main.value())))
-      {
+      if(!harness &&
+         func_entry!=goto_functions.function_map.end() &&
+         func_entry->second.body_available() &&
+         (symbol.name==ID_main ||
+          (!config.main.empty() && symbol.name==config.main)))
         skip_function_main=true;
-      }
     }
   }
 
@@ -275,9 +235,11 @@ void dump_ct::operator()(std::ostream &os)
   {
     const symbolt &symbol=ns.lookup(*it);
 
-    if(
-      symbol.is_type &&
-      (symbol.type.id() == ID_struct || symbol.type.id() == ID_union))
+    if(symbol.is_type &&
+        (symbol.type.id()==ID_struct ||
+         symbol.type.id()==ID_incomplete_struct ||
+         symbol.type.id()==ID_union ||
+         symbol.type.id()==ID_incomplete_union))
       convert_compound_declaration(
           symbol,
           compound_body_stream);
@@ -292,9 +254,6 @@ void dump_ct::operator()(std::ostream &os)
     os << "#include <" << *it << ">\n";
   if(!system_headers.empty())
     os << '\n';
-
-  if(!global_decl_header_stream.str().empty() && dump_c_config.include_headers)
-    os << global_decl_header_stream.str() << '\n';
 
   if(global_var_stream.str().find("NULL")!=std::string::npos ||
      func_body_stream.str().find("NULL")!=std::string::npos)
@@ -319,20 +278,18 @@ void dump_ct::operator()(std::ostream &os)
        << "#endif\n\n";
   }
 
-  if(!global_decl_stream.str().empty() && dump_c_config.include_global_decls)
+  if(!global_decl_stream.str().empty())
     os << global_decl_stream.str() << '\n';
 
-  if(dump_c_config.include_typedefs)
-    dump_typedefs(os);
+  dump_typedefs(os);
 
-  if(!func_decl_stream.str().empty() && dump_c_config.include_function_decls)
+  if(!func_decl_stream.str().empty())
     os << func_decl_stream.str() << '\n';
-  if(!compound_body_stream.str().empty() && dump_c_config.include_compounds)
+  if(!compound_body_stream.str().empty())
     os << compound_body_stream.str() << '\n';
-  if(!global_var_stream.str().empty() && dump_c_config.include_global_vars)
+  if(!global_var_stream.str().empty())
     os << global_var_stream.str() << '\n';
-  if(dump_c_config.include_function_bodies)
-    os << func_body_stream.str();
+  os << func_body_stream.str();
 }
 
 /// declare compound types
@@ -340,32 +297,14 @@ void dump_ct::convert_compound_declaration(
     const symbolt &symbol,
     std::ostream &os_body)
 {
-  if(
-    !symbol.location.get_function().empty() ||
-    symbol.type.get_bool(ID_C_do_not_dump))
-  {
+  if(!symbol.location.get_function().empty())
     return;
-  }
 
   // do compound type body
-  if(symbol.type.id() == ID_struct)
-    convert_compound(
-      symbol.type,
-      struct_tag_typet(symbol.name),
-      dump_c_config.follow_compounds,
-      os_body);
-  else if(symbol.type.id() == ID_union)
-    convert_compound(
-      symbol.type,
-      union_tag_typet(symbol.name),
-      dump_c_config.follow_compounds,
-      os_body);
-  else if(symbol.type.id() == ID_c_enum)
-    convert_compound(
-      symbol.type,
-      c_enum_tag_typet(symbol.name),
-      dump_c_config.follow_compounds,
-      os_body);
+  if(symbol.type.id()==ID_struct ||
+     symbol.type.id()==ID_union ||
+     symbol.type.id()==ID_c_enum)
+    convert_compound(symbol.type, symbol_typet(symbol.name), true, os_body);
 }
 
 void dump_ct::convert_compound(
@@ -374,7 +313,16 @@ void dump_ct::convert_compound(
   bool recursive,
   std::ostream &os)
 {
-  if(
+  if(type.id() == ID_symbol_type)
+  {
+    const symbolt &symbol=
+      ns.lookup(to_symbol_type(type).get_identifier());
+    DATA_INVARIANT(symbol.is_type, "symbol expected to be type symbol");
+
+    if(!system_symbols.is_symbol_internal_symbol(symbol, system_headers))
+      convert_compound(symbol.type, unresolved, recursive, os);
+  }
+  else if(
     type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
     type.id() == ID_union_tag)
   {
@@ -402,13 +350,7 @@ void dump_ct::convert_compound(
           it!=syms.end();
           ++it)
       {
-        const symbolt &type_symbol = ns.lookup(*it);
-        irep_idt tag_kind =
-          type_symbol.type.id() == ID_c_enum
-            ? ID_c_enum_tag
-            : (type_symbol.type.id() == ID_union ? ID_union_tag
-                                                 : ID_struct_tag);
-        tag_typet s_type(tag_kind, *it);
+        symbol_typet s_type(*it);
         convert_compound(s_type, s_type, recursive, os);
       }
     }
@@ -427,7 +369,7 @@ void dump_ct::convert_compound(
 {
   const irep_idt &name=type.get(ID_tag);
 
-  if(!converted_compound.insert(name).second || type.get_bool(ID_C_do_not_dump))
+  if(!converted_compound.insert(name).second)
     return;
 
   // make sure typedef names used in the declaration are available
@@ -440,7 +382,7 @@ void dump_ct::convert_compound(
     UNREACHABLE;
     /*
     assert(parent_it->id() == ID_base);
-    assert(parent_it->get(ID_type) == ID_struct_tag);
+    assert(parent_it->get(ID_type) == ID_symbol_type);
 
     const irep_idt &base_id=
       parent_it->find(ID_type).get(ID_identifier);
@@ -476,16 +418,16 @@ void dump_ct::convert_compound(
 
   for(const auto &comp : type.components())
   {
-    const typet &comp_type = comp.type();
+    const typet &comp_type=ns.follow(comp.type());
 
     if(comp_type.id()==ID_code ||
        comp.get_bool(ID_from_base) ||
        comp.get_is_padding())
       continue;
 
-    const typet *non_array_type = &comp_type;
+    const typet *non_array_type=&ns.follow(comp_type);
     while(non_array_type->id()==ID_array)
-      non_array_type = &(non_array_type->subtype());
+      non_array_type=&(ns.follow(non_array_type->subtype()));
 
     if(recursive)
     {
@@ -509,7 +451,7 @@ void dump_ct::convert_compound(
     if(comp_type.id()==ID_c_bit_field &&
        to_c_bit_field_type(comp_type).get_width()==0)
     {
-      comp_name.clear();
+      comp_name="";
       s=type_to_string(comp_type);
     }
 
@@ -548,23 +490,19 @@ void dump_ct::convert_compound(
   }
 
   typet unresolved_clean=unresolved;
+  typedef_typest::const_iterator td_entry=
+    typedef_types.find(unresolved);
   irep_idt typedef_str;
-  for(auto td_entry : typedef_types)
+  if(td_entry!=typedef_types.end())
   {
-    if(
-      td_entry.first.get(ID_identifier) == unresolved.get(ID_identifier) &&
-      (td_entry.first.source_location() == unresolved.source_location()))
-    {
-      unresolved_clean.remove(ID_C_typedef);
-      typedef_str = td_entry.second;
-      std::pair<typedef_mapt::iterator, bool> td_map_entry =
-        typedef_map.insert({typedef_str, typedef_infot(typedef_str)});
-      PRECONDITION(!td_map_entry.second);
-      if(!td_map_entry.first->second.early)
-        td_map_entry.first->second.type_decl_str.clear();
-      os << "typedef ";
-      break;
-    }
+    unresolved_clean.remove(ID_C_typedef);
+    typedef_str=td_entry->second;
+    std::pair<typedef_mapt::iterator, bool> td_map_entry=
+      typedef_map.insert({typedef_str, typedef_infot(typedef_str)});
+    PRECONDITION(!td_map_entry.second);
+    if(!td_map_entry.first->second.early)
+      td_map_entry.first->second.type_decl_str="";
+    os << "typedef ";
   }
 
   os << type_to_string(unresolved_clean);
@@ -656,15 +594,16 @@ void dump_ct::cleanup_decl(
   }
 
   goto_programt tmp;
-  tmp.add(goto_programt::make_decl(decl.symbol()));
+  goto_programt::targett t=tmp.add_instruction(DECL);
+  t->code=decl;
 
   if(value.is_not_nil())
-    tmp.add(goto_programt::make_assignment(decl.symbol(), value));
+  {
+    t=tmp.add_instruction(ASSIGN);
+    t->code=code_assignt(decl.op0(), value);
+  }
 
-  tmp.add(goto_programt::make_end_function());
-
-  // goto_program2codet requires valid location numbers:
-  tmp.update();
+  tmp.add_instruction(END_FUNCTION);
 
   std::unordered_set<irep_idt> typedef_names;
   for(const auto &td : typedef_map)
@@ -725,6 +664,12 @@ void dump_ct::collect_typedefs_rec(
   else if(type.id()==ID_pointer || type.id()==ID_array)
   {
     collect_typedefs_rec(type.subtype(), early, local_deps);
+  }
+  else if(type.id() == ID_symbol_type)
+  {
+    const symbolt &symbol=
+      ns.lookup(to_symbol_type(type).get_identifier());
+    collect_typedefs_rec(symbol.type, early, local_deps);
   }
   else if(
     type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
@@ -911,7 +856,7 @@ void dump_ct::convert_global_variable(
 
   find_symbols_sett syms;
   if(symbol.value.is_not_nil())
-    find_symbols_or_nexts(symbol.value, syms);
+    find_symbols(symbol.value, syms);
 
   // add a tentative declaration to cater for symbols in the initializer
   // relying on it this symbol
@@ -1246,11 +1191,7 @@ void dump_ct::insert_local_type_decls(
     // a comment block ...
     std::ostringstream os_body;
     os_body << *it << " */\n";
-    irep_idt tag_kind =
-      type.id() == ID_c_enum
-        ? ID_c_enum_tag
-        : (type.id() == ID_union ? ID_union_tag : ID_struct_tag);
-    convert_compound(type, tag_typet(tag_kind, *it), false, os_body);
+    convert_compound(type, symbol_typet(*it), false, os_body);
     os_body << "/*";
 
     code_skipt skip;
@@ -1300,7 +1241,7 @@ void dump_ct::cleanup_expr(exprt &expr)
       if(!old_comp.get_is_padding() && !is_zero_bit_field)
       {
         type.components().push_back(old_comp);
-        expr.add_to_operands(std::move(*o_it));
+        expr.move_to_operands(*o_it);
       }
       ++o_it;
     }
@@ -1316,7 +1257,7 @@ void dump_ct::cleanup_expr(exprt &expr)
     {
       if(u_type_f.get_component(u.get_component_name()).get_is_padding())
         // we just use an empty struct to fake an empty union
-        expr = struct_exprt({}, struct_typet());
+        expr=struct_exprt(struct_typet());
     }
     // add a typecast for NULL
     else if(u.op().id()==ID_constant &&
@@ -1340,12 +1281,11 @@ void dump_ct::cleanup_expr(exprt &expr)
       expr.swap(tmp);
     }
   }
-  else if(
-    expr.id() == ID_typecast &&
-    to_typecast_expr(expr).op().id() == ID_typecast &&
-    expr.type() == to_typecast_expr(expr).op().type())
+  else if(expr.id()==ID_typecast &&
+      expr.op0().id()==ID_typecast &&
+      base_type_eq(expr.type(), expr.op0().type(), ns))
   {
-    exprt tmp = to_typecast_expr(expr).op();
+    exprt tmp=expr.op0();
     expr.swap(tmp);
   }
   else if(expr.id()==ID_code &&
@@ -1373,7 +1313,8 @@ void dump_ct::cleanup_expr(exprt &expr)
           if(type.id()==ID_union &&
              type.get_bool(ID_C_transparent_union))
           {
-            if(it2->id() == ID_typecast && it2->type() == type)
+            if(it2->id()==ID_typecast &&
+               base_type_eq(it2->type(), type, ns))
               *it2=to_typecast_expr(*it2).op();
 
             // add a typecast for NULL or 0
@@ -1493,50 +1434,4 @@ void dump_cpp(
     ns,
     new_cpp_language);
   out << goto2cpp;
-}
-
-static bool
-module_local_declaration(const symbolt &symbol, const std::string module)
-{
-  std::string base_name =
-    get_base_name(id2string(symbol.location.get_file()), true);
-  std::string symbol_module = strip_string(id2string(symbol.module));
-  return (base_name == module && symbol_module == module);
-}
-
-void dump_c_type_header(
-  const goto_functionst &src,
-  const bool use_system_headers,
-  const bool use_all_headers,
-  const bool include_harness,
-  const namespacet &ns,
-  const std::string module,
-  std::ostream &out)
-{
-  symbol_tablet symbol_table = ns.get_symbol_table();
-  for(symbol_tablet::iteratort it = symbol_table.begin();
-      it != symbol_table.end();
-      it++)
-  {
-    symbolt &new_symbol = it.get_writeable_symbol();
-    if(module_local_declaration(new_symbol, module))
-    {
-      new_symbol.type.set(ID_C_do_not_dump, 0);
-    }
-    else
-    {
-      new_symbol.type.set(ID_C_do_not_dump, 1);
-    }
-  }
-
-  namespacet new_ns(symbol_table);
-  dump_ct goto2c(
-    src,
-    use_system_headers,
-    use_all_headers,
-    include_harness,
-    new_ns,
-    new_ansi_c_language,
-    dump_c_configurationt::type_header_configuration);
-  out << goto2c;
 }

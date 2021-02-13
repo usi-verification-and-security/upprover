@@ -578,7 +578,7 @@ literalt float_utilst::relation(
   else if(rel==relt::GE)
     return relation(src2, relt::LE, src1); // swapped
 
-  PRECONDITION(rel == relt::EQ || rel == relt::LT || rel == relt::LE);
+  INVARIANT(rel == relt::EQ || rel == relt::LT || rel == relt::LE, "");
 
   // special cases: -0 and 0 are equal
   literalt is_zero1=is_zero(src1);
@@ -785,7 +785,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
 
   // n-log-n alignment shifter.
   // The worst-case shift is the number of fraction
-  // bits minus one, in case the fraction is one exactly.
+  // bits minus one, in case the faction is one exactly.
   PRECONDITION(!fraction.empty());
   std::size_t depth = address_bits(fraction.size() - 1);
 
@@ -797,8 +797,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
   for(int d=depth-1; d>=0; d--)
   {
     std::size_t distance=(1<<d);
-    INVARIANT(
-      fraction.size() > distance, "fraction must be larger than distance");
+    INVARIANT(fraction.size() > distance, "");
 
     // check if first 'distance'-many bits are zeros
     const bvt prefix=bv_utils.extract_msb(fraction, distance);
@@ -813,9 +812,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
       bv_utils.select(prefix_is_zero, shifted, fraction);
 
     // add corresponding weight to exponent
-    INVARIANT(
-      d < (signed)exponent_delta.size(),
-      "depth must be smaller than exponent size");
+    INVARIANT(d < (signed)exponent_delta.size(), "");
     exponent_delta[d]=prefix_is_zero;
   }
 
@@ -1212,7 +1209,7 @@ float_utilst::unbiased_floatt float_utilst::unpack(const bvt &src)
   result.fraction.push_back(is_normal(src)); // add hidden bit
 
   result.exponent=get_exponent(src);
-  CHECK_RETURN(result.exponent.size() == spec.e);
+  INVARIANT(result.exponent.size() == spec.e, "");
 
   // unbias the exponent
   literalt denormal=bv_utils.is_zero(result.exponent);

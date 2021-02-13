@@ -13,8 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/invariant.h>
 
-qbf_quantort::qbf_quantort(message_handlert &message_handler)
-  : qdimacs_cnft(message_handler)
+qbf_quantort::qbf_quantort()
 {
 }
 
@@ -35,8 +34,10 @@ const std::string qbf_quantort::solver_text()
 propt::resultt qbf_quantort::prop_solve()
 {
   {
-    log.status() << "Quantor: " << no_variables() << " variables, "
-                 << no_clauses() << " clauses" << messaget::eom;
+    messaget::status() <<
+      "Quantor: " <<
+      no_variables() << " variables, " <<
+      no_clauses() << " clauses" << eom;
   }
 
   std::string qbf_tmp_file="quantor.qdimacs";
@@ -67,7 +68,7 @@ propt::resultt qbf_quantort::prop_solve()
 
       std::getline(in, line);
 
-      if(!line.empty() && line[line.size() - 1] == '\r')
+      if(line!="" && line[line.size()-1]=='\r')
         line.resize(line.size()-1);
 
       if(line=="s TRUE")
@@ -86,19 +87,19 @@ propt::resultt qbf_quantort::prop_solve()
 
     if(!result_found)
     {
-      log.error() << "Quantor failed: unknown result" << messaget::eom;
+      messaget::error() << "Quantor failed: unknown result" << eom;
       return resultt::P_ERROR;
     }
   }
 
   if(result)
   {
-    log.status() << "Quantor: TRUE" << messaget::eom;
+    messaget::status() << "Quantor: TRUE" << eom;
     return resultt::P_SATISFIABLE;
   }
   else
   {
-    log.status() << "Quantor: FALSE" << messaget::eom;
+    messaget::status() << "Quantor: FALSE" << eom;
     return resultt::P_UNSATISFIABLE;
   }
 

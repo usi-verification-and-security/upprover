@@ -23,8 +23,11 @@ Author: Daniel Kroening, kroening@kroening.com
 class boolbv_mapt
 {
 public:
-  boolbv_mapt(propt &_prop, const boolbv_widtht &_boolbv_width)
-    : prop(_prop), boolbv_width(_boolbv_width)
+  boolbv_mapt(
+    propt &_prop,
+    const namespacet &_ns,
+    const boolbv_widtht &_boolbv_width):
+    prop(_prop), ns(_ns), boolbv_width(_boolbv_width)
   {
   }
 
@@ -78,6 +81,7 @@ public:
 
 protected:
   propt &prop;
+  const namespacet &ns;
   const boolbv_widtht &boolbv_width;
 };
 

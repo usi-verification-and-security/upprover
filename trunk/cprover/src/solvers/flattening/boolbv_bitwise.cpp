@@ -17,8 +17,9 @@ bvt boolbvt::convert_bitwise(const exprt &expr)
 
   if(expr.id()==ID_bitnot)
   {
-    const exprt &op = to_bitnot_expr(expr).op();
-    const bvt &op_bv = convert_bv(op, width);
+    DATA_INVARIANT(expr.operands().size() == 1, "bitnot takes one operand");
+    const exprt &op0=expr.op0();
+    const bvt &op_bv = convert_bv(op0, width);
     return bv_utils.inverted(op_bv);
   }
   else if(expr.id()==ID_bitand || expr.id()==ID_bitor ||

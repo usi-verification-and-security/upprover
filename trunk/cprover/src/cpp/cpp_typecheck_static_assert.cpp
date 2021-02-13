@@ -12,15 +12,13 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include "cpp_typecheck.h"
 
 #include <util/std_types.h>
-#include <util/string_constant.h>
 
 void cpp_typecheckt::convert(cpp_static_assertt &cpp_static_assert)
 {
   typecheck_expr(cpp_static_assert.op0());
   typecheck_expr(cpp_static_assert.op1());
 
-  cpp_static_assert.op0() =
-    typecast_exprt::conditional_cast(cpp_static_assert.op0(), bool_typet());
+  cpp_static_assert.op0().make_typecast(bool_typet());
   make_constant(cpp_static_assert.op0());
 
   if(cpp_static_assert.op0().is_true())
@@ -33,8 +31,7 @@ void cpp_typecheckt::convert(cpp_static_assertt &cpp_static_assert)
     error().source_location=cpp_static_assert.source_location();
     error() << "static assertion failed";
     if(cpp_static_assert.op1().id()==ID_string_constant)
-      error() << ": "
-              << to_string_constant(cpp_static_assert.op1()).get_value();
+      error() << ": " << cpp_static_assert.op1().get(ID_value);
     error() << eom;
     throw 0;
   }

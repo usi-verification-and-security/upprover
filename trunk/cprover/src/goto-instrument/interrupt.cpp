@@ -19,7 +19,7 @@ Date: September 2011
 #include <analyses/local_may_alias.h>
 #endif
 
-static bool potential_race_on_read(
+bool potential_race_on_read(
   const rw_set_baset &code_rw_set,
   const rw_set_baset &isr_rw_set)
 {
@@ -33,7 +33,7 @@ static bool potential_race_on_read(
   return false;
 }
 
-static bool potential_race_on_write(
+bool potential_race_on_write(
   const rw_set_baset &code_rw_set,
   const rw_set_baset &isr_rw_set)
 {
@@ -50,10 +50,9 @@ static bool potential_race_on_write(
   return false;
 }
 
-static void interrupt(
+void interrupt(
   value_setst &value_sets,
   const symbol_tablet &symbol_table,
-  const irep_idt &function_id,
 #ifdef LOCAL_MAY
   const goto_functionst::goto_functiont &goto_function,
 #endif
@@ -70,16 +69,11 @@ static void interrupt(
 #ifdef LOCAL_MAY
   local_may_aliast local_may(goto_function);
 #endif
-  rw_set_loct rw_set(
-    ns,
-    value_sets,
-    function_id,
-    i_it
+    rw_set_loct rw_set(ns, value_sets, i_it
 #ifdef LOCAL_MAY
-    ,
-    local_may
+      , local_may
 #endif
-  ); // NOLINT(whitespace/parens)
+    ); // NOLINT(whitespace/parens)
 
     // potential race?
     bool race_on_read=potential_race_on_read(rw_set, isr_rw_set);
@@ -107,12 +101,14 @@ static void interrupt(
       goto_programt::targett t_call=goto_program.insert_after(t_goto);
       goto_programt::targett t_orig=goto_program.insert_after(t_call);
 
-      *t_goto = goto_programt::make_goto(
-        t_orig,
-        side_effect_expr_nondett(bool_typet(), source_location),
-        source_location);
+      t_goto->make_goto(t_orig);
+      t_goto->source_location=source_location;
+      t_goto->guard = side_effect_expr_nondett(bool_typet(), source_location);
+      t_goto->function=original_instruction.function;
 
-      *t_call = goto_programt::make_function_call(isr_call, source_location);
+      t_call->make_function_call(isr_call);
+      t_call->source_location=source_location;
+      t_call->function=original_instruction.function;
 
       t_orig->swap(original_instruction);
 
@@ -125,28 +121,31 @@ static void interrupt(
       goto_programt::targett t_orig=i_it;
       t_orig++;
 
+      goto_programt::targett t_goto=goto_program.insert_after(i_it);
+      goto_programt::targett t_call=goto_program.insert_after(t_goto);
+
       const source_locationt &source_location=i_it->source_location;
 
       code_function_callt isr_call(interrupt_handler);
       isr_call.add_source_location()=source_location;
 
-      goto_programt::targett t_goto = goto_program.insert_after(
-        i_it,
-        goto_programt::make_goto(
-          t_orig,
-          side_effect_expr_nondett(bool_typet(), source_location),
-          source_location));
+      t_goto->make_goto(t_orig);
+      t_goto->source_location=source_location;
+      t_goto->guard = side_effect_expr_nondett(bool_typet(), source_location);
+      t_goto->function=i_it->function;
 
-      goto_programt::targett t_call = goto_program.insert_after(
-        t_goto, goto_programt::make_function_call(isr_call, source_location));
+      t_call->make_function_call(isr_call);
+      t_call->source_location=source_location;
+      t_call->function=i_it->function;
 
       i_it=t_call; // the for loop already counts us up
     }
   }
 }
 
-static symbol_exprt
-get_isr(const symbol_tablet &symbol_table, const irep_idt &interrupt_handler)
+symbol_exprt get_isr(
+  const symbol_tablet &symbol_table,
+  const irep_idt &interrupt_handler)
 {
   std::list<symbol_exprt> matches;
 
@@ -164,17 +163,16 @@ get_isr(const symbol_tablet &symbol_table, const irep_idt &interrupt_handler)
   }
 
   if(matches.empty())
-    throw "interrupt handler '" + id2string(interrupt_handler) + "' not found";
+    throw "interrupt handler `"+id2string(interrupt_handler)+"' not found";
 
   if(matches.size()>=2)
-    throw "interrupt handler '" + id2string(interrupt_handler) +
-      "' is ambiguous";
+    throw "interrupt handler `"+id2string(interrupt_handler)+"' is ambiguous";
 
   symbol_exprt isr=matches.front();
 
   if(!to_code_type(isr.type()).parameters().empty())
-    throw "interrupt handler '" + id2string(interrupt_handler) +
-      "' must not have parameters";
+    throw "interrupt handler `"+id2string(interrupt_handler)+
+          "' must not have parameters";
 
   return isr;
 }
@@ -199,15 +197,11 @@ void interrupt(
        f_it->first!=goto_functionst::entry_point() &&
        f_it->first!=isr.get_identifier())
       interrupt(
-        value_sets,
-        goto_model.symbol_table,
-        f_it->first,
+        value_sets, goto_model.symbol_table,
 #ifdef LOCAL_MAY
         f_it->second,
 #endif
-        f_it->second.body,
-        isr,
-        isr_rw_set);
+        f_it->second.body, isr, isr_rw_set);
 
   goto_model.goto_functions.update();
 }

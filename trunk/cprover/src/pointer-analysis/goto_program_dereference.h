@@ -48,8 +48,10 @@ public:
     goto_functionst &goto_functions,
     bool checks_only=false);
 
+  void pointer_checks(goto_programt &goto_program);
+  void pointer_checks(goto_functionst &goto_functions);
+
   void dereference_expression(
-    const irep_idt &function_id,
     goto_programt::const_targett target,
     exprt &expr);
 
@@ -63,29 +65,47 @@ protected:
   value_setst &value_sets;
   value_set_dereferencet dereference;
 
-  const symbolt *get_or_create_failed_symbol(const exprt &expr) override;
+  DEPRECATED("Unused")
+  virtual bool is_valid_object(const irep_idt &identifier);
 
-  DEPRECATED(SINCE(2019, 05, 22, "use vector returning version instead"))
-  void
-  get_value_set(const exprt &expr, value_setst::valuest &dest) const override;
+  bool has_failed_symbol(const exprt &expr, const symbolt *&symbol) override;
 
-  std::vector<exprt> get_value_set(const exprt &expr) const override;
+  DEPRECATED("Unused")
+  virtual void dereference_failure(
+    const std::string &property,
+    const std::string &msg,
+    const guardt &guard);
+
+  void get_value_set(const exprt &expr, value_setst::valuest &dest) override;
 
   void dereference_instruction(
     goto_programt::targett target,
     bool checks_only=false);
 
 protected:
-  void dereference_rec(exprt &expr);
-  void dereference_expr(exprt &expr, const bool checks_only);
+  void dereference_rec(
+    exprt &expr, guardt &guard, const value_set_dereferencet::modet mode);
+  void dereference_expr(
+    exprt &expr,
+    const bool checks_only,
+    const value_set_dereferencet::modet mode);
 
-  irep_idt current_function;
+#if 0
+  const std::set<irep_idt> *valid_local_variables;
+#endif
   goto_programt::const_targett current_target;
+
+  /// Unused
+  source_locationt dereference_location;
+
+  /// Unused
+  std::set<exprt> assertions;
+
+  /// Unused
   goto_programt new_code;
 };
 
 void dereference(
-  const irep_idt &function_id,
   goto_programt::const_targett target,
   exprt &expr,
   const namespacet &,
@@ -93,6 +113,26 @@ void dereference(
 
 void remove_pointers(
   goto_modelt &,
+  value_setst &);
+
+DEPRECATED("Unused")
+void remove_pointers(
+  goto_functionst &,
+  symbol_tablet &,
+  value_setst &);
+
+DEPRECATED("Unused")
+void pointer_checks(
+  goto_programt &,
+  symbol_tablet &,
+  const optionst &,
+  value_setst &);
+
+DEPRECATED("Unused")
+void pointer_checks(
+  goto_functionst &,
+  symbol_tablet &,
+  const optionst &,
   value_setst &);
 
 #endif // CPROVER_POINTER_ANALYSIS_GOTO_PROGRAM_DEREFERENCE_H

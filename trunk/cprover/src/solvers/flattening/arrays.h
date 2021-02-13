@@ -12,9 +12,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_FLATTENING_ARRAYS_H
 #define CPROVER_SOLVERS_FLATTENING_ARRAYS_H
 
-#include <list>
 #include <set>
-#include <unordered_set>
 
 #include <util/union_find.h>
 
@@ -30,10 +28,7 @@ class update_exprt;
 class arrayst:public equalityt
 {
 public:
-  arrayst(
-    const namespacet &_ns,
-    propt &_prop,
-    message_handlert &message_handler);
+  arrayst(const namespacet &_ns, propt &_prop);
 
   void post_process() override
   {
@@ -48,8 +43,6 @@ public:
   void record_array_index(const index_exprt &expr);
 
 protected:
-  const namespacet &ns;
-
   virtual void post_process_arrays()
   {
     add_array_constraints();
@@ -84,9 +77,7 @@ protected:
     ARRAY_WITH,
     ARRAY_IF,
     ARRAY_OF,
-    ARRAY_TYPECAST,
-    ARRAY_CONSTANT,
-    ARRAY_COMPREHENSION
+    ARRAY_TYPECAST
   };
 
   struct lazy_constraintt
@@ -122,12 +113,6 @@ protected:
     const index_sett &index_set, const update_exprt &expr);
   void add_array_constraints_array_of(
     const index_sett &index_set, const array_of_exprt &exprt);
-  void add_array_constraints_array_constant(
-    const index_sett &index_set,
-    const array_exprt &exprt);
-  void add_array_constraints_comprehension(
-    const index_sett &index_set,
-    const array_comprehension_exprt &expr);
 
   void update_index_map(bool update_all);
   void update_index_map(std::size_t i);
@@ -135,7 +120,6 @@ protected:
   void collect_arrays(const exprt &a);
   void collect_indices();
   void collect_indices(const exprt &a);
-  std::unordered_set<irep_idt> array_comprehension_args;
 
   virtual bool is_unbounded_array(const typet &type) const=0;
     // (maybe this function should be partially moved here from boolbv)

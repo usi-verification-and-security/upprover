@@ -51,9 +51,6 @@ int armcc_modet::doit()
 
   debug() << "ARM mode" << eom;
 
-  // model validation
-  compiler.validate_goto_model = cmdline.isset("validate-goto-model");
-
   // get configuration
   config.set(cmdline);
 
@@ -129,7 +126,7 @@ int armcc_modet::doit()
   }
   else
   {
-    compiler.output_file_object.clear();
+    compiler.output_file_object="";
     compiler.output_file_executable="a.out";
   }
 

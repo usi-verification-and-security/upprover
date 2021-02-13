@@ -22,6 +22,8 @@ Author: Peter Schrammel
 #include <goto-programs/show_goto_functions.h>
 #include <goto-programs/show_properties.h>
 
+#include "goto_diff_languages.h"
+
 class goto_modelt;
 class optionst;
 
@@ -39,20 +41,36 @@ class optionst;
   "(compact-output)"
 // clang-format on
 
-class goto_diff_parse_optionst : public parse_options_baset
+class goto_diff_parse_optionst:
+  public parse_options_baset,
+  public goto_diff_languagest
 {
 public:
   virtual int doit();
   virtual void help();
 
   goto_diff_parse_optionst(int argc, const char **argv);
+  goto_diff_parse_optionst(
+    int argc,
+    const char **argv,
+    const std::string &extra_options);
 
 protected:
-  void register_languages();
+  ui_message_handlert ui_message_handler;
+  goto_diff_languagest languages2;
 
-  void get_command_line_options(optionst &options);
+  virtual void get_command_line_options(optionst &options);
 
-  bool process_goto_program(const optionst &options, goto_modelt &goto_model);
+  virtual int get_goto_program(
+    const optionst &options,
+    goto_diff_languagest &languages,
+    goto_modelt &goto_model);
+
+  virtual bool process_goto_program(
+    const optionst &options,
+    goto_modelt &goto_model);
+
+  void preprocessing();
 };
 
 #endif // CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H

@@ -38,8 +38,6 @@ public:
   {
   }
 
-  virtual ~goto_difft() = default;
-
   virtual bool operator()()=0;
 
   virtual void output_functions() const;

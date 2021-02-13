@@ -17,9 +17,7 @@ enum class validation_modet;
 template <typename Base, typename T>
 struct call_checkt
 {
-  static_assert(
-    std::is_base_of<Base, T>::value,
-    "T should be derived from Base");
+  static_assert(std::is_base_of<Base, T>::value, "");
 
   void operator()(const Base &base, const validation_modet vm)
   {
@@ -30,9 +28,7 @@ struct call_checkt
 template <typename Base, typename T>
 struct call_validatet
 {
-  static_assert(
-    std::is_base_of<Base, T>::value,
-    "T should be derived from Base");
+  static_assert(std::is_base_of<Base, T>::value, "");
 
   void
   operator()(const Base &base, const namespacet &ns, const validation_modet vm)
@@ -44,9 +40,7 @@ struct call_validatet
 template <typename Base, typename T>
 struct call_validate_fullt
 {
-  static_assert(
-    std::is_base_of<Base, T>::value,
-    "T should be derived from Base");
+  static_assert(std::is_base_of<Base, T>::value, "");
 
   void
   operator()(const Base &base, const namespacet &ns, const validation_modet vm)

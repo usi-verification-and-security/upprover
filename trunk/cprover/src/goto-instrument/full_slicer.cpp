@@ -38,17 +38,23 @@ void full_slicert::add_function_calls(
   queuet &queue,
   const goto_functionst &goto_functions)
 {
-  goto_functionst::function_mapt::const_iterator f_it =
-    goto_functions.function_map.find(node.function_id);
+  goto_functionst::function_mapt::const_iterator f_it=
+    goto_functions.function_map.find(node.PC->function);
   assert(f_it!=goto_functions.function_map.end());
 
   assert(!f_it->second.body.instructions.empty());
   goto_programt::const_targett begin_function=
     f_it->second.body.instructions.begin();
 
-  const auto &entry = cfg.get_node(begin_function);
-  for(const auto &in_edge : entry.in)
-    add_to_queue(queue, in_edge.first, node.PC);
+  cfgt::entry_mapt::const_iterator entry=
+    cfg.entry_map.find(begin_function);
+  assert(entry!=cfg.entry_map.end());
+
+  for(cfgt::edgest::const_iterator
+      it=cfg[entry->second].in.begin();
+      it!=cfg[entry->second].in.end();
+      ++it)
+    add_to_queue(queue, it->first, node.PC);
 }
 
 void full_slicert::add_decl_dead(
@@ -60,8 +66,8 @@ void full_slicert::add_decl_dead(
     return;
 
   find_symbols_sett syms;
-
-  node.PC->apply([&syms](const exprt &e) { find_symbols_or_nexts(e, syms); });
+  find_symbols(node.PC->code, syms);
+  find_symbols(node.PC->guard, syms);
 
   for(find_symbols_sett::const_iterator
       it=syms.begin();
@@ -129,7 +135,11 @@ void full_slicert::add_jumps(
     goto_programt::const_targett lex_succ=j.PC;
     for( ; !lex_succ->is_end_function(); ++lex_succ)
     {
-      if(cfg.get_node(lex_succ).node_required)
+      cfgt::entry_mapt::const_iterator entry=
+        cfg.entry_map.find(lex_succ);
+      assert(entry!=cfg.entry_map.end());
+
+      if(cfg[entry->second].node_required)
         break;
     }
     if(lex_succ->is_end_function())
@@ -138,13 +148,19 @@ void full_slicert::add_jumps(
       continue;
     }
 
-    const irep_idt &id = j.function_id;
+    const irep_idt id=j.PC->function;
     const cfg_post_dominatorst &pd=post_dominators.at(id);
 
-    const auto &j_PC_node = pd.get_node(j.PC);
+    cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e=
+      pd.cfg.entry_map.find(j.PC);
+
+    assert(e!=pd.cfg.entry_map.end());
+
+    const cfg_post_dominatorst::cfgt::nodet &n=
+      pd.cfg[e->second];
 
     // find the nearest post-dominator in slice
-    if(!pd.dominates(lex_succ, j_PC_node))
+    if(n.dominators.find(lex_succ)==n.dominators.end())
     {
       add_to_queue(queue, *it, lex_succ);
       jumps.erase(it);
@@ -155,24 +171,33 @@ void full_slicert::add_jumps(
       // lex_succ
       goto_programt::const_targett nearest=lex_succ;
       std::size_t post_dom_size=0;
-      for(cfg_dominatorst::target_sett::const_iterator d_it =
-            j_PC_node.dominators.begin();
-          d_it != j_PC_node.dominators.end();
+      for(cfg_dominatorst::target_sett::const_iterator
+          d_it=n.dominators.begin();
+          d_it!=n.dominators.end();
           ++d_it)
       {
-        const auto &node = cfg.get_node(*d_it);
-        if(node.node_required)
+        cfgt::entry_mapt::const_iterator entry=
+          cfg.entry_map.find(*d_it);
+        assert(entry!=cfg.entry_map.end());
+
+        if(cfg[entry->second].node_required)
         {
-          const irep_idt &id2 = node.function_id;
+          const irep_idt id2=(*d_it)->function;
           INVARIANT(id==id2,
                     "goto/jump expected to be within a single function");
 
-          const auto &postdom_node = pd.get_node(*d_it);
+          cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e2=
+            pd.cfg.entry_map.find(*d_it);
 
-          if(postdom_node.dominators.size() > post_dom_size)
+          assert(e2!=pd.cfg.entry_map.end());
+
+          const cfg_post_dominatorst::cfgt::nodet &n2=
+            pd.cfg[e2->second];
+
+          if(n2.dominators.size()>post_dom_size)
           {
             nearest=*d_it;
-            post_dom_size = postdom_node.dominators.size();
+            post_dom_size=n2.dominators.size();
           }
         }
       }
@@ -196,9 +221,14 @@ void full_slicert::fixedpoint(
 {
   std::vector<cfgt::entryt> dep_node_to_cfg;
   dep_node_to_cfg.reserve(dep_graph.size());
+  for(dependence_grapht::node_indext i=0; i<dep_graph.size(); ++i)
+  {
+    cfgt::entry_mapt::const_iterator entry=
+      cfg.entry_map.find(dep_graph[i].PC);
+    assert(entry!=cfg.entry_map.end());
 
-  for(dependence_grapht::node_indext i = 0; i < dep_graph.size(); ++i)
-    dep_node_to_cfg.push_back(cfg.get_node_index(dep_graph[i].PC));
+    dep_node_to_cfg.push_back(entry->second);
+  }
 
   // process queue until empty
   while(!queue.empty())
@@ -258,11 +288,6 @@ void full_slicert::operator()(
 {
   // build the CFG data structure
   cfg(goto_functions);
-  forall_goto_functions(f_it, goto_functions)
-  {
-    forall_goto_program_instructions(i_it, f_it->second.body)
-      cfg.get_node(i_it).function_id = f_it->first;
-  }
 
   // fill queue with according to slicing criterion
   queuet queue;
@@ -271,27 +296,27 @@ void full_slicert::operator()(
   // declarations or dead instructions may be necessary as well
   decl_deadt decl_dead;
 
-  for(const auto &instruction_and_index : cfg.entries())
+  for(cfgt::entry_mapt::iterator
+      e_it=cfg.entry_map.begin();
+      e_it!=cfg.entry_map.end();
+      e_it++)
   {
-    const auto &instruction = instruction_and_index.first;
-    const auto instruction_node_index = instruction_and_index.second;
-    if(criterion(cfg[instruction_node_index].function_id, instruction))
-      add_to_queue(queue, instruction_node_index, instruction);
-    else if(implicit(instruction))
-      add_to_queue(queue, instruction_node_index, instruction);
-    else if(
-      (instruction->is_goto() && instruction->get_condition().is_true()) ||
-      instruction->is_throw())
-      jumps.push_back(instruction_node_index);
-    else if(instruction->is_decl())
+    if(criterion(e_it->first))
+      add_to_queue(queue, e_it->second, e_it->first);
+    else if(implicit(e_it->first))
+      add_to_queue(queue, e_it->second, e_it->first);
+    else if((e_it->first->is_goto() && e_it->first->guard.is_true()) ||
+            e_it->first->is_throw())
+      jumps.push_back(e_it->second);
+    else if(e_it->first->is_decl())
     {
-      const auto &s = to_code_decl(instruction->code).symbol();
-      decl_dead[s.get_identifier()].push(instruction_node_index);
+      const auto &s = to_code_decl(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
-    else if(instruction->is_dead())
+    else if(e_it->first->is_dead())
     {
-      const auto &s = to_code_dead(instruction->code).symbol();
-      decl_dead[s.get_identifier()].push(instruction_node_index);
+      const auto &s = to_code_dead(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
   }
 
@@ -310,24 +335,21 @@ void full_slicert::operator()(
     {
       Forall_goto_program_instructions(i_it, f_it->second.body)
       {
-        const auto &cfg_node = cfg.get_node(i_it);
-        if(
-          !i_it->is_end_function() && // always retained
-          !cfg_node.node_required)
-        {
-          i_it->turn_into_skip();
-        }
+        const cfgt::entryt &e=cfg.entry_map[i_it];
+        if(!i_it->is_end_function() && // always retained
+           !cfg[e].node_required)
+          i_it->make_skip();
 #ifdef DEBUG_FULL_SLICERT
         else
         {
           std::string c="ins:"+std::to_string(i_it->location_number);
           c+=" req by:";
-          for(std::set<unsigned>::const_iterator req_it =
-                cfg_node.required_by.begin();
-              req_it != cfg_node.required_by.end();
+          for(std::set<unsigned>::const_iterator
+              req_it=cfg[e].required_by.begin();
+              req_it!=cfg[e].required_by.end();
               ++req_it)
           {
-            if(req_it != cfg_node.required_by.begin())
+            if(req_it!=cfg[e].required_by.begin())
               c+=",";
             c+=std::to_string(*req_it);
           }

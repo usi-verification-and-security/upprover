@@ -22,24 +22,24 @@ bool parser_baset::validate_input_options()
     // perform standalone check (all the functionality remains the same)
     if(cmdline.isset("claim") &&
        (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-        log.status()<< "A specific claim cannot be specified if any other claim specification is set." << messaget::eom;
+        status()<< "A specific claim cannot be specified if any other claim specification is set." << messaget::eom;
         return false;
     }
     
     if(cmdline.isset("all-claims") &&
        (cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-        log.status()<<"All claims cannot be specified if any other claim specification is set."<< messaget::eom;
+        status()<<"All claims cannot be specified if any other claim specification is set."<< messaget::eom;
         return false;
     }
     
     if(cmdline.isset("claimset") && cmdline.isset("claims-order")) {
-        log.status()<<"A specific claimset cannot be specified if any other claim specification is set."<< messaget::eom;
+        status()<<"A specific claimset cannot be specified if any other claim specification is set."<< messaget::eom;
         return false;
     }
     else if(cmdline.isset("claim")) {
         claim_user_nr=atoi(cmdline.get_value("claim").c_str());
         if (claim_user_nr == 0 || claim_user_nr > claim_numbers.size()) {
-            log.status()<<"Testclaim not found."<< messaget::eom;
+            status()<<"Testclaim not found."<< messaget::eom;
             return false;
         }
     }
@@ -48,8 +48,8 @@ bool parser_baset::validate_input_options()
             !cmdline.isset("claims-order") &&
             !cmdline.isset("claim"))
     {
-        log.status()<<"A specific claim is not set, nor any other claim specification is set."<< messaget::eom;
-        log.status()<< "Warrning: --claim is set to 1." <<messaget::eom;
+        status()<<"A specific claim is not set, nor any other claim specification is set."<< messaget::eom;
+        status()<< "Warrning: --claim is set to 1." <<messaget::eom;
         claim_user_nr = 1; // Set as defualt
     }
     
@@ -76,11 +76,11 @@ bool parser_baset::validate_input_options()
     {
         unsigned bitwidth = options.get_unsigned_int_option("bitwidth");
         if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
-            log.status()<<"Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+            status()<<"Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
                                  + ". Please re-run with bit-width parameter that is a pow of 2!"<< messaget::eom;
             return false;
         } else if (bitwidth > 32) {
-            log.status()<<"Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf"<< messaget::eom;
+            status()<<"Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf"<< messaget::eom;
         }
     }
     
@@ -107,9 +107,9 @@ void parser_baset::set_default_options(optionst &options)
     options.set_option("assumptions", true);  // always use assumptions
     options.set_option("built-in-assertions", true);
     options.set_option("pretty-names", true);
-    options.set_option("propagation", true);
+    options.set_option("propagation", true); //check it
     options.set_option("sat-preprocessor", true);
-    options.set_option("simplify", true);
+    options.set_option("simplify", true);  // check it
     options.set_option("simplify-if", true);
     options.set_option("show-goto-symex-steps", false);
     
@@ -137,7 +137,7 @@ void parser_baset::get_command_line_options(optionst &options)
     
     if(cmdline.isset("cover") && cmdline.isset("unwinding-assertions"))
     {
-        log.error()
+        error()
                 << "--cover and --unwinding-assertions must not be given together"
                 << messaget::eom;
         exit(CPROVER_EXIT_USAGE_ERROR);
@@ -154,7 +154,7 @@ void parser_baset::get_command_line_options(optionst &options)
     {
         if(cmdline.isset("max-field-sensitivity-array-size"))
         {
-            log.error()
+            error()
                     << "--no-array-field-sensitivity and --max-field-sensitivity-array-size"
                     << " must not be given together" << messaget::eom;
             exit(CPROVER_EXIT_USAGE_ERROR);
@@ -164,7 +164,7 @@ void parser_baset::get_command_line_options(optionst &options)
     
     if(cmdline.isset("partial-loops") && cmdline.isset("unwinding-assertions"))
     {
-        log.error()
+        error()
                 << "--partial-loops and --unwinding-assertions must not be given "
                 << "together" << messaget::eom;
         exit(CPROVER_EXIT_USAGE_ERROR);
@@ -173,7 +173,7 @@ void parser_baset::get_command_line_options(optionst &options)
     if(cmdline.isset("reachability-slice") &&
        cmdline.isset("reachability-slice-fb"))
     {
-        log.error()
+        error()
                 << "--reachability-slice and --reachability-slice-fb must not be "
                 << "given together" << messaget::eom;
         exit(CPROVER_EXIT_USAGE_ERROR);
@@ -181,15 +181,8 @@ void parser_baset::get_command_line_options(optionst &options)
     
     if(cmdline.isset("full-slice"))
         options.set_option("full-slice", true);
-    
-    if(cmdline.isset("show-symex-strategies"))
-    {
-        log.status() << show_path_strategies() << messaget::eom;
-        exit(CPROVER_EXIT_SUCCESS);
-    }
-    
-    parse_path_strategy_options(cmdline, options, ui_message_handler);
-    
+
+
     if(cmdline.isset("program-only"))
         options.set_option("program-only", true);
     
@@ -278,7 +271,7 @@ void parser_baset::get_command_line_options(optionst &options)
     
     if(cmdline.isset("slice-by-trace"))
     {
-        log.error() << "--slice-by-trace has been removed" << messaget::eom;
+        error() << "--slice-by-trace has been removed" << messaget::eom;
         exit(CPROVER_EXIT_USAGE_ERROR);
     }
     
@@ -383,7 +376,7 @@ void parser_baset::get_command_line_options(optionst &options)
         
         if(cmdline.isset("paths"))
         {
-            log.error() << "--paths not supported with --incremental-loop"
+            error() << "--paths not supported with --incremental-loop"
                         << messaget::eom;
             exit(CPROVER_EXIT_USAGE_ERROR);
         }
@@ -393,7 +386,7 @@ void parser_baset::get_command_line_options(optionst &options)
     
     if(cmdline.isset("smt1"))
     {
-        log.error() << "--smt1 is no longer supported" << messaget::eom;
+        error() << "--smt1 is no longer supported" << messaget::eom;
         exit(CPROVER_EXIT_USAGE_ERROR);
     }
     
@@ -538,7 +531,7 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
     messaget log{ui_message_handler};
     if(cmdline.args.empty())
     {
-        log.error() << "Please provide a program to verify" << messaget::eom;
+        error() << "Please provide a program to verify" << messaget::eom;
         return CPROVER_EXIT_INCORRECT_TASK;
     }
     // (core) to produce GOTO programs.
@@ -554,11 +547,6 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
     if (process_goto_program(cmdline, options, goto_model, *this ))
         return CPROVER_EXIT_INTERNAL_ERROR;
     
-    if(cmdline.isset("validate-goto-model"))
-    {
-        goto_model.validate();
-    }
-    
     // show it?
     if(cmdline.isset("show-loops"))
     {
@@ -572,11 +560,12 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
             cmdline.isset("list-goto-functions"))
     {
         show_goto_functions(
-                goto_model, ui_message_handler, cmdline.isset("list-goto-functions"));
+                goto_model, ui_message_handler, ui_message_handler.get_ui(),
+                cmdline.isset("list-goto-functions"));
         return CPROVER_EXIT_SUCCESS;
     }
     
-    log.status() << config.object_bits_info() << messaget::eom;
+    status() << config.object_bits_info() << messaget::eom;
     
     return -1; // no error, continue
     
@@ -612,7 +601,7 @@ int parser_baset::get_goto_program( goto_modelt &goto_model,
 //        return true;
 //    }
 //
-//    log.status() << config.object_bits_info() << messaget::eom;
+//    status() << config.object_bits_info() << messaget::eom;
 //    return false;
 }
 
@@ -621,7 +610,7 @@ void parser_baset::preprocessing(const optionst &options)
 {
     if(cmdline.args.size() != 1)
     {
-        log.error() << "Please provide one program to preprocess" << messaget::eom;
+        error() << "Please provide one program to preprocess" << messaget::eom;
         return;
     }
     
@@ -631,7 +620,7 @@ void parser_baset::preprocessing(const optionst &options)
     
     if(!infile)
     {
-        log.error() << "failed to open input file" << messaget::eom;
+        error() << "failed to open input file" << messaget::eom;
         return;
     }
     
@@ -640,14 +629,14 @@ void parser_baset::preprocessing(const optionst &options)
     
     if(language == nullptr)
     {
-        log.error() << "failed to figure out type of file" << messaget::eom;
+        error() << "failed to figure out type of file" << messaget::eom;
         return;
     }
     
     language->set_message_handler(ui_message_handler);
     
     if(language->preprocess(infile, filename, std::cout))
-        log.error() << "PREPROCESSING ERROR" << messaget::eom;
+        error() << "PREPROCESSING ERROR" << messaget::eom;
 }
 
 
@@ -698,19 +687,19 @@ unsigned parser_baset::count(const goto_programt &goto_program) const
  Purpose: Calculate claim numbers, and print them on demand
 
 \*******************************************************************/
-void parser_baset::calculate_show_claims(goto_modelt & goto_model) {
-    
-    get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
-    log.status()<<"Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")"<< messaget::eom;
-    
-    if (cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
-        show_properties(goto_model, ui_message_handler);
-        log.status()<<"#Total number of claims: " + std::to_string(claim_numbers.size())<< messaget::eom;
-        exit(0);
-    }
-    if (cmdline.isset("claims-opt"))
-        store_claims(claim_checkmap, claim_numbers);
-}
+//void parser_baset::calculate_show_claims(goto_modelt & goto_model) {
+//
+//    get_claims(goto_model.goto_functions, claim_checkmap, claim_numbers);
+//    status()<<"Total number of claims in program...(" + std::to_string(claim_numbers.size()) + ")"<< messaget::eom;
+//
+//    if (cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
+//        show_properties(goto_model, ui_message_handler);
+//        status()<<"#Total number of claims: " + std::to_string(claim_numbers.size())<< messaget::eom;
+//        exit(0);
+//    }
+//    if (cmdline.isset("claims-opt"))
+//        store_claims(claim_checkmap, claim_numbers);
+//}
 
 /*******************************************************************\
  

@@ -14,9 +14,13 @@ Author: Daniel Kroening, kroening@kroening.com
 void ansi_c_typecheckt::typecheck()
 {
   start_typecheck_code();
-
-  for(auto &item : parse_tree.items)
-    typecheck_declaration(item);
+  for(ansi_c_parse_treet::itemst::iterator
+      it=parse_tree.items.begin();
+      it!=parse_tree.items.end();
+      it++)
+  {
+    typecheck_declaration(*it);
+  }
 }
 
 bool ansi_c_typecheck(

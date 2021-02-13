@@ -14,11 +14,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <memory>
 #include <sstream>
-#include <type_traits>
 
 #include <util/invariant.h>
 #include <util/std_code.h>
 #include <util/std_expr.h>
+
+#include "is_threaded.h"
 
 void ai_baset::output(
   const namespacet &ns,
@@ -34,15 +35,15 @@ void ai_baset::output(
       out << "////\n";
       out << "\n";
 
-      output(ns, f_it->first, f_it->second.body, out);
+      output(ns, f_it->second.body, f_it->first, out);
     }
   }
 }
 
 void ai_baset::output(
   const namespacet &ns,
-  const irep_idt &function_id,
   const goto_programt &goto_program,
+  const irep_idt &identifier,
   std::ostream &out) const
 {
   forall_goto_program_instructions(i_it, goto_program)
@@ -53,7 +54,7 @@ void ai_baset::output(
     abstract_state_before(i_it)->output(out, *this, ns);
     out << "\n";
     #if 1
-    goto_program.output_instruction(ns, function_id, out, *i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
     out << "\n";
     #endif
   }
@@ -69,8 +70,8 @@ jsont ai_baset::output_json(
   {
     if(f_it->second.body_available())
     {
-      result[id2string(f_it->first)] =
-        output_json(ns, f_it->first, f_it->second.body);
+      result[id2string(f_it->first)]=
+        output_json(ns, f_it->second.body, f_it->first);
     }
     else
     {
@@ -81,26 +82,35 @@ jsont ai_baset::output_json(
   return std::move(result);
 }
 
+/// Output the domains for a single function as JSON
+/// \param ns: The namespace
+/// \param goto_program: The goto program
+/// \param identifier: The identifier used to find a symbol to identify the
+///   source language
+/// \return The JSON object
 jsont ai_baset::output_json(
   const namespacet &ns,
-  const irep_idt &function_id,
-  const goto_programt &goto_program) const
+  const goto_programt &goto_program,
+  const irep_idt &identifier) const
 {
   json_arrayt contents;
 
   forall_goto_program_instructions(i_it, goto_program)
   {
+    json_objectt location;
+    location["locationNumber"]=
+      json_numbert(std::to_string(i_it->location_number));
+    location["sourceLocation"]=
+      json_stringt(i_it->source_location.as_string());
+    location["abstractState"] =
+      abstract_state_before(i_it)->output_json(*this, ns);
+
     // Ideally we need output_instruction_json
     std::ostringstream out;
-    goto_program.output_instruction(ns, function_id, out, *i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
+    location["instruction"]=json_stringt(out.str());
 
-    json_objectt location{
-      {"locationNumber", json_numbert(std::to_string(i_it->location_number))},
-      {"sourceLocation", json_stringt(i_it->source_location.as_string())},
-      {"abstractState", abstract_state_before(i_it)->output_json(*this, ns)},
-      {"instruction", json_stringt(out.str())}};
-
-    contents.push_back(std::move(location));
+    contents.push_back(location);
   }
 
   return std::move(contents);
@@ -114,15 +124,15 @@ xmlt ai_baset::output_xml(
 
   forall_goto_functions(f_it, goto_functions)
   {
-    xmlt function(
-      "function",
-      {{"name", id2string(f_it->first)},
-       {"body_available", f_it->second.body_available() ? "true" : "false"}},
-      {});
+    xmlt function("function");
+    function.set_attribute("name", id2string(f_it->first));
+    function.set_attribute(
+      "body_available",
+      f_it->second.body_available() ? "true" : "false");
 
     if(f_it->second.body_available())
     {
-      function.new_element(output_xml(ns, f_it->first, f_it->second.body));
+      function.new_element(output_xml(ns, f_it->second.body, f_it->first));
     }
 
     program.new_element(function);
@@ -131,24 +141,34 @@ xmlt ai_baset::output_xml(
   return program;
 }
 
+/// Output the domains for a single function as XML
+/// \param ns: The namespace
+/// \param goto_program: The goto program
+/// \param identifier: The identifier used to find a symbol to identify the
+///   source language
+/// \return The XML object
 xmlt ai_baset::output_xml(
   const namespacet &ns,
-  const irep_idt &function_id,
-  const goto_programt &goto_program) const
+  const goto_programt &goto_program,
+  const irep_idt &identifier) const
 {
   xmlt function_body;
 
   forall_goto_program_instructions(i_it, goto_program)
   {
-    xmlt location(
-      "",
-      {{"location_number", std::to_string(i_it->location_number)},
-       {"source_location", i_it->source_location.as_string()}},
-      {abstract_state_before(i_it)->output_xml(*this, ns)});
+    xmlt location;
+    location.set_attribute(
+      "location_number",
+      std::to_string(i_it->location_number));
+    location.set_attribute(
+      "source_location",
+      i_it->source_location.as_string());
+
+    location.new_element(abstract_state_before(i_it)->output_xml(*this, ns));
 
     // Ideally we need output_instruction_xml
     std::ostringstream out;
-    goto_program.output_instruction(ns, function_id, out, *i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
     location.set_attribute("instruction", out.str());
 
     function_body.new_element(location);
@@ -157,8 +177,7 @@ xmlt ai_baset::output_xml(
   return function_body;
 }
 
-ai_baset::trace_ptrt
-ai_baset::entry_state(const goto_functionst &goto_functions)
+void ai_baset::entry_state(const goto_functionst &goto_functions)
 {
   // find the 'entry function'
 
@@ -166,37 +185,32 @@ ai_baset::entry_state(const goto_functionst &goto_functions)
     f_it=goto_functions.function_map.find(goto_functions.entry_point());
 
   if(f_it!=goto_functions.function_map.end())
-    return entry_state(f_it->second.body);
-
-  // It is not clear if this is even a well-structured goto_functionst object
-  return nullptr;
+    entry_state(f_it->second.body);
 }
 
-ai_baset::trace_ptrt ai_baset::entry_state(const goto_programt &goto_program)
+void ai_baset::entry_state(const goto_programt &goto_program)
 {
   // The first instruction of 'goto_program' is the entry point
-  trace_ptrt p = history_factory->epoch(goto_program.instructions.begin());
-  get_state(p).make_entry();
-  return p;
+  get_state(goto_program.instructions.begin()).make_entry();
 }
 
-void ai_baset::initialize(
-  const irep_idt &function_id,
-  const goto_functionst::goto_functiont &goto_function)
+void ai_baset::initialize(const goto_functionst::goto_functiont &goto_function)
 {
-  initialize(function_id, goto_function.body);
+  initialize(goto_function.body);
 }
 
-void ai_baset::initialize(const irep_idt &, const goto_programt &goto_program)
+void ai_baset::initialize(const goto_programt &goto_program)
 {
-  // Domains are created and set to bottom on access.
-  // So we do not need to set them to be bottom before hand.
+  // we mark everything as unreachable as starting point
+
+  forall_goto_program_instructions(i_it, goto_program)
+    get_state(i_it).make_bottom();
 }
 
 void ai_baset::initialize(const goto_functionst &goto_functions)
 {
   forall_goto_functions(it, goto_functions)
-    initialize(it->first, it->second);
+    initialize(it->second);
 }
 
 void ai_baset::finalize()
@@ -204,332 +218,324 @@ void ai_baset::finalize()
   // Nothing to do per default
 }
 
-ai_baset::trace_ptrt ai_baset::get_next(working_sett &working_set)
+ai_baset::locationt ai_baset::get_next(
+  working_sett &working_set)
 {
   PRECONDITION(!working_set.empty());
 
-  static_assert(
-    std::is_same<
-      working_sett,
-      std::set<trace_ptrt, ai_history_baset::compare_historyt>>::value,
-    "begin must return the minimal entry");
-  auto first = working_set.begin();
+  working_sett::iterator i=working_set.begin();
+  locationt l=i->second;
+  working_set.erase(i);
 
-  trace_ptrt t = *first;
-
-  working_set.erase(first);
-
-  return t;
+  return l;
 }
 
 bool ai_baset::fixedpoint(
-  trace_ptrt start_trace,
-  const irep_idt &function_id,
+  const irep_idt &function_identifier,
   const goto_programt &goto_program,
   const goto_functionst &goto_functions,
   const namespacet &ns)
 {
-  PRECONDITION(start_trace != nullptr);
-
   working_sett working_set;
-  put_in_working_set(working_set, start_trace);
+
+  // Put the first location in the working set
+  if(!goto_program.empty())
+    put_in_working_set(
+      working_set,
+      goto_program.instructions.begin());
 
   bool new_data=false;
 
   while(!working_set.empty())
   {
-    trace_ptrt p = get_next(working_set);
+    locationt l=get_next(working_set);
 
     // goto_program is really only needed for iterator manipulation
-    if(visit(function_id, p, working_set, goto_program, goto_functions, ns))
+    if(visit(
+         function_identifier, l, working_set, goto_program, goto_functions, ns))
       new_data=true;
   }
 
   return new_data;
 }
 
-void ai_baset::fixedpoint(
-  trace_ptrt start_trace,
-  const goto_functionst &goto_functions,
-  const namespacet &ns)
-{
-  goto_functionst::function_mapt::const_iterator f_it =
-    goto_functions.function_map.find(goto_functions.entry_point());
-
-  if(f_it != goto_functions.function_map.end())
-    fixedpoint(start_trace, f_it->first, f_it->second.body, goto_functions, ns);
-}
-
 bool ai_baset::visit(
-  const irep_idt &function_id,
-  trace_ptrt p,
+  const irep_idt &function_identifier,
+  locationt l,
   working_sett &working_set,
   const goto_programt &goto_program,
   const goto_functionst &goto_functions,
   const namespacet &ns)
 {
   bool new_data=false;
-  locationt l = p->current_location();
 
-  // Function call and end are special cases
-  if(l->is_function_call())
+  statet &current=get_state(l);
+
+  for(const auto &to_l : goto_program.get_successors(l))
   {
-    DATA_INVARIANT(
-      goto_program.get_successors(l).size() == 1,
-      "function calls only have one successor");
+    if(to_l==goto_program.instructions.end())
+      continue;
 
-    DATA_INVARIANT(
-      *(goto_program.get_successors(l).begin()) == std::next(l),
-      "function call successor / return location must be the next instruction");
+    std::unique_ptr<statet> tmp_state(
+      make_temporary_state(current));
 
-    new_data = visit_function_call(
-      function_id, p, working_set, goto_program, goto_functions, ns);
-  }
-  else if(l->is_end_function())
-  {
-    DATA_INVARIANT(
-      goto_program.get_successors(l).empty(),
-      "The end function instruction should have no successors.");
+    statet &new_values=*tmp_state;
 
-    new_data = visit_end_function(
-      function_id, p, working_set, goto_program, goto_functions, ns);
-  }
-  else
-  {
-    // Successors can be empty, for example assume(0).
-    // Successors can contain duplicates, for example GOTO next;
-    for(const auto &to_l : goto_program.get_successors(l))
+    bool have_new_values=false;
+
+    if(l->is_function_call() &&
+       !goto_functions.function_map.empty())
     {
-      if(to_l == goto_program.instructions.end())
-        continue;
+      // this is a big special case
+      const code_function_callt &code=
+        to_code_function_call(l->code);
 
-      new_data |=
-        visit_edge(function_id, p, function_id, to_l, ns, working_set);
+      if(do_function_call_rec(
+           function_identifier,
+           l,
+           to_l,
+           code.function(),
+           code.arguments(),
+           goto_functions,
+           ns))
+        have_new_values=true;
+    }
+    else
+    {
+      // initialize state, if necessary
+      get_state(to_l);
+
+      new_values.transform(
+        function_identifier, l, function_identifier, to_l, *this, ns);
+
+      if(merge(new_values, l, to_l))
+        have_new_values=true;
+    }
+
+    if(have_new_values)
+    {
+      new_data=true;
+      put_in_working_set(working_set, to_l);
     }
   }
 
   return new_data;
 }
 
-bool ai_baset::visit_edge(
-  const irep_idt &function_id,
-  trace_ptrt p,
-  const irep_idt &to_function_id,
-  locationt to_l,
-  const namespacet &ns,
-  working_sett &working_set)
-{
-  // Has history taught us not to step here...
-  auto next = p->step(to_l, *(storage->abstract_traces_before(to_l)));
-  if(next.first == ai_history_baset::step_statust::BLOCKED)
-    return false;
-  trace_ptrt to_p = next.second;
-
-  // Abstract domains are mutable so we must copy before we transform
-  statet &current = get_state(p);
-
-  std::unique_ptr<statet> tmp_state(make_temporary_state(current));
-  statet &new_values = *tmp_state;
-
-  // Apply transformer
-  new_values.transform(function_id, p, to_function_id, to_p, *this, ns);
-
-  // Expanding a domain means that it has to be analysed again
-  // Likewise if the history insists that it is a new trace
-  // (assuming it is actually reachable).
-  if(
-    merge(new_values, p, to_p) ||
-    (next.first == ai_history_baset::step_statust::NEW &&
-     !new_values.is_bottom()))
-  {
-    put_in_working_set(working_set, to_p);
-    return true;
-  }
-
-  return false;
-}
-
-bool ai_baset::visit_edge_function_call(
-  const irep_idt &calling_function_id,
-  trace_ptrt p_call,
+bool ai_baset::do_function_call(
+  const irep_idt &calling_function_identifier,
+  locationt l_call,
   locationt l_return,
-  const irep_idt &,
-  working_sett &working_set,
-  const goto_programt &,
-  const goto_functionst &,
-  const namespacet &ns)
-{
-  // The default implementation is not interprocedural
-  // so the effects of the call are approximated but nothing else
-  return visit_edge(
-    calling_function_id,
-    p_call,
-    calling_function_id,
-    l_return,
-    ns,
-    working_set);
-}
-
-bool ai_baset::visit_function_call(
-  const irep_idt &calling_function_id,
-  trace_ptrt p_call,
-  working_sett &working_set,
-  const goto_programt &caller,
   const goto_functionst &goto_functions,
+  const goto_functionst::function_mapt::const_iterator f_it,
+  const exprt::operandst &,
   const namespacet &ns)
 {
-  locationt l_call = p_call->current_location();
+  // initialize state, if necessary
+  get_state(l_return);
 
   PRECONDITION(l_call->is_function_call());
 
-  locationt l_return = std::next(l_call);
+  const goto_functionst::goto_functiont &goto_function=
+    f_it->second;
 
-  // operator() allows analysis of a single goto_program independently
-  // it generates a synthetic goto_functions object for this
-  if(!goto_functions.function_map.empty())
+  if(!goto_function.body_available())
   {
-    const code_function_callt &code = to_code_function_call(l_call->code);
-    const exprt &callee_expression = code.function();
+    // If we don't have a body, we just do an edge call -> return
+    std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
+    tmp_state->transform(
+      calling_function_identifier,
+      l_call,
+      calling_function_identifier,
+      l_return,
+      *this,
+      ns);
 
-    if(callee_expression.id() == ID_symbol)
-    {
-      const irep_idt &callee_function_id =
-        to_symbol_expr(callee_expression).get_identifier();
-
-      goto_functionst::function_mapt::const_iterator it =
-        goto_functions.function_map.find(callee_function_id);
-
-      DATA_INVARIANT(
-        it != goto_functions.function_map.end(),
-        "Function " + id2string(callee_function_id) + "not in function map");
-
-      const goto_functionst::goto_functiont &callee_fun = it->second;
-
-      if(callee_fun.body_available())
-      {
-        return visit_edge_function_call(
-          calling_function_id,
-          p_call,
-          l_return,
-          callee_function_id,
-          working_set,
-          callee_fun.body,
-          goto_functions,
-          ns);
-      }
-      else
-      {
-        // Fall through to the default, body not available, case
-      }
-    }
-    else
-    {
-      // Function pointers are not currently supported and must be removed
-      DATA_INVARIANT(
-        callee_expression.id() == ID_symbol,
-        "Function pointers and indirect calls must be removed before "
-        "analysis.");
-    }
+    return merge(*tmp_state, l_call, l_return);
   }
 
-  // If the body is not available then we just do the edge from call to return
-  // in the caller.  Domains should over-approximate what the function might do.
-  return visit_edge(
-    calling_function_id,
-    p_call,
-    calling_function_id,
-    l_return,
-    ns,
-    working_set);
-}
+  assert(!goto_function.body.instructions.empty());
 
-bool ai_baset::visit_end_function(
-  const irep_idt &function_id,
-  trace_ptrt p,
-  working_sett &working_set,
-  const goto_programt &goto_program,
-  const goto_functionst &goto_functions,
-  const namespacet &ns)
-{
-  locationt l = p->current_location();
-  PRECONDITION(l->is_end_function());
-
-  // Do nothing
-  return false;
-}
-
-bool ai_recursive_interproceduralt::visit_edge_function_call(
-  const irep_idt &calling_function_id,
-  trace_ptrt p_call,
-  locationt l_return,
-  const irep_idt &callee_function_id,
-  working_sett &working_set,
-  const goto_programt &callee,
-  const goto_functionst &goto_functions,
-  const namespacet &ns)
-{
   // This is the edge from call site to function head.
+
   {
-    locationt l_begin = callee.instructions.begin();
+    // get the state at the beginning of the function
+    locationt l_begin=goto_function.body.instructions.begin();
+    // initialize state, if necessary
+    get_state(l_begin);
 
-    working_sett catch_working_set; // The trace from the next fixpoint
+    // do the edge from the call site to the beginning of the function
+    std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
+    tmp_state->transform(
+      calling_function_identifier, l_call, f_it->first, l_begin, *this, ns);
 
-    // Do the edge from the call site to the beginning of the function
-    bool new_data = visit_edge(
-      calling_function_id,
-      p_call,
-      callee_function_id,
-      l_begin,
-      ns,
-      catch_working_set);
+    bool new_data=false;
+
+    // merge the new stuff
+    if(merge(*tmp_state, l_call, l_begin))
+      new_data=true;
 
     // do we need to do/re-do the fixedpoint of the body?
     if(new_data)
-      fixedpoint(
-        get_next(catch_working_set),
-        callee_function_id,
-        callee,
-        goto_functions,
-        ns);
+      fixedpoint(f_it->first, goto_function.body, goto_functions, ns);
   }
 
   // This is the edge from function end to return site.
+
   {
     // get location at end of the procedure we have called
-    locationt l_end = --callee.instructions.end();
-    DATA_INVARIANT(
-      l_end->is_end_function(),
-      "The last instruction of a goto_program must be END_FUNCTION");
+    locationt l_end=--goto_function.body.instructions.end();
+    assert(l_end->is_end_function());
 
-    // Find the histories for a location
-    auto traces = storage->abstract_traces_before(l_end);
+    // do edge from end of function to instruction after call
+    const statet &end_state=get_state(l_end);
 
-    bool new_data = false;
+    if(end_state.is_bottom())
+      return false; // function exit point not reachable
 
-    // The history used may mean there are multiple histories at the end of the
-    // function.  Some of these can be progressed (for example, if the history
-    // tracks paths within functions), some can't be (for example, not all
-    // calling contexts will be appropriate).  We rely on the history's step,
-    // called from visit_edge to prune as applicable.
-    for(auto p_end : *traces)
+    std::unique_ptr<statet> tmp_state(make_temporary_state(end_state));
+    tmp_state->transform(
+      f_it->first, l_end, calling_function_identifier, l_return, *this, ns);
+
+    // Propagate those
+    return merge(*tmp_state, l_end, l_return);
+  }
+}
+
+bool ai_baset::do_function_call_rec(
+  const irep_idt &calling_function_identifier,
+  locationt l_call,
+  locationt l_return,
+  const exprt &function,
+  const exprt::operandst &arguments,
+  const goto_functionst &goto_functions,
+  const namespacet &ns)
+{
+  PRECONDITION(!goto_functions.function_map.empty());
+
+  // This is quite a strong assumption on the well-formedness of the program.
+  // It means function pointers must be removed before use.
+  DATA_INVARIANT(
+    function.id() == ID_symbol,
+    "Function pointers and indirect calls must be removed before analysis.");
+
+  bool new_data=false;
+
+  const irep_idt &identifier = to_symbol_expr(function).get_identifier();
+
+  goto_functionst::function_mapt::const_iterator it =
+    goto_functions.function_map.find(identifier);
+
+  DATA_INVARIANT(
+    it != goto_functions.function_map.end(),
+    "Function " + id2string(identifier) + "not in function map");
+
+  new_data = do_function_call(
+    calling_function_identifier,
+    l_call,
+    l_return,
+    goto_functions,
+    it,
+    arguments,
+    ns);
+
+  return new_data;
+}
+
+void ai_baset::sequential_fixedpoint(
+  const goto_functionst &goto_functions,
+  const namespacet &ns)
+{
+  goto_functionst::function_mapt::const_iterator
+    f_it=goto_functions.function_map.find(goto_functions.entry_point());
+
+  if(f_it!=goto_functions.function_map.end())
+    fixedpoint(f_it->first, f_it->second.body, goto_functions, ns);
+}
+
+void ai_baset::concurrent_fixedpoint(
+  const goto_functionst &goto_functions,
+  const namespacet &ns)
+{
+  sequential_fixedpoint(goto_functions, ns);
+
+  is_threadedt is_threaded(goto_functions);
+
+  // construct an initial shared state collecting the results of all
+  // functions
+  goto_programt tmp;
+  tmp.add_instruction();
+  goto_programt::const_targett sh_target=tmp.instructions.begin();
+  statet &shared_state=get_state(sh_target);
+
+  struct wl_entryt
+  {
+    wl_entryt(
+      const irep_idt &_function_identifier,
+      const goto_programt &_goto_program,
+      locationt _location)
+      : function_identifier(_function_identifier),
+        goto_program(&_goto_program),
+        location(_location)
     {
-      // do edge from end of function to instruction after call
-      const statet &end_state = get_state(p_end);
+    }
 
-      if(!end_state.is_bottom())
+    irep_idt function_identifier;
+    const goto_programt *goto_program;
+    locationt location;
+  };
+
+  typedef std::list<wl_entryt> thread_wlt;
+  thread_wlt thread_wl;
+
+  forall_goto_functions(it, goto_functions)
+    forall_goto_program_instructions(t_it, it->second.body)
+    {
+      if(is_threaded(t_it))
       {
-        // function exit point reachable in that history
+        thread_wl.push_back(wl_entryt(it->first, it->second.body, t_it));
 
-        new_data |= visit_edge(
-          callee_function_id,
-          p_end,
-          calling_function_id,
-          l_return,
-          ns,
-          working_set);
+        goto_programt::const_targett l_end=
+          it->second.body.instructions.end();
+        --l_end;
+
+        merge_shared(shared_state, l_end, sh_target, ns);
       }
     }
 
-    return new_data;
+  // now feed in the shared state into all concurrently executing
+  // functions, and iterate until the shared state stabilizes
+  bool new_shared=true;
+  while(new_shared)
+  {
+    new_shared=false;
+
+    for(const auto &wl_entry : thread_wl)
+    {
+      working_sett working_set;
+      put_in_working_set(working_set, wl_entry.location);
+
+      statet &begin_state = get_state(wl_entry.location);
+      merge(begin_state, sh_target, wl_entry.location);
+
+      while(!working_set.empty())
+      {
+        goto_programt::const_targett l=get_next(working_set);
+
+        visit(
+          wl_entry.function_identifier,
+          l,
+          working_set,
+          *(wl_entry.goto_program),
+          goto_functions,
+          ns);
+
+        // the underlying domain must make sure that the final state
+        // carries all possible values; otherwise we would need to
+        // merge over each and every state
+        if(l->is_end_function())
+          new_shared|=merge_shared(shared_state, l, sh_target, ns);
+      }
+    }
   }
 }

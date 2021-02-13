@@ -6,8 +6,6 @@
 #include <util/invariant.h>
 #include <util/validate.h>
 
-#include <set>
-
 /// Move or copy a new symbol to the symbol table.
 /// \remarks This is a nicer interface than move and achieves the same
 ///   result as both move and add.
@@ -28,18 +26,14 @@ std::pair<symbolt &, bool> symbol_tablet::insert(symbolt symbol)
     {
       symbol_base_mapt::iterator base_result=
         internal_symbol_base_map.emplace(new_symbol.base_name, new_symbol.name);
-      if(!new_symbol.module.empty())
+      try
       {
-        try
-        {
-          internal_symbol_module_map.emplace(
-            new_symbol.module, new_symbol.name);
-        }
-        catch(...)
-        {
-          internal_symbol_base_map.erase(base_result);
-          throw;
-        }
+        internal_symbol_module_map.emplace(new_symbol.module, new_symbol.name);
+      }
+      catch(...)
+      {
+        internal_symbol_base_map.erase(base_result);
+        throw;
       }
     }
     catch(...)
@@ -93,8 +87,10 @@ void symbol_tablet::erase(const symbolst::const_iterator &entry)
 {
   const symbolt &symbol=entry->second;
 
-  auto base_it = symbol_base_map.lower_bound(symbol.base_name);
-  const auto base_it_end = symbol_base_map.upper_bound(symbol.base_name);
+  symbol_base_mapt::const_iterator
+    base_it=symbol_base_map.lower_bound(entry->second.base_name);
+  symbol_base_mapt::const_iterator
+    base_it_end=symbol_base_map.upper_bound(entry->second.base_name);
   while(base_it!=base_it_end && base_it->second!=symbol.name)
     ++base_it;
   INVARIANT(
@@ -105,23 +101,18 @@ void symbol_tablet::erase(const symbolst::const_iterator &entry)
     "current base_name: "+id2string(symbol.base_name)+")");
   internal_symbol_base_map.erase(base_it);
 
-  if(!symbol.module.empty())
-  {
-    auto module_it = symbol_module_map.lower_bound(symbol.module);
-    auto module_it_end = symbol_module_map.upper_bound(symbol.module);
-    while(module_it != module_it_end && module_it->second != symbol.name)
-      ++module_it;
-    INVARIANT(
-      module_it != module_it_end,
-      "symbolt::module should not be changed "
-      "after it is added to the symbol_table "
-      "(name: " +
-        id2string(symbol.name) +
-        ", "
-        "current module: " +
-        id2string(symbol.module) + ")");
-    internal_symbol_module_map.erase(module_it);
-  }
+  symbol_module_mapt::const_iterator
+    module_it=symbol_module_map.lower_bound(entry->second.module),
+    module_it_end=symbol_module_map.upper_bound(entry->second.module);
+  while(module_it!=module_it_end && module_it->second!=symbol.name)
+    ++module_it;
+  INVARIANT(
+    module_it!=module_it_end,
+    "symbolt::module should not be changed "
+    "after it is added to the symbol_table "
+    "(name: "+id2string(symbol.name)+", "
+    "current module: "+id2string(symbol.module)+")");
+  internal_symbol_module_map.erase(module_it);
 
   internal_symbols.erase(entry);
 }
@@ -161,7 +152,7 @@ void symbol_tablet::validate(const validation_modet vm) const
         std::find_if(
           base_map_search.first,
           base_map_search.second,
-          [&symbol_key](const symbol_base_mapt::value_type &match) {
+          [&symbol_key](const typename symbol_base_mapt::value_type &match) {
             return match.second == symbol_key;
           }) != symbol_base_map.end();
 
@@ -184,7 +175,7 @@ void symbol_tablet::validate(const validation_modet vm) const
         std::find_if(
           module_map_search.first,
           module_map_search.second,
-          [&symbol_key](const symbol_module_mapt::value_type &match) {
+          [&symbol_key](const typename symbol_module_mapt::value_type &match) {
             return match.second == symbol_key;
           }) != symbol_module_map.end();
 
@@ -227,43 +218,4 @@ void symbol_tablet::validate(const validation_modet vm) const
       module_map_entry.second,
       "'");
   }
-}
-
-bool symbol_tablet::operator==(const symbol_tablet &other) const
-{
-  // we cannot use == for comparing the multimaps as it compares the items
-  // sequentially, but the order of items with equal keys depends on the
-  // insertion order
-
-  {
-    std::vector<std::pair<irep_idt, irep_idt>> v1(
-      internal_symbol_base_map.begin(), internal_symbol_base_map.end());
-
-    std::vector<std::pair<irep_idt, irep_idt>> v2(
-      other.internal_symbol_base_map.begin(),
-      other.internal_symbol_base_map.end());
-
-    std::sort(v1.begin(), v1.end());
-    std::sort(v2.begin(), v2.end());
-
-    if(v1 != v2)
-      return false;
-  }
-
-  {
-    std::vector<std::pair<irep_idt, irep_idt>> v1(
-      internal_symbol_module_map.begin(), internal_symbol_module_map.end());
-
-    std::vector<std::pair<irep_idt, irep_idt>> v2(
-      other.internal_symbol_module_map.begin(),
-      other.internal_symbol_module_map.end());
-
-    std::sort(v1.begin(), v1.end());
-    std::sort(v2.begin(), v2.end());
-
-    if(v1 != v2)
-      return false;
-  }
-
-  return internal_symbols == other.internal_symbols;
 }

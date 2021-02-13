@@ -73,7 +73,7 @@ void satcheck_glucose_baset<T>::set_polarity(literalt a, bool value)
   }
   catch(Glucose::OutOfMemoryException)
   {
-    log.error() << "SAT checker ran out of memory" << messaget::eom;
+    messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
     throw std::bad_alloc();
   }
@@ -125,20 +125,23 @@ void satcheck_glucose_baset<T>::lcnf(const bvt &bv)
   }
   catch(Glucose::OutOfMemoryException)
   {
-    log.error() << "SAT checker ran out of memory" << messaget::eom;
+    messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
     throw std::bad_alloc();
   }
 }
 
-template <typename T>
-propt::resultt satcheck_glucose_baset<T>::do_prop_solve()
+template<typename T>
+propt::resultt satcheck_glucose_baset<T>::prop_solve()
 {
   PRECONDITION(status != statust::ERROR);
 
   // We start counting at 1, thus there is one variable fewer.
-  log.statistics() << (no_variables() - 1) << " variables, "
-                   << solver->nClauses() << " clauses" << messaget::eom;
+  {
+    messaget::status() <<
+      (no_variables()-1) << " variables, " <<
+      solver->nClauses() << " clauses" << eom;
+  }
 
   try
   {
@@ -146,8 +149,8 @@ propt::resultt satcheck_glucose_baset<T>::do_prop_solve()
 
     if(!solver->okay())
     {
-      log.status() << "SAT checker inconsistent: instance is UNSATISFIABLE"
-                   << messaget::eom;
+      messaget::status()
+        << "SAT checker inconsistent: instance is UNSATISFIABLE" << eom;
     }
     else
     {
@@ -160,8 +163,8 @@ propt::resultt satcheck_glucose_baset<T>::do_prop_solve()
 
       if(has_false)
       {
-        log.status() << "got FALSE as assumption: instance is UNSATISFIABLE"
-                     << messaget::eom;
+        messaget::status()
+          << "got FALSE as assumption: instance is UNSATISFIABLE" << eom;
       }
       else
       {
@@ -170,15 +173,13 @@ propt::resultt satcheck_glucose_baset<T>::do_prop_solve()
 
         if(solver->solve(solver_assumptions))
         {
-          log.status() << "SAT checker: instance is SATISFIABLE"
-                       << messaget::eom;
+          messaget::status() << "SAT checker: instance is SATISFIABLE" << eom;
           status = statust::SAT;
           return resultt::P_SATISFIABLE;
         }
         else
         {
-          log.status() << "SAT checker: instance is UNSATISFIABLE"
-                       << messaget::eom;
+          messaget::status() << "SAT checker: instance is UNSATISFIABLE" << eom;
         }
       }
     }
@@ -188,7 +189,7 @@ propt::resultt satcheck_glucose_baset<T>::do_prop_solve()
   }
   catch(Glucose::OutOfMemoryException)
   {
-    log.error() << "SAT checker ran out of memory" << messaget::eom;
+    messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
     throw std::bad_alloc();
   }
@@ -211,17 +212,15 @@ void satcheck_glucose_baset<T>::set_assignment(literalt a, bool value)
   }
   catch(Glucose::OutOfMemoryException)
   {
-    log.error() << "SAT checker ran out of memory" << messaget::eom;
+    messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
     throw std::bad_alloc();
   }
 }
 
-template <typename T>
-satcheck_glucose_baset<T>::satcheck_glucose_baset(
-  T *_solver,
-  message_handlert &message_handler)
-  : cnf_solvert(message_handler), solver(_solver)
+template<typename T>
+satcheck_glucose_baset<T>::satcheck_glucose_baset(T *_solver):
+  solver(_solver)
 {
 }
 
@@ -258,19 +257,13 @@ void satcheck_glucose_baset<T>::set_assumptions(const bvt &bv)
     INVARIANT(!it->is_constant(), "assumption literals must not be constant");
 }
 
-satcheck_glucose_no_simplifiert::satcheck_glucose_no_simplifiert(
-  message_handlert &message_handler)
-  : satcheck_glucose_baset<Glucose::Solver>(
-      new Glucose::Solver,
-      message_handler)
+satcheck_glucose_no_simplifiert::satcheck_glucose_no_simplifiert():
+  satcheck_glucose_baset<Glucose::Solver>(new Glucose::Solver)
 {
 }
 
-satcheck_glucose_simplifiert::satcheck_glucose_simplifiert(
-  message_handlert &message_handler)
-  : satcheck_glucose_baset<Glucose::SimpSolver>(
-      new Glucose::SimpSolver,
-      message_handler)
+satcheck_glucose_simplifiert::satcheck_glucose_simplifiert():
+  satcheck_glucose_baset<Glucose::SimpSolver>(new Glucose::SimpSolver)
 {
 }
 
@@ -286,7 +279,7 @@ void satcheck_glucose_simplifiert::set_frozen(literalt a)
   }
   catch(Glucose::OutOfMemoryException)
   {
-    log.error() << "SAT checker ran out of memory" << messaget::eom;
+    messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
     throw std::bad_alloc();
   }

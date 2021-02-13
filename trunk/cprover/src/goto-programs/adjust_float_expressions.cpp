@@ -20,9 +20,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_model.h"
 
-/// Iterate over an expression and check it or any of its subexpressions are
-/// floating point operations that haven't been adjusted with a rounding mode
-/// yet.
 static bool have_to_adjust_float_expressions(const exprt &expr)
 {
   if(expr.id()==ID_floatbv_plus ||
@@ -56,15 +53,16 @@ static bool have_to_adjust_float_expressions(const exprt &expr)
     if(dest_type.id()==ID_floatbv &&
        src_type.id()==ID_floatbv)
       return true;
-    else if(
-      dest_type.id() == ID_floatbv &&
-      (src_type.id() == ID_c_bit_field || src_type.id() == ID_signedbv ||
-       src_type.id() == ID_unsignedbv || src_type.id() == ID_c_enum_tag))
+    else if(dest_type.id()==ID_floatbv &&
+            (src_type.id()==ID_c_bool ||
+             src_type.id()==ID_signedbv ||
+             src_type.id()==ID_unsignedbv ||
+             src_type.id()==ID_c_enum_tag))
       return true;
-    else if(
-      (dest_type.id() == ID_signedbv || dest_type.id() == ID_unsignedbv ||
-       dest_type.id() == ID_c_enum_tag || dest_type.id() == ID_c_bit_field) &&
-      src_type.id() == ID_floatbv)
+    else if((dest_type.id()==ID_signedbv ||
+             dest_type.id()==ID_unsignedbv ||
+             dest_type.id()==ID_c_enum_tag) &&
+             src_type.id()==ID_floatbv)
       return true;
   }
 
@@ -75,16 +73,14 @@ static bool have_to_adjust_float_expressions(const exprt &expr)
   return false;
 }
 
+/// This adds the rounding mode to floating-point operations, including those in
+/// vectors and complex numbers.
 void adjust_float_expressions(exprt &expr, const exprt &rounding_mode)
 {
   if(!have_to_adjust_float_expressions(expr))
     return;
 
   // recursive call
-  // Note that we do the recursion twice here; once in
-  // `have_to_adjust_float_expressions` and once here. Presumably this is to
-  // avoid breaking sharing (calling the non-const operands() function breaks
-  // sharing)
   for(auto &op : expr.operands())
     adjust_float_expressions(op, rounding_mode);
 
@@ -118,7 +114,7 @@ void adjust_float_expressions(exprt &expr, const exprt &rounding_mode)
                                 irep_idt());
 
       expr.operands().resize(3);
-      to_ieee_float_op_expr(expr).rounding_mode() = rounding_mode;
+      expr.op2()=rounding_mode;
     }
   }
 
@@ -138,28 +134,23 @@ void adjust_float_expressions(exprt &expr, const exprt &rounding_mode)
       // the representation.
       expr.id(ID_floatbv_typecast);
       expr.operands().resize(2);
-      to_floatbv_typecast_expr(expr).rounding_mode() = rounding_mode;
+      expr.op1()=rounding_mode;
     }
-    else if(
-      dest_type.id() == ID_floatbv &&
-      (src_type.id() == ID_signedbv || src_type.id() == ID_unsignedbv ||
-       src_type.id() == ID_c_enum_tag || src_type.id() == ID_c_bit_field))
+    else if(dest_type.id()==ID_floatbv &&
+            (src_type.id()==ID_c_bool ||
+             src_type.id()==ID_signedbv ||
+             src_type.id()==ID_unsignedbv ||
+             src_type.id()==ID_c_enum_tag))
     {
       // casts from integer to float-type might round
       expr.id(ID_floatbv_typecast);
       expr.operands().resize(2);
-      to_floatbv_typecast_expr(expr).rounding_mode() = rounding_mode;
+      expr.op1()=rounding_mode;
     }
-    else if(
-      dest_type.id() == ID_floatbv &&
-      (src_type.id() == ID_c_bool || src_type.id() == ID_bool))
-    {
-      // casts from bool or c_bool to float-type do not need rounding
-    }
-    else if(
-      (dest_type.id() == ID_signedbv || dest_type.id() == ID_unsignedbv ||
-       dest_type.id() == ID_c_enum_tag || dest_type.id() == ID_c_bit_field) &&
-      src_type.id() == ID_floatbv)
+    else if((dest_type.id()==ID_signedbv ||
+             dest_type.id()==ID_unsignedbv ||
+             dest_type.id()==ID_c_enum_tag) &&
+             src_type.id()==ID_floatbv)
     {
       // In C, casts from float to integer always round to zero,
       // irrespectively of the rounding mode that is currently set.
@@ -174,12 +165,14 @@ void adjust_float_expressions(exprt &expr, const exprt &rounding_mode)
        */
       expr.id(ID_floatbv_typecast);
       expr.operands().resize(2);
-      to_floatbv_typecast_expr(expr).rounding_mode() =
+      expr.op1()=
         from_integer(ieee_floatt::ROUND_TO_ZERO, rounding_mode.type());
     }
   }
 }
 
+/// This adds the rounding mode to floating-point operations, including those in
+/// vectors and complex numbers.
 void adjust_float_expressions(exprt &expr, const namespacet &ns)
 {
   if(!have_to_adjust_float_expressions(expr))
@@ -197,16 +190,11 @@ void adjust_float_expressions(
   goto_functionst::goto_functiont &goto_function,
   const namespacet &ns)
 {
-  for(auto &i : goto_function.body.instructions)
-    i.transform([&ns](exprt expr) -> optionalt<exprt> {
-      if(have_to_adjust_float_expressions(expr))
-      {
-        adjust_float_expressions(expr, ns);
-        return expr;
-      }
-      else
-        return {};
-    });
+  Forall_goto_program_instructions(it, goto_function.body)
+  {
+    adjust_float_expressions(it->code, ns);
+    adjust_float_expressions(it->guard, ns);
+  }
 }
 
 void adjust_float_expressions(

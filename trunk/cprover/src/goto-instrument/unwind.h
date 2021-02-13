@@ -16,6 +16,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "unwindset.h"
 
 #include <util/json.h>
+#include <util/json_expr.h>
 #include <goto-programs/goto_model.h>
 
 class goto_modelt;
@@ -28,7 +29,6 @@ public:
   // unwind loop
 
   void unwind(
-    const irep_idt &function_id,
     goto_programt &goto_program,
     const goto_programt::const_targett loop_head,
     const goto_programt::const_targett loop_exit,
@@ -36,7 +36,6 @@ public:
     const unwind_strategyt unwind_strategy);
 
   void unwind(
-    const irep_idt &function_id,
     goto_programt &goto_program,
     const goto_programt::const_targett loop_head,
     const goto_programt::const_targett loop_exit,
@@ -47,10 +46,9 @@ public:
   // unwind function
 
   void unwind(
-    const irep_idt &function_id,
     goto_programt &goto_program,
     const unwindsett &unwindset,
-    const unwind_strategyt unwind_strategy = unwind_strategyt::PARTIAL);
+    const unwind_strategyt unwind_strategy=unwind_strategyt::PARTIAL);
 
   // unwind all functions
   void operator()(

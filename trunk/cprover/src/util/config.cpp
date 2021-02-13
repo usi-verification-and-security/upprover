@@ -674,17 +674,16 @@ void configt::ansi_ct::set_arch_spec_sh4()
 
 configt::ansi_ct::c_standardt configt::ansi_ct::default_c_standard()
 {
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
   // By default, clang on the Mac builds C code in GNU C11
   return c_standardt::C11;
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+  #elif defined(__FreeBSD__)
   // By default, clang on FreeBSD builds C code in GNU C99
-  // By default, clang on OpenBSD builds C code in C99
   return c_standardt::C99;
-#else
+  #else
   // By default, gcc 5.4 or higher use gnu11; older versions use gnu89
   return c_standardt::C11;
-#endif
+  #endif
 }
 
 configt::cppt::cpp_standardt configt::cppt::default_cpp_standard()
@@ -915,8 +914,6 @@ bool configt::set(const cmdlinet &cmdline)
       ansi_c.preprocessor=ansi_ct::preprocessort::GCC;
       ansi_c.mode=ansi_ct::flavourt::VISUAL_STUDIO;
       #endif
-
-      cpp.cpp_standard = cppt::cpp_standardt::CPP14;
     }
   }
   else if(os=="macos")
@@ -950,7 +947,7 @@ bool configt::set(const cmdlinet &cmdline)
   }
 
   if(ansi_c.preprocessor == ansi_ct::preprocessort::GCC)
-    ansi_c.gcc__float128_type = true;
+    ansi_c.Float128_type = true;
 
   set_arch(arch);
 
@@ -1098,17 +1095,13 @@ bool configt::set(const cmdlinet &cmdline)
 
 std::string configt::ansi_ct::os_to_string(ost os)
 {
-  // clang-format off
   switch(os)
   {
   case ost::OS_LINUX: return "linux";
   case ost::OS_MACOS: return "macos";
   case ost::OS_WIN: return "win";
-  case ost::NO_OS: return "none";
+  default: return "none";
   }
-  // clang-format on
-
-  UNREACHABLE;
 }
 
 configt::ansi_ct::ost configt::ansi_ct::string_to_os(const std::string &os)
@@ -1140,7 +1133,7 @@ static irep_idt string_from_ns(
       to_address_of_expr(tmp).object().id() == ID_index &&
       to_index_expr(to_address_of_expr(tmp).object()).array().id() ==
         ID_string_constant,
-    "symbol table configuration entry '" + id2string(id) +
+    "symbol table configuration entry `" + id2string(id) +
       "' must be a string constant");
 
   return to_index_expr(to_address_of_expr(tmp).object()).array().get(ID_value);
@@ -1161,7 +1154,7 @@ static unsigned unsigned_from_ns(
 
   INVARIANT(
     tmp.id() == ID_constant,
-    "symbol table configuration entry '" + id2string(id) +
+    "symbol table configuration entry `" + id2string(id) +
       "' must be a constant");
 
   mp_integer int_value;
@@ -1169,7 +1162,7 @@ static unsigned unsigned_from_ns(
   const bool error = to_integer(to_constant_expr(tmp), int_value);
   INVARIANT(
     !error,
-    "symbol table configuration entry '" + id2string(id) +
+    "symbol table configuration entry `" + id2string(id) +
       "' must be convertible to mp_integer");
 
   return numeric_cast_v<unsigned>(int_value);
@@ -1235,7 +1228,7 @@ void configt::set_from_symbol_table(
 }
 
 /// Sets the number of bits used for object addresses
-/// \param symbol_table: The symbol table
+/// \param symbol_table The symbol table
 void configt::set_object_bits_from_symbol_table(
   const symbol_tablet &symbol_table)
 {

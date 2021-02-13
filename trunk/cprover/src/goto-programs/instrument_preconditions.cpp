@@ -75,11 +75,14 @@ replace_symbolt actuals_replace_map(
   std::size_t count=0;
   for(const auto &p : parameters)
   {
-    if(!p.get_identifier().empty() && arguments.size() > count)
+    if(p.get_identifier()!=irep_idt() &&
+       arguments.size()>count)
     {
-      const exprt a =
-        typecast_exprt::conditional_cast(arguments[count], p.type());
-      result.insert(symbol_exprt(p.get_identifier(), p.type()), a);
+      exprt a=arguments[count];
+      if(a.type()!=p.type())
+        a=typecast_exprt(a, p.type());
+      symbol_exprt s(p.get_identifier(), p.type());
+      result.insert(s, a);
     }
     count++;
   }
@@ -100,7 +103,7 @@ void instrument_preconditions(
     if(it->is_function_call())
     {
       // does the function we call have preconditions?
-      const auto &call = it->get_function_call();
+      const auto &call=to_code_function_call(it->code);
 
       if(call.function().id()==ID_symbol)
       {
@@ -109,6 +112,7 @@ void instrument_preconditions(
                             goto_model.goto_functions);
 
         source_locationt source_location=it->source_location;
+        irep_idt function=it->function;
 
         replace_symbolt r=actuals_replace_map(call, ns);
 
@@ -116,9 +120,11 @@ void instrument_preconditions(
         for(const auto &p : preconditions)
         {
           goto_program.insert_before_swap(it);
-          exprt instance = p->get_condition();
+          exprt instance=p->guard;
           r(instance);
-          *it = goto_programt::make_assertion(instance, source_location);
+          it->make_assertion(instance);
+          it->function=function;
+          it->source_location=source_location;
           it->source_location.set_property_class(ID_precondition_instance);
           it->source_location.set_comment(p->source_location.get_comment());
           it++;

@@ -20,7 +20,7 @@ void cpp_typecheckt::convert(cpp_namespace_spect &namespace_spec)
 
   const irep_idt &name=namespace_spec.get_namespace();
 
-  if(name.empty())
+  if(name=="")
   {
     // "unique namespace"
     error().source_location=namespace_spec.source_location();
@@ -41,18 +41,20 @@ void cpp_typecheckt::convert(cpp_namespace_spect &namespace_spec)
     if(namespace_spec.alias().is_not_nil())
     {
       error().source_location=namespace_spec.source_location();
-      error() << "namespace alias '" << final_name << "' previously declared\n"
-              << "location of previous declaration: " << it->second.location
-              << eom;
+      error() << "namespace alias `" << final_name
+              << "' previously declared\n"
+              << "location of previous declaration: "
+              << it->second.location << eom;
       throw 0;
     }
 
     if(it->second.type.id()!=ID_namespace)
     {
       error().source_location=namespace_spec.source_location();
-      error() << "namespace '" << final_name << "' previously declared\n"
-              << "location of previous declaration: " << it->second.location
-              << eom;
+      error() << "namespace `" << final_name
+              << "' previously declared\n"
+              << "location of previous declaration: "
+              << it->second.location << eom;
       throw 0;
     }
 
@@ -91,7 +93,10 @@ void cpp_typecheckt::convert(cpp_namespace_spect &namespace_spec)
   else
   {
     // do the declarations
-    for(auto &item : namespace_spec.items())
-      convert(item);
+    for(cpp_namespace_spect::itemst::iterator
+        it=namespace_spec.items().begin();
+        it!=namespace_spec.items().end();
+        it++)
+      convert(*it);
   }
 }

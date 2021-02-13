@@ -24,18 +24,17 @@ public:
   ui_message_handlert(const class cmdlinet &, const std::string &program);
 
   explicit ui_message_handlert(message_handlert &);
-  ui_message_handlert(ui_message_handlert &&) = default;
 
   virtual ~ui_message_handlert();
 
-  virtual uit get_ui() const
+  uit get_ui() const
   {
     return _ui;
   }
 
   virtual void flush(unsigned level) override;
 
-  virtual json_stream_arrayt &get_json_stream()
+  json_stream_arrayt &get_json_stream()
   {
     PRECONDITION(json_stream!=nullptr);
     return *json_stream;

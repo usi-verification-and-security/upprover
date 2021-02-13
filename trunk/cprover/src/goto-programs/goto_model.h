@@ -17,7 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "abstract_goto_model.h"
 #include "goto_functions.h"
-#include "validate_goto_model.h"
 
 // A model is a pair consisting of a symbol table
 // and the CFGs for the functions.
@@ -95,17 +94,9 @@ public:
   ///
   /// The validation mode indicates whether well-formedness check failures are
   /// reported via DATA_INVARIANT violations or exceptions.
-  void validate(
-    const validation_modet vm = validation_modet::INVARIANT,
-    const goto_model_validation_optionst &goto_model_validation_options =
-      goto_model_validation_optionst{}) const override
+  void validate(const validation_modet vm) const
   {
     symbol_table.validate(vm);
-
-    // Does a number of checks at the function_mapt level to ensure the
-    // goto_program is well formed. Does not call any validate methods
-    // (at the goto_functiont level or below)
-    validate_goto_model(goto_functions, vm, goto_model_validation_options);
 
     const namespacet ns(symbol_table);
     goto_functions.validate(ns, vm);
@@ -145,26 +136,6 @@ public:
   {
     return goto_functions.function_map.find(id) !=
            goto_functions.function_map.end();
-  }
-
-  /// Check that the goto model is well-formed
-  ///
-  /// The validation mode indicates whether well-formedness check failures are
-  /// reported via DATA_INVARIANT violations or exceptions.
-  void validate(
-    const validation_modet vm,
-    const goto_model_validation_optionst &goto_model_validation_options)
-    const override
-  {
-    symbol_table.validate(vm);
-
-    // Does a number of checks at the function_mapt level to ensure the
-    // goto_program is well formed. Does not call any validate methods
-    // (at the goto_functiont level or below)
-    validate_goto_model(goto_functions, vm, goto_model_validation_options);
-
-    const namespacet ns(symbol_table);
-    goto_functions.validate(ns, vm);
   }
 
 private:
@@ -209,6 +180,13 @@ public:
   void compute_location_numbers()
   {
     goto_functions.compute_location_numbers(goto_function.body);
+  }
+
+  /// Updates the empty function member of each instruction by setting them
+  /// to `function_id`
+  void update_instructions_function()
+  {
+    goto_function.update_instructions_function(function_id);
   }
 
   /// Get symbol table

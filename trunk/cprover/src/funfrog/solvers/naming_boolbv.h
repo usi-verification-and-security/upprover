@@ -9,7 +9,7 @@
 
 class naming_boolbv :public bv_pointerst{
 public:
-    naming_boolbv(const namespacet &_ns, propt &_prop, message_handlert & message_handler) : bv_pointerst{_ns, _prop, message_handler} {}
+    naming_boolbv(const namespacet &_ns, propt &_prop, message_handlert & message_handler) : bv_pointerst{_ns, _prop} {}
 protected:
     bvt convert_symbol(const exprt & expr) override {
         auto res =  bv_pointerst::convert_symbol(expr);

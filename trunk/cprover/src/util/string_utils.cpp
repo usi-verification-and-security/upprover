@@ -10,10 +10,9 @@ Author: Daniel Poetzl
 #include "exception_utils.h"
 #include "invariant.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cctype>
-#include <iomanip>
+#include <algorithm>
 
 /// Remove all whitespace characters from either end of a string. Whitespace
 /// in the middle of the string is left unchanged
@@ -37,6 +36,16 @@ std::string strip_string(const std::string &s)
   return s.substr(i, (j-i+1));
 }
 
+/// Given a string s, split into a sequence of substrings when separated by
+/// specified delimiter.
+/// \param s: The string to split up
+/// \param delim: The character to use as the delimiter
+/// \param [out] result: The sub strings. Must be empty.
+/// \param strip: If true, strip_string will be used on each element, removing
+/// whitespace from the beginning and end of each element
+/// \param remove_empty: If true, all empty-string elements will be removed.
+/// This is applied after strip so whitespace only elements will be removed if
+/// both are set to true
 void split_string(
   const std::string &s,
   char delim,
@@ -50,8 +59,7 @@ void split_string(
 
   if(s.empty())
   {
-    if(!remove_empty)
-      result.push_back("");
+    result.push_back("");
     return;
   }
 
@@ -85,7 +93,7 @@ void split_string(
   if(!remove_empty || !new_s.empty())
     result.push_back(new_s);
 
-  if(!remove_empty && result.empty())
+  if(result.empty())
     result.push_back("");
 }
 
@@ -104,7 +112,7 @@ void split_string(
   split_string(s, delim, result, strip);
   if(result.size() != 2)
   {
-    throw deserialization_exceptiont{"expected string '" + s +
+    throw deserialization_exceptiont{"expected string `" + s +
                                      "' to contain two substrings "
                                      "delimited by " +
                                      delim + " but has " +
@@ -130,7 +138,7 @@ std::string trim_from_last_delimiter(
   const std::string &s,
   const char delim)
 {
-  std::string result;
+  std::string result="";
   const size_t index=s.find_last_of(delim);
   if(index!=std::string::npos)
     result=s.substr(0, index);
@@ -152,18 +160,23 @@ std::string escape(const std::string &s)
   return result;
 }
 
-std::string escape_non_alnum(const std::string &to_escape)
+/// Replace all occurrences of a string inside a string
+/// \param [out] str: string to search
+/// \param from: string to replace
+/// \param to: string to replace with
+/// Copyright notice:
+/// Attributed to Gauthier Boaglio
+/// Source: https://stackoverflow.com/a/24315631/7501486
+/// Used under MIT license
+void replace_all(
+  std::string &str,
+  const std::string &from,
+  const std::string &to)
 {
-  std::ostringstream escaped;
-  for(auto &ch : to_escape)
+  size_t start_pos = 0;
+  while((start_pos = str.find(from, start_pos)) != std::string::npos)
   {
-    if(ch == '_')
-      escaped << "__";
-    else if(isalnum(ch))
-      escaped << ch;
-    else
-      escaped << '_' << std::hex << std::setfill('0') << std::setw(2)
-              << (unsigned int)ch;
+    str.replace(start_pos, from.length(), to);
+    start_pos += to.length();
   }
-  return escaped.str();
 }

@@ -23,26 +23,22 @@ Author: Daniel Kroening, kroening@kroening.com
 class cnf_clause_listt:public cnft
 {
 public:
-  explicit cnf_clause_listt(message_handlert &message_handler)
-    : cnft(message_handler)
-  {
-  }
+  cnf_clause_listt() { }
   virtual ~cnf_clause_listt() { }
 
-  void lcnf(const bvt &bv) override;
+  virtual void lcnf(const bvt &bv);
 
-  const std::string solver_text() override
+  virtual const std::string solver_text()
   { return "CNF clause list"; }
 
-  tvt l_get(literalt) const override
+  virtual tvt l_get(literalt) const
   {
     return tvt::unknown();
   }
 
-  size_t no_clauses() const override
-  {
-    return clauses.size();
-  }
+  virtual resultt prop_solve() { return resultt::P_ERROR; }
+
+  virtual size_t no_clauses() const { return clauses.size(); }
 
   typedef std::list<bvt> clausest;
 
@@ -77,11 +73,6 @@ public:
   }
 
 protected:
-  resultt do_prop_solve() override
-  {
-    return resultt::P_ERROR;
-  }
-
   clausest clauses;
 };
 
@@ -91,11 +82,6 @@ protected:
 class cnf_clause_list_assignmentt:public cnf_clause_listt
 {
 public:
-  explicit cnf_clause_list_assignmentt(message_handlert &message_handler)
-    : cnf_clause_listt(message_handler)
-  {
-  }
-
   typedef std::vector<tvt> assignmentt;
 
   assignmentt &get_assignment()
@@ -103,7 +89,7 @@ public:
     return assignment;
   }
 
-  tvt l_get(literalt literal) const override
+  virtual tvt l_get(literalt literal) const
   {
     if(literal.is_true())
       return tvt(true);

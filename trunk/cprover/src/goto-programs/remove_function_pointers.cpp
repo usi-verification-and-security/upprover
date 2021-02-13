@@ -13,6 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
+#include <util/base_type.h>
 #include <util/c_types.h>
 #include <util/fresh_symbol.h>
 #include <util/invariant.h>
@@ -21,6 +22,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/replace_expr.h>
 #include <util/source_location.h>
 #include <util/std_expr.h>
+#include <util/type_eq.h>
 
 #include <analyses/does_remove_const.h>
 
@@ -40,9 +42,7 @@ public:
 
   void operator()(goto_functionst &goto_functions);
 
-  bool remove_function_pointers(
-    goto_programt &goto_program,
-    const irep_idt &function_id);
+  bool remove_function_pointers(goto_programt &goto_program);
 
   // a set of function symbols
   using functionst = remove_const_function_pointerst::functionst;
@@ -50,13 +50,11 @@ public:
   /// Replace a call to a dynamic function at location
   /// target in the given goto-program by a case-split
   /// over a given set of functions
-  /// \param goto_program: The goto program that contains target
-  /// \param function_id: Name of function containing the target
-  /// \param target: location with function call with function pointer
-  /// \param functions: The set of functions to consider
+  /// \param goto_program The goto program that contains target
+  /// \param target location with function call with function pointer
+  /// \param functions The set of functions to consider
   void remove_function_pointer(
     goto_programt &goto_program,
-    const irep_idt &function_id,
     goto_programt::targett target,
     const functionst &functions);
 
@@ -77,12 +75,10 @@ protected:
   /// Replace a call to a dynamic function at location
   /// target in the given goto-program by determining
   /// functions that have a compatible signature
-  /// \param goto_program: The goto program that contains target
-  /// \param function_id: Name of function containing the target
-  /// \param target: location with function call with function pointer
+  /// \param goto_program The goto program that contains target
+  /// \param target location with function call with function pointer
   void remove_function_pointer(
     goto_programt &goto_program,
-    const irep_idt &function_id,
     goto_programt::targett target);
 
   std::unordered_set<irep_idt> address_taken;
@@ -101,7 +97,6 @@ protected:
 
   void fix_argument_types(code_function_callt &function_call);
   void fix_return_type(
-    const irep_idt &in_function_id,
     code_function_callt &function_call,
     goto_programt &dest);
 };
@@ -125,33 +120,39 @@ remove_function_pointerst::remove_function_pointerst(
 
   // build type map
   forall_goto_functions(f_it, goto_functions)
-    type_map.emplace(f_it->first, f_it->second.type);
+    type_map[f_it->first]=f_it->second.type;
 }
 
 bool remove_function_pointerst::arg_is_type_compatible(
   const typet &call_type,
   const typet &function_type)
 {
-  if(call_type == function_type)
+  if(type_eq(call_type, function_type, ns))
     return true;
 
   // any integer-vs-enum-vs-pointer is ok
-  if(
-    call_type.id() == ID_signedbv || call_type.id() == ID_unsigned ||
-    call_type.id() == ID_bool || call_type.id() == ID_c_bool ||
-    call_type.id() == ID_c_enum_tag || call_type.id() == ID_c_enum ||
-    call_type.id() == ID_pointer)
+  if(call_type.id()==ID_signedbv ||
+     call_type.id()==ID_unsigned ||
+     call_type.id()==ID_bool ||
+     call_type.id()==ID_pointer ||
+     call_type.id()==ID_c_enum ||
+     call_type.id()==ID_c_enum_tag)
   {
-    return function_type.id() == ID_signedbv ||
-           function_type.id() == ID_unsigned || function_type.id() == ID_bool ||
-           function_type.id() == ID_c_bool ||
-           function_type.id() == ID_pointer ||
-           function_type.id() == ID_c_enum ||
-           function_type.id() == ID_c_enum_tag;
+    if(function_type.id()==ID_signedbv ||
+       function_type.id()==ID_unsigned ||
+       function_type.id()==ID_bool ||
+       function_type.id()==ID_pointer ||
+       function_type.id()==ID_c_enum ||
+       function_type.id()==ID_c_enum_tag)
+      return true;
+
+    return false;
   }
 
   return pointer_offset_bits(call_type, ns) ==
          pointer_offset_bits(function_type, ns);
+
+  return false;
 }
 
 bool remove_function_pointerst::is_type_compatible(
@@ -164,7 +165,7 @@ bool remove_function_pointerst::is_type_compatible(
   if(!return_value_used)
   {
   }
-  else if(call_type.return_type() == empty_typet())
+  else if(type_eq(call_type.return_type(), empty_typet(), ns))
   {
     // ok
   }
@@ -207,7 +208,8 @@ bool remove_function_pointerst::is_type_compatible(
 void remove_function_pointerst::fix_argument_types(
   code_function_callt &function_call)
 {
-  const code_typet &code_type = to_code_type(function_call.function().type());
+  const code_typet &code_type=
+    to_code_type(ns.follow(function_call.function().type()));
 
   const code_typet::parameterst &function_parameters=
     code_type.parameters();
@@ -219,17 +221,16 @@ void remove_function_pointerst::fix_argument_types(
   {
     if(i<call_arguments.size())
     {
-      if(call_arguments[i].type() != function_parameters[i].type())
+      if(!type_eq(call_arguments[i].type(),
+                  function_parameters[i].type(), ns))
       {
-        call_arguments[i] =
-          typecast_exprt(call_arguments[i], function_parameters[i].type());
+        call_arguments[i].make_typecast(function_parameters[i].type());
       }
     }
   }
 }
 
 void remove_function_pointerst::fix_return_type(
-  const irep_idt &in_function_id,
   code_function_callt &function_call,
   goto_programt &dest)
 {
@@ -237,10 +238,13 @@ void remove_function_pointerst::fix_return_type(
   if(function_call.lhs().is_nil())
     return;
 
-  const code_typet &code_type = to_code_type(function_call.function().type());
+  const code_typet &code_type=
+    to_code_type(ns.follow(function_call.function().type()));
 
   // type already ok?
-  if(function_call.lhs().type() == code_type.return_type())
+  if(type_eq(
+       function_call.lhs().type(),
+       code_type.return_type(), ns))
     return;
 
   const symbolt &function_symbol =
@@ -248,7 +252,7 @@ void remove_function_pointerst::fix_return_type(
 
   symbolt &tmp_symbol = get_fresh_aux_symbol(
     code_type.return_type(),
-    id2string(in_function_id),
+    id2string(function_call.source_location().get_function()),
     "tmp_return_val_" + id2string(function_symbol.base_name),
     function_call.source_location(),
     function_symbol.mode,
@@ -259,16 +263,18 @@ void remove_function_pointerst::fix_return_type(
   exprt old_lhs=function_call.lhs();
   function_call.lhs()=tmp_symbol_expr;
 
-  dest.add(goto_programt::make_assignment(
-    code_assignt(old_lhs, typecast_exprt(tmp_symbol_expr, old_lhs.type()))));
+  goto_programt::targett t_assign=dest.add_instruction();
+  t_assign->make_assignment();
+  t_assign->code=code_assignt(
+    old_lhs, typecast_exprt(tmp_symbol_expr, old_lhs.type()));
 }
 
 void remove_function_pointerst::remove_function_pointer(
   goto_programt &goto_program,
-  const irep_idt &function_id,
   goto_programt::targett target)
 {
-  const code_function_callt &code = target->get_function_call();
+  const code_function_callt &code=
+    to_code_function_call(target->code);
 
   const auto &function = to_dereference_expr(code.function());
 
@@ -314,9 +320,7 @@ void remove_function_pointerst::remove_function_pointer(
 
     if(functions.size()==1)
     {
-      auto call = target->get_function_call();
-      call.function() = *functions.cbegin();
-      target->set_function_call(call);
+      to_code_function_call(target->code).function()=*functions.cbegin();
       return;
     }
   }
@@ -356,16 +360,15 @@ void remove_function_pointerst::remove_function_pointer(
     }
   }
 
-  remove_function_pointer(goto_program, function_id, target, functions);
+  remove_function_pointer(goto_program, target, functions);
 }
 
 void remove_function_pointerst::remove_function_pointer(
   goto_programt &goto_program,
-  const irep_idt &function_id,
   goto_programt::targett target,
   const functionst &functions)
 {
-  const code_function_callt &code = target->get_function_call();
+  const code_function_callt &code = to_code_function_call(target->code);
 
   const exprt &function = code.function();
   const exprt &pointer = to_dereference_expr(function).pointer();
@@ -373,7 +376,8 @@ void remove_function_pointerst::remove_function_pointer(
   // the final target is a skip
   goto_programt final_skip;
 
-  goto_programt::targett t_final = final_skip.add(goto_programt::make_skip());
+  goto_programt::targett t_final=final_skip.add_instruction();
+  t_final->make_skip();
 
   // build the calls and gotos
 
@@ -383,40 +387,36 @@ void remove_function_pointerst::remove_function_pointer(
   for(const auto &fun : functions)
   {
     // call function
-    auto new_call = code;
-    new_call.function() = fun;
+    goto_programt::targett t1=new_code_calls.add_instruction();
+    t1->make_function_call(code);
+    to_code_function_call(t1->code).function()=fun;
 
     // the signature of the function might not match precisely
-    fix_argument_types(new_call);
+    fix_argument_types(to_code_function_call(t1->code));
 
-    goto_programt tmp;
-    fix_return_type(function_id, new_call, tmp);
-
-    auto call = new_code_calls.add(goto_programt::make_function_call(new_call));
-    new_code_calls.destructive_append(tmp);
-
+    fix_return_type(to_code_function_call(t1->code), new_code_calls);
     // goto final
-    new_code_calls.add(goto_programt::make_goto(t_final, true_exprt()));
+    goto_programt::targett t3=new_code_calls.add_instruction();
+    t3->make_goto(t_final, true_exprt());
 
     // goto to call
-    const address_of_exprt address_of(fun, pointer_type(fun.type()));
+    address_of_exprt address_of(fun, pointer_type(fun.type()));
 
-    const auto casted_address =
-      typecast_exprt::conditional_cast(address_of, pointer.type());
+    if(address_of.type()!=pointer.type())
+      address_of.make_typecast(pointer.type());
 
-    new_code_gotos.add(
-      goto_programt::make_goto(call, equal_exprt(pointer, casted_address)));
+    goto_programt::targett t4=new_code_gotos.add_instruction();
+    t4->make_goto(t1, equal_exprt(pointer, address_of));
   }
 
   // fall-through
   if(add_safety_assertion)
   {
-    goto_programt::targett t =
-      new_code_gotos.add(goto_programt::make_assertion(false_exprt()));
+    goto_programt::targett t=new_code_gotos.add_instruction();
+    t->make_assertion(false_exprt());
     t->source_location.set_property_class("pointer dereference");
     t->source_location.set_comment("invalid function pointer");
   }
-  new_code_gotos.add(goto_programt::make_assumption(false_exprt()));
 
   goto_programt new_code;
 
@@ -431,6 +431,7 @@ void remove_function_pointerst::remove_function_pointer(
     irep_idt property_class=it->source_location.get_property_class();
     irep_idt comment=it->source_location.get_comment();
     it->source_location=target->source_location;
+    it->function=target->function;
     if(!property_class.empty())
       it->source_location.set_property_class(property_class);
     if(!comment.empty())
@@ -474,19 +475,19 @@ void remove_function_pointerst::remove_function_pointer(
 }
 
 bool remove_function_pointerst::remove_function_pointers(
-  goto_programt &goto_program,
-  const irep_idt &function_id)
+  goto_programt &goto_program)
 {
   bool did_something=false;
 
   Forall_goto_program_instructions(target, goto_program)
     if(target->is_function_call())
     {
-      const code_function_callt &code = target->get_function_call();
+      const code_function_callt &code=
+        to_code_function_call(target->code);
 
       if(code.function().id()==ID_dereference)
       {
-        remove_function_pointer(goto_program, function_id, target);
+        remove_function_pointer(goto_program, target);
         did_something=true;
       }
     }
@@ -508,7 +509,7 @@ void remove_function_pointerst::operator()(goto_functionst &functions)
   {
     goto_programt &goto_program=f_it->second.body;
 
-    if(remove_function_pointers(goto_program, f_it->first))
+    if(remove_function_pointers(goto_program))
       did_something=true;
   }
 
@@ -516,12 +517,10 @@ void remove_function_pointerst::operator()(goto_functionst &functions)
     functions.compute_location_numbers();
 }
 
-bool remove_function_pointers(
-  message_handlert &_message_handler,
+bool remove_function_pointers(message_handlert &_message_handler,
   symbol_tablet &symbol_table,
   const goto_functionst &goto_functions,
   goto_programt &goto_program,
-  const irep_idt &function_id,
   bool add_safety_assertion,
   bool only_remove_const_fps)
 {
@@ -533,7 +532,7 @@ bool remove_function_pointers(
       only_remove_const_fps,
       goto_functions);
 
-  return rfp.remove_function_pointers(goto_program, function_id);
+  return rfp.remove_function_pointers(goto_program);
 }
 
 void remove_function_pointers(

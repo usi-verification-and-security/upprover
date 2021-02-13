@@ -36,21 +36,18 @@ Date: January 2012
 #ifdef _MSC_VER
 #pragma warning(disable:4668)
   // using #if/#elif on undefined macro
-#pragma warning(disable : 5039)
-// pointer or reference to potentially throwing function passed to extern C
 #endif
 #include <io.h>
 #include <windows.h>
 #include <direct.h>
 #include <util/unicode.h>
-#define chdir _chdir
 #include <util/pragma_pop.def>
 #endif
 
 /// \return current working directory
 std::string get_current_working_directory()
 {
-#ifndef _WIN32
+  #ifndef _WIN32
   errno=0;
   char *wd=realpath(".", nullptr);
 
@@ -60,30 +57,15 @@ std::string get_current_working_directory()
 
   std::string working_directory=wd;
   free(wd);
-#else
-  TCHAR buffer[4096];
+  #else
+  char buffer[4096];
   DWORD retval=GetCurrentDirectory(4096, buffer);
   if(retval == 0)
     throw system_exceptiont("failed to get current directory of process");
-
-#  ifdef UNICODE
-  std::string working_directory(narrow(buffer));
-#  else
   std::string working_directory(buffer);
-#  endif
-
-#endif
+  #endif
 
   return working_directory;
-}
-
-/// Set working directory.
-/// \param path: New working directory to change to
-void set_current_path(const std::string &path)
-{
-  if(chdir(path.c_str()) != 0)
-    throw system_exceptiont(
-      std::string("chdir failed: ") + std::strerror(errno));
 }
 
 /// deletes all files in 'path' and then the directory itself
@@ -191,15 +173,5 @@ bool is_directory(const std::string &path)
   else
     return (buf.st_mode & S_IFDIR) != 0;
 
-#endif
-}
-
-bool create_directory(const std::string &path)
-{
-#ifdef _WIN32
-  return _mkdir(path.c_str()) == 0;
-#else
-  // the umask matches what std::filesystem::create_directory does
-  return mkdir(path.c_str(), 0777) == 0;
 #endif
 }

@@ -65,33 +65,32 @@ void satcheck_cadicalt::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_cadicalt::do_prop_solve()
+propt::resultt satcheck_cadicalt::prop_solve()
 {
   INVARIANT(status != statust::ERROR, "there cannot be an error");
 
-  log.statistics() << (no_variables() - 1) << " variables, " << clause_counter
-                   << " clauses" << messaget::eom;
+  messaget::status() << (no_variables() - 1) << " variables, " << clause_counter
+                     << " clauses" << eom;
 
   if(status == statust::UNSAT)
   {
-    log.status() << "SAT checker inconsistent: instance is UNSATISFIABLE"
-                 << messaget::eom;
+    messaget::status() << "SAT checker inconsistent: instance is UNSATISFIABLE"
+                       << eom;
   }
   else
   {
     switch(solver->solve())
     {
       case 10:
-        log.status() << "SAT checker: instance is SATISFIABLE" << messaget::eom;
+        messaget::status() << "SAT checker: instance is SATISFIABLE" << eom;
         status = statust::SAT;
         return resultt::P_SATISFIABLE;
       case 20:
-        log.status() << "SAT checker: instance is UNSATISFIABLE"
-                     << messaget::eom;
+        messaget::status() << "SAT checker: instance is UNSATISFIABLE" << eom;
         break;
       default:
-        log.status() << "SAT checker: solving returned without solution"
-                     << messaget::eom;
+        messaget::status() << "SAT checker: solving returned without solution"
+                           << eom;
         throw analysis_exceptiont(
           "solving inside CaDiCaL SAT solver has been interrupted");
     }

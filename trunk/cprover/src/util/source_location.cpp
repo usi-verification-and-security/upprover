@@ -11,14 +11,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <ostream>
 
 #include "file_util.h"
-#include "prefix.h"
-
-bool source_locationt::is_built_in(const std::string &s)
-{
-  std::string built_in1 = "<built-in-"; // "<built-in-additions>";
-  std::string built_in2 = "<builtin-";  // "<builtin-architecture-strings>";
-  return has_prefix(s, built_in1) || has_prefix(s, built_in2);
-}
 
 /// \par parameters: print_cwd, print the absolute path to the file
 std::string source_locationt::as_string(bool print_cwd) const
@@ -33,7 +25,7 @@ std::string source_locationt::as_string(bool print_cwd) const
 
   if(!file.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="file ";
     if(print_cwd)
@@ -44,25 +36,25 @@ std::string source_locationt::as_string(bool print_cwd) const
   }
   if(!line.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="line "+id2string(line);
   }
   if(!column.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="column "+id2string(column);
   }
   if(!function.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="function "+id2string(function);
   }
   if(!bytecode.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="bytecode-index "+id2string(bytecode);
   }
@@ -81,7 +73,7 @@ void source_locationt::merge(const source_locationt &from)
 
 /// Get a path to the file, including working directory.
 /// \return Full path unless the file name is empty or refers
-///   to a built-in, in which case {} is returned.
+/// to a built-in, in which case {} is returned.
 optionalt<std::string> source_locationt::full_path() const
 {
   const auto file = id2string(get_file());

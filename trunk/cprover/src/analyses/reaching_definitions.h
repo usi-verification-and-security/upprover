@@ -136,11 +136,17 @@ inline bool operator<(
 class rd_range_domaint:public ai_domain_baset
 {
 public:
-  rd_range_domaint(
-    sparse_bitvector_analysist<reaching_definitiont> *_bv_container)
-    : ai_domain_baset(), has_values(false), bv_container(_bv_container)
+  rd_range_domaint():
+    ai_domain_baset(),
+    has_values(false),
+    bv_container(nullptr)
   {
-    PRECONDITION(bv_container != nullptr);
+  }
+
+  void set_bitvector_container(
+    sparse_bitvector_analysist<reaching_definitiont> &_bv_container)
+  {
+    bv_container=&_bv_container;
   }
 
   /// Computes an instance obtained from the instance `*this` by transformation
@@ -252,7 +258,7 @@ private:
   /// all `rd_range_domaint` instances. NOTE: `reaching_definitions_analysist`
   /// inherits from `sparse_bitvector_analysist<reaching_definitiont>` and so
   /// `this` is passed to `set_bitvector_container` for all instances.
-  sparse_bitvector_analysist<reaching_definitiont> *const bv_container;
+  sparse_bitvector_analysist<reaching_definitiont> *bv_container;
 
   typedef std::set<std::size_t> values_innert;
   #ifdef USE_DSTRING
@@ -303,13 +309,11 @@ private:
     const namespacet &ns,
     const irep_idt &function_from,
     locationt from,
-    const irep_idt &function_to,
     locationt to,
     reaching_definitions_analysist &rd);
   void transform_assign(
     const namespacet &ns,
     locationt from,
-    const irep_idt &function_to,
     locationt to,
     reaching_definitions_analysist &rd);
 
@@ -344,6 +348,21 @@ public:
   virtual ~reaching_definitions_analysist();
 
   void initialize(const goto_functionst &goto_functions) override;
+
+  statet &get_state(locationt l) override
+  {
+    statet &s=concurrency_aware_ait<rd_range_domaint>::get_state(l);
+
+    rd_range_domaint *rd_state=dynamic_cast<rd_range_domaint*>(&s);
+    INVARIANT_STRUCTURED(
+      rd_state!=nullptr,
+      bad_cast_exceptiont,
+      "rd_state has type rd_range_domaint");
+
+    rd_state->set_bitvector_container(*this);
+
+    return s;
+  }
 
   value_setst &get_value_sets() const
   {

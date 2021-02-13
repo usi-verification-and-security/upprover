@@ -21,36 +21,34 @@ Author: Michael Tautschnig, michael.tautschnig@qmul.ac.uk
 
 #include <util/expr.h>
 
-#include <solvers/bdd/bdd.h>
+#include <solvers/miniBDD/miniBDD.h>
 
 #include <unordered_map>
 
-/// Conversion between \c exprt and \c bbdt
-/// This encapsulate a bdd_managert, thus BDDs created with this class should
-/// only be combined with BDDs created using the same instance of
-/// \ref bdd_exprt .
-/// See unit tests in unit/solvers/prop/bdd_expr.cpp for examples.
+class namespacet;
+
+/*! \brief TO_BE_DOCUMENTED
+*/
 class bdd_exprt
 {
 public:
-  bddt from_expr(const exprt &expr);
-  exprt as_expr(const bddt &root) const;
+  explicit bdd_exprt(const namespacet &_ns):ns(_ns) { }
+
+  void from_expr(const exprt &expr);
+  exprt as_expr() const;
 
 protected:
-  bdd_managert bdd_mgr;
+  const namespacet &ns;
+  mini_bdd_mgrt bdd_mgr;
+  mini_bddt root;
 
-  typedef std::unordered_map<exprt, bddt, irep_hash> expr_mapt;
-
+  typedef std::unordered_map<exprt, mini_bddt, irep_hash> expr_mapt;
   expr_mapt expr_map;
+  typedef std::map<unsigned, exprt> node_mapt;
+  node_mapt node_map;
 
-  /// Mapping from BDD variables to expressions: the expression at index \c i
-  /// of \p node_map corresponds to the i-th variable
-  std::vector<exprt> node_map;
-
-  bddt from_expr_rec(const exprt &expr);
-  exprt as_expr(
-    const bdd_nodet &r,
-    std::unordered_map<bdd_nodet::idt, exprt> &cache) const;
+  mini_bddt from_expr_rec(const exprt &expr);
+  exprt as_expr(const mini_bddt &r) const;
 };
 
 #endif // CPROVER_SOLVERS_PROP_BDD_EXPR_H

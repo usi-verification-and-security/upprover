@@ -23,7 +23,7 @@ Author: Matt Lewis
 exprt polynomialt::to_expr()
 {
   exprt ret=nil_exprt();
-  optionalt<typet> itype;
+  typet itype=nil_typet();
 
   // Figure out the appropriate type to do all the intermediate calculations
   // in.
@@ -35,13 +35,13 @@ exprt polynomialt::to_expr()
         t_it!=m_it->terms.end();
         ++t_it)
     {
-      if(itype.has_value())
+      if(itype==nil_typet())
       {
         itype=t_it->var.type();
       }
       else
       {
-        itype = join_types(*itype, t_it->var.type());
+        itype=join_types(itype, t_it->var.type());
       }
     }
   }
@@ -59,7 +59,7 @@ exprt polynomialt::to_expr()
       coeff=-coeff;
     }
 
-    exprt mon_expr = from_integer(coeff, *itype);
+    exprt mon_expr=from_integer(coeff, itype);
 
     for(std::vector<monomialt::termt>::iterator t_it=m_it->terms.begin();
         t_it!=m_it->terms.end();
@@ -67,7 +67,7 @@ exprt polynomialt::to_expr()
     {
       for(unsigned int i=0; i < t_it->exp; i++)
       {
-        mon_expr = mult_exprt(mon_expr, typecast_exprt(t_it->var, *itype));
+        mon_expr=mult_exprt(mon_expr, typecast_exprt(t_it->var, itype));
       }
     }
 
@@ -75,7 +75,7 @@ exprt polynomialt::to_expr()
     {
       if(neg)
       {
-        ret = unary_minus_exprt(mon_expr, *itype);
+        ret=unary_minus_exprt(mon_expr, itype);
       }
       else
       {
@@ -117,11 +117,10 @@ void polynomialt::from_expr(const exprt &expr)
           expr.id()==ID_minus ||
           expr.id()==ID_mult)
   {
-    const auto &multi_ary_expr = to_multi_ary_expr(expr);
     polynomialt poly2;
 
-    from_expr(multi_ary_expr.op0());
-    poly2.from_expr(multi_ary_expr.op1());
+    from_expr(expr.op0());
+    poly2.from_expr(expr.op1());
 
     if(expr.id()==ID_minus)
     {
@@ -140,7 +139,7 @@ void polynomialt::from_expr(const exprt &expr)
   else if(expr.id()==ID_constant)
   {
     monomialt monomial;
-    monomial.coeff = numeric_cast_v<int>(to_constant_expr(expr));
+    monomial.coeff = numeric_cast_v<int>(expr);
 
     monomials.push_back(monomial);
   }
@@ -149,7 +148,7 @@ void polynomialt::from_expr(const exprt &expr)
     // Pretty shady...  We just throw away the typecast...  Pretty sure this
     // isn't sound.
     // XXX - probably not sound.
-    from_expr(to_typecast_expr(expr).op());
+    from_expr(expr.op0());
   }
   else
   {

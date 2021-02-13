@@ -15,8 +15,7 @@ Author: CM Wintersteiger
 #include <util/arith_tools.h>
 #include <util/invariant.h>
 
-qbf_qube_coret::qbf_qube_coret(message_handlert &message_handler)
-  : qdimacs_coret(message_handler)
+qbf_qube_coret::qbf_qube_coret() : qdimacs_coret()
 {
   break_lines=false;
   qbf_tmp_file="qube.qdimacs";
@@ -37,8 +36,9 @@ propt::resultt qbf_qube_coret::prop_solve()
     return resultt::P_SATISFIABLE;
 
   {
-    log.status() << "QuBE: " << no_variables() << " variables, " << no_clauses()
-                 << " clauses" << messaget::eom;
+    messaget::status() << "QuBE: "
+      << no_variables() << " variables, "
+      << no_clauses() << " clauses" << eom;
   }
 
   std::string result_tmp_file="qube.out";
@@ -51,7 +51,7 @@ propt::resultt qbf_qube_coret::prop_solve()
     write_qdimacs_cnf(out);
   }
 
-  std::string options;
+  std::string options="";
 
   // solve it
   int res=system((
@@ -71,7 +71,7 @@ propt::resultt qbf_qube_coret::prop_solve()
 
       std::getline(in, line);
 
-      if(!line.empty() && line[line.size() - 1] == '\r')
+      if(line!="" && line[line.size()-1]=='\r')
         line.resize(line.size()-1);
 
       if(line[0]=='V')
@@ -98,7 +98,7 @@ propt::resultt qbf_qube_coret::prop_solve()
 
     if(!result_found)
     {
-      log.error() << "QuBE failed: unknown result" << messaget::eom;
+      messaget::error() << "QuBE failed: unknown result" << eom;
       return resultt::P_ERROR;
     }
   }
@@ -106,25 +106,25 @@ propt::resultt qbf_qube_coret::prop_solve()
   int remove_result=remove(result_tmp_file.c_str());
   if(remove_result!=0)
   {
-    log.error() << "Remove failed: " << std::strerror(errno) << messaget::eom;
+    messaget::error() << "Remove failed: " << std::strerror(errno) << eom;
     return resultt::P_ERROR;
   }
 
   remove_result=remove(qbf_tmp_file.c_str());
   if(remove_result!=0)
   {
-    log.error() << "Remove failed: " << std::strerror(errno) << messaget::eom;
+    messaget::error() << "Remove failed: " << std::strerror(errno) << eom;
     return resultt::P_ERROR;
   }
 
   if(result)
   {
-    log.status() << "QuBE: TRUE" << messaget::eom;
+    messaget::status() << "QuBE: TRUE" << eom;
     return resultt::P_SATISFIABLE;
   }
   else
   {
-    log.status() << "QuBE: FALSE" << messaget::eom;
+    messaget::status() << "QuBE: FALSE" << eom;
     return resultt::P_UNSATISFIABLE;
   }
 }

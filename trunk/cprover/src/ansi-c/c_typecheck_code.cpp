@@ -11,10 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "c_typecheck_base.h"
 
-#include <util/c_types.h>
 #include <util/config.h>
 #include <util/expr_initializer.h>
-#include <util/range.h>
 
 #include "ansi_c_declaration.h"
 
@@ -32,7 +30,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
     throw 0;
   }
 
-  code.type() = empty_typet();
+  code.type()=code_typet();
 
   const irep_idt &statement=code.get_statement();
 
@@ -43,7 +41,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   else if(statement==ID_switch_case)
     typecheck_switch_case(to_code_switch_case(code));
   else if(statement==ID_gcc_switch_case_range)
-    typecheck_gcc_switch_case_range(to_code_gcc_switch_case_range(code));
+    typecheck_gcc_switch_case_range(code);
   else if(statement==ID_block)
     typecheck_block(to_code_block(code));
   else if(statement==ID_decl_block)
@@ -58,7 +56,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   else if(statement==ID_for)
     typecheck_for(code);
   else if(statement==ID_switch)
-    typecheck_switch(code);
+    typecheck_switch(to_code_switch(code));
   else if(statement==ID_break)
     typecheck_break(code);
   else if(statement==ID_goto)
@@ -68,7 +66,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   else if(statement==ID_continue)
     typecheck_continue(code);
   else if(statement==ID_return)
-    typecheck_return(to_code_return(code));
+    typecheck_return(code);
   else if(statement==ID_decl)
     typecheck_decl(code);
   else if(statement==ID_assign)
@@ -77,7 +75,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   {
   }
   else if(statement==ID_asm)
-    typecheck_asm(to_code_asm(code));
+    typecheck_asm(code);
   else if(statement==ID_start_thread)
     typecheck_start_thread(code);
   else if(statement==ID_gcc_local_label)
@@ -134,31 +132,30 @@ void c_typecheck_baset::typecheck_code(codet &code)
   }
 }
 
-void c_typecheck_baset::typecheck_asm(code_asmt &code)
+void c_typecheck_baset::typecheck_asm(codet &code)
 {
-  const irep_idt flavor = code.get_flavor();
+  const irep_idt flavor=to_code_asm(code).get_flavor();
 
   if(flavor==ID_gcc)
   {
     // These have 5 operands.
-    // The first operand is a string.
-    // Operands 1, 2, 3, 4 are lists of expressions.
+    // The first parameter is a string.
+    // Parameters 1, 2, 3, 4 are lists of expressions.
 
-    // Operand 1: OutputOperands
-    // Operand 2: InputOperands
-    // Operand 3: Clobbers
-    // Operand 4: GotoLabels
+    // Parameter 1: OutputOperands
+    // Parameter 2: InputOperands
+    // Parameter 3: Clobbers
+    // Parameter 4: GotoLabels
 
-    auto &code_asm_gcc = to_code_asm_gcc(code);
+    assert(code.operands().size()==5);
 
-    typecheck_expr(code_asm_gcc.asm_text());
+    typecheck_expr(code.op0());
 
-    // the operands are lists of expressions
-    for(auto &op : ranget<exprt::operandst::iterator>(
-          code_asm_gcc.operands().begin() + 1, code_asm_gcc.operands().end()))
+    for(std::size_t i=1; i<code.operands().size(); i++)
     {
-      for(auto &expr : op.operands())
-        typecheck_expr(expr);
+      exprt &list=code.operands()[i];
+      Forall_operands(it, list)
+        typecheck_expr(*it);
     }
   }
   else if(flavor==ID_msc)
@@ -262,9 +259,12 @@ void c_typecheck_baset::typecheck_decl(codet &code)
 
   // iterate over declarators
 
-  for(const auto &d : declaration.declarators())
+  for(ansi_c_declarationt::declaratorst::const_iterator
+      d_it=declaration.declarators().begin();
+      d_it!=declaration.declarators().end();
+      d_it++)
   {
-    irep_idt identifier = d.get_name();
+    irep_idt identifier=d_it->get_name();
 
     // look it up
     symbol_tablet::symbolst::const_iterator s_it=
@@ -273,7 +273,7 @@ void c_typecheck_baset::typecheck_decl(codet &code)
     if(s_it==symbol_table.symbols.end())
     {
       error().source_location = code.source_location();
-      error() << "failed to find decl symbol '" << identifier
+      error() << "failed to find decl symbol `" << identifier
               << "' in symbol table" << eom;
       throw 0;
     }
@@ -341,7 +341,10 @@ void c_typecheck_baset::typecheck_decl(codet &code)
 
 bool c_typecheck_baset::is_complete_type(const typet &type) const
 {
-  if(type.id() == ID_array)
+  if(type.id()==ID_incomplete_struct ||
+     type.id()==ID_incomplete_union)
+    return false;
+  else if(type.id()==ID_array)
   {
     if(to_array_type(type).size().is_nil())
       return false;
@@ -349,12 +352,7 @@ bool c_typecheck_baset::is_complete_type(const typet &type) const
   }
   else if(type.id()==ID_struct || type.id()==ID_union)
   {
-    const auto &struct_union_type = to_struct_union_type(type);
-
-    if(struct_union_type.is_incomplete())
-      return false;
-
-    for(const auto &c : struct_union_type.components())
+    for(const auto &c : to_struct_union_type(type).components())
       if(!is_complete_type(c.type()))
         return false;
   }
@@ -517,9 +515,18 @@ void c_typecheck_baset::typecheck_switch_case(code_switch_caset &code)
   }
 }
 
-void c_typecheck_baset::typecheck_gcc_switch_case_range(
-  code_gcc_switch_case_ranget &code)
+void c_typecheck_baset::typecheck_gcc_switch_case_range(codet &code)
 {
+  if(code.operands().size()!=3)
+  {
+    error().source_location = code.source_location();
+    error() << "gcc_switch_case_range expected to have three operands"
+            << eom;
+    throw 0;
+  }
+
+  typecheck_code(to_code(code.op2()));
+
   if(!case_is_allowed)
   {
     error().source_location = code.source_location();
@@ -527,13 +534,12 @@ void c_typecheck_baset::typecheck_gcc_switch_case_range(
     throw 0;
   }
 
-  typecheck_expr(code.lower());
-  typecheck_expr(code.upper());
-  implicit_typecast(code.lower(), switch_op_type);
-  implicit_typecast(code.upper(), switch_op_type);
-  make_constant(code.lower());
-  make_constant(code.upper());
-  typecheck_code(code.code());
+  typecheck_expr(code.op0());
+  typecheck_expr(code.op1());
+  implicit_typecast(code.op0(), switch_op_type);
+  implicit_typecast(code.op1(), switch_op_type);
+  make_constant(code.op0());
+  make_constant(code.op1());
 }
 
 void c_typecheck_baset::typecheck_gcc_local_label(codet &)
@@ -567,8 +573,10 @@ void c_typecheck_baset::typecheck_gcc_computed_goto(codet &code)
     throw 0;
   }
 
-  typecheck_expr(to_unary_expr(dest).op());
-  dest.type() = void_type();
+  assert(dest.operands().size()==1);
+
+  typecheck_expr(dest.op0());
+  dest.type()=empty_typet();
 }
 
 void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
@@ -628,53 +636,65 @@ void c_typecheck_baset::typecheck_start_thread(codet &code)
   typecheck_code(to_code(code.op0()));
 }
 
-void c_typecheck_baset::typecheck_return(code_returnt &code)
+void c_typecheck_baset::typecheck_return(codet &code)
 {
-  if(code.has_return_value())
+  if(code.operands().empty())
   {
-    typecheck_expr(code.return_value());
-
-    if(return_type.id() == ID_empty)
+    if(follow(return_type).id()!=ID_empty &&
+       return_type.id()!=ID_constructor &&
+       return_type.id()!=ID_destructor)
     {
       // gcc doesn't actually complain, it just warns!
-      if(code.return_value().type().id() != ID_empty)
+      warning().source_location = code.source_location();
+      warning() << "non-void function should return a value" << eom;
+
+      code.copy_to_operands(
+        side_effect_expr_nondett(return_type, code.source_location()));
+    }
+  }
+  else if(code.operands().size()==1)
+  {
+    typecheck_expr(code.op0());
+
+    if(follow(return_type).id()==ID_empty)
+    {
+      // gcc doesn't actually complain, it just warns!
+      if(follow(code.op0().type()).id()!=ID_empty)
       {
         warning().source_location=code.source_location();
 
         warning() << "function has return void ";
         warning() << "but a return statement returning ";
-        warning() << to_string(code.return_value().type());
+        warning() << to_string(follow(code.op0().type()));
         warning() << eom;
 
-        code.return_value() = typecast_exprt(code.return_value(), return_type);
+        code.op0().make_typecast(return_type);
       }
     }
     else
-      implicit_typecast(code.return_value(), return_type);
+      implicit_typecast(code.op0(), return_type);
   }
-  else if(
-    return_type.id() != ID_empty && return_type.id() != ID_constructor &&
-    return_type.id() != ID_destructor)
+  else
   {
-    // gcc doesn't actually complain, it just warns!
-    warning().source_location = code.source_location();
-    warning() << "non-void function should return a value" << eom;
-
-    code.return_value() =
-      side_effect_expr_nondett(return_type, code.source_location());
+    error().source_location = code.source_location();
+    error() << "return expected to have 0 or 1 operands" << eom;
+    throw 0;
   }
 }
 
-void c_typecheck_baset::typecheck_switch(codet &code)
+void c_typecheck_baset::typecheck_switch(code_switcht &code)
 {
-  // we expect a code_switcht, but might return either a code_switcht or a
-  // code_blockt, hence don't use code_switcht in the interface
-  code_switcht &code_switch = to_code_switch(code);
+  if(code.operands().size()!=2)
+  {
+    error().source_location = code.source_location();
+    error() << "switch expects two operands" << eom;
+    throw 0;
+  }
 
-  typecheck_expr(code_switch.value());
+  typecheck_expr(code.value());
 
   // this needs to be promoted
-  implicit_typecast_arithmetic(code_switch.value());
+  implicit_typecast_arithmetic(code.value());
 
   // save & set flags
 
@@ -682,45 +702,10 @@ void c_typecheck_baset::typecheck_switch(codet &code)
   bool old_break_is_allowed(break_is_allowed);
   typet old_switch_op_type(switch_op_type);
 
-  switch_op_type = code_switch.value().type();
+  switch_op_type=code.value().type();
   break_is_allowed=case_is_allowed=true;
 
-  typecheck_code(code_switch.body());
-
-  if(code_switch.body().get_statement() == ID_block)
-  {
-    // Collect all declarations before the first case, if there is any case
-    // (including a default one).
-    code_blockt wrapping_block;
-
-    code_blockt &body_block = to_code_block(code_switch.body());
-    for(auto &statement : body_block.statements())
-    {
-      if(statement.get_statement() == ID_switch_case)
-        break;
-      else if(statement.get_statement() == ID_decl)
-      {
-        if(statement.operands().size() == 1)
-        {
-          wrapping_block.add(code_skipt());
-          wrapping_block.statements().back().swap(statement);
-        }
-        else
-        {
-          PRECONDITION(statement.operands().size() == 2);
-          wrapping_block.add(statement);
-          wrapping_block.statements().back().operands().pop_back();
-          statement.set_statement(ID_assign);
-        }
-      }
-    }
-
-    if(!wrapping_block.statements().empty())
-    {
-      wrapping_block.add(std::move(code));
-      code.swap(wrapping_block);
-    }
-  }
+  typecheck_code(code.body());
 
   // restore flags
   case_is_allowed=old_case_is_allowed;

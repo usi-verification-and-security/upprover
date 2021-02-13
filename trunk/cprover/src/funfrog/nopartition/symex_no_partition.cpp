@@ -25,8 +25,7 @@ bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const go
   }
   
   // Clear the state
-  reset_state();
-
+  reset_state(); //cprover5.12
 
   // Old: ??? state.value_set = value_sets;
   //prepare_fresh_arg_symbols(*state, partition_iface);
@@ -111,7 +110,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     return false;
 }
 
-bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const call_stackt &context, unsigned unwind) {
+bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const statet::call_stackt &context, unsigned unwind) {
     // returns true if we should not continue unwinding
     // for support of different bounds in different loops, see how it's done in symex_bmct
     return unwind >= max_unwind;
@@ -120,9 +119,9 @@ bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, cons
 symex_no_partitiont::symex_no_partitiont(const optionst & _options, path_storaget & _path_storage,
                                          const symbol_tablet & _outer_symbol_table,
                                          hifrog_symex_target_equationt & _target, message_handlert & _message_handler,
-                                         const goto_programt & _goto_program, guard_managert & guard_manager, bool _use_slicing)
+                                         const goto_programt & _goto_program, bool _use_slicing)
  :
-    goto_symext(_message_handler, _outer_symbol_table, _target, _options, _path_storage,  guard_manager),
+    goto_symext(_message_handler, _outer_symbol_table, _target, _options, _path_storage),
             equation(_target),
             goto_program(_goto_program),
             current_assertion(nullptr),

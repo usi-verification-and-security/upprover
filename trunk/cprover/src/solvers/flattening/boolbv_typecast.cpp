@@ -19,12 +19,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 bvt boolbvt::convert_bv_typecast(const typecast_exprt &expr)
 {
+  const typet &expr_type=ns.follow(expr.type());
   const exprt &op=expr.op();
+  const typet &op_type=ns.follow(op.type());
   const bvt &op_bv=convert_bv(op);
 
   bvt bv;
 
-  if(type_conversion(op.type(), op_bv, expr.type(), bv))
+  if(type_conversion(op_type, op_bv, expr_type, bv))
     return conversion_failed(expr);
 
   return bv;
@@ -82,9 +84,15 @@ bool boolbvt::type_conversion(
       lower.assign(src.begin(), src.begin()+src.size()/2);
       upper.assign(src.begin()+src.size()/2, src.end());
       type_conversion(
-        src_type.subtype(), lower, dest_type.subtype(), lower_res);
+        ns.follow(src_type.subtype()),
+        lower,
+        ns.follow(dest_type.subtype()),
+        lower_res);
       type_conversion(
-        src_type.subtype(), upper, dest_type.subtype(), upper_res);
+        ns.follow(src_type.subtype()),
+        upper,
+        ns.follow(dest_type.subtype()),
+        upper_res);
       INVARIANT(
         lower_res.size() + upper_res.size() == dest_width,
         "lower result bitvector size plus upper result bitvector size shall "
@@ -191,12 +199,7 @@ bool boolbvt::type_conversion(
         dest=src;
         return false;
 
-      case bvtypet::IS_C_BIT_FIELD:
-      case bvtypet::IS_UNKNOWN:
-      case bvtypet::IS_RANGE:
-      case bvtypet::IS_VERILOG_UNSIGNED:
-      case bvtypet::IS_VERILOG_SIGNED:
-      case bvtypet::IS_FIXED:
+      default:
         if(src_type.id()==ID_bool)
         {
           // bool to float
@@ -265,7 +268,7 @@ bool boolbvt::type_conversion(
     {
       INVARIANT(
         src_width == dest_width,
-        "source bitvector width shall equal the destination bitvector width");
+        "source bitvector with shall equal the destination bitvector width");
       dest=src;
       return false;
     }
@@ -420,33 +423,24 @@ bool boolbvt::type_conversion(
       }
       break;
 
-      case bvtypet::IS_BV:
+    default:
+      if(src_type.id()==ID_bool)
+      {
+        // bool to integer
+
         INVARIANT(
-          src_width == dest_width,
-          "source bitvector width shall equal the destination bitvector width");
-        dest = src;
-        return false;
+          src_width == 1, "bitvector of type boolean shall have width one");
 
-      case bvtypet::IS_RANGE:
-      case bvtypet::IS_C_BIT_FIELD:
-      case bvtypet::IS_UNKNOWN:
-        if(src_type.id() == ID_bool)
+        for(std::size_t i=0; i<dest_width; i++)
         {
-          // bool to integer
-
-          INVARIANT(
-            src_width == 1, "bitvector of type boolean shall have width one");
-
-          for(std::size_t i = 0; i < dest_width; i++)
-          {
-            if(i == 0)
-              dest.push_back(src[0]);
-            else
-              dest.push_back(const_literal(false));
-          }
-
-          return false;
+          if(i==0)
+            dest.push_back(src[0]);
+          else
+            dest.push_back(const_literal(false));
         }
+
+        return false;
+      }
     }
     break;
 
@@ -523,9 +517,7 @@ bool boolbvt::type_conversion(
 
     return false;
 
-  case bvtypet::IS_C_BIT_FIELD:
-  case bvtypet::IS_UNKNOWN:
-  case bvtypet::IS_VERILOG_SIGNED:
+  default:
     if(dest_type.id()==ID_array)
     {
       if(src_width==dest_width)
@@ -534,17 +526,17 @@ bool boolbvt::type_conversion(
         return false;
       }
     }
-    else if(ns.follow(dest_type).id() == ID_struct)
+    else if(dest_type.id()==ID_struct)
     {
-      const struct_typet &dest_struct = to_struct_type(ns.follow(dest_type));
+      const struct_typet &dest_struct=to_struct_type(dest_type);
 
-      if(ns.follow(src_type).id() == ID_struct)
+      if(src_type.id()==ID_struct)
       {
         // we do subsets
 
         dest.resize(dest_width, const_literal(false));
 
-        const struct_typet &op_struct = to_struct_type(ns.follow(src_type));
+        const struct_typet &op_struct=to_struct_type(src_type);
 
         const struct_typet::componentst &dest_comp=
           dest_struct.components();

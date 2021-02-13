@@ -10,9 +10,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 
-bvt boolbvt::convert_update(const update_exprt &expr)
+bvt boolbvt::convert_update(const exprt &expr)
 {
   const exprt::operandst &ops=expr.operands();
+
+  if(ops.size()!=3)
+    throw "update takes at three operands";
 
   std::size_t width=boolbv_width(expr.type());
 
@@ -39,6 +42,10 @@ void boolbvt::convert_update_rec(
   const exprt &new_value,
   bvt &bv)
 {
+  if(type.id() == ID_symbol_type)
+    convert_update_rec(
+      designators, d, ns.follow(type), offset, new_value, bv);
+
   if(d>=designators.size())
   {
     // done
@@ -68,21 +75,16 @@ void boolbvt::convert_update_rec(
     if(designator.operands().size()!=1)
       throw "update: index designator takes one operand";
 
-    bvt index_bv = convert_bv(to_index_designator(designator).index());
+    bvt index_bv=convert_bv(designator.op0());
 
     const array_typet &array_type=to_array_type(type);
-    const typet &subtype = array_type.subtype();
-    const exprt &size_expr = array_type.size();
+
+    const typet &subtype=ns.follow(array_type.subtype());
 
     std::size_t element_size=boolbv_width(subtype);
 
-    DATA_INVARIANT(
-      size_expr.id() == ID_constant,
-      "array in update expression should be constant-sized");
-
     // iterate over array
-    const std::size_t size =
-      numeric_cast_v<std::size_t>(to_constant_expr(size_expr));
+    const std::size_t size = numeric_cast_v<std::size_t>(array_type.size());
 
     bvt tmp_bv=bv;
 
@@ -108,9 +110,10 @@ void boolbvt::convert_update_rec(
   {
     const irep_idt &component_name=designator.get(ID_component_name);
 
-    if(ns.follow(type).id() == ID_struct)
+    if(type.id()==ID_struct)
     {
-      const struct_typet &struct_type = to_struct_type(ns.follow(type));
+      const struct_typet &struct_type=
+        to_struct_type(type);
 
       std::size_t struct_offset=0;
 
@@ -137,7 +140,7 @@ void boolbvt::convert_update_rec(
       if(component.is_nil())
         throw "update: failed to find struct component";
 
-      const typet &new_type = component.type();
+      const typet &new_type=ns.follow(component.type());
 
       std::size_t new_offset=offset+struct_offset;
 
@@ -145,9 +148,10 @@ void boolbvt::convert_update_rec(
       convert_update_rec(
         designators, d+1, new_type, new_offset, new_value, bv);
     }
-    else if(ns.follow(type).id() == ID_union)
+    else if(type.id()==ID_union)
     {
-      const union_typet &union_type = to_union_type(ns.follow(type));
+      const union_typet &union_type=
+        to_union_type(type);
 
       const union_typet::componentt &component=
         union_type.get_component(component_name);
@@ -157,7 +161,7 @@ void boolbvt::convert_update_rec(
 
       // this only adjusts the type, the offset stays as-is
 
-      const typet &new_type = component.type();
+      const typet &new_type=ns.follow(component.type());
 
       // recursive call
       convert_update_rec(

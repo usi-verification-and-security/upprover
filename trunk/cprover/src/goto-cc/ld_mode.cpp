@@ -96,9 +96,6 @@ int ld_modet::doit()
   // determine actions to be undertaken
   compiler.mode = compilet::LINK_LIBRARY;
 
-  // model validation
-  compiler.validate_goto_model = cmdline.isset("validate-goto-model");
-
   // get configuration
   config.set(cmdline);
 
@@ -123,7 +120,7 @@ int ld_modet::doit()
   }
   else
   {
-    compiler.output_file_object.clear();
+    compiler.output_file_object = "";
     compiler.output_file_executable = "a.out";
   }
 
@@ -212,11 +209,7 @@ int ld_modet::ld_hybrid_binary(compilet &compiler)
     std::string native_linker = linker_name(cmdline, base_name);
 
     result = hybrid_binary(
-      native_linker,
-      goto_binary,
-      output_file,
-      compiler.mode == compilet::COMPILE_LINK_EXECUTABLE,
-      get_message_handler());
+      native_linker, goto_binary, output_file, get_message_handler());
   }
 
   return result;

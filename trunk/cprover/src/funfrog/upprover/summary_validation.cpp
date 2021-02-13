@@ -408,9 +408,8 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     decider->get_solver()->reset_solver();
     
     partitioning_target_equationt equation(ns, *summary_store, true, message_handler);
-    auto exploration_strategy = "fifo";
-    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
-    guard_managert guard_manager;
+    std::unique_ptr<path_storaget> worklist;
+    //guard_managert guard_manager;
     symex_assertion_sumt symex{get_goto_functions(),
                                node,
                                options, *worklist,
@@ -422,8 +421,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
                                omega.is_single_assertion_check(),
                                !options.get_bool_option("no-error-trace"),
                                options.get_unsigned_int_option("unwind"),
-                               options.get_bool_option("partial-loops"),
-                               guard_manager
+                               options.get_bool_option("partial-loops")
     };
 //  assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
     assertion_infot assertion_info; // MB: It turns out we need to consider the assertions, in case the summary contains the err symbol.
@@ -625,8 +623,7 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
                                                message_handler);//true:all-claims
     
         std::unique_ptr<path_storaget> worklist;
-        guard_managert guard_manager;
-        
+
         symex_assertion_sumt symex{get_goto_functions(),
                                    *current_parent,
                                    options, *worklist,
@@ -639,8 +636,7 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
                                    omega.is_single_assertion_check(),
                                    !options.get_bool_option("no-error-trace"),
                                    options.get_unsigned_int_option("unwind"),
-                                   options.get_bool_option("partial-loops"),
-                                   guard_manager
+                                   options.get_bool_option("partial-loops")
         };
 //      assertion_infot assertion_info((std::vector<goto_programt::const_targett>()));
         assertion_infot assertion_info; //It turns out we need to consider the assertions, in case the summary contains the err symbol.

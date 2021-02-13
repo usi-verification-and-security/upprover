@@ -12,8 +12,7 @@ Author: Matt Lewis
 #include "scratch_program.h"
 
 #include <util/fixedbv.h>
-
-#include <solvers/decision_procedure.h>
+#include <util/decision_procedure.h>
 
 #include <goto-symex/slice.h>
 
@@ -23,11 +22,11 @@ Author: Matt Lewis
 #include <iostream>
 #endif
 
-bool scratch_programt::check_sat(bool do_slice, guard_managert &guard_manager)
+bool scratch_programt::check_sat(bool do_slice)
 {
   fix_types();
 
-  add(goto_programt::make_end_function());
+  add_instruction(END_FUNCTION);
 
   remove_skip(*this);
 
@@ -36,20 +35,7 @@ bool scratch_programt::check_sat(bool do_slice, guard_managert &guard_manager)
   output(ns, "scratch", std::cout);
 #endif
 
-  symex_state = util_make_unique<goto_symex_statet>(
-    symex_targett::sourcet(goto_functionst::entry_point(), *this),
-    DEFAULT_MAX_FIELD_SENSITIVITY_ARRAY_SIZE,
-    guard_manager,
-    [this](const irep_idt &id) {
-      return path_storage.get_unique_l2_index(id);
-    });
-
-  symex.symex_with_state(
-    *symex_state,
-    [this](const irep_idt &key) -> const goto_functionst::goto_functiont & {
-      return functions.function_map.at(key);
-    },
-    symex_symbol_table);
+  symex.symex_with_state(symex_state, functions, symex_symbol_table);
 
   if(do_slice)
   {
@@ -71,12 +57,16 @@ bool scratch_programt::check_sat(bool do_slice, guard_managert &guard_manager)
   std::cout << "Finished symex, invoking decision procedure.\n";
 #endif
 
-  return ((*checker)() == decision_proceduret::resultt::D_SATISFIABLE);
+  return (checker->dec_solve()==decision_proceduret::resultt::D_SATISFIABLE);
 }
 
 exprt scratch_programt::eval(const exprt &e)
 {
-  return checker->get(symex_state->rename<L2>(e, ns).get());
+  exprt ssa=e;
+
+  symex_state.rename(ssa, ns);
+
+  return checker->get(ssa);
 }
 
 void scratch_programt::append(goto_programt::instructionst &new_instructions)
@@ -91,12 +81,19 @@ goto_programt::targett scratch_programt::assign(
   const exprt &lhs,
   const exprt &rhs)
 {
-  return add(goto_programt::make_assignment(lhs, rhs));
+  code_assignt assignment(lhs, rhs);
+  targett instruction=add_instruction(ASSIGN);
+  instruction->code=assignment;
+
+  return instruction;
 }
 
 goto_programt::targett scratch_programt::assume(const exprt &guard)
 {
-  return add(goto_programt::make_assumption(guard));
+  targett instruction=add_instruction(ASSUME);
+  instruction->guard=guard;
+
+  return instruction;
 }
 
 static void fix_types(exprt &expr)
@@ -113,14 +110,13 @@ static void fix_types(exprt &expr)
      expr.id()==ID_ge ||
      expr.id()==ID_le)
   {
-    auto &rel_expr = to_binary_relation_expr(expr);
-    exprt &lhs = rel_expr.lhs();
-    exprt &rhs = rel_expr.rhs();
+    exprt &lhs=expr.op0();
+    exprt &rhs=expr.op1();
 
     if(lhs.type()!=rhs.type())
     {
       typecast_exprt typecast(rhs, lhs.type());
-      rel_expr.rhs().swap(typecast);
+      expr.op1().swap(typecast);
     }
   }
 }
@@ -143,9 +139,7 @@ void scratch_programt::fix_types()
     }
     else if(it->is_assume() || it->is_assert())
     {
-      exprt cond = it->get_condition();
-      ::fix_types(cond);
-      it->set_condition(cond);
+      ::fix_types(it->guard);
     }
   }
 }
@@ -164,12 +158,12 @@ void scratch_programt::append_path(patht &path)
     {
       if(it->guard.id()!=ID_nil)
       {
-        add(goto_programt::make_assumption(it->guard));
+        add_instruction(ASSUME)->guard=it->guard;
       }
     }
     else if(it->loc->is_assert())
     {
-      add(goto_programt::make_assumption(it->loc->get_condition()));
+      add_instruction(ASSUME)->guard=it->loc->guard;
     }
   }
 }
@@ -192,7 +186,7 @@ void scratch_programt::append_loop(
   (void)loop_header; // unused parameter
   assume(false_exprt());
 
-  goto_programt::targett end = add(goto_programt::make_skip());
+  goto_programt::targett end=add_instruction(SKIP);
 
   update();
 

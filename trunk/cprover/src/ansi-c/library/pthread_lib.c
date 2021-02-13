@@ -293,25 +293,10 @@ inline int pthread_mutex_destroy(pthread_mutex_t *mutex)
 extern __CPROVER_bool __CPROVER_threads_exited[];
 extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
 
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
-extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
-
 inline void pthread_exit(void *value_ptr)
 {
   __CPROVER_HIDE:;
   if(value_ptr!=0) (void)*(char*)value_ptr;
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
-  {
-    const void *key = __CPROVER_thread_keys[i];
-    __CPROVER_thread_keys[i] = 0;
-    if(__CPROVER_thread_key_dtors[i] && key)
-      __CPROVER_thread_key_dtors[i](key);
-  }
-#endif
   __CPROVER_threads_exited[__CPROVER_thread_id]=1;
   __CPROVER_assume(0);
 }
@@ -539,59 +524,6 @@ extern __CPROVER_bool __CPROVER_threads_exited[];
 extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
 extern unsigned long __CPROVER_next_thread_id;
 
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
-extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
-
-inline void __spawned_thread(
-  unsigned long this_thread_id,
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  void (**thread_key_dtors)(void *),
-#endif
-  unsigned long next_thread_key,
-  void *(*start_routine)(void *),
-  void *arg)
-{
-__CPROVER_HIDE:;
-  __CPROVER_thread_id = this_thread_id;
-  __CPROVER_next_thread_key = next_thread_key;
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
-    __CPROVER_thread_key_dtors[i] = thread_key_dtors[i];
-#endif
-#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
-  // Clear all locked mutexes; locking must happen in same thread.
-  __CPROVER_clear_must(0, "mutex-locked");
-  __CPROVER_clear_may(0, "mutex-locked");
-#endif
-  start_routine(arg);
-  __CPROVER_fence(
-    "WWfence",
-    "RRfence",
-    "RWfence",
-    "WRfence",
-    "WWcumul",
-    "RRcumul",
-    "RWcumul",
-    "WRcumul");
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  for(unsigned long i = 0; i < __CPROVER_next_thread_key; ++i)
-  {
-    const void *key = __CPROVER_thread_keys[i];
-    __CPROVER_thread_keys[i] = 0;
-    if(__CPROVER_thread_key_dtors[i] && key)
-      __CPROVER_thread_key_dtors[i](key);
-  }
-#endif
-  __CPROVER_threads_exited[this_thread_id] = 1;
-}
-
 inline int pthread_create(
   pthread_t *thread, // must not be null
   const pthread_attr_t *attr, // may be null
@@ -613,26 +545,19 @@ inline int pthread_create(
 
   if(attr) (void)*attr;
 
-  unsigned long next_thread_key = __CPROVER_next_thread_key;
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  void (**thread_key_dtors)(void *) = __CPROVER_thread_key_dtors;
-#endif
-
   __CPROVER_ASYNC_1:
-    __spawned_thread(
-      this_thread_id,
-#if 0
-      // Destructor support is disabled as it is too expensive due to its
-      // extensive use of shared variables.
-      thread_key_dtors,
-#endif
-      next_thread_key,
-      start_routine,
-      arg);
+    __CPROVER_thread_id=this_thread_id,
+    #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+    // Clear all locked mutexes; locking must happen in same thread.
+    __CPROVER_clear_must(0, "mutex-locked"),
+    __CPROVER_clear_may(0, "mutex-locked"),
+    #endif
+    start_routine(arg),
+    __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
+                    "WWcumul", "RRcumul", "RWcumul", "WRcumul"),
+    __CPROVER_threads_exited[this_thread_id]=1;
 
-    return 0;
+  return 0;
 }
 
 /* FUNCTION: pthread_cond_init */
@@ -711,8 +636,8 @@ inline int pthread_cond_wait(
   #endif
 
   __CPROVER_atomic_begin();
-  if(*((unsigned *)cond))
-    (*((unsigned *)cond))--;
+  __CPROVER_assume(*((unsigned *)cond));
+  (*((unsigned *)cond))--;
   __CPROVER_atomic_end();
 
   return 0; // we never fail
@@ -806,8 +731,7 @@ int pthread_spin_trylock(pthread_spinlock_t *lock)
 int __VERIFIER_nondet_int();
 
 // no pthread_barrier_t on the Mac
-// slightly different declaration on OpenBSD
-#if !defined(__APPLE__) && !defined(__OpenBSD__)
+#ifndef __APPLE__
 inline int pthread_barrier_init(
   pthread_barrier_t *restrict barrier,
   const pthread_barrierattr_t *restrict attr, unsigned count)
@@ -823,28 +747,6 @@ inline int pthread_barrier_init(
   #endif
 
   int result=__VERIFIER_nondet_int();
-  return result;
-}
-#endif
-
-// pthread_barrier_init has a slightly different decl on OpenBSD
-#if defined(__OpenBSD__)
-inline int pthread_barrier_init(
-  pthread_barrier_t *restrict barrier,
-  pthread_barrierattr_t *restrict attr,
-  unsigned count)
-{
-__CPROVER_HIDE:;
-  (void)barrier;
-  (void)attr;
-  (void)count;
-
-#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
-  __CPROVER_set_must(barrier, "barrier-init");
-  __CPROVER_clear_may(barrier, "barrier-destroyed");
-#endif
-
-  int result = __VERIFIER_nondet_int();
   return result;
 }
 #endif
@@ -907,76 +809,3 @@ inline int pthread_barrier_wait(pthread_barrier_t *barrier)
   return result;
 }
 #endif
-
-/* FUNCTION: pthread_key_create */
-
-#ifndef __CPROVER_PTHREAD_H_INCLUDED
-#include <pthread.h>
-#define __CPROVER_PTHREAD_H_INCLUDED
-#endif
-
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-extern __CPROVER_thread_local void (*__CPROVER_thread_key_dtors[])(void *);
-extern __CPROVER_thread_local unsigned long __CPROVER_next_thread_key;
-
-inline int pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
-{
-__CPROVER_HIDE:;
-  __CPROVER_thread_keys[__CPROVER_next_thread_key] = 0;
-#if 0
-  // Destructor support is disabled as it is too expensive due to its extensive
-  // use of shared variables.
-  __CPROVER_thread_key_dtors[__CPROVER_next_thread_key] = destructor;
-#else
-  __CPROVER_precondition(destructor == 0, "destructors are not yet supported");
-#endif
-  *key = __CPROVER_next_thread_key++;
-  return 0;
-}
-
-/* FUNCTION: pthread_key_delete */
-
-#ifndef __CPROVER_PTHREAD_H_INCLUDED
-#include <pthread.h>
-#define __CPROVER_PTHREAD_H_INCLUDED
-#endif
-
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-
-inline int pthread_key_delete(pthread_key_t key)
-{
-__CPROVER_HIDE:;
-  __CPROVER_thread_keys[key] = 0;
-  return 0;
-}
-
-/* FUNCTION: pthread_getspecific */
-
-#ifndef __CPROVER_PTHREAD_H_INCLUDED
-#include <pthread.h>
-#define __CPROVER_PTHREAD_H_INCLUDED
-#endif
-
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-
-inline void *pthread_getspecific(pthread_key_t key)
-{
-__CPROVER_HIDE:;
-  return (void *)__CPROVER_thread_keys[key];
-}
-
-/* FUNCTION: pthread_setspecific */
-
-#ifndef __CPROVER_PTHREAD_H_INCLUDED
-#include <pthread.h>
-#define __CPROVER_PTHREAD_H_INCLUDED
-#endif
-
-extern __CPROVER_thread_local const void *__CPROVER_thread_keys[];
-
-inline int pthread_setspecific(pthread_key_t key, const void *value)
-{
-__CPROVER_HIDE:;
-  __CPROVER_thread_keys[key] = value;
-  return 0;
-}

@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \********************************************************************/
 
+
 /// \file
 /// C++ Language Type Checking
 
@@ -30,7 +31,9 @@ void cpp_typecheckt::convert(cpp_declarationt &declaration)
     convert_non_template_declaration(declaration);
 }
 
-codet cpp_typecheckt::convert_anonymous_union(cpp_declarationt &declaration)
+void cpp_typecheckt::convert_anonymous_union(
+  cpp_declarationt &declaration,
+  codet &code)
 {
   codet new_code(ID_decl_block);
   new_code.reserve_operands(declaration.declarators().size());
@@ -54,18 +57,20 @@ codet cpp_typecheckt::convert_anonymous_union(cpp_declarationt &declaration)
     throw 0;
   }
 
-  new_code.add_to_operands(code_declt(cpp_symbol_expr(symbol)));
+  code_declt decl_statement(cpp_symbol_expr(symbol));
+
+  new_code.move_to_operands(decl_statement);
 
   // do scoping
-  symbolt union_symbol =
-    symbol_table.get_writeable_ref(follow(symbol.type).get(ID_name));
+  symbolt union_symbol=
+    *symbol_table.get_writeable(follow(symbol.type).get(ID_name));
 
   for(const auto &c : to_union_type(union_symbol.type).components())
   {
     if(c.type().id() == ID_code)
     {
       error().source_location=union_symbol.type.source_location();
-      error() << "anonymous union '" << union_symbol.base_name
+      error() << "anonymous union `" << union_symbol.base_name
               << "' shall not have function members" << eom;
       throw 0;
     }
@@ -75,7 +80,8 @@ codet cpp_typecheckt::convert_anonymous_union(cpp_declarationt &declaration)
     if(cpp_scopes.current_scope().contains(base_name))
     {
       error().source_location=union_symbol.type.source_location();
-      error() << "identifier '" << base_name << "' already in scope" << eom;
+      error() << "identifier `" << base_name << "' already in scope"
+              << eom;
       throw 0;
     }
 
@@ -89,7 +95,7 @@ codet cpp_typecheckt::convert_anonymous_union(cpp_declarationt &declaration)
   symbol_table.get_writeable_ref(union_symbol.name)
     .type.set(ID_C_unnamed_object, symbol.base_name);
 
-  return new_code;
+  code.swap(new_code);
 }
 
 void cpp_typecheckt::convert_non_template_declaration(
@@ -115,7 +121,7 @@ void cpp_typecheckt::convert_non_template_declaration(
 
   // mark as 'already typechecked'
   if(!declaration.declarators().empty())
-    already_typechecked_typet::make_already_typechecked(declaration_type);
+    make_already_typechecked(declaration_type);
 
   // Special treatment for anonymous unions
   if(declaration.declarators().empty() &&
@@ -131,7 +137,8 @@ void cpp_typecheckt::convert_non_template_declaration(
       throw 0;
     }
 
-    convert_anonymous_union(declaration);
+    codet dummy;
+    convert_anonymous_union(declaration, dummy);
   }
 
   // do the declarators (optional)

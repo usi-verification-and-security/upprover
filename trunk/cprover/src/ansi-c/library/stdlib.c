@@ -65,20 +65,11 @@ __CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
 
 inline void *calloc(__CPROVER_size_t nmemb, __CPROVER_size_t size)
 {
-__CPROVER_HIDE:;
-#pragma CPROVER check push
-#pragma CPROVER check disable "unsigned-overflow"
-  if(__CPROVER_overflow_mult(nmemb, size))
-    return (void *)0;
-  // This is now safe; still do it within the scope of the pragma to avoid an
-  // unnecessary assertion to be generated.
-  __CPROVER_size_t alloc_size = nmemb * size;
-#pragma CPROVER check pop
-
-  void *malloc_res;
   // realistically, calloc may return NULL,
   // and __CPROVER_allocate doesn't, but no one cares
-  malloc_res = __CPROVER_allocate(alloc_size, 1);
+  __CPROVER_HIDE:;
+  void *malloc_res;
+  malloc_res = __CPROVER_allocate(nmemb * size, 1);
 
   // make sure it's not recorded as deallocated
   __CPROVER_deallocated =
@@ -88,7 +79,7 @@ __CPROVER_HIDE:;
   __CPROVER_bool record_malloc = __VERIFIER_nondet___CPROVER_bool();
   __CPROVER_malloc_object =
     record_malloc ? malloc_res : __CPROVER_malloc_object;
-  __CPROVER_malloc_size = record_malloc ? alloc_size : __CPROVER_malloc_size;
+  __CPROVER_malloc_size = record_malloc ? nmemb * size : __CPROVER_malloc_size;
   __CPROVER_malloc_is_new_array =
     record_malloc ? 0 : __CPROVER_malloc_is_new_array;
 
@@ -137,7 +128,6 @@ inline void *malloc(__CPROVER_size_t malloc_size)
 /* FUNCTION: __builtin_alloca */
 
 __CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
-extern void *__CPROVER_alloca_object;
 
 inline void *__builtin_alloca(__CPROVER_size_t alloca_size)
 {
@@ -154,23 +144,7 @@ inline void *__builtin_alloca(__CPROVER_size_t alloca_size)
   __CPROVER_malloc_size=record_malloc?alloca_size:__CPROVER_malloc_size;
   __CPROVER_malloc_is_new_array=record_malloc?0:__CPROVER_malloc_is_new_array;
 
-  // record alloca to detect invalid free
-  __CPROVER_bool record_alloca = __VERIFIER_nondet___CPROVER_bool();
-  __CPROVER_alloca_object = record_alloca ? res : __CPROVER_alloca_object;
-
   return res;
-}
-
-/* FUNCTION: alloca */
-
-#undef alloca
-
-void *__builtin_alloca(__CPROVER_size_t alloca_size);
-
-inline void *alloca(__CPROVER_size_t alloca_size)
-{
-__CPROVER_HIDE:;
-  return __builtin_alloca(alloca_size);
 }
 
 /* FUNCTION: free */
@@ -178,15 +152,11 @@ __CPROVER_HIDE:;
 #undef free
 
 __CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
-extern void *__CPROVER_alloca_object;
 
 inline void free(void *ptr)
 {
   __CPROVER_HIDE:;
   // If ptr is NULL, no operation is performed.
-  __CPROVER_precondition(
-    ptr == 0 || __CPROVER_r_ok(ptr, 0),
-    "free argument must be NULL or valid pointer");
   __CPROVER_precondition(ptr==0 || __CPROVER_DYNAMIC_OBJECT(ptr),
                          "free argument must be dynamic object");
   __CPROVER_precondition(ptr==0 || __CPROVER_POINTER_OFFSET(ptr)==0,
@@ -202,11 +172,6 @@ inline void free(void *ptr)
                          __CPROVER_malloc_object!=ptr ||
                          !__CPROVER_malloc_is_new_array,
                          "free called for new[] object");
-
-  // catch people who try to use free(...) with alloca
-  __CPROVER_precondition(
-    ptr == 0 || __CPROVER_alloca_object != ptr,
-    "free called for stack-allocated object");
 
   if(ptr!=0)
   {

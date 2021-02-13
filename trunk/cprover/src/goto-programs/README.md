@@ -19,7 +19,7 @@ values if they are not initialised. Goto programs can be serialised
 in a binary (wrapped in ELF headers) format or in XML (see the various
 `_serialization` files).
 
-The `cbmc` option `--show-goto-functions` is often a good starting point
+The `cbmc` option `--show-goto-programs` is often a good starting point
 as it outputs goto-programs in a human readable form. However there are
 a few things to be aware of. Functions have an internal name (for
 example `c::f00`) and a ‘pretty name’ (for example `f00`) and which is
@@ -298,52 +298,6 @@ In converting to a GOTO program this structure is changed in several ways:
   instruction. Each goto_programt should have precisely one such
   instruction.
 
-\subsection subsection-goto-function-example Example goto-program
-
-The following C program, in a file named `mult.c`:
-
-```
-unsigned mult(unsigned a, unsigned b)
-{
-  int acc = 0, i;
-  for (i = 0; i < b; i++)
-    acc += a;
-  return acc;
-}
-```
-
-is translated by `cbmc --show-goto-functions mult.c` into:
-
-```
-mult /* mult */
-        // 0 file third.c line 2 function mult
-        signed int acc;
-        // 1 file third.c line 2 function mult
-        acc = 0;
-        // 2 file third.c line 2 function mult
-        signed int i;
-        // 3 file third.c line 3 function mult
-        i = 0;
-        // 4 file third.c line 3 function mult
-     1: IF !((unsigned int)i < b) THEN GOTO 2
-        // 5 file third.c line 4 function mult
-        acc = (signed int)((unsigned int)acc + a);
-        // 6 file third.c line 3 function mult
-        i = i + 1;
-        // 7 file third.c line 3 function mult
-        GOTO 1
-        // 8 file third.c line 5 function mult
-     2: mult#return_value = (unsigned int)acc;
-        // 9 file third.c line 5 function mult
-        dead i;
-        // 10 file third.c line 5 function mult
-        dead acc;
-        // 11 file third.c line 6 function mult
-        END_FUNCTION
-```
-
-(The above result was produced using `cbmc version 5.11`)
-
 \section section-goto-transforms Subsequent Transformation
 
 It is normal for a program that calls `goto_convert` to immediately pass the
@@ -570,6 +524,7 @@ then it performs 'linking' of the temporary into a passed destination
 Details about linking of `::goto_modelt` instances can be found
 [here](\ref section-linking-goto-models).
 
+
 \section section-linking-goto-models Linking Goto Models
 
 C++ modules:
@@ -579,79 +534,3 @@ C++ modules:
 Dependencies:
   - [linking folder](\ref linking).
   - [typecheck](\ref section-goto-typecheck).
-
-\section goto-trace-structure Goto Trace Structure
-
-In the \ref goto-programs directory.
-
-**Key classes:**
-* \ref goto_tracet
-* \ref goto_trace_stept
-* \ref goto_trace_stept::typet
-
-A trace represents the execution of a program as a series of steps. The class 
-\ref goto_tracet contains an ordered list of \ref goto_trace_stept, each 
-representing a step. The main step types used in a program are:
-- function call
-- function return
-- assignment
-
-There are many types of step in goto_trace_stept, which are listed here: 
-\ref goto_trace_stept::typet, but this overview will focus on the main types 
-used.
-
-\subsection general-step-structure General Step Structure
-
-Every goto_trace_stept has a type (\ref goto_trace_stept::typet), e.g. function
-call. The type of a step can be checked using the boolean functions such as 
-\ref goto_trace_stept::is_function_call(). 
-
-The meaning of the remainder of the members of goto_trace_stept depend on the
-step type.
-
-\subsection function-call-step-structure Function Calls
-
-A function call step has the \ref goto_trace_stept::typet
-\ref goto_trace_stept::typet::FUNCTION_CALL
-and signifies that the program is calling a function.
-The step contains a valid identifier of the function being called
-(\ref goto_trace_stept::called_function), a vector of the function arguments
-(\ref goto_trace_stept::function_arguments) and the identifier of the function
-of the call site (\ref goto_trace_stept::function_id).
-
-Following a function call, \ref assignment-step-structure assignments are made
-to each parameter, if there are any, including the `this` parameter.
-
-\subsection function-return-step-structure Function Return
-
-A function return step has the \ref goto_trace_stept::typet
-\ref goto_trace_stept::typet::FUNCTION_RETURN and signifies that the program is 
-exiting a function. \ref goto_trace_stept::function_id is the function being
-returned from.
-
-If the function has a return value, an \ref assignment-step-structure
-assignment will be made to a variable with identifier with suffix
-\ref remove_returns::RETURN_VALUE_SUFFIX.
-
-\subsection assignment-step-structure Assignment
-
-An assignment step has the \ref goto_trace_stept::typet
-\ref goto_trace_stept::typet::ASSIGNMENT and signifies that the program is
-making an assignment to a variable. For an assignment LHS = RHS, the step
-contains the symbol representing the LHS
-(\ref goto_trace_stept::full_lhs) and the value expression representing the RHS
-(\ref goto_trace_stept::full_lhs_value).
-
-
-\subsection other-steps Other steps
-
-In a trace of a program, there are other step types that are internal
-including:
-- \ref goto_trace_stept::typet::ASSERT (failure), used in bytecode
-instrumentation and properties
-- \ref goto_trace_stept::typet::LOCATION (location-only), appears in the
-trace when the source location changes.
-
-\subsection java-assignments Java Assignments
-
-See \ref java-trace.

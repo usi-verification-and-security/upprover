@@ -11,9 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "options.h"
 
-#include "constructor_of.h"
 #include "json.h"
-#include "range.h"
 #include "string2int.h"
 #include "xml.h"
 
@@ -92,12 +90,14 @@ const optionst::value_listt &optionst::get_list_option(
 /// Returns the options as JSON key value pairs
 json_objectt optionst::to_json() const
 {
-  return make_range(option_map)
-    .map([](const std::pair<std::string, value_listt> &option_pair) {
-      return std::pair<std::string, json_arrayt>{
-        option_pair.first,
-        make_range(option_pair.second).map(constructor_of<json_stringt>())};
-    });
+  json_objectt json_options;
+  for(const auto &option_pair : option_map)
+  {
+    json_arrayt &values = json_options[option_pair.first].make_array();
+    for(const auto &value : option_pair.second)
+      values.push_back(json_stringt(value));
+  }
+  return json_options;
 }
 
 /// Returns the options in XML format

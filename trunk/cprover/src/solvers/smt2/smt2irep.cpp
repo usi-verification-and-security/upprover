@@ -8,8 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "smt2irep.h"
 
-#include <util/message.h>
-
 #include <stack>
 
 #include "smt2_tokenizer.h"
@@ -17,38 +15,44 @@ Author: Daniel Kroening, kroening@kroening.com
 class smt2irept:public smt2_tokenizert
 {
 public:
-  smt2irept(std::istream &_in, message_handlert &message_handler)
-    : smt2_tokenizert(_in), log(message_handler)
+  explicit smt2irept(std::istream &_in):smt2_tokenizert(_in)
   {
   }
 
-  optionalt<irept> operator()();
+  inline irept operator()()
+  {
+    parse();
+    return result;
+  }
+
+  bool parse() override;
 
 protected:
-  messaget log;
+  irept result;
 };
 
-optionalt<irept> smt2irept::operator()()
+bool smt2irept::parse()
 {
   try
   {
     std::stack<irept> stack;
+    result.clear();
 
     while(true)
     {
       switch(next_token())
       {
       case END_OF_FILE:
-        if(stack.empty())
-          return {};
-        else
-          throw error("unexpected end of file");
+        throw error("unexpected end of file");
 
       case STRING_LITERAL:
       case NUMERAL:
       case SYMBOL:
         if(stack.empty())
-          return irept(buffer); // all done!
+        {
+          result = irept(buffer);
+          return false; // all done!
+        }
         else
           stack.top().get_sub().push_back(irept(buffer));
         break;
@@ -68,27 +72,29 @@ optionalt<irept> smt2irept::operator()()
           stack.pop();
 
           if(stack.empty())
-            return tmp; // all done!
+          {
+            result = tmp;
+            return false; // all done!
+          }
 
           stack.top().get_sub().push_back(tmp);
           break;
         }
 
-      case NONE:
-      case KEYWORD:
+      default:
         throw error("unexpected token");
       }
     }
   }
   catch(const smt2_errort &e)
   {
-    log.error().source_location.set_line(e.get_line_no());
-    log.error() << e.what() << messaget::eom;
-    return {};
+    messaget::error().source_location.set_line(e.get_line_no());
+    messaget::error() << e.what() << eom;
+    return true;
   }
 }
 
-optionalt<irept> smt2irep(std::istream &in, message_handlert &message_handler)
+irept smt2irep(std::istream &in)
 {
-  return smt2irept(in, message_handler)();
+  return smt2irept(in)();
 }

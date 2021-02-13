@@ -14,16 +14,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <ostream>
 #include <iomanip>
 
-#include <util/base_type.h>
 #include <util/expr_iterator.h>
 #include <util/find_symbols.h>
-#include <util/invariant.h>
 #include <util/std_expr.h>
 #include <util/validate.h>
 
 #include <langapi/language_util.h>
-
-#include "remove_returns.h"
 
 /// Writes to \p out a two/three line string representation of a given
 /// \p instruction. The output is of the format:
@@ -74,29 +70,23 @@ std::ostream &goto_programt::output_instruction(
     break;
 
   case GOTO:
-  case INCOMPLETE_GOTO:
-    if(!instruction.get_condition().is_true())
+    if(!instruction.guard.is_true())
     {
-      out << "IF " << from_expr(ns, identifier, instruction.get_condition())
+      out << "IF "
+          << from_expr(ns, identifier, instruction.guard)
           << " THEN ";
     }
 
     out << "GOTO ";
 
-    if(instruction.is_incomplete_goto())
+    for(instructiont::targetst::const_iterator
+        gt_it=instruction.targets.begin();
+        gt_it!=instruction.targets.end();
+        gt_it++)
     {
-      out << "(incomplete)";
-    }
-    else
-    {
-      for(auto gt_it = instruction.targets.begin();
-          gt_it != instruction.targets.end();
-          gt_it++)
-      {
-        if(gt_it != instruction.targets.begin())
-          out << ", ";
-        out << (*gt_it)->target_number;
-      }
+      if(gt_it!=instruction.targets.begin())
+        out << ", ";
+      out << (*gt_it)->target_number;
     }
 
     out << '\n';
@@ -119,10 +109,10 @@ std::ostream &goto_programt::output_instruction(
       out << "ASSERT ";
 
     {
-      out << from_expr(ns, identifier, instruction.get_condition());
+      out << from_expr(ns, identifier, instruction.guard);
 
       const irep_idt &comment=instruction.source_location.get_comment();
-      if(!comment.empty())
+      if(comment!="")
         out << " // " << comment;
     }
 
@@ -221,6 +211,9 @@ std::ostream &goto_programt::output_instruction(
   case END_THREAD:
     out << "END THREAD" << '\n';
     break;
+
+  default:
+    UNREACHABLE;
   }
 
   return out;
@@ -280,47 +273,36 @@ std::list<exprt> expressions_read(
   case ASSUME:
   case ASSERT:
   case GOTO:
-    dest.push_back(instruction.get_condition());
+    dest.push_back(instruction.guard);
     break;
 
   case RETURN:
-    if(instruction.get_return().return_value().is_not_nil())
-      dest.push_back(instruction.get_return().return_value());
+    if(to_code_return(instruction.code).return_value().is_not_nil())
+      dest.push_back(to_code_return(instruction.code).return_value());
     break;
 
   case FUNCTION_CALL:
-  {
-    const code_function_callt &function_call = instruction.get_function_call();
-    forall_expr(it, function_call.arguments())
-      dest.push_back(*it);
-    if(function_call.lhs().is_not_nil())
-      parse_lhs_read(function_call.lhs(), dest);
+    {
+      const code_function_callt &function_call=
+        to_code_function_call(instruction.code);
+      forall_expr(it, function_call.arguments())
+        dest.push_back(*it);
+      if(function_call.lhs().is_not_nil())
+        parse_lhs_read(function_call.lhs(), dest);
+    }
     break;
-  }
 
   case ASSIGN:
-  {
-    const code_assignt &assignment = instruction.get_assign();
-    dest.push_back(assignment.rhs());
-    parse_lhs_read(assignment.lhs(), dest);
+    {
+      const code_assignt &assignment=to_code_assign(instruction.code);
+      dest.push_back(assignment.rhs());
+      parse_lhs_read(assignment.lhs(), dest);
+    }
     break;
-  }
 
-  case CATCH:
-  case THROW:
-  case DEAD:
-  case DECL:
-  case ATOMIC_BEGIN:
-  case ATOMIC_END:
-  case START_THREAD:
-  case END_THREAD:
-  case END_FUNCTION:
-  case LOCATION:
-  case SKIP:
-  case OTHER:
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    break;
+  default:
+    {
+    }
   }
 
   return dest;
@@ -335,36 +317,20 @@ std::list<exprt> expressions_written(
   {
   case FUNCTION_CALL:
     {
-      const code_function_callt &function_call =
-        instruction.get_function_call();
+      const code_function_callt &function_call=
+        to_code_function_call(instruction.code);
       if(function_call.lhs().is_not_nil())
         dest.push_back(function_call.lhs());
     }
     break;
 
   case ASSIGN:
-    dest.push_back(instruction.get_assign().lhs());
+    dest.push_back(to_code_assign(instruction.code).lhs());
     break;
 
-  case CATCH:
-  case THROW:
-  case GOTO:
-  case RETURN:
-  case DEAD:
-  case DECL:
-  case ATOMIC_BEGIN:
-  case ATOMIC_END:
-  case START_THREAD:
-  case END_THREAD:
-  case END_FUNCTION:
-  case ASSERT:
-  case ASSUME:
-  case LOCATION:
-  case SKIP:
-  case OTHER:
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    break;
+  default:
+    {
+    }
   }
 
   return dest;
@@ -436,7 +402,6 @@ std::list<exprt> objects_written(
 
 std::string as_string(
   const class namespacet &ns,
-  const irep_idt &function,
   const goto_programt::instructiont &i)
 {
   std::string result;
@@ -447,9 +412,11 @@ std::string as_string(
     return "(NO INSTRUCTION TYPE)";
 
   case GOTO:
-    if(!i.get_condition().is_true())
+    if(!i.guard.is_true())
     {
-      result += "IF " + from_expr(ns, function, i.get_condition()) + " THEN ";
+      result+="IF "
+            +from_expr(ns, i.function, i.guard)
+            +" THEN ";
     }
 
     result+="GOTO ";
@@ -471,7 +438,7 @@ std::string as_string(
   case DEAD:
   case FUNCTION_CALL:
   case ASSIGN:
-    return from_expr(ns, function, i.code);
+    return from_expr(ns, i.function, i.code);
 
   case ASSUME:
   case ASSERT:
@@ -480,11 +447,11 @@ std::string as_string(
     else
       result+="ASSERT ";
 
-    result += from_expr(ns, function, i.get_condition());
+    result+=from_expr(ns, i.function, i.guard);
 
     {
       const irep_idt &comment=i.source_location.get_comment();
-      if(!comment.empty())
+      if(comment!="")
         result+=" /* "+id2string(comment)+" */";
     }
     return result;
@@ -520,11 +487,9 @@ std::string as_string(
   case END_THREAD:
     return "END THREAD";
 
-  case INCOMPLETE_GOTO:
+  default:
     UNREACHABLE;
   }
-
-  UNREACHABLE;
 }
 
 /// Assign each loop in the goto program a unique index. Every backwards goto is
@@ -667,7 +632,7 @@ void goto_programt::copy_from(const goto_programt &src)
 bool goto_programt::has_assertion() const
 {
   for(const auto &i : instructions)
-    if(i.is_assert() && !i.get_condition().is_true())
+    if(i.is_assert() && !i.guard.is_true())
       return true;
 
   return false;
@@ -713,10 +678,17 @@ void goto_programt::instructiont::validate(
   validate_full_code(code, ns, vm);
   validate_full_expr(guard, ns, vm);
 
+  const symbolt *table_symbol;
+  DATA_CHECK_WITH_DIAGNOSTICS(
+    vm,
+    !ns.lookup(function, table_symbol),
+    id2string(function) + " not found",
+    source_location);
+
   auto expr_symbol_finder = [&](const exprt &e) {
     find_symbols_sett typetags;
     find_type_symbols(e.type(), typetags);
-    find_symbols_or_nexts(e, typetags);
+    find_symbols(e, typetags);
     const symbolt *symbol;
     for(const auto &identifier : typetags)
     {
@@ -730,73 +702,23 @@ void goto_programt::instructiont::validate(
 
   auto &current_source_location = source_location;
   auto type_finder =
-    [&ns, vm, &current_source_location](const exprt &e) {
+    [&ns, vm, &table_symbol, &current_source_location](const exprt &e) {
       if(e.id() == ID_symbol)
       {
         const auto &goto_symbol_expr = to_symbol_expr(e);
         const auto &goto_id = goto_symbol_expr.get_identifier();
 
-        const symbolt *table_symbol;
         if(!ns.lookup(goto_id, table_symbol))
-        {
-          bool symbol_expr_type_matches_symbol_table =
-            base_type_eq(goto_symbol_expr.type(), table_symbol->type, ns);
-
-          if(
-            !symbol_expr_type_matches_symbol_table &&
-            table_symbol->type.id() == ID_code)
-          {
-            // If a function declaration and its definition are in different
-            // translation units they may have different return types.
-            // Thus, the return type in the symbol table may differ
-            // from the return type in the symbol expr.
-            if(
-              goto_symbol_expr.type().source_location().get_file() !=
-              table_symbol->type.source_location().get_file())
-            {
-              // temporarily fixup the return types
-              auto goto_symbol_expr_type =
-                to_code_type(goto_symbol_expr.type());
-              auto table_symbol_type = to_code_type(table_symbol->type);
-
-              goto_symbol_expr_type.return_type() =
-                table_symbol_type.return_type();
-
-              symbol_expr_type_matches_symbol_table =
-                base_type_eq(goto_symbol_expr_type, table_symbol_type, ns);
-            }
-          }
-
-          if(
-            !symbol_expr_type_matches_symbol_table &&
-            goto_symbol_expr.type().id() == ID_array &&
-            to_array_type(goto_symbol_expr.type()).is_incomplete())
-          {
-            // If the symbol expr has an incomplete array type, it may not have
-            // a constant size value, whereas the symbol table entry may have
-            // an (assumed) constant size of 1 (which mimics gcc behaviour)
-            if(table_symbol->type.id() == ID_array)
-            {
-              auto symbol_table_array_type = to_array_type(table_symbol->type);
-              symbol_table_array_type.size() = nil_exprt();
-
-              symbol_expr_type_matches_symbol_table =
-                goto_symbol_expr.type() == symbol_table_array_type;
-            }
-          }
-
           DATA_CHECK_WITH_DIAGNOSTICS(
             vm,
-            symbol_expr_type_matches_symbol_table,
+            base_type_eq(goto_symbol_expr.type(), table_symbol->type, ns),
             id2string(goto_id) + " type inconsistency\n" +
               "goto program type: " + goto_symbol_expr.type().id_string() +
               "\n" + "symbol table type: " + table_symbol->type.id_string(),
             current_source_location);
-        }
       }
     };
 
-  const symbolt *table_symbol;
   switch(type)
   {
   case NO_INSTRUCTION_TYPE:
@@ -870,9 +792,9 @@ void goto_programt::instructiont::validate(
       source_location);
     DATA_CHECK_WITH_DIAGNOSTICS(
       vm,
-      !ns.lookup(get_decl().get_identifier(), table_symbol),
+      !ns.lookup(to_code_decl(code).get_identifier(), table_symbol),
       "declared symbols should be known",
-      id2string(get_decl().get_identifier()),
+      id2string(to_code_decl(code).get_identifier()),
       source_location);
     break;
   case DEAD:
@@ -883,9 +805,9 @@ void goto_programt::instructiont::validate(
       source_location);
     DATA_CHECK_WITH_DIAGNOSTICS(
       vm,
-      !ns.lookup(get_dead().get_identifier(), table_symbol),
+      !ns.lookup(to_code_dead(code).get_identifier(), table_symbol),
       "removed symbols should be known",
-      id2string(get_dead().get_identifier()),
+      id2string(to_code_dead(code).get_identifier()),
       source_location);
     break;
   case FUNCTION_CALL:
@@ -904,179 +826,6 @@ void goto_programt::instructiont::validate(
     break;
   case INCOMPLETE_GOTO:
     break;
-  }
-}
-
-void goto_programt::instructiont::transform(
-  std::function<optionalt<exprt>(exprt)> f)
-{
-  switch(type)
-  {
-  case OTHER:
-    if(get_other().get_statement() == ID_expression)
-    {
-      auto new_expression = f(to_code_expression(get_other()).expression());
-      if(new_expression.has_value())
-      {
-        auto new_other = to_code_expression(get_other());
-        new_other.expression() = *new_expression;
-        set_other(new_other);
-      }
-    }
-    break;
-
-  case RETURN:
-  {
-    auto new_return_value = f(get_return().return_value());
-    if(new_return_value.has_value())
-    {
-      auto new_return = get_return();
-      new_return.return_value() = *new_return_value;
-      set_return(new_return);
-    }
-  }
-  break;
-
-  case ASSIGN:
-  {
-    auto new_assign_lhs = f(get_assign().lhs());
-    auto new_assign_rhs = f(get_assign().rhs());
-    if(new_assign_lhs.has_value() || new_assign_rhs.has_value())
-    {
-      auto new_assignment = get_assign();
-      new_assignment.lhs() = new_assign_lhs.value_or(new_assignment.lhs());
-      new_assignment.rhs() = new_assign_rhs.value_or(new_assignment.rhs());
-      set_assign(new_assignment);
-    }
-  }
-  break;
-
-  case DECL:
-  {
-    auto new_symbol = f(get_decl().symbol());
-    if(new_symbol.has_value())
-    {
-      auto new_decl = get_decl();
-      new_decl.symbol() = to_symbol_expr(*new_symbol);
-      set_decl(new_decl);
-    }
-  }
-  break;
-
-  case DEAD:
-  {
-    auto new_symbol = f(get_dead().symbol());
-    if(new_symbol.has_value())
-    {
-      auto new_dead = get_dead();
-      new_dead.symbol() = to_symbol_expr(*new_symbol);
-      set_dead(new_dead);
-    }
-  }
-  break;
-
-  case FUNCTION_CALL:
-  {
-    auto new_call = get_function_call();
-    bool change = false;
-
-    auto new_lhs = f(new_call.lhs());
-    if(new_lhs.has_value())
-    {
-      new_call.lhs() = *new_lhs;
-      change = true;
-    }
-
-    for(auto &a : new_call.arguments())
-    {
-      auto new_a = f(a);
-      if(new_a.has_value())
-      {
-        a = *new_a;
-        change = true;
-      }
-    }
-
-    if(change)
-      set_function_call(new_call);
-  }
-  break;
-
-  case GOTO:
-  case ASSUME:
-  case ASSERT:
-  case SKIP:
-  case START_THREAD:
-  case END_THREAD:
-  case LOCATION:
-  case END_FUNCTION:
-  case ATOMIC_BEGIN:
-  case ATOMIC_END:
-  case THROW:
-  case CATCH:
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    if(has_condition())
-    {
-      auto new_condition = f(get_condition());
-      if(new_condition.has_value())
-        set_condition(new_condition.value());
-    }
-  }
-}
-
-void goto_programt::instructiont::apply(
-  std::function<void(const exprt &)> f) const
-{
-  switch(type)
-  {
-  case OTHER:
-    if(get_other().get_statement() == ID_expression)
-      f(to_code_expression(get_other()).expression());
-    break;
-
-  case RETURN:
-    f(get_return().return_value());
-    break;
-
-  case ASSIGN:
-    f(get_assign().lhs());
-    f(get_assign().rhs());
-    break;
-
-  case DECL:
-    f(get_decl().symbol());
-    break;
-
-  case DEAD:
-    f(get_dead().symbol());
-    break;
-
-  case FUNCTION_CALL:
-  {
-    const auto &call = get_function_call();
-    f(call.lhs());
-    for(auto &a : call.arguments())
-      f(a);
-  }
-  break;
-
-  case GOTO:
-  case ASSUME:
-  case ASSERT:
-  case SKIP:
-  case START_THREAD:
-  case END_THREAD:
-  case LOCATION:
-  case END_FUNCTION:
-  case ATOMIC_BEGIN:
-  case ATOMIC_END:
-  case THROW:
-  case CATCH:
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    if(has_condition())
-      f(get_condition());
   }
 }
 
@@ -1167,15 +916,8 @@ std::ostream &operator<<(std::ostream &out, goto_program_instruction_typet t)
   case FUNCTION_CALL:
     out << "FUNCTION_CALL";
     break;
-  case THROW:
-    out << "THROW";
-    break;
-  case CATCH:
-    out << "CATCH";
-    break;
-  case INCOMPLETE_GOTO:
-    out << "INCOMPLETE_GOTO";
-    break;
+  default:
+    out << "?";
   }
 
   return out;

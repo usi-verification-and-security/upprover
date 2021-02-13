@@ -53,19 +53,7 @@ public:
 
   bool typecheck(
     symbol_tablet &symbol_table,
-    const std::string &module,
-    const bool keep_file_local) override;
-
-  bool can_keep_file_local() override
-  {
-    return true;
-  }
-
-  bool
-  typecheck(symbol_tablet &symbol_table, const std::string &module) override
-  {
-    return typecheck(symbol_table, module, true);
-  }
+    const std::string &module) override;
 
   void show_parse(std::ostream &out) override;
 

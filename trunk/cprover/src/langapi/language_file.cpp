@@ -82,9 +82,7 @@ bool language_filest::parse()
   return false;
 }
 
-bool language_filest::typecheck(
-  symbol_tablet &symbol_table,
-  const bool keep_file_local)
+bool language_filest::typecheck(symbol_tablet &symbol_table)
 {
   // typecheck interfaces
 
@@ -131,16 +129,8 @@ bool language_filest::typecheck(
   {
     if(file.second.modules.empty())
     {
-      if(file.second.language->can_keep_file_local())
-      {
-        if(file.second.language->typecheck(symbol_table, "", keep_file_local))
-          return true;
-      }
-      else
-      {
-        if(file.second.language->typecheck(symbol_table, ""))
-          return true;
-      }
+      if(file.second.language->typecheck(symbol_table, ""))
+        return true;
       // register lazy methods.
       // TODO: learn about modules and generalise this
       // to module-providing languages if required.
@@ -155,7 +145,7 @@ bool language_filest::typecheck(
 
   for(auto &module : module_map)
   {
-    if(typecheck_module(symbol_table, module.second, keep_file_local))
+    if(typecheck_module(symbol_table, module.second))
       return true;
   }
 
@@ -205,8 +195,7 @@ bool language_filest::interfaces(
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,
-  const std::string &module,
-  const bool keep_file_local)
+  const std::string &module)
 {
   // check module map
 
@@ -218,13 +207,12 @@ bool language_filest::typecheck_module(
     return true;
   }
 
-  return typecheck_module(symbol_table, it->second, keep_file_local);
+  return typecheck_module(symbol_table, it->second);
 }
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,
-  language_modulet &module,
-  const bool keep_file_local)
+  language_modulet &module)
 {
   // already typechecked?
 
@@ -252,28 +240,22 @@ bool language_filest::typecheck_module(
       it!=dependency_set.end();
       it++)
   {
-    module.in_progress = !typecheck_module(symbol_table, *it, keep_file_local);
-    if(module.in_progress == false)
+    if(typecheck_module(symbol_table, *it))
+    {
+      module.in_progress=false;
       return true;
+    }
   }
 
   // type check it
 
   status() << "Type-checking " << module.name << eom;
 
-  if(module.file->language->can_keep_file_local())
+  if(module.file->language->typecheck(symbol_table, module.name))
   {
-    module.in_progress = !module.file->language->typecheck(
-      symbol_table, module.name, keep_file_local);
-  }
-  else
-  {
-    module.in_progress =
-      !module.file->language->typecheck(symbol_table, module.name);
-  }
-
-  if(!module.in_progress)
+    module.in_progress=false;
     return true;
+  }
 
   module.type_checked=true;
   module.in_progress=false;

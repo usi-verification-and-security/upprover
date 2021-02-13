@@ -12,17 +12,17 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_LANGAPI_LANGUAGE_H
 #define CPROVER_LANGAPI_LANGUAGE_H
 
-#include <iosfwd>
-#include <memory> // unique_ptr
-#include <set>
-#include <string>
 #include <unordered_set>
+#include <iosfwd>
+#include <string>
+#include <memory> // unique_ptr
 
-#include <util/invariant.h>
 #include <util/message.h>
 #include <util/std_types.h>
 #include <util/symbol.h>
 #include <util/symbol_table_base.h>
+
+#include <goto-programs/system_library_symbols.h>
 
 class symbol_tablet;
 class exprt;
@@ -124,37 +124,12 @@ public:
     symbol_tablet &symbol_table,
     const std::string &module)=0;
 
-  /// \brief Is it possible to call three-argument typecheck() on this object?
-  virtual bool can_keep_file_local()
-  {
-    return false;
-  }
-
-  /// \brief typecheck without removing specified entries from the symbol table
-  ///
-  /// Some concrete subclasses of \ref languaget discard unused symbols from a
-  /// goto binary as part of typechecking it. This function allows the caller
-  /// to specify a list of symbols that should be kept, even if that language's
-  /// typecheck() implementation would normally discard those symbols.
-  ///
-  /// This function should only be called on objects for which a call to
-  /// can_keep_symbols() returns `true`.
-  virtual bool typecheck(
-    symbol_tablet &symbol_table,
-    const std::string &module,
-    const bool keep_file_local)
-  {
-    INVARIANT(
-      false,
-      "three-argument typecheck should only be called for files written"
-      " in a language that allows file-local symbols, like C");
-  }
-
   // language id / description
 
-  virtual std::string id() const = 0;
-  virtual std::string description() const = 0;
-  virtual std::set<std::string> extensions() const = 0;
+  virtual std::string id() const { return ""; }
+  virtual std::string description() const { return ""; }
+  virtual std::set<std::string> extensions() const
+  { return std::set<std::string>(); }
 
   // show parse tree
 
@@ -210,6 +185,10 @@ public:
 
   languaget() { }
   virtual ~languaget() { }
+
+protected:
+  bool language_options_initialized=false;
+  system_library_symbolst system_symbols;
 };
 
 #endif // CPROVER_UTIL_LANGUAGE_H

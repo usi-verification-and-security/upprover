@@ -257,7 +257,7 @@ Function: partitioning_slicet::prepare_assertion
 \*******************************************************************/
 
 void partitioning_slicet::prepare_assertion(
-        SSA_stept &SSA_step) 
+        symex_target_equationt::SSA_stept &SSA_step)
 {
   get_symbols(SSA_step.guard, depends);
   get_symbols(SSA_step.cond_expr, depends);
@@ -276,7 +276,7 @@ Function: partitioning_slicet::prepare_assignment
 \*******************************************************************/
 
 void partitioning_slicet::prepare_assignment(
-        SSA_stept &SSA_step) 
+        symex_target_equationt::SSA_stept &SSA_step)
 {
   assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
@@ -300,7 +300,7 @@ Function: partitioning_slicet::prepare_assumption
 
 void partitioning_slicet::prepare_assumption(
         partitioning_target_equationt &equation,
-        SSA_stept &SSA_step) 
+        symex_target_equationt::SSA_stept &SSA_step)
 {
   // If it is a call_end assumption --> add dependency on out args + ret_val
   if (SSA_step.cond_expr.id() == ID_symbol) {

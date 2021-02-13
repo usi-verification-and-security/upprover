@@ -15,6 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/find_symbols.h>
 
+#include <solvers/refinement/string_refinement_invariant.h>
 #include <solvers/sat/satcheck.h>
 
 /// generate array constraints
@@ -43,8 +44,8 @@ void bv_refinementt::arrays_overapproximated()
   std::list<lazy_constraintt>::iterator it=lazy_array_constraints.begin();
   while(it!=lazy_array_constraints.end())
   {
-    satcheck_no_simplifiert sat_check{log.get_message_handler()};
-    bv_pointerst solver{ns, sat_check, log.get_message_handler()};
+    satcheck_no_simplifiert sat_check;
+    bv_pointerst solver(ns, sat_check);
     solver.unbounded_array=bv_pointerst::unbounded_arrayt::U_ALL;
 
     exprt current=(*it).lazy;
@@ -54,6 +55,9 @@ void bv_refinementt::arrays_overapproximated()
     if(current.id()==ID_implies)
     {
       implies_exprt imp=to_implies_expr(current);
+      DATA_INVARIANT(
+        imp.operands().size()==2,
+        string_refinement_invariantt("implies must have two operands"));
       exprt implies_simplified=get(imp.op0());
       if(implies_simplified==false_exprt())
       {
@@ -66,7 +70,8 @@ void bv_refinementt::arrays_overapproximated()
     {
       or_exprt orexp=to_or_expr(current);
       INVARIANT(
-        orexp.operands().size() == 2, "only treats the case of a binary or");
+        orexp.operands().size()==2,
+        string_refinement_invariantt("only treats the case of a binary or"));
       exprt o1=get(orexp.op0());
       exprt o2=get(orexp.op1());
       if(o1==true_exprt() || o2 == true_exprt())
@@ -89,15 +94,18 @@ void bv_refinementt::arrays_overapproximated()
       nb_active++;
       lazy_array_constraints.erase(it++);
       break;
-    case decision_proceduret::resultt::D_ERROR:
-      INVARIANT(false, "error in array over approximation check");
+    default:
+      INVARIANT(
+        false,
+        string_refinement_invariantt("error in array over approximation "
+          "check"));
     }
   }
 
-  log.debug() << "BV-Refinement: " << nb_active
-              << " array expressions become active" << messaget::eom;
-  log.debug() << "BV-Refinement: " << lazy_array_constraints.size()
-              << " inactive array expressions" << messaget::eom;
+  debug() << "BV-Refinement: " << nb_active
+          << " array expressions become active" << eom;
+  debug() << "BV-Refinement: " << lazy_array_constraints.size()
+          << " inactive array expressions" << eom;
   if(nb_active > 0)
     progress=true;
 }
@@ -111,7 +119,9 @@ void bv_refinementt::freeze_lazy_constraints()
 
   for(const auto &constraint : lazy_array_constraints)
   {
-    for(const auto &symbol : find_symbols(constraint.lazy))
+    std::set<symbol_exprt> symbols;
+    find_symbols(constraint.lazy, symbols);
+    for(const auto &symbol : symbols)
     {
       const bvt bv=convert_bv(symbol);
       forall_literals(b_it, bv)

@@ -1,9 +1,6 @@
 /*******************************************************************\
-
-Module: Goto Programs
-
-Author: Thomas Kiley, thomas@diffblue.com
-
+ Module: Goto Programs
+ Author: Thomas Kiley, thomas@diffblue.com
 \*******************************************************************/
 
 /// \file
@@ -12,14 +9,14 @@ Author: Thomas Kiley, thomas@diffblue.com
 #ifndef CPROVER_GOTO_PROGRAMS_REBUILD_GOTO_START_FUNCTION_H
 #define CPROVER_GOTO_PROGRAMS_REBUILD_GOTO_START_FUNCTION_H
 
-#include <memory>
-
-#include <util/irep.h>
-
-class languaget;
-class message_handlert;
+#include <util/message.h>
 class optionst;
-class symbol_table_baset;
+
+#include "lazy_goto_model.h"
+
+
+class symbol_tablet;
+class goto_functionst;
 
 #define OPT_FUNCTIONS \
   "(function):"
@@ -27,22 +24,32 @@ class symbol_table_baset;
 #define HELP_FUNCTIONS \
   " --function name              set main function name\n"
 
-/// Eliminate the existing entry point function symbol and any symbols created
-/// in that scope from the \p symbol_table.
-void remove_existing_entry_point(symbol_table_baset &);
+template<typename maybe_lazy_goto_modelt>
+class rebuild_goto_start_function_baset: public messaget
+{
+public:
+  rebuild_goto_start_function_baset(
+    const optionst &options,
+    maybe_lazy_goto_modelt &goto_model,
+    message_handlert &message_handler);
 
-/// Find out the mode of the current entry point to determine the mode of the
-/// replacement entry point
-/// \return A mode string saying which language to use
-const irep_idt &get_entry_point_mode(const symbol_table_baset &);
+  bool operator()();
 
-/// Find the language corresponding to the __CPROVER_start function
-/// \param symbol_table: The symbol table of the goto model.
-/// \param options: Command-line options
-/// \param message_handler: The message handler to report any messages with
-std::unique_ptr<languaget> get_entry_point_language(
-  const symbol_table_baset &symbol_table,
-  const optionst &options,
-  message_handlert &message_handler);
+private:
+  irep_idt get_entry_point_mode() const;
+
+  void remove_existing_entry_point();
+
+  const optionst &options;
+  maybe_lazy_goto_modelt &goto_model;
+};
+
+// NOLINTNEXTLINE(readability/namespace)  using required for templates
+using rebuild_goto_start_functiont =
+  rebuild_goto_start_function_baset<goto_modelt>;
+
+// NOLINTNEXTLINE(readability/namespace)  using required for templates
+using rebuild_lazy_goto_start_functiont =
+  rebuild_goto_start_function_baset<lazy_goto_modelt>;
 
 #endif // CPROVER_GOTO_PROGRAMS_REBUILD_GOTO_START_FUNCTION_H

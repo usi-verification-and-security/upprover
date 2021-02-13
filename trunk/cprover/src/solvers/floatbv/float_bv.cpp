@@ -655,7 +655,7 @@ exprt float_bvt::div(
     from_integer(0, unsignedbv_typet(div_width - fraction_width)),
     unsignedbv_typet(div_width));
 
-  // zero-extend fraction2 to match fraction1
+  // zero-extend fraction2 to match faction1
   const typecast_exprt fraction2(unpacked2.fraction, fraction1.type());
 
   // divide fractions
@@ -777,17 +777,23 @@ exprt float_bvt::relation(
 
     if(rel==relt::LT)
     {
-      and_exprt and_bv{{less_than3,
-                        // for the case of two negative numbers
-                        not_exprt(bitwise_equal),
-                        not_exprt(both_zero),
-                        not_exprt(nan)}};
+      and_exprt and_bv;
+      and_bv.reserve_operands(4);
+      and_bv.copy_to_operands(less_than3);
+      // for the case of two negative numbers
+      and_bv.copy_to_operands(not_exprt(bitwise_equal));
+      and_bv.copy_to_operands(not_exprt(both_zero));
+      and_bv.copy_to_operands(not_exprt(nan));
 
       return std::move(and_bv);
     }
     else if(rel==relt::LE)
     {
-      or_exprt or_bv{{less_than3, both_zero, bitwise_equal}};
+      or_exprt or_bv;
+      or_bv.reserve_operands(3);
+      or_bv.copy_to_operands(less_than3);
+      or_bv.copy_to_operands(both_zero);
+      or_bv.copy_to_operands(bitwise_equal);
 
       return and_exprt(or_bv, not_exprt(nan));
     }
@@ -858,7 +864,7 @@ void float_bvt::normalization_shift(
 {
   // n-log-n alignment shifter.
   // The worst-case shift is the number of fraction
-  // bits minus one, in case the fraction is one exactly.
+  // bits minus one, in case the faction is one exactly.
   std::size_t fraction_bits=to_unsignedbv_type(fraction.type()).get_width();
   std::size_t exponent_bits=to_signedbv_type(exponent.type()).get_width();
   PRECONDITION(fraction_bits != 0);
@@ -893,9 +899,7 @@ void float_bvt::normalization_shift(
       if_exprt(prefix_is_zero, shifted, fraction);
 
     // add corresponding weight to exponent
-    INVARIANT(
-      d < (signed int)exponent_bits,
-      "depth must be smaller than exponent bits");
+    INVARIANT(d < (signed int)exponent_bits, "");
 
     exponent_delta=
       bitor_exprt(exponent_delta,
@@ -1369,10 +1373,11 @@ exprt float_bvt::pack(
     infinity_or_NaN, from_integer(-1, src.exponent.type()), src.exponent);
 
   // stitch all three together
-  return typecast_exprt(
-    concatenation_exprt(
-      {std::move(sign_bit), std::move(exponent), std::move(fraction)},
-      bv_typet(spec.f + spec.e + 1)),
+  return concatenation_exprt(
+    sign_bit,
+      concatenation_exprt(
+      exponent, fraction,
+      unsignedbv_typet(spec.e+spec.f)),
     spec.to_type());
 }
 

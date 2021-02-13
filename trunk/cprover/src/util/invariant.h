@@ -64,28 +64,6 @@ Author: Martin Brain, martin.brain@diffblue.com
 ** CPROVER_INVARIANT_* macros.
 */
 
-/// Set this to true to cause invariants to throw a C++ exception rather than
-/// abort the program. This is currently untested behaviour, and may fail to
-/// clean up partly-completed CBMC operations or release resources. You should
-/// probably only use this to gather or report more information about the
-/// failure and then abort. Default off.
-extern bool cbmc_invariants_should_throw;
-
-/// Helper to enable invariant throwing as above bounded to an object lifetime:
-struct cbmc_invariants_should_throwt
-{
-  bool old_state;
-  cbmc_invariants_should_throwt() : old_state(cbmc_invariants_should_throw)
-  {
-    cbmc_invariants_should_throw = true;
-  }
-
-  ~cbmc_invariants_should_throwt()
-  {
-    cbmc_invariants_should_throw = old_state;
-  }
-};
-
 /// A logic error, augmented with a distinguished field to hold a backtrace.
 /// Classes that extend this one should share the same initial constructor
 /// parameters: their constructor signature should be of the form:
@@ -171,7 +149,7 @@ public:
 
 #ifdef __GNUC__
 #define CBMC_NORETURN __attribute((noreturn))
-#elif defined(_MSC_VER)
+#elif defined(_MSV_VER)
 #define CBMC_NORETURN __declspec(noreturn)
 #elif __cplusplus >= 201703L
 #define CBMC_NORETURN [[noreturn]]
@@ -228,11 +206,11 @@ void report_exception_to_stderr(const invariant_failedt &);
 /// reason.what() (which therefore includes the backtrace).
 /// In future this may throw `reason` instead of aborting.
 /// Template parameter ET: type of exception to construct
-/// \param file: C string giving the name of the file.
-/// \param function: C string giving the name of the function.
-/// \param line: The line number of the invariant
-/// \param condition: the condition this invariant is checking.
-/// \param params: (variadic) parameters to forward to ET's constructor
+/// \param file : C string giving the name of the file.
+/// \param function : C string giving the name of the function.
+/// \param line : The line number of the invariant
+/// \param condition : the condition this invariant is checking.
+/// \param params : (variadic) parameters to forward to ET's constructor
 ///  its backtrace member will be set before it is used.
 template <class ET, typename... Params>
 CBMC_NORETURN
@@ -252,25 +230,21 @@ CBMC_NORETURN
     backtrace,
     condition,
     std::forward<Params>(params)...);
-
-  if(cbmc_invariants_should_throw)
-    throw to_throw;
-  else
-  {
-    report_exception_to_stderr(to_throw);
-    abort();
-  }
+  // We now have a structured exception ready to use;
+  // in future this is the place to put a 'throw'.
+  report_exception_to_stderr(to_throw);
+  abort();
 }
 
 /// This is a wrapper function used by the macro 'INVARIANT(CONDITION, REASON)'.
 /// It constructs an invariant_violatedt from reason and the
 /// backtrace, then aborts after printing the invariant's description.
 /// In future this may throw rather than aborting.
-/// \param file: C string giving the name of the file.
-/// \param function: C string giving the name of the function.
-/// \param line: The line number of the invariant
-/// \param reason: brief description of the invariant violation.
-/// \param condition: the condition this invariant is checking.
+/// \param file : C string giving the name of the file.
+/// \param function : C string giving the name of the function.
+/// \param line : The line number of the invariant
+/// \param reason : brief description of the invariant violation.
+/// \param condition : the condition this invariant is checking.
 CBMC_NORETURN
 inline void
 invariant_violated_string(
@@ -417,6 +391,8 @@ CBMC_NORETURN void report_invariant_failure(
         __VA_ARGS__); /* NOLINT */                                             \
   } while(false)
 
+#endif // End CPROVER_DO_NOT_CHECK / CPROVER_ASSERT / ... if block
+
 // Short hand macros. The variants *_STRUCTURED below allow to specify a custom
 // exception, and are equivalent to INVARIANT_STRUCTURED.
 
@@ -449,8 +425,6 @@ CBMC_NORETURN void report_invariant_failure(
         __VA_ARGS__);                                                          \
     }                                                                          \
   } while(false)
-
-#endif // End CPROVER_DO_NOT_CHECK / CPROVER_ASSERT / ... if block
 
 // The condition should only contain (unmodified) inputs to the method. Inputs
 // include arguments passed to the function, as well as member variables that

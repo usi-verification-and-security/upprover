@@ -62,7 +62,7 @@ bool lispexprt::parse(
   std::string::size_type &ptr)
 {
   clear();
-  value.clear();
+  value="";
 
   if(ptr==std::string::npos || ptr>=s.size())
     return true;
@@ -156,7 +156,7 @@ int test_lispexpr()
 
   while(true)
   {
-    line.clear();
+    line="";
 
     while(true)
     {

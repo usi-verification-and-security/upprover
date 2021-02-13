@@ -12,15 +12,17 @@ Author: Daniel Kroening
 /// Traces of GOTO Programs
 
 #include "json_goto_trace.h"
+#include "goto_trace.h"
 
-#include <langapi/language_util.h>
+#include <util/json_expr.h>
+#include <util/json.h>
+#include <util/json_stream.h>
 #include <util/arith_tools.h>
 #include <util/config.h>
 #include <util/invariant.h>
 #include <util/simplify_expr.h>
-
-#include "goto_trace.h"
-#include "json_expr.h"
+#include <util/json_irep.h>
+#include <langapi/language_util.h>
 
 /// Convert an ASSERT goto_trace step.
 /// \param [out] json_failure: The JSON object that
@@ -35,13 +37,23 @@ void convert_assert(
 {
   const goto_trace_stept &step = conversion_dependencies.step;
   const jsont &location = conversion_dependencies.location;
+  const source_locationt &source_location =
+    conversion_dependencies.source_location;
+
+  irep_idt property_id =
+    step.pc->is_assert()
+      ? source_location.get_property_id()
+      : step.pc->is_goto()
+          ? id2string(step.pc->source_location.get_function()) + ".unwind." +
+              std::to_string(step.pc->loop_number)
+          : "";
 
   json_failure["stepType"] = json_stringt("failure");
   json_failure["hidden"] = jsont::json_boolean(step.hidden);
   json_failure["internal"] = jsont::json_boolean(step.internal);
   json_failure["thread"] = json_numbert(std::to_string(step.thread_nr));
   json_failure["reason"] = json_stringt(step.comment);
-  json_failure["property"] = json_stringt(step.property_id);
+  json_failure["property"] = json_stringt(property_id);
 
   if(!location.is_null())
     json_failure["sourceLocation"] = location;
@@ -118,24 +130,23 @@ void convert_decl(
   const symbolt *symbol;
   irep_idt base_name, display_name;
 
-  DATA_INVARIANT(
-    step.full_lhs_value.is_not_nil(),
-    "full_lhs_value in assignment must not be nil");
-
   if(!ns.lookup(identifier, symbol))
   {
     base_name = symbol->base_name;
     display_name = symbol->display_name();
-    if(type_string.empty())
+    if(type_string == "")
       type_string = from_type(ns, identifier, symbol->type);
 
     json_assignment["mode"] = json_stringt(symbol->mode);
-    const exprt simplified_expr = simplify_expr(step.full_lhs_value, ns);
+    exprt simplified = simplify_expr(step.full_lhs_value, ns);
 
-    full_lhs_value = json(simplified_expr, ns, symbol->mode);
+    full_lhs_value = json(simplified, ns, symbol->mode);
   }
   else
   {
+    DATA_INVARIANT(
+      step.full_lhs_value.is_not_nil(),
+      "full_lhs_value in assignment must not be nil");
     full_lhs_value = json(step.full_lhs_value, ns, ID_unknown);
   }
 
@@ -170,6 +181,7 @@ void convert_output(
   const goto_trace_stept &step = conversion_dependencies.step;
   const jsont &location = conversion_dependencies.location;
   const namespacet &ns = conversion_dependencies.ns;
+  const source_locationt &source_location = step.pc->source_location;
 
   json_output["stepType"] = json_stringt("output");
   json_output["hidden"] = jsont::json_boolean(step.hidden);
@@ -180,7 +192,7 @@ void convert_output(
   // Recovering the mode from the function
   irep_idt mode;
   const symbolt *function_name;
-  if(ns.lookup(step.function_id, function_name))
+  if(ns.lookup(source_location.get_function(), function_name))
     // Failed to find symbol
     mode = ID_unknown;
   else
@@ -212,6 +224,7 @@ void convert_input(
   const goto_trace_stept &step = conversion_dependencies.step;
   const jsont &location = conversion_dependencies.location;
   const namespacet &ns = conversion_dependencies.ns;
+  const source_locationt &source_location = step.pc->source_location;
 
   json_input["stepType"] = json_stringt("input");
   json_input["hidden"] = jsont::json_boolean(step.hidden);
@@ -222,7 +235,7 @@ void convert_input(
   // Recovering the mode from the function
   irep_idt mode;
   const symbolt *function_name;
-  if(ns.lookup(step.function_id, function_name))
+  if(ns.lookup(source_location.get_function(), function_name))
     // Failed to find symbol
     mode = ID_unknown;
   else
@@ -264,13 +277,15 @@ void convert_return(
   json_call_return["internal"] = jsont::json_boolean(step.internal);
   json_call_return["thread"] = json_numbert(std::to_string(step.thread_nr));
 
-  const irep_idt &function_identifier = step.called_function;
+  const irep_idt &function_identifier =
+    (step.type == goto_trace_stept::typet::FUNCTION_CALL) ? step.called_function
+                                                          : step.function;
 
   const symbolt &symbol = ns.lookup(function_identifier);
-  json_call_return["function"] =
-    json_objectt({{"displayName", json_stringt(symbol.display_name())},
-                  {"identifier", json_stringt(function_identifier)},
-                  {"sourceLocation", json(symbol.location)}});
+  json_objectt &json_function = json_call_return["function"].make_object();
+  json_function["displayName"] = json_stringt(symbol.display_name());
+  json_function["identifier"] = json_stringt(function_identifier);
+  json_function["sourceLocation"] = json(symbol.location);
 
   if(!location.is_null())
     json_call_return["sourceLocation"] = location;

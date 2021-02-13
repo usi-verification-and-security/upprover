@@ -26,7 +26,7 @@ partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
   summary_storet & summary_store,
   bool _store_summaries_with_assertion, message_handlert & message_handler) :
-  symex_target_equationt(message_handler),
+  symex_target_equationt(),
   current_partition_id(NO_PARTITION_ID),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
@@ -418,19 +418,20 @@ void partitioning_target_equationt::convert_partition_assertions(
 
     std::vector<FlaRef> error_lits;
 
-    exprt assumption_expr = true_exprt();
-    auto var_constraints_lit = convertor.get_and_clear_var_constraints(); //boundaries for LA
+    auto assumption_literal = convertor.get_const_literal(true); //boundaries for LA
+    auto var_constraints_lit = convertor.get_and_clear_var_constraints();
     for (symex_target_equationt::SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if(it->ignore) {continue;} // ignored instructions can be skippied
         if (it->is_assert()) {
 
             // Collect ass \in assertions(f) in bv
-            FlaRef tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
-//          it->cond_literal = flaref_to_literal(convertor.limplies(assumption_literal, tmp_literal));
+            auto tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
+            it->cond_literal = flaref_to_literal(convertor.limplies(assumption_literal, tmp_literal));
+            error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
 //          Commented since CProver5.12: Instead of converting to Literalt, use CProver methods operating on exprt to exprt
-            it->cond_handle = implies_exprt(assumption_expr, it->cond_expr);
-//          error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
-            error_lits.push_back(!convertor.limplies(convertor.convert_bool_expr(assumption_expr), tmp_literal)); // negated literal
+//            it->cond_handle = implies_exprt(assumption_expr, it->cond_expr);
+////          error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
+//            error_lits.push_back(!convertor.limplies(convertor.convert_bool_expr(assumption_expr), tmp_literal)); // negated literal
     
         } else if (it->is_assume()) {
             // If the assumption represents a call of the function g,
@@ -446,9 +447,8 @@ void partitioning_target_equationt::convert_partition_assertions(
                 const partition_ifacet& target_partition_iface =
                         target_partition->get_iface();
     
-//              FlaRef tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
-                FlaRef tmp = convertor.land(convertor.convert_bool_expr(assumption_expr), convertor.convert_bool_expr(it->guard_handle));
-    
+              FlaRef tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
+                //FlaRef tmp = convertor.land(convertor.convert_bool_expr(assumption_expr), convertor.convert_bool_expr(it->guard_handle));
                 convertor.set_equal(tmp, target_partition_iface.callstart_literal);
 
 #		ifdef DISABLE_OPTIMIZATIONS
@@ -483,8 +483,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             // Collect this assumption as:
             //assumption_literal = \land_{ass \in assumptions(f)} ass
             //Commented since CProver5.12: Instead of converting to Literalt, use CProver methods operating from exprt to exprt
-            //assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
-            assumption_expr = and_exprt(assumption_expr, it->cond_handle);
+            assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
+            //assumption_expr = and_exprt(assumption_expr, it->cond_handle); //5.12
+            assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
             number_of_assumptions++;
         }
     }
@@ -523,7 +524,8 @@ void partitioning_target_equationt::convert_partition_assertions(
         // NOTE: callstart_f \in assumptions(f)
         //
 
-        auto tmp = convertor.limplies(partition_iface.callend_literal, convertor.convert_bool_expr(assumption_expr));
+        //auto tmp = convertor.limplies(partition_iface.callend_literal, convertor.convert_bool_expr(assumption_expr)); //5.12
+        auto tmp = convertor.limplies(partition_iface.callend_literal, assumption_literal);
         convertor.assert_literal(tmp);
 
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -565,7 +567,9 @@ void partitioning_target_equationt::convert_partition_assumptions(
     for (symex_target_equationt::SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assume()) {
             //it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
-            it->cond_handle = it->ignore ? true_exprt() : (it->cond_expr);
+            //it->cond_handle = it->ignore ? true_exprt() : (it->cond_expr);
+            it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
+
         }
     }
 }

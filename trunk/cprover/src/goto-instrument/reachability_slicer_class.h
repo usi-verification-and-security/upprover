@@ -28,12 +28,6 @@ public:
     bool include_forward_reachability)
   {
     cfg(goto_functions);
-    forall_goto_functions(f_it, goto_functions)
-    {
-      forall_goto_program_instructions(i_it, f_it->second.body)
-        cfg[cfg.entry_map[i_it]].function_id = f_it->first;
-    }
-
     is_threadedt is_threaded(goto_functions);
     fixedpoint_to_assertions(is_threaded, criterion);
     if(include_forward_reachability)
@@ -48,14 +42,9 @@ protected:
     {
     }
 
-    irep_idt function_id;
     bool reaches_assertion;
     bool reachable_from_assertion;
   };
-
-  bool is_same_target(
-    goto_programt::const_targett it1,
-    goto_programt::const_targett it2) const;
 
   typedef cfg_baset<slicer_entryt> cfgt;
   cfgt cfg;

@@ -13,9 +13,9 @@ Author: Thomas Kiley, thomas.kiley@diffblue.com
 #define CPROVER_UTIL_JSON_IREP_H
 
 #include "irep.h"
-#include "json.h"
 
-class source_locationt;
+class jsont;
+class json_objectt;
 
 class json_irept
 {
@@ -37,7 +37,5 @@ private:
 
   bool include_comments;
 };
-
-json_objectt json(const source_locationt &);
 
 #endif // CPROVER_UTIL_JSON_IREP_H

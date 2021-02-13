@@ -36,20 +36,17 @@ Author: Matt Lewis
 class scratch_programt:public goto_programt
 {
 public:
-  scratch_programt(
-    symbol_tablet &_symbol_table,
-    message_handlert &mh,
-    guard_managert &guard_manager)
+  scratch_programt(symbol_tablet &_symbol_table, message_handlert &mh)
     : constant_propagation(true),
       symbol_table(_symbol_table),
       symex_symbol_table(),
       ns(symbol_table, symex_symbol_table),
-      equation(mh),
+      equation(),
       path_storage(),
       options(get_default_options()),
-      symex(mh, symbol_table, equation, options, path_storage, guard_manager),
-      satcheck(util_make_unique<satcheckt>(mh)),
-      satchecker(ns, *satcheck, mh),
+      symex(mh, symbol_table, equation, options, path_storage),
+      satcheck(util_make_unique<satcheckt>()),
+      satchecker(ns, *satcheck),
       z3(ns, "accelerate", "", "", smt2_dect::solvert::Z3),
       checker(&z3) // checker(&satchecker)
   {
@@ -63,11 +60,11 @@ public:
   targett assign(const exprt &lhs, const exprt &rhs);
   targett assume(const exprt &guard);
 
-  bool check_sat(bool do_slice, guard_managert &guard_manager);
+  bool check_sat(bool do_slice);
 
-  bool check_sat(guard_managert &guard_manager)
+  bool check_sat()
   {
-    return check_sat(true, guard_manager);
+    return check_sat(true);
   }
 
   exprt eval(const exprt &e);
@@ -77,7 +74,7 @@ public:
   bool constant_propagation;
 
 protected:
-  std::unique_ptr<goto_symex_statet> symex_state;
+  goto_symex_statet symex_state;
   goto_functionst functions;
   symbol_tablet &symbol_table;
   symbol_tablet symex_symbol_table;
@@ -90,7 +87,7 @@ protected:
   std::unique_ptr<propt> satcheck;
   bv_pointerst satchecker;
   smt2_dect z3;
-  decision_proceduret *checker;
+  prop_convt *checker;
   static optionst get_default_options();
 };
 

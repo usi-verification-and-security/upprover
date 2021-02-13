@@ -61,9 +61,7 @@ protected:
 
   const symbolt &new_tmp_symbol(
     const typet &type,
-    const source_locationt &source_location,
-    const irep_idt &function_id,
-    const irep_idt &mode);
+    const source_locationt &source_location);
 };
 
 static void check_apply_invariants(
@@ -86,8 +84,9 @@ static void check_apply_invariants(
       loop_end=*it;
 
   // see whether we have an invariant
-  exprt invariant = static_cast<const exprt &>(
-    loop_end->get_condition().find(ID_C_spec_loop_invariant));
+  exprt invariant=
+    static_cast<const exprt&>(
+      loop_end->guard.find(ID_C_spec_loop_invariant));
   if(invariant.is_nil())
     return;
 
@@ -111,8 +110,10 @@ static void check_apply_invariants(
 
   // assert the invariant
   {
-    goto_programt::targett a = havoc_code.add(
-      goto_programt::make_assertion(invariant, loop_head->source_location));
+    goto_programt::targett a=havoc_code.add_instruction(ASSERT);
+    a->guard=invariant;
+    a->function=loop_head->function;
+    a->source_location=loop_head->source_location;
     a->source_location.set_comment("Loop invariant violated before entry");
   }
 
@@ -120,15 +121,21 @@ static void check_apply_invariants(
   build_havoc_code(loop_head, modifies, havoc_code);
 
   // assume the invariant
-  havoc_code.add(
-    goto_programt::make_assumption(invariant, loop_head->source_location));
+  {
+    goto_programt::targett assume=havoc_code.add_instruction(ASSUME);
+    assume->guard=invariant;
+    assume->function=loop_head->function;
+    assume->source_location=loop_head->source_location;
+  }
 
   // non-deterministically skip the loop if it is a do-while loop
   if(!loop_head->is_goto())
   {
-    havoc_code.add(goto_programt::make_goto(
-      loop_end,
-      side_effect_expr_nondett(bool_typet(), loop_head->source_location)));
+    goto_programt::targett jump=havoc_code.add_instruction(GOTO);
+    jump->guard =
+      side_effect_expr_nondett(bool_typet(), loop_head->source_location);
+    jump->targets.push_back(loop_end);
+    jump->function=loop_head->function;
   }
 
   // Now havoc at the loop head. Use insert_swap to
@@ -137,8 +144,10 @@ static void check_apply_invariants(
 
   // assert the invariant at the end of the loop body
   {
-    goto_programt::instructiont a =
-      goto_programt::make_assertion(invariant, loop_end->source_location);
+    goto_programt::instructiont a(ASSERT);
+    a.guard=invariant;
+    a.function=loop_end->function;
+    a.source_location=loop_end->source_location;
     a.source_location.set_comment("Loop invariant not preserved");
     goto_function.body.insert_before_swap(loop_end, a);
     ++loop_end;
@@ -148,17 +157,16 @@ static void check_apply_invariants(
   loop_end->targets.clear();
   loop_end->type=ASSUME;
   if(loop_head->is_goto())
-    loop_end->set_condition(false_exprt());
+    loop_end->guard = false_exprt();
   else
-    loop_end->set_condition(boolean_negate(loop_end->get_condition()));
+    loop_end->guard = boolean_negate(loop_end->guard);
 }
 
 void code_contractst::apply_contract(
   goto_programt &goto_program,
   goto_programt::targett target)
 {
-  const code_function_callt &call = target->get_function_call();
-
+  const code_function_callt &call=to_code_function_call(target->code);
   // we don't handle function pointers
   if(call.function().id()!=ID_symbol)
     return;
@@ -206,15 +214,16 @@ void code_contractst::apply_contract(
 
   if(requires.is_not_nil())
   {
-    goto_programt::instructiont a =
-      goto_programt::make_assertion(requires, target->source_location);
+    goto_programt::instructiont a(ASSERT);
+    a.guard=requires;
+    a.function=target->function;
+    a.source_location=target->source_location;
 
     goto_program.insert_before_swap(target, a);
     ++target;
   }
 
-  // overwrite the function call
-  *target = goto_programt::make_assumption(ensures, target->source_location);
+  target->make_assumption(ensures);
 
   summarized.insert(function);
 }
@@ -244,16 +253,14 @@ void code_contractst::code_contracts(
 
 const symbolt &code_contractst::new_tmp_symbol(
   const typet &type,
-  const source_locationt &source_location,
-  const irep_idt &function_id,
-  const irep_idt &mode)
+  const source_locationt &source_location)
 {
   return get_fresh_aux_symbol(
     type,
-    id2string(function_id) + "::tmp_cc",
+    id2string(source_location.get_function()),
     "tmp_cc",
     source_location,
-    mode,
+    irep_idt(),
     symbol_table);
 }
 
@@ -287,32 +294,34 @@ void code_contractst::add_contract_check(
 
   // build skip so that if(nondet) can refer to it
   goto_programt tmp_skip;
-  goto_programt::targett skip =
-    tmp_skip.add(goto_programt::make_skip(ensures.source_location()));
+  goto_programt::targett skip=tmp_skip.add_instruction(SKIP);
+  skip->function=dest.instructions.front().function;
+  skip->source_location=ensures.source_location();
 
   goto_programt check;
 
   // if(nondet)
-  check.add(goto_programt::make_goto(
-    skip,
-    side_effect_expr_nondett(bool_typet(), skip->source_location),
-    skip->source_location));
+  goto_programt::targett g=check.add_instruction();
+  g->make_goto(
+    skip, side_effect_expr_nondett(bool_typet(), skip->source_location));
+  g->function=skip->function;
+  g->source_location=skip->source_location;
 
   // prepare function call including all declarations
-  const symbolt &function_symbol = ns.lookup(function);
-  code_function_callt call(function_symbol.symbol_expr());
+  code_function_callt call(ns.lookup(function).symbol_expr());
   replace_symbolt replace;
 
   // decl ret
   if(gf.type.return_type()!=empty_typet())
   {
-    symbol_exprt r = new_tmp_symbol(
-                       gf.type.return_type(),
-                       skip->source_location,
-                       function,
-                       function_symbol.mode)
-                       .symbol_expr();
-    check.add(goto_programt::make_decl(r, skip->source_location));
+    goto_programt::targett d=check.add_instruction(DECL);
+    d->function=skip->function;
+    d->source_location=skip->source_location;
+
+    symbol_exprt r=
+      new_tmp_symbol(gf.type.return_type(),
+                     d->source_location).symbol_expr();
+    d->code=code_declt(r);
 
     call.lhs()=r;
 
@@ -321,49 +330,61 @@ void code_contractst::add_contract_check(
   }
 
   // decl parameter1 ...
-  for(const auto &parameter : gf.parameter_identifiers)
+  for(code_typet::parameterst::const_iterator
+      p_it=gf.type.parameters().begin();
+      p_it!=gf.type.parameters().end();
+      ++p_it)
   {
-    PRECONDITION(!parameter.empty());
-    const symbolt &parameter_symbol = ns.lookup(parameter);
+    goto_programt::targett d=check.add_instruction(DECL);
+    d->function=skip->function;
+    d->source_location=skip->source_location;
 
-    symbol_exprt p = new_tmp_symbol(
-                       parameter_symbol.type,
-                       skip->source_location,
-                       function,
-                       parameter_symbol.mode)
-                       .symbol_expr();
-    check.add(goto_programt::make_decl(p, skip->source_location));
+    symbol_exprt p=
+      new_tmp_symbol(p_it->type(),
+                     d->source_location).symbol_expr();
+    d->code=code_declt(p);
 
     call.arguments().push_back(p);
 
-    replace.insert(parameter_symbol.symbol_expr(), p);
+    if(!p_it->get_identifier().empty())
+    {
+      symbol_exprt cur_p(p_it->get_identifier(), p_it->type());
+      replace.insert(cur_p, p);
+    }
   }
 
   // assume(requires)
   if(requires.is_not_nil())
   {
-    // rewrite any use of parameters
-    exprt requires_cond = requires;
-    replace(requires_cond);
+    goto_programt::targett a=check.add_instruction();
+    a->make_assumption(requires);
+    a->function=skip->function;
+    a->source_location=requires.source_location();
 
-    check.add(goto_programt::make_assumption(
-      requires_cond, requires.source_location()));
+    // rewrite any use of parameters
+    replace(a->guard);
   }
 
   // ret=function(parameter1, ...)
-  check.add(goto_programt::make_function_call(call, skip->source_location));
-
-  // rewrite any use of __CPROVER_return_value
-  exprt ensures_cond = ensures;
-  replace(ensures_cond);
+  goto_programt::targett f=check.add_instruction();
+  f->make_function_call(call);
+  f->function=skip->function;
+  f->source_location=skip->source_location;
 
   // assert(ensures)
-  check.add(
-    goto_programt::make_assertion(ensures_cond, ensures.source_location()));
+  goto_programt::targett a=check.add_instruction();
+  a->make_assertion(ensures);
+  a->function=skip->function;
+  a->source_location=ensures.source_location();
+
+  // rewrite any use of __CPROVER_return_value
+  replace(a->guard);
 
   // assume(false)
-  check.add(
-    goto_programt::make_assumption(false_exprt(), ensures.source_location()));
+  goto_programt::targett af=check.add_instruction();
+  af->make_assumption(false_exprt());
+  af->function=skip->function;
+  af->source_location=ensures.source_location();
 
   // prepend the new code to dest
   check.destructive_append(tmp_skip);

@@ -106,7 +106,7 @@ protected:
   const goto_functionst &goto_functions;
 
   typedef std::unordered_map<irep_idt, mp_integer> memory_mapt;
-  using inverse_memory_mapt = std::map<mp_integer, optionalt<symbol_exprt>>;
+  typedef std::map<mp_integer, irep_idt> inverse_memory_mapt;
   memory_mapt memory_map;
   inverse_memory_mapt inverse_memory_map;
 
@@ -122,9 +122,9 @@ protected:
     return *lower_bound;
   }
 
-  symbol_exprt address_to_symbol(const mp_integer &address) const
+  irep_idt address_to_identifier(const mp_integer &address) const
   {
-    return *address_to_object_record(address).second;
+    return address_to_object_record(address).second;
   }
 
   mp_integer address_to_offset(const mp_integer &address) const
@@ -145,7 +145,7 @@ protected:
 
   mp_integer base_address_to_actual_size(const mp_integer &address) const
   {
-    auto memory_iter = memory.find(numeric_cast_v<std::size_t>(address));
+    auto memory_iter=memory.find(integer2ulong(address));
     if(memory_iter==memory.end())
       return 0;
     mp_integer ret=0;
@@ -192,18 +192,14 @@ protected:
 
   void build_memory_map();
   void build_memory_map(const symbolt &symbol);
-  mp_integer build_memory_map(const symbol_exprt &symbol_expr);
+  mp_integer build_memory_map(const irep_idt &id, const typet &type);
   typet concretize_type(const typet &type);
   bool unbounded_size(const typet &);
   mp_integer get_size(const typet &type);
 
-  DEPRECATED("use the object_type version instead")
   struct_typet::componentt get_component(
     const irep_idt &object,
     const mp_integer &offset);
-
-  struct_typet::componentt
-  get_component(const typet &object_type, const mp_integer &offset);
 
   typet get_type(const irep_idt &id) const;
 

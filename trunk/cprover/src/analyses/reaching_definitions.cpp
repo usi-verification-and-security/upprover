@@ -26,34 +26,9 @@ Date: February 2013
 #include "is_threaded.h"
 #include "dirty.h"
 
-/// This ensures that all domains are constructed with the appropriate pointer
-/// back to the analysis engine itself.  Using a factory is a tad verbose
-/// but it works well with the ait infrastructure.
-class rd_range_domain_factoryt : public ai_domain_factoryt<rd_range_domaint>
-{
-public:
-  rd_range_domain_factoryt(
-    sparse_bitvector_analysist<reaching_definitiont> *_bv_container)
-    : bv_container(_bv_container)
-  {
-    PRECONDITION(bv_container != nullptr);
-  }
-
-  std::unique_ptr<statet> make(locationt) const override
-  {
-    auto p = util_make_unique<rd_range_domaint>(bv_container);
-    CHECK_RETURN(p->is_bottom());
-    return std::unique_ptr<statet>(p.release());
-  }
-
-private:
-  sparse_bitvector_analysist<reaching_definitiont> *const bv_container;
-};
-
 reaching_definitions_analysist::reaching_definitions_analysist(
-  const namespacet &_ns)
-  : concurrency_aware_ait<rd_range_domaint>(
-      util_make_unique<rd_range_domain_factoryt>(this)),
+  const namespacet &_ns):
+    concurrency_aware_ait<rd_range_domaint>(),
     ns(_ns)
 {
 }
@@ -116,13 +91,13 @@ void rd_range_domaint::transform(
     transform_function_call(ns, function_from, from, function_to, *rd);
   // cleanup parameters
   else if(from->is_end_function())
-    transform_end_function(ns, function_from, from, function_to, to, *rd);
+    transform_end_function(ns, function_from, from, to, *rd);
   // lhs assignments
   else if(from->is_assign())
-    transform_assign(ns, from, function_from, from, *rd);
+    transform_assign(ns, from, from, *rd);
   // initial (non-deterministic) value
   else if(from->is_decl())
-    transform_assign(ns, from, function_from, from, *rd);
+    transform_assign(ns, from, from, *rd);
 
 #if 0
   // handle return values
@@ -258,7 +233,7 @@ void rd_range_domaint::transform_function_call(
   {
     // handle return values of undefined functions
     if(to_code_function_call(from->code).lhs().is_not_nil())
-      transform_assign(ns, from, function_from, from, rd);
+      transform_assign(ns, from, from, rd);
   }
 }
 
@@ -266,7 +241,6 @@ void rd_range_domaint::transform_end_function(
   const namespacet &ns,
   const irep_idt &function_from,
   locationt from,
-  const irep_idt &function_to,
   locationt to,
   reaching_definitions_analysist &rd)
 {
@@ -327,19 +301,18 @@ void rd_range_domaint::transform_end_function(
     assert(rd_state!=0);
     rd_state->
 #endif
-    transform_assign(ns, from, function_to, call, rd);
+      transform_assign(ns, from, call, rd);
   }
 }
 
 void rd_range_domaint::transform_assign(
   const namespacet &ns,
   locationt from,
-  const irep_idt &function_to,
   locationt to,
   reaching_definitions_analysist &rd)
 {
   rw_range_set_value_sett rw_set(ns, rd.get_value_sets());
-  goto_rw(function_to, to, rw_set);
+  goto_rw(to, rw_set);
   const bool is_must_alias=rw_set.get_w_set().size()==1;
 
   forall_rw_range_set_w_objects(it, rw_set)

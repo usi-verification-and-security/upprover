@@ -121,7 +121,9 @@ void uninitializedt::add_assertions(
         const irep_idt new_identifier=
           id2string(identifier)+"#initialized";
 
-        symbol_exprt symbol_expr(new_identifier, bool_typet());
+        symbol_exprt symbol_expr;
+        symbol_expr.set_identifier(new_identifier);
+        symbol_expr.type()=bool_typet();
         i1->type=DECL;
         i1->source_location=instruction.source_location;
         i1->code=code_declt(symbol_expr);
@@ -156,10 +158,10 @@ void uninitializedt::add_assertions(
             const irep_idt new_identifier=id2string(identifier)+"#initialized";
 
             // insert assertion
-            goto_programt::instructiont assertion =
-              goto_programt::make_assertion(
-                symbol_exprt(new_identifier, bool_typet()),
-                instruction.source_location);
+            goto_programt::instructiont assertion;
+            assertion.type=ASSERT;
+            assertion.guard=symbol_exprt(new_identifier, bool_typet());
+            assertion.source_location=instruction.source_location;
             assertion.source_location.set_comment(
               "use of uninitialized local variable");
             assertion.source_location.set_property_class("uninitialized local");
@@ -221,7 +223,7 @@ void show_uninitialized(
       out << "////\n\n";
       uninitialized_analysist uninitialized_analysis;
       uninitialized_analysis(f_it->first, f_it->second.body, ns);
-      uninitialized_analysis.output(ns, f_it->first, f_it->second.body, out);
+      uninitialized_analysis.output(ns, f_it->second.body, out);
     }
   }
 }

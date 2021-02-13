@@ -71,7 +71,7 @@ protected:
     resolve_identifierst &identifiers,
     const wantt want);
 
-  struct_tag_typet disambiguate_template_classes(
+  symbol_typet disambiguate_template_classes(
     const irep_idt &base_name,
     const cpp_scopest::id_sett &id_set,
     const cpp_template_args_non_tct &template_args);

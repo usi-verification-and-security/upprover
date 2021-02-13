@@ -58,7 +58,7 @@ bool polynomial_acceleratort::accelerate(
 
   expr_sett targets;
   std::map<exprt, polynomialt> polynomials;
-  scratch_programt program{symbol_table, message_handler, guard_manager};
+  scratch_programt program(symbol_table, message_handler);
   goto_programt::instructionst assigns;
 
   utils.find_modified(body, targets);
@@ -178,8 +178,7 @@ bool polynomial_acceleratort::accelerate(
 
   try
   {
-    path_is_monotone =
-      utils.do_assumptions(polynomials, loop, guard, guard_manager);
+    path_is_monotone=utils.do_assumptions(polynomials, loop, guard);
   }
   catch(const std::string &s)
   {
@@ -236,7 +235,7 @@ bool polynomial_acceleratort::accelerate(
   // assume(guard);
   // assume(no overflows in previous code);
 
-  program.add(goto_programt::make_assumption(guard));
+  program.add_instruction(ASSUME)->guard=guard;
 
   program.assign(
     loop_counter,
@@ -262,7 +261,7 @@ bool polynomial_acceleratort::accelerate(
     return false;
   }
 
-  program.add(goto_programt::make_assumption(guard_last));
+  program.add_instruction(ASSUME)->guard=guard_last;
   program.fix_types();
 
   if(path_is_monotone)
@@ -285,7 +284,7 @@ bool polynomial_acceleratort::fit_polynomial_sliced(
   std::vector<expr_listt> parameters;
   std::set<std::pair<expr_listt, exprt> > coefficients;
   expr_listt exprs;
-  scratch_programt program{symbol_table, message_handler, guard_manager};
+  scratch_programt program(symbol_table, message_handler);
   exprt overflow_var =
     utils.fresh_symbol("polynomial::overflow", bool_typet()).symbol_expr();
   overflow_instrumentert overflow(program, overflow_var, symbol_table);
@@ -403,17 +402,19 @@ bool polynomial_acceleratort::fit_polynomial_sliced(
 
 #ifdef DEBUG
   std::cout << "Fitting polynomial with program:\n";
-  program.output(ns, irep_idt(), std::cout);
+  program.output(ns, "", std::cout);
 #endif
 
   // Now do an ASSERT(false) to grab a counterexample
-  program.add(goto_programt::make_assertion(false_exprt()));
+  goto_programt::targett assertion=program.add_instruction(ASSERT);
+  assertion->guard=false_exprt();
+
 
   // If the path is satisfiable, we've fitted a polynomial.  Extract the
   // relevant coefficients and return the expression.
   try
   {
-    if(program.check_sat(guard_manager))
+    if(program.check_sat())
     {
       utils.extract_polynomial(program, coefficients, polynomial);
       return true;
@@ -507,7 +508,7 @@ void polynomial_acceleratort::assert_for_values(
   overflow_instrumentert &overflow)
 {
   // First figure out what the appropriate type for this expression is.
-  optionalt<typet> expr_type;
+  typet expr_type=nil_typet();
 
   for(std::map<exprt, int>::iterator it=values.begin();
       it!=values.end();
@@ -522,26 +523,25 @@ void polynomial_acceleratort::assert_for_values(
       this_type=size_type();
     }
 
-    if(!expr_type.has_value())
+    if(expr_type==nil_typet())
     {
       expr_type=this_type;
     }
     else
     {
-      expr_type = join_types(*expr_type, this_type);
+      expr_type=join_types(expr_type, this_type);
     }
   }
 
-  INVARIANT(
-    to_bitvector_type(*expr_type).get_width() > 0,
-    "joined types must be non-empty bitvector types");
+  assert(to_bitvector_type(expr_type).get_width()>0);
+
 
   // Now set the initial values of the all the variables...
   for(std::map<exprt, int>::iterator it=values.begin();
       it!=values.end();
       ++it)
   {
-    program.assign(it->first, from_integer(it->second, *expr_type));
+    program.assign(it->first, from_integer(it->second, expr_type));
   }
 
   // Now unwind the loop as many times as we need to.
@@ -583,8 +583,8 @@ void polynomial_acceleratort::assert_for_values(
     // OK, concrete_value now contains the value of all the relevant variables
     // multiplied together.  Create the term concrete_value*coefficient and add
     // it into the polynomial.
-    typecast_exprt cast(it->second, *expr_type);
-    const mult_exprt term(from_integer(concrete_value, *expr_type), cast);
+    typecast_exprt cast(it->second, expr_type);
+    const mult_exprt term(from_integer(concrete_value, expr_type), cast);
 
     if(rhs.is_nil())
     {
@@ -599,7 +599,7 @@ void polynomial_acceleratort::assert_for_values(
   exprt overflow_expr;
   overflow.overflow_expr(rhs, overflow_expr);
 
-  program.add(goto_programt::make_assumption(not_exprt(overflow_expr)));
+  program.add_instruction(ASSUME)->guard=not_exprt(overflow_expr);
 
   rhs=typecast_exprt(rhs, target.type());
 
@@ -608,7 +608,8 @@ void polynomial_acceleratort::assert_for_values(
   const equal_exprt polynomial_holds(target, rhs);
 
   // Finally, assert that the polynomial equals the variable we're fitting.
-  program.add(goto_programt::make_assumption(polynomial_holds));
+  goto_programt::targett assumption=program.add_instruction(ASSUME);
+  assumption->guard=polynomial_holds;
 }
 
 void polynomial_acceleratort::cone_of_influence(
@@ -667,7 +668,7 @@ bool polynomial_acceleratort::check_inductive(
   // assert (target1==polynomial1);
   // assert (target2==polynomial2);
   // ...
-  scratch_programt program{symbol_table, message_handler, guard_manager};
+  scratch_programt program(symbol_table, message_handler);
   std::vector<exprt> polynomials_hold;
   substitutiont substitution;
 
@@ -678,33 +679,34 @@ bool polynomial_acceleratort::check_inductive(
       ++it)
   {
     const equal_exprt holds(it->first, it->second.to_expr());
-    program.add(goto_programt::make_assumption(holds));
+    program.add_instruction(ASSUME)->guard=holds;
 
     polynomials_hold.push_back(holds);
   }
 
   program.append(body);
 
-  auto inc_loop_counter = code_assignt(
-    loop_counter,
-    plus_exprt(loop_counter, from_integer(1, loop_counter.type())));
-  program.add(goto_programt::make_assignment(inc_loop_counter));
+  codet inc_loop_counter=
+    code_assignt(
+      loop_counter,
+      plus_exprt(loop_counter, from_integer(1, loop_counter.type())));
+  program.add_instruction(ASSIGN)->code=inc_loop_counter;
 
   for(std::vector<exprt>::iterator it=polynomials_hold.begin();
       it!=polynomials_hold.end();
       ++it)
   {
-    program.add(goto_programt::make_assertion(*it));
+    program.add_instruction(ASSERT)->guard=*it;
   }
 
 #ifdef DEBUG
   std::cout << "Checking following program for inductiveness:\n";
-  program.output(ns, irep_idt(), std::cout);
+  program.output(ns, "", std::cout);
 #endif
 
   try
   {
-    if(program.check_sat(guard_manager))
+    if(program.check_sat())
     {
       // We found a counterexample to inductiveness... :-(
   #ifdef DEBUG
@@ -752,14 +754,23 @@ void polynomial_acceleratort::stash_variables(
   expr_sett modified,
   substitutiont &substitution)
 {
-  find_symbols_sett vars =
-    find_symbols_or_nexts(modified.begin(), modified.end());
+  find_symbols_sett vars;
+
+  for(expr_sett::iterator it=modified.begin();
+      it!=modified.end();
+      ++it)
+  {
+    find_symbols(*it, vars);
+  }
+
   irep_idt loop_counter_name=to_symbol_expr(loop_counter).get_identifier();
   vars.erase(loop_counter_name);
 
-  for(const irep_idt &id : vars)
+  for(find_symbols_sett::iterator it=vars.begin();
+      it!=vars.end();
+      ++it)
   {
-    const symbolt &orig = symbol_table.lookup_ref(id);
+    symbolt orig=*symbol_table.lookup(*it);
     symbolt stashed_sym=utils.fresh_symbol("polynomial::stash", orig.type);
     substitution[orig.symbol_expr()]=stashed_sym.symbol_expr();
     program.assign(stashed_sym.symbol_expr(), orig.symbol_expr());
@@ -807,7 +818,7 @@ exprt polynomial_acceleratort::precondition(patht &path)
     }
     else if(t->is_assume() || t->is_assert())
     {
-      ret = implies_exprt(t->get_condition(), ret);
+      ret=implies_exprt(t->guard, ret);
     }
     else
     {

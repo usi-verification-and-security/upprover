@@ -136,12 +136,6 @@ void ansi_c_internal_additions(std::string &code)
     CPROVER_PREFIX "bool " CPROVER_PREFIX "threads_exited["
       CPROVER_PREFIX "constant_infinity_uint];\n"
     "unsigned long " CPROVER_PREFIX "next_thread_id=0;\n"
-    CPROVER_PREFIX "thread_local const void* " CPROVER_PREFIX "thread_keys["
-      CPROVER_PREFIX "constant_infinity_uint];\n"
-    CPROVER_PREFIX "thread_local void (*" CPROVER_PREFIX "thread_key_dtors["
-      CPROVER_PREFIX "constant_infinity_uint])(void *);\n"
-    CPROVER_PREFIX "thread_local unsigned long "
-      CPROVER_PREFIX "next_thread_key = 0;\n"
     "extern unsigned char " CPROVER_PREFIX "memory["
       CPROVER_PREFIX "constant_infinity_uint];\n"
 
@@ -154,7 +148,6 @@ void ansi_c_internal_additions(std::string &code)
     "const void *" CPROVER_PREFIX "memory_leak=0;\n"
     "void *" CPROVER_PREFIX "allocate("
       CPROVER_PREFIX "size_t size, " CPROVER_PREFIX "bool zero);\n"
-    "const void *" CPROVER_PREFIX "alloca_object = 0;\n"
 
     // this is ANSI-C
     "extern " CPROVER_PREFIX "thread_local const char __func__["
@@ -208,12 +201,8 @@ void ansi_c_internal_additions(std::string &code)
       // https://gcc.gnu.org/onlinedocs/gcc/Floating-Types.html
       // For clang, __float128 is a keyword.
       // For gcc, this is a typedef and not a keyword.
-      if(
-        config.ansi_c.mode != configt::ansi_ct::flavourt::CLANG &&
-        config.ansi_c.gcc__float128_type)
-      {
+      if(config.ansi_c.mode != configt::ansi_ct::flavourt::CLANG)
         code += "typedef " CPROVER_PREFIX "Float128 __float128;\n";
-      }
     }
     else if(config.ansi_c.arch == "ppc64le")
     {
@@ -226,12 +215,8 @@ void ansi_c_internal_additions(std::string &code)
       // https://gcc.gnu.org/onlinedocs/gcc/Floating-Types.html
       // For clang, __float128 is a keyword.
       // For gcc, this is a typedef and not a keyword.
-      if(
-        config.ansi_c.mode != configt::ansi_ct::flavourt::CLANG &&
-        config.ansi_c.gcc__float128_type)
-      {
+      if(config.ansi_c.mode != configt::ansi_ct::flavourt::CLANG)
         code+="typedef long double __float128;\n";
-      }
     }
 
     if(

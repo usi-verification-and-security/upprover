@@ -8,22 +8,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "unicode.h"
 
-#include <codecvt>
-#include <cstdint>
 #include <cstring>
-#include <iomanip>
 #include <locale>
+#include <iomanip>
 #include <sstream>
-
-#include "invariant.h"
+#include <cstdint>
 
 #ifdef _WIN32
 #include <util/pragma_push.def>
 #ifdef _MSC_VER
 #pragma warning(disable:4668)
   // using #if/#elif on undefined macro
-#pragma warning(disable : 5039)
-// pointer or reference to potentially throwing function passed to extern C
 #endif
 #include <windows.h>
 #include <util/pragma_pop.def>
@@ -139,7 +134,7 @@ static void utf8_append_code(unsigned int c, std::string &result)
   }
 }
 
-/// \param s: UTF-32 encoded wide string
+/// \param s UTF-32 encoded wide string
 /// \return utf8-encoded string with the same unicode characters as the input.
 std::string
 utf32_native_endian_to_utf8(const std::basic_string<unsigned int> &s)
@@ -257,15 +252,11 @@ std::wstring utf8_to_utf16_native_endian(const std::string &in)
     return result;
 }
 
-/// Escapes non-printable characters, whitespace except for spaces, double
-/// quotes and backslashes. This should yield a valid Java string literal.
-/// Note that this specifically does not escape single quotes, as these are not
-/// required to be escaped for Java string literals.
 /// \param ch: UTF-16 character in architecture-native endianness encoding
 /// \param result: stream to receive string in US-ASCII format, with \\uxxxx
-///   escapes for other characters
+///                escapes for other characters
 /// \param loc: locale to check for printable characters
-static void utf16_native_endian_to_java_string(
+static void utf16_native_endian_to_java(
   const wchar_t ch,
   std::ostringstream &result,
   const std::locale &loc)
@@ -288,9 +279,8 @@ static void utf16_native_endian_to_java_string(
   else if(ch <= 255 && isprint(ch, loc))
   {
     const auto uch = static_cast<unsigned char>(ch);
-    // ", and \ need to be escaped, but not ' for java strings
-    // e.g. "\"\\" needs escaping but "'" does not.
-    if(uch == '"' || uch == '\\')
+    // ", \ and ' need to be escaped.
+    if(uch == '"' || uch == '\\' || uch == '\'')
       result << '\\';
     result << uch;
   }
@@ -300,29 +290,6 @@ static void utf16_native_endian_to_java_string(
     // zeros.
     result << "\\u" << std::hex << std::setw(4) << std::setfill('0')
            << static_cast<unsigned int>(ch);
-  }
-}
-
-/// Escapes non-printable characters, whitespace except for spaces, double- and
-/// single-quotes and backslashes. This should yield a valid Java identifier.
-/// \param ch: UTF-16 character in architecture-native endianness encoding
-/// \param result: stream to receive string in US-ASCII format, with \\uxxxx
-///   escapes for other characters
-/// \param loc: locale to check for printable characters
-static void utf16_native_endian_to_java(
-  const wchar_t ch,
-  std::ostringstream &result,
-  const std::locale &loc)
-{
-  if(ch == (wchar_t)'\'')
-  {
-    const auto uch = static_cast<unsigned char>(ch);
-    // ' needs to be escaped for java characters, e.g. '\''
-    result << '\\' << uch;
-  }
-  else
-  {
-    utf16_native_endian_to_java_string(ch, result, loc);
   }
 }
 
@@ -336,48 +303,13 @@ std::string utf16_native_endian_to_java(const char16_t ch)
   return result.str();
 }
 
-/// Escapes non-printable characters, whitespace except for spaces, double
-/// quotes and backslashes. This should yield a valid Java string literal.
-/// Note that this specifically does not escape single quotes, as these are not
-/// required to be escaped for Java string literals.
 /// \param in: String in UTF-16 (native endianness) format
-/// \return Valid Java string literal in US-ASCII format, with \\uxxxx escapes
-/// for other characters
-std::string utf16_native_endian_to_java_string(const std::wstring &in)
+/// \return String in US-ASCII format, with \\uxxxx escapes for other characters
+std::string utf16_native_endian_to_java(const std::wstring &in)
 {
   std::ostringstream result;
   const std::locale loc;
   for(const auto ch : in)
-    utf16_native_endian_to_java_string(ch, result, loc);
+    utf16_native_endian_to_java(ch, result, loc);
   return result.str();
-}
-
-std::string utf16_native_endian_to_utf8(const char16_t utf16_char)
-{
-  return utf16_native_endian_to_utf8(std::u16string(1, utf16_char));
-}
-
-std::string utf16_native_endian_to_utf8(const std::u16string &utf16_str)
-{
-#ifdef _MSC_VER
-  // Workaround for Visual Studio bug, see
-  // https://stackoverflow.com/questions/32055357
-  std::wstring wide_string(utf16_str.begin(), utf16_str.end());
-  return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
-    .to_bytes(wide_string);
-#else
-  return std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}
-    .to_bytes(utf16_str);
-#endif
-}
-
-char16_t codepoint_hex_to_utf16_native_endian(const std::string &hex)
-{
-  PRECONDITION(hex.length() == 4);
-  return std::strtol(hex.c_str(), nullptr, 16);
-}
-
-std::string codepoint_hex_to_utf8(const std::string &hex)
-{
-  return utf16_native_endian_to_utf8(codepoint_hex_to_utf16_native_endian(hex));
 }

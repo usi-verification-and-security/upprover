@@ -48,7 +48,7 @@
 #include "check_claims.h"
 //since Cprover5.12
 #include <util/exit_codes.h>
-#include <ansi-c/gcc_version.h>
+//#include <ansi-c/gcc_version.h>
 #include <ansi-c/c_preprocess.h>
 #include <langapi/language.h>
 #include <langapi/mode.h>
@@ -59,7 +59,7 @@ class parser_baset : public parse_options_baset, public xml_interfacet, public m
     {
 public:
     parser_baset(const std::string &_optstring, const std::string &program, int argc, const char **argv ):
-            parse_options_baset(_optstring, argc, argv, program),
+            parse_options_baset(_optstring, argc, argv),
             xml_interfacet(cmdline),
             messaget(ui_message_handler),
             ui_message_handler(cmdline, program)
@@ -94,7 +94,7 @@ protected:
                           const cmdlinet &,
                           ui_message_handlert &);
     
-    void calculate_show_claims(goto_modelt &);
+    //void calculate_show_claims(goto_modelt &);
     void set_options(const cmdlinet &cmdline);
     
     optionst options;

@@ -16,7 +16,6 @@ Author: Daniel Kroening
 #include <ostream>
 
 #include <util/arith_tools.h>
-#include <util/byte_operators.h>
 #include <util/format_expr.h>
 #include <util/range.h>
 #include <util/string_utils.h>
@@ -36,12 +35,6 @@ static optionalt<symbol_exprt> get_object_rec(const exprt &src)
     return get_object_rec(to_index_expr(src).array());
   else if(src.id()==ID_typecast)
     return get_object_rec(to_typecast_expr(src).op());
-  else if(
-    src.id() == ID_byte_extract_little_endian ||
-    src.id() == ID_byte_extract_big_endian)
-  {
-    return get_object_rec(to_byte_extract_expr(src).op());
-  }
   else
     return {}; // give up
 }
@@ -65,7 +58,6 @@ void goto_trace_stept::output(
 {
   out << "*** ";
 
-  // clang-format off
   switch(type)
   {
   case goto_trace_stept::typet::ASSERT: out << "ASSERT"; break;
@@ -86,12 +78,10 @@ void goto_trace_stept::output(
   case goto_trace_stept::typet::FUNCTION_CALL: out << "FUNCTION CALL"; break;
   case goto_trace_stept::typet::FUNCTION_RETURN:
     out << "FUNCTION RETURN"; break;
-  case goto_trace_stept::typet::MEMORY_BARRIER: out << "MEMORY_BARRIER"; break;
-  case goto_trace_stept::typet::SPAWN: out << "SPAWN"; break;
-  case goto_trace_stept::typet::CONSTRAINT: out << "CONSTRAINT"; break;
-  case goto_trace_stept::typet::NONE: out << "NONE"; break;
+  default:
+    out << "unknown type: " << static_cast<int>(type) << std::endl;
+    UNREACHABLE;
   }
-  // clang-format on
 
   if(is_assert() || is_assume() || is_goto())
     out << " (" << cond_value << ')';
@@ -126,7 +116,7 @@ void goto_trace_stept::output(
       if(!comment.empty())
         out << "  " << comment << '\n';
 
-      out << "  " << format(pc->get_condition()) << '\n';
+      out << "  " << format(pc->guard) << '\n';
       out << '\n';
     }
   }
@@ -193,7 +183,7 @@ std::string trace_numeric_value(
   const namespacet &ns,
   const trace_optionst &options)
 {
-  const typet &type = expr.type();
+  const typet &type=ns.follow(expr.type());
 
   if(expr.id()==ID_constant)
   {
@@ -232,7 +222,7 @@ std::string trace_numeric_value(
 
     forall_operands(it, expr)
     {
-      if(result.empty())
+      if(result=="")
         result="{ ";
       else
         result+=", ";
@@ -256,13 +246,14 @@ std::string trace_numeric_value(
   }
   else if(expr.id()==ID_union)
   {
-    return trace_numeric_value(to_union_expr(expr).op(), ns, options);
+    PRECONDITION(expr.operands().size()==1);
+    return trace_numeric_value(expr.op0(), ns, options);
   }
 
   return "?";
 }
 
-static void trace_value(
+void trace_value(
   messaget::mstreamt &out,
   const namespacet &ns,
   const optionalt<symbol_exprt> &lhs_object,
@@ -301,9 +292,9 @@ state_location(const goto_trace_stept &state, const namespacet &ns)
   if(!source_location.get_file().empty())
     result += "file " + id2string(source_location.get_file());
 
-  if(!state.function_id.empty())
+  if(!state.function.empty())
   {
-    const symbolt &symbol = ns.lookup(state.function_id);
+    const symbolt &symbol = ns.lookup(state.function);
     if(!result.empty())
       result += ' ';
     result += "function " + id2string(symbol.display_name());
@@ -342,7 +333,7 @@ void show_state_header(
 
   if(options.show_code)
   {
-    out << as_string(ns, state.function_id, *state.pc) << '\n';
+    out << as_string(ns, *state.pc) << '\n';
     out << "----------------------------------------------------" << '\n';
   }
 }
@@ -350,9 +341,9 @@ void show_state_header(
 bool is_index_member_symbol(const exprt &src)
 {
   if(src.id()==ID_index)
-    return is_index_member_symbol(to_index_expr(src).array());
+    return is_index_member_symbol(src.op0());
   else if(src.id()==ID_member)
-    return is_index_member_symbol(to_member_expr(src).compound());
+    return is_index_member_symbol(src.op0());
   else if(src.id()==ID_symbol)
     return true;
   else
@@ -360,10 +351,10 @@ bool is_index_member_symbol(const exprt &src)
 }
 
 /// \brief show a compact variant of the goto trace on the console
-/// \param out: the output stream
-/// \param ns: the namespace
-/// \param goto_trace: the trace to be shown
-/// \param options: any options, e.g., numerical representation
+/// \param out the output stream
+/// \param ns the namespace
+/// \param goto_trace the trace to be shown
+/// \param options any options, e.g., numerical representation
 void show_compact_goto_trace(
   messaget::mstreamt &out,
   const namespacet &ns,
@@ -396,11 +387,7 @@ void show_compact_goto_trace(
         out << "  " << messaget::red << step.comment << messaget::reset << '\n';
 
         if(step.pc->is_assert())
-        {
-          out << "  "
-              << from_expr(ns, step.function_id, step.pc->get_condition())
-              << '\n';
-        }
+          out << "  " << from_expr(ns, step.function, step.pc->guard) << '\n';
 
         out << '\n';
       }
@@ -455,7 +442,7 @@ void show_compact_goto_trace(
       {
         auto arg_strings = make_range(step.function_arguments)
                              .map([&ns, &step](const exprt &arg) {
-                               return from_expr(ns, step.function_id, arg);
+                               return from_expr(ns, step.function, arg);
                              });
 
         out << '(';
@@ -481,12 +468,9 @@ void show_compact_goto_trace(
     case goto_trace_stept::typet::ATOMIC_BEGIN:
     case goto_trace_stept::typet::ATOMIC_END:
     case goto_trace_stept::typet::DEAD:
-    case goto_trace_stept::typet::CONSTRAINT:
-    case goto_trace_stept::typet::SHARED_READ:
-    case goto_trace_stept::typet::SHARED_WRITE:
       break;
 
-    case goto_trace_stept::typet::NONE:
+    default:
       UNREACHABLE;
     }
   }
@@ -523,27 +507,24 @@ void show_full_goto_trace(
         out << "  " << messaget::red << step.comment << messaget::reset << '\n';
 
         if(step.pc->is_assert())
-        {
-          out << "  "
-              << from_expr(ns, step.function_id, step.pc->get_condition())
-              << '\n';
-        }
+          out << "  " << from_expr(ns, step.function, step.pc->guard) << '\n';
 
         out << '\n';
       }
       break;
 
     case goto_trace_stept::typet::ASSUME:
-      if(step.cond_value && step.pc->is_assume())
+      if(!step.cond_value)
       {
-        out << "\n";
-        out << "Assumption:\n";
-
+        out << '\n';
+        out << "Violated assumption:" << '\n';
         if(!step.pc->source_location.is_nil())
           out << "  " << step.pc->source_location << '\n';
 
-        out << "  " << from_expr(ns, step.function_id, step.pc->get_condition())
-            << '\n';
+        if(step.pc->is_assume())
+          out << "  " << from_expr(ns, step.function, step.pc->guard) << '\n';
+
+        out << '\n';
       }
       break;
 
@@ -611,7 +592,7 @@ void show_full_goto_trace(
           if(l_it!=step.io_args.begin())
             out << ';';
 
-          out << ' ' << from_expr(ns, step.function_id, *l_it);
+          out << ' ' << from_expr(ns, step.function, *l_it);
 
           // the binary representation
           out << " (" << trace_numeric_value(*l_it, ns, options) << ')';
@@ -633,7 +614,7 @@ void show_full_goto_trace(
         if(l_it!=step.io_args.begin())
           out << ';';
 
-        out << ' ' << from_expr(ns, step.function_id, *l_it);
+        out << ' ' << from_expr(ns, step.function, *l_it);
 
         // the binary representation
         out << " (" << trace_numeric_value(*l_it, ns, options) << ')';
@@ -657,7 +638,7 @@ void show_full_goto_trace(
           else
             out << ", ";
 
-          out << from_expr(ns, step.function_id, arg);
+          out << from_expr(ns, step.function, arg);
         }
 
         out << ") (depth " << function_depth << ") ####\n";
@@ -668,7 +649,7 @@ void show_full_goto_trace(
       function_depth--;
       if(options.show_function_calls)
       {
-        out << "\n#### Function return from " << step.function_id << " (depth "
+        out << "\n#### Function return from " << step.function << " (depth "
             << function_depth << ") ####\n";
       }
       break;
@@ -683,7 +664,7 @@ void show_full_goto_trace(
     case goto_trace_stept::typet::CONSTRAINT:
     case goto_trace_stept::typet::SHARED_READ:
     case goto_trace_stept::typet::SHARED_WRITE:
-    case goto_trace_stept::typet::NONE:
+    default:
       UNREACHABLE;
     }
   }
@@ -751,7 +732,7 @@ static void show_goto_stack_trace(
         else
           out << ", ";
 
-        out << from_expr(ns, step.function_id, arg);
+        out << from_expr(ns, step.function, arg);
       }
 
       out << ')';
@@ -778,15 +759,12 @@ void show_goto_trace(
     show_full_goto_trace(out, ns, goto_trace, options);
 }
 
-const trace_optionst trace_optionst::default_options = trace_optionst();
-
-std::set<irep_idt> goto_tracet::get_failed_property_ids() const
+void show_goto_trace(
+  messaget::mstreamt &out,
+  const namespacet &ns,
+  const goto_tracet &goto_trace)
 {
-  std::set<irep_idt> property_ids;
-  for(const auto &step : steps)
-  {
-    if(step.is_assert() && !step.cond_value)
-      property_ids.insert(step.property_id);
-  }
-  return property_ids;
+  show_goto_trace(out, ns, goto_trace, trace_optionst::default_options);
 }
+
+const trace_optionst trace_optionst::default_options = trace_optionst();

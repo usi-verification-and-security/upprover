@@ -1,6 +1,5 @@
 analyses
 ansi-c
-assembler
 cpp
 goto-diff
 goto-instrument

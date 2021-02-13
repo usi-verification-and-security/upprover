@@ -17,7 +17,7 @@ Date: April 2010
 #include <map>
 #include <memory> // unique_ptr
 
-#include "guard.h"
+#include <util/guard.h>
 
 #include <goto-programs/goto_model.h>
 
@@ -32,15 +32,11 @@ Date: April 2010
 class rw_range_sett;
 class goto_modelt;
 
-void goto_rw(
-  const irep_idt &function,
-  goto_programt::const_targett target,
-  rw_range_sett &rw_set);
+void goto_rw(goto_programt::const_targett target,
+             rw_range_sett &rw_set);
 
-void goto_rw(
-  const irep_idt &function,
-  const goto_programt &,
-  rw_range_sett &rw_set);
+void goto_rw(const goto_programt &,
+             rw_range_sett &rw_set);
 
 void goto_rw(const goto_functionst &,
              const irep_idt &function,
@@ -145,7 +141,6 @@ public:
   enum class get_modet { LHS_W, READ };
 
   virtual void get_objects_rec(
-    const irep_idt &,
     goto_programt::const_targett,
     get_modet mode,
     const exprt &expr)
@@ -153,13 +148,7 @@ public:
     get_objects_rec(mode, expr);
   }
 
-  virtual void get_objects_rec(
-    const irep_idt &,
-    goto_programt::const_targett,
-    const typet &type)
-  {
-    get_objects_rec(type);
-  }
+  virtual void get_objects_rec(const typet &type);
 
   void output(std::ostream &out) const;
 
@@ -171,8 +160,6 @@ protected:
   virtual void get_objects_rec(
     get_modet mode,
     const exprt &expr);
-
-  virtual void get_objects_rec(const typet &type);
 
   virtual void get_objects_complex_real(
     get_modet mode,
@@ -278,41 +265,28 @@ public:
   {
   }
 
-  void get_objects_rec(
-    const irep_idt &_function,
+  using rw_range_sett::get_objects_rec;
+
+  virtual void get_objects_rec(
     goto_programt::const_targett _target,
     get_modet mode,
-    const exprt &expr) override
+    const exprt &expr)
   {
-    function = _function;
     target=_target;
 
     rw_range_sett::get_objects_rec(mode, expr);
   }
 
-  void get_objects_rec(
-    const irep_idt &_function,
-    goto_programt::const_targett _target,
-    const typet &type) override
-  {
-    function = _function;
-    target = _target;
-
-    rw_range_sett::get_objects_rec(type);
-  }
-
 protected:
   value_setst &value_sets;
-  irep_idt function;
+
   goto_programt::const_targett target;
 
-  using rw_range_sett::get_objects_rec;
-
-  void get_objects_dereference(
+  virtual void get_objects_dereference(
     get_modet mode,
     const dereference_exprt &deref,
     const range_spect &range_start,
-    const range_spect &size) override;
+    const range_spect &size);
 };
 
 class guarded_range_domaint:public range_domain_baset
@@ -352,11 +326,8 @@ class rw_guarded_range_set_value_sett:public rw_range_set_value_sett
 public:
   rw_guarded_range_set_value_sett(
     const namespacet &_ns,
-    value_setst &_value_sets,
-    guard_managert &guard_manager)
-    : rw_range_set_value_sett(_ns, _value_sets),
-      guard_manager(guard_manager),
-      guard(true_exprt(), guard_manager)
+    value_setst &_value_sets):
+    rw_range_set_value_sett(_ns, _value_sets)
   {
   }
 
@@ -367,42 +338,32 @@ public:
     return static_cast<const guarded_range_domaint &>(*it->second);
   }
 
-  void get_objects_rec(
-    const irep_idt &_function,
+  virtual void get_objects_rec(
     goto_programt::const_targett _target,
     get_modet mode,
-    const exprt &expr) override
+    const exprt &expr)
   {
-    guard = guardt(true_exprt(), guard_manager);
+    guard = true_exprt();
 
-    rw_range_set_value_sett::get_objects_rec(_function, _target, mode, expr);
-  }
-
-  void get_objects_rec(
-    const irep_idt &function,
-    goto_programt::const_targett target,
-    const typet &type) override
-  {
-    rw_range_sett::get_objects_rec(function, target, type);
+    rw_range_set_value_sett::get_objects_rec(_target, mode, expr);
   }
 
 protected:
-  guard_managert &guard_manager;
   guardt guard;
 
   using rw_range_sett::get_objects_rec;
 
-  void get_objects_if(
+  virtual void get_objects_if(
     get_modet mode,
     const if_exprt &if_expr,
     const range_spect &range_start,
-    const range_spect &size) override;
+    const range_spect &size);
 
-  void add(
+  virtual void add(
     get_modet mode,
     const irep_idt &identifier,
     const range_spect &range_start,
-    const range_spect &range_end) override;
+    const range_spect &range_end);
 };
 
 #endif // CPROVER_ANALYSES_GOTO_RW_H

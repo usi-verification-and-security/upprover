@@ -16,18 +16,21 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/c_types.h>
 #include <util/invariant.h>
 #include <util/pointer_offset_size.h>
-#include <util/pointer_predicates.h>
 #include <util/prefix.h>
 #include <util/simplify_expr.h>
 #include <util/std_expr.h>
 
 bool pointer_logict::is_dynamic_object(const exprt &expr) const
 {
-  return expr.type().get_bool(ID_C_dynamic) ||
-         (expr.id() == ID_symbol &&
-          has_prefix(
-            id2string(to_symbol_expr(expr).get_identifier()),
-            SYMEX_DYNAMIC_PREFIX));
+  if(expr.type().get_bool(ID_C_dynamic))
+    return true;
+
+  if(expr.id()==ID_symbol)
+    if(has_prefix(id2string(to_symbol_expr(expr).get_identifier()),
+                  "symex_dynamic::"))
+      return true;
+
+  return false;
 }
 
 void pointer_logict::get_dynamic_objects(std::vector<std::size_t> &o) const
@@ -35,7 +38,10 @@ void pointer_logict::get_dynamic_objects(std::vector<std::size_t> &o) const
   o.clear();
   std::size_t nr=0;
 
-  for(auto it = objects.cbegin(); it != objects.cend(); ++it, ++nr)
+  for(pointer_logict::objectst::const_iterator
+      it=objects.begin();
+      it!=objects.end();
+      it++, nr++)
     if(is_dynamic_object(*it))
       o.push_back(nr);
 }
@@ -72,7 +78,8 @@ exprt pointer_logict::pointer_expr(
   {
     if(pointer.offset==0)
     {
-      return null_pointer_exprt(type);
+      null_pointer_exprt result(type);
+      return std::move(result);
     }
     else
     {
@@ -98,24 +105,9 @@ exprt pointer_logict::pointer_expr(
   // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
   if(subtype.id() == ID_empty)
     subtype = char_type();
-  if(object_expr.id() == ID_string_constant)
-  {
-    subtype = object_expr.type();
-
-    // a string constant must be array-typed with fixed size
-    const array_typet &array_type = to_array_type(object_expr.type());
-    mp_integer array_size =
-      numeric_cast_v<mp_integer>(to_constant_expr(array_type.size()));
-    if(array_size > pointer.offset)
-    {
-      to_array_type(subtype).size() =
-        from_integer(array_size - pointer.offset, array_type.size().type());
-    }
-  }
-  auto deep_object_opt =
+  exprt deep_object =
     get_subexpression_at_offset(object_expr, pointer.offset, subtype, ns);
-  CHECK_RETURN(deep_object_opt.has_value());
-  exprt deep_object = deep_object_opt.value();
+  CHECK_RETURN(deep_object.is_not_nil());
   simplify(deep_object, ns);
   if(deep_object.id() != byte_extract_id())
     return typecast_exprt::conditional_cast(

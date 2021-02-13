@@ -18,6 +18,7 @@ class exprt;
 class symbolt;
 class typet;
 class symbol_exprt;
+class symbol_typet;
 class tag_typet;
 class union_typet;
 class struct_typet;
@@ -38,7 +39,7 @@ public:
 
   /// Lookup a symbol in the namespace.
   /// \param name: The name of the symbol to lookup.
-  /// \return A reference to the symbol found.
+  /// \return: A reference to the symbol found.
   /// \remarks: It is a PRECONDITION that the symbol name exists
   ///   in the namespace.
   const symbolt &lookup(const irep_idt &name) const
@@ -54,6 +55,7 @@ public:
   }
 
   const symbolt &lookup(const symbol_exprt &) const;
+  const symbolt &lookup(const symbol_typet &) const;
   const symbolt &lookup(const tag_typet &) const;
 
   virtual ~namespace_baset();
@@ -63,9 +65,9 @@ public:
 
   // These produce union_typet, struct_typet, c_enum_typet or
   // the incomplete version.
-  const union_typet &follow_tag(const union_tag_typet &) const;
-  const struct_typet &follow_tag(const struct_tag_typet &) const;
-  const c_enum_typet &follow_tag(const c_enum_tag_typet &) const;
+  const typet &follow_tag(const union_tag_typet &) const;
+  const typet &follow_tag(const struct_tag_typet &) const;
+  const typet &follow_tag(const c_enum_tag_typet &) const;
 
   /// Returns the minimal integer n such that there is no symbol (in any of the
   /// symbol tables) whose name is of the form "An" where A is \p prefix.
@@ -79,7 +81,7 @@ public:
   /// returned. With multiple symbol tables, `symbol_table1` is searched first
   /// and then symbol_table2.
   /// \return False iff the requested symbol is found in at least one of the
-  ///   tables.
+  /// tables.
   virtual bool lookup(const irep_idt &name, const symbolt *&symbol) const=0;
 };
 
@@ -159,7 +161,7 @@ public:
   /// Add symbol table to the list of symbol tables this multi-namespace
   /// is working with.
   /// \param symbol_table: Reference to the symbol table to be added to this
-  ///   namespace.
+  /// namespace.
   void add(const symbol_table_baset &symbol_table)
   {
     symbol_table_list.push_back(&symbol_table);

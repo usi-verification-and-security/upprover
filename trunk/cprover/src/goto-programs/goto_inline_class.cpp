@@ -15,6 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #endif
 
+#include <util/base_type.h>
 #include <util/cprover_prefix.h>
 #include <util/expr_util.h>
 #include <util/invariant.h>
@@ -30,7 +31,7 @@ Author: Daniel Kroening, kroening@kroening.com
 void goto_inlinet::parameter_assignments(
   const goto_programt::targett target,
   const irep_idt &function_name, // name of called function
-  const goto_functiont::parameter_identifierst &parameter_identifiers,
+  const code_typet &code_type, // type of called function
   const exprt::operandst &arguments, // arguments of call
   goto_programt &dest)
 {
@@ -42,21 +43,31 @@ void goto_inlinet::parameter_assignments(
   // iterates over the operands
   exprt::operandst::const_iterator it1=arguments.begin();
 
-  // iterates over the parameters
-  for(const auto &identifier : parameter_identifiers)
+  const code_typet::parameterst &parameter_types=
+    code_type.parameters();
+
+  // iterates over the types of the parameters
+  for(const auto &parameter : parameter_types)
   {
+    // this is the type the n-th argument should be
+    const typet &par_type=ns.follow(parameter.type());
+
+    const irep_idt &identifier=parameter.get_identifier();
+
     DATA_INVARIANT(
       !identifier.empty(),
       source_location.as_string() + ": no identifier for function parameter");
 
-    const symbolt &symbol = ns.lookup(identifier);
+    {
+      const symbolt &symbol=ns.lookup(identifier);
 
-    // this is the type the n-th argument should have
-    const typet &parameter_type = symbol.type;
-
-    goto_programt::targett decl =
-      dest.add(goto_programt::make_decl(symbol.symbol_expr(), source_location));
-    decl->code.add_source_location() = source_location;
+      goto_programt::targett decl=dest.add_instruction();
+      decl->make_decl();
+      decl->code=code_declt(symbol.symbol_expr());
+      decl->code.add_source_location()=source_location;
+      decl->source_location=source_location;
+      decl->function=adjust_function?target->function:function_name;
+    }
 
     // this is the actual parameter
     exprt actual;
@@ -65,11 +76,11 @@ void goto_inlinet::parameter_assignments(
     if(it1==arguments.end())
     {
       warning().source_location=source_location;
-      warning() << "call to '" << function_name << "': "
+      warning() << "call to `" << function_name << "': "
                 << "not enough arguments, "
                 << "inserting non-deterministic value" << eom;
 
-      actual = side_effect_expr_nondett(parameter_type, source_location);
+      actual = side_effect_expr_nondett(par_type, source_location);
     }
     else
       actual=*it1;
@@ -82,10 +93,10 @@ void goto_inlinet::parameter_assignments(
     {
       // it should be the same exact type as the parameter,
       // subject to some exceptions
-      if(parameter_type != actual.type())
+      if(!base_type_eq(par_type, actual.type(), ns))
       {
-        const typet &f_partype = parameter_type;
-        const typet &f_acttype = actual.type();
+        const typet &f_partype=ns.follow(par_type);
+        const typet &f_acttype=ns.follow(actual.type());
 
         // we are willing to do some conversion
         if((f_partype.id()==ID_pointer &&
@@ -94,7 +105,7 @@ void goto_inlinet::parameter_assignments(
             f_acttype.id()==ID_array &&
             f_partype.subtype()==f_acttype.subtype()))
         {
-          actual = typecast_exprt(actual, f_partype);
+          actual.make_typecast(par_type);
         }
         else if((f_partype.id()==ID_signedbv ||
                  f_partype.id()==ID_unsignedbv ||
@@ -103,7 +114,7 @@ void goto_inlinet::parameter_assignments(
                  f_acttype.id()==ID_unsignedbv ||
                  f_acttype.id()==ID_bool))
         {
-          actual = typecast_exprt(actual, f_partype);
+          actual.make_typecast(par_type);
         }
         else
         {
@@ -112,10 +123,14 @@ void goto_inlinet::parameter_assignments(
       }
 
       // adds an assignment of the actual parameter to the formal parameter
-      code_assignt assignment(symbol_exprt(identifier, parameter_type), actual);
+      code_assignt assignment(symbol_exprt(identifier, par_type), actual);
       assignment.add_source_location()=source_location;
 
-      dest.add(goto_programt::make_assignment(assignment, source_location));
+      dest.add_instruction(ASSIGN);
+      dest.instructions.back().source_location=source_location;
+      dest.instructions.back().code.swap(assignment);
+      dest.instructions.back().function=
+        adjust_function?target->function:function_name;
     }
 
     if(it1!=arguments.end())
@@ -130,7 +145,8 @@ void goto_inlinet::parameter_assignments(
 
 void goto_inlinet::parameter_destruction(
   const goto_programt::targett target,
-  const goto_functiont::parameter_identifierst &parameter_identifiers,
+  const irep_idt &function_name, // name of called function
+  const code_typet &code_type, // type of called function
   goto_programt &dest)
 {
   PRECONDITION(target->is_function_call());
@@ -138,8 +154,14 @@ void goto_inlinet::parameter_destruction(
 
   const source_locationt &source_location=target->source_location;
 
-  for(const auto &identifier : parameter_identifiers)
+  const code_typet::parameterst &parameter_types=
+    code_type.parameters();
+
+  // iterates over the types of the parameters
+  for(const auto &parameter : parameter_types)
   {
+    const irep_idt &identifier=parameter.get_identifier();
+
     INVARIANT(
       !identifier.empty(),
       source_location.as_string() + ": no identifier for function parameter");
@@ -147,9 +169,12 @@ void goto_inlinet::parameter_destruction(
     {
       const symbolt &symbol=ns.lookup(identifier);
 
-      goto_programt::targett dead = dest.add(
-        goto_programt::make_dead(symbol.symbol_expr(), source_location));
+      goto_programt::targett dead=dest.add_instruction();
+      dead->make_dead();
+      dead->code=code_deadt(symbol.symbol_expr());
       dead->code.add_source_location()=source_location;
+      dead->source_location=source_location;
+      dead->function=adjust_function?target->function:function_name;
     }
   }
 }
@@ -165,11 +190,9 @@ void goto_inlinet::replace_return(
   {
     if(it->is_return())
     {
-      const auto &code_return = it->get_return();
-
       if(lhs.is_not_nil())
       {
-        if(!code_return.has_return_value())
+        if(it->code.operands().size()!=1)
         {
           warning().source_location=it->code.find_source_location();
           warning() << "return expects one operand!\n"
@@ -177,19 +200,22 @@ void goto_inlinet::replace_return(
           continue;
         }
 
-        // a typecast may be necessary if the declared return type at the call
-        // site differs from the defined return type
-        it->code = code_assignt(
-          lhs,
-          typecast_exprt::conditional_cast(
-            code_return.return_value(), lhs.type()));
+        code_assignt code_assign(lhs, it->code.op0());
+
+        // this may happen if the declared return type at the call site
+        // differs from the defined return type
+        if(code_assign.lhs().type()!=
+           code_assign.rhs().type())
+          code_assign.rhs().make_typecast(code_assign.lhs().type());
+
+        it->code=code_assign;
         it->type=ASSIGN;
 
         it++;
       }
-      else if(code_return.has_return_value())
+      else if(!it->code.operands().empty())
       {
-        it->code = code_expressiont(code_return.return_value());
+        it->code=code_expressiont(it->code.op0());
         it->type=OTHER;
         it++;
       }
@@ -255,8 +281,12 @@ void goto_inlinet::insert_function_body(
     "final instruction of a function must be an END_FUNCTION");
   end.type=LOCATION;
 
+  if(adjust_function)
+    for(auto &instruction : body.instructions)
+      instruction.function=target->function;
+
   // make sure the inlined function does not introduce hiding
-  if(ns.lookup(identifier).is_hidden())
+  if(goto_function.is_hidden())
   {
     for(auto &instruction : body.instructions)
       instruction.labels.remove(CPROVER_PREFIX "HIDE");
@@ -266,10 +296,14 @@ void goto_inlinet::insert_function_body(
 
   goto_programt tmp1;
   parameter_assignments(
-    target, identifier, goto_function.parameter_identifiers, arguments, tmp1);
+    target,
+    identifier,
+    goto_function.type,
+    arguments,
+    tmp1);
 
   goto_programt tmp2;
-  parameter_destruction(target, goto_function.parameter_identifiers, tmp2);
+  parameter_destruction(target, identifier, goto_function.type, tmp2);
 
   goto_programt tmp;
   tmp.destructive_append(tmp1); // par assignment
@@ -294,21 +328,37 @@ void goto_inlinet::insert_function_body(
     call_location_number,
     identifier);
 
-  if(adjust_function)
+#if 0
+  if(goto_function.is_hidden())
   {
-    Forall_goto_program_instructions(it, tmp)
-    {
-      replace_location(it->source_location, target->source_location);
-      replace_location(it->code, target->source_location);
+    source_locationt new_source_location=
+      function.find_source_location();
 
-      if(it->has_condition())
+    if(new_source_location.is_not_nil())
+    {
+      new_source_location.set_hide();
+
+      Forall_goto_program_instructions(it, tmp)
       {
-        exprt c = it->get_condition();
-        replace_location(c, target->source_location);
-        it->set_condition(c);
+        if(it->function==identifier)
+        {
+          // don't hide assignment to lhs
+          if(it->is_assign() && to_code_assign(it->code).lhs()==lhs)
+          {
+          }
+          else
+          {
+            replace_location(it->source_location, new_source_location);
+            replace_location(it->guard, new_source_location);
+            replace_location(it->code, new_source_location);
+          }
+
+          it->function=target->function;
+        }
       }
     }
   }
+#endif
 
   // kill call
   target->type=LOCATION;
@@ -331,7 +381,7 @@ void goto_inlinet::expand_function_call(
 
 #ifdef DEBUG
   std::cout << "Expanding call:\n";
-  dest.output_instruction(ns, irep_idt(), std::cout, *target);
+  dest.output_instruction(ns, "", std::cout, *target);
 #endif
 
   exprt lhs;
@@ -356,11 +406,11 @@ void goto_inlinet::expand_function_call(
     // it's recursive.
     // Uh. Buh. Give up.
     warning().source_location=function.find_source_location();
-    warning() << "recursion is ignored on call to '" << identifier << "'"
+    warning() << "recursion is ignored on call to `" << identifier << "'"
               << eom;
 
     if(force_full)
-      target->turn_into_skip();
+      target->make_skip();
 
     return;
   }
@@ -371,10 +421,10 @@ void goto_inlinet::expand_function_call(
   if(f_it==goto_functions.function_map.end())
   {
     warning().source_location=function.find_source_location();
-    warning() << "missing function '" << identifier << "' is ignored" << eom;
+    warning() << "missing function `" << identifier << "' is ignored" << eom;
 
     if(force_full)
-      target->turn_into_skip();
+      target->make_skip();
 
     return;
   }
@@ -439,7 +489,7 @@ void goto_inlinet::expand_function_call(
     if(no_body_set.insert(identifier).second) // newly inserted
     {
       warning().source_location = function.find_source_location();
-      warning() << "no body for function '" << identifier << "'" << eom;
+      warning() << "no body for function `" << identifier << "'" << eom;
     }
   }
 }
@@ -452,7 +502,7 @@ void goto_inlinet::get_call(
 {
   PRECONDITION(it->is_function_call());
 
-  const code_function_callt &call = it->get_function_call();
+  const code_function_callt &call=to_code_function_call(it->code);
 
   lhs=call.lhs();
   function=call.function();
@@ -689,6 +739,8 @@ void goto_inlinet::output_inline_map(
     goto_functionst::function_mapt::const_iterator f_it=
       goto_functions.function_map.find(id);
 
+    std::string call="-";
+
     if(f_it!=goto_functions.function_map.end() &&
        !call_list.empty())
     {
@@ -705,7 +757,7 @@ void goto_inlinet::output_inline_map(
         bool transitive=call.second;
 
         out << "  Call:\n";
-        goto_program.output_instruction(ns, id, out, *target);
+        goto_program.output_instruction(ns, "", out, *target);
         out << "  Transitive: " << transitive << "\n";
       }
     }
@@ -831,25 +883,26 @@ jsont goto_inlinet::goto_inline_logt::output_inline_log_json() const
 
   for(const auto &it : log_map)
   {
+    json_objectt &object=json_inlined.push_back().make_object();
+
     goto_programt::const_targett start=it.first;
     const goto_inline_log_infot &info=it.second;
     goto_programt::const_targett end=info.end;
 
     PRECONDITION(start->location_number <= end->location_number);
 
-    json_arrayt json_orig{
-      json_numbert(std::to_string(info.begin_location_number)),
-      json_numbert(std::to_string(info.end_location_number))};
-    json_arrayt json_new{json_numbert(std::to_string(start->location_number)),
-                         json_numbert(std::to_string(end->location_number))};
+    object["call"]=json_numbert(std::to_string(info.call_location_number));
+    object["function"]=json_stringt(info.function.c_str());
 
-    json_objectt object{
-      {"call", json_numbert(std::to_string(info.call_location_number))},
-      {"function", json_stringt(info.function.c_str())},
-      {"originalSegment", std::move(json_orig)},
-      {"inlinedSegment", std::move(json_new)}};
+    json_arrayt &json_orig=object["originalSegment"].make_array();
+    json_orig.push_back()=json_numbert(std::to_string(
+      info.begin_location_number));
+    json_orig.push_back()=json_numbert(std::to_string(
+      info.end_location_number));
 
-    json_inlined.push_back(std::move(object));
+    json_arrayt &json_new=object["inlinedSegment"].make_array();
+    json_new.push_back()=json_numbert(std::to_string(start->location_number));
+    json_new.push_back()=json_numbert(std::to_string(end->location_number));
   }
 
   return std::move(json_result);

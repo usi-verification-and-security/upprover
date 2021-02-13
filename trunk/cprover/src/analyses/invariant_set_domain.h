@@ -20,11 +20,7 @@ Author: Daniel Kroening, kroening@kroening.com
 class invariant_set_domaint:public ai_domain_baset
 {
 public:
-  invariant_set_domaint(
-    value_setst &value_sets,
-    inv_object_storet &object_store,
-    const namespacet &ns)
-    : has_values(false), invariant_set(value_sets, object_store, ns)
+  invariant_set_domaint():has_values(false)
   {
   }
 
@@ -53,7 +49,7 @@ public:
     if(has_values.is_known())
       out << has_values.to_string() << '\n';
     else
-      invariant_set.output(out);
+      invariant_set.output("", out);
   }
 
   virtual void transform(

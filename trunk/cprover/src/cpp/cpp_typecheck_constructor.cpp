@@ -68,8 +68,10 @@ static void copy_member(
   op1.copy_to_operands(cpp_namet(arg_name, source_location).as_expr());
   op1.add_source_location()=source_location;
 
-  side_effect_expr_assignt assign(op0.as_expr(), op1, typet(), source_location);
-  assign.lhs().add_source_location() = source_location;
+  side_effect_exprt assign(ID_assign, typet(), source_location);
+  assign.copy_to_operands(op0.as_expr());
+  assign.op0().add_source_location() = source_location;
+  assign.copy_to_operands(op1);
 
   code_expressiont code(assign);
   code.add_source_location() = source_location;
@@ -100,14 +102,13 @@ static void copy_array(
     ID_component_cpp_name, cpp_namet(member_base_name, source_location));
   member.copy_to_operands(cpp_namet(arg_name, source_location).as_expr());
 
-  side_effect_expr_assignt assign(
-    index_exprt(array.as_expr(), constant),
-    index_exprt(member, constant),
-    typet(),
-    source_location);
+  side_effect_exprt assign(ID_assign, typet(), source_location);
 
-  assign.lhs().add_source_location() = source_location;
-  assign.rhs().add_source_location() = source_location;
+  assign.copy_to_operands(index_exprt(array.as_expr(), constant));
+  assign.op0().add_source_location() = source_location;
+
+  assign.copy_to_operands(index_exprt(member, constant));
+  assign.op1().add_source_location() = source_location;
 
   code_expressiont code(assign);
   code.add_source_location() = source_location;
@@ -127,13 +128,15 @@ void cpp_typecheckt::default_ctor(
   decl.type().subtype().make_nil();
   decl.add_source_location()=source_location;
 
-  decl.value() = code_blockt();
+  decl.value().id(ID_code);
+  decl.value().type()=typet(ID_code);
+  decl.value().set(ID_statement, ID_block);
   decl.add(ID_cv).make_nil();
   decl.add(ID_throw_decl).make_nil();
 
   ctor.type().id(ID_constructor);
   ctor.add(ID_storage_spec).id(ID_cpp_storage_spec);
-  ctor.add_to_operands(std::move(decl));
+  ctor.move_to_operands(decl);
   ctor.add_source_location()=source_location;
 }
 
@@ -165,7 +168,7 @@ void cpp_typecheckt::default_cpctor(
   cpp_declaratort parameter_tor;
   parameter_tor.add(ID_value).make_nil();
   parameter_tor.set(ID_name, cpp_parameter);
-  parameter_tor.type() = reference_type(uninitialized_typet{});
+  parameter_tor.type()=reference_type(nil_typet());
   parameter_tor.add_source_location()=source_location;
 
   // Parameter declaration
@@ -175,7 +178,7 @@ void cpp_typecheckt::default_cpctor(
   sub.push_back(cppcomp.as_type());
   irept constnd(ID_const);
   sub.push_back(static_cast<const typet &>(constnd));
-  parameter_decl.add_to_operands(std::move(parameter_tor));
+  parameter_decl.move_to_operands(parameter_tor);
   parameter_decl.add_source_location()=source_location;
 
   // Add parameter to function type
@@ -185,8 +188,7 @@ void cpp_typecheckt::default_cpctor(
   irept &initializers=decl0.add(ID_member_initializers);
   initializers.id(ID_member_initializers);
 
-  cpp_declaratort &declarator =
-    static_cast<cpp_declaratort &>(to_multi_ary_expr(cpctor).op0());
+  cpp_declaratort &declarator=static_cast<cpp_declaratort &>(cpctor.op0());
   exprt &block=declarator.value();
 
   // First, we need to call the parent copy constructors
@@ -235,7 +237,7 @@ void cpp_typecheckt::default_cpctor(
       address_of_exprt address(var);
       assert(address.type() == mem_c.type());
 
-      already_typechecked_exprt::make_already_typechecked(address);
+      already_typechecked(address);
 
       exprt ptrmember(ID_ptrmember);
       ptrmember.set(ID_component_name, mem_c.get_name());
@@ -269,7 +271,7 @@ void cpp_typecheckt::default_cpctor(
     if(mem_c.type().id() == ID_array)
       memberexpr.set(ID_C_array_ini, true);
 
-    mem_init.add_to_operands(std::move(memberexpr));
+    mem_init.move_to_operands(memberexpr);
     initializers.move_to_sub(mem_init);
   }
 }
@@ -290,13 +292,12 @@ void cpp_typecheckt::default_assignop(
   std::string arg_name("ref");
 
   cpctor.add(ID_storage_spec).id(ID_cpp_storage_spec);
-  cpctor.type().id(ID_struct_tag);
+  cpctor.type().id(ID_symbol_type);
   cpctor.type().add(ID_identifier).id(symbol.name);
   cpctor.operands().push_back(exprt(ID_cpp_declarator));
   cpctor.add_source_location()=source_location;
 
-  cpp_declaratort &declarator =
-    static_cast<cpp_declaratort &>(to_multi_ary_expr(cpctor).op0());
+  cpp_declaratort &declarator=(cpp_declaratort&) cpctor.op0();
   declarator.add_source_location()=source_location;
 
   cpp_namet &declarator_name=declarator.name();
@@ -309,7 +310,7 @@ void cpp_typecheckt::default_assignop(
   declarator_name.get_sub().push_back(irept("="));
 
   declarator_type.id(ID_function_type);
-  declarator_type.subtype() = reference_type(uninitialized_typet{});
+  declarator_type.subtype()=reference_type(nil_typet());
   declarator_type.subtype().add(ID_C_qualifier).make_nil();
 
   exprt &args=static_cast<exprt&>(declarator.type().add(ID_parameters));
@@ -336,7 +337,7 @@ void cpp_typecheckt::default_assignop(
   args_decl_declor.name() = cpp_namet(arg_name, source_location);
   args_decl_declor.add_source_location()=source_location;
 
-  args_decl_declor.type() = pointer_type(uninitialized_typet{});
+  args_decl_declor.type()=pointer_type(typet(ID_nil));
   args_decl_declor.type().set(ID_C_reference, true);
   args_decl_declor.value().make_nil();
 }
@@ -350,7 +351,12 @@ void cpp_typecheckt::default_assignop_value(
   source_locationt source_location=declarator.source_location();
   declarator.make_nil();
 
-  code_blockt block;
+  declarator.value().add_source_location()=source_location;
+  declarator.value().id(ID_code);
+  declarator.value().set(ID_statement, ID_block);
+  declarator.value().type() = code_typet({}, empty_typet());
+
+  exprt &block=declarator.value();
 
   std::string arg_name("ref");
 
@@ -401,11 +407,12 @@ void cpp_typecheckt::default_assignop_value(
   }
 
   // Finally we add the return statement
-  block.add(
-    code_returnt(dereference_exprt(exprt("cpp-this"), uninitialized_typet())));
-
-  declarator.value() = std::move(block);
-  declarator.value().add_source_location() = source_location;
+  block.operands().push_back(exprt(ID_code));
+  exprt &ret_code=declarator.value().operands().back();
+  ret_code.operands().push_back(exprt(ID_dereference));
+  ret_code.op0().operands().push_back(exprt("cpp-this"));
+  ret_code.set(ID_statement, ID_return);
+  ret_code.type() = code_typet({}, empty_typet());
 }
 
 /// Check a constructor initialization-list. An initializer has to be a data
@@ -443,8 +450,8 @@ void cpp_typecheckt::check_member_initializers(
       for(const auto &b : bases)
       {
         if(
-          to_struct_tag_type(member_type).get_identifier() ==
-          to_struct_tag_type(b.type()).get_identifier())
+          to_symbol_type(member_type).get_identifier() ==
+          to_symbol_type(b.type()).get_identifier())
         {
           ok=true;
           break;
@@ -454,8 +461,8 @@ void cpp_typecheckt::check_member_initializers(
       if(!ok)
       {
         error().source_location=member_name.source_location();
-        error() << "invalid initializer '" << member_name.to_string() << "'"
-                << eom;
+        error() << "invalid initializer `" << member_name.to_string()
+                << "'" << eom;
         throw 0;
       }
       return;
@@ -481,18 +488,17 @@ void cpp_typecheckt::check_member_initializers(
       // Maybe it is a parent constructor?
       if(c.get_bool(ID_is_type))
       {
-        if(c.type().id() != ID_struct_tag)
+        if(c.type().id() != ID_symbol_type)
           continue;
 
-        const symbolt &symb =
-          lookup(to_struct_tag_type(c.type()).get_identifier());
+        const symbolt &symb = lookup(to_symbol_type(c.type()).get_identifier());
         if(symb.type.id()!=ID_struct)
           break;
 
         // check for a direct parent
         for(const auto &b : bases)
         {
-          if(symb.name == to_struct_tag_type(b.type()).get_identifier())
+          if(symb.name == to_symbol_type(b.type()).get_identifier())
           {
             ok=true;
             break;
@@ -515,7 +521,7 @@ void cpp_typecheckt::check_member_initializers(
         {
           if(
             member_type.get(ID_identifier) ==
-            to_struct_tag_type(b.type()).get_identifier())
+            to_symbol_type(b.type()).get_identifier())
           {
             ok=true;
             break;
@@ -528,7 +534,7 @@ void cpp_typecheckt::check_member_initializers(
     if(!ok)
     {
       error().source_location=member_name.source_location();
-      error() << "invalid initializer '" << base_name << "'" << eom;
+      error() << "invalid initializer `" << base_name << "'" << eom;
       throw 0;
     }
   }
@@ -562,6 +568,12 @@ void cpp_typecheckt::full_member_initialization(
 
     if(!vbases.empty())
     {
+      // TODO(tautschnig): this code doesn't seem to make much sense as the
+      // ifthenelse only gets to have two operands (instead of three)
+      codet cond(ID_ifthenelse);
+
+      cond.copy_to_operands(cpp_namet("@most_derived").as_expr());
+
       code_blockt block;
 
       while(!vbases.empty())
@@ -578,9 +590,7 @@ void cpp_typecheckt::full_member_initialization(
         }
         vbases.pop_front();
       }
-
-      code_ifthenelset cond(
-        cpp_namet("@most_derived").as_expr(), std::move(block));
+      cond.move_to_operands(block);
       final_initializers.move_to_sub(cond);
     }
 
@@ -636,12 +646,12 @@ void cpp_typecheckt::full_member_initialization(
 
         typecheck_type(member_type);
 
-        if(member_type.id() != ID_struct_tag)
+        if(member_type.id() != ID_symbol_type)
           break;
 
         if(
-          to_struct_tag_type(b.type()).get_identifier() ==
-          to_struct_tag_type(member_type).get_identifier())
+          to_symbol_type(b.type()).get_identifier() ==
+          to_symbol_type(member_type).get_identifier())
         {
           final_initializers.move_to_sub(initializer);
           found=true;
@@ -661,13 +671,18 @@ void cpp_typecheckt::full_member_initialization(
 
       if(b.get_bool(ID_virtual))
       {
-        codet tmp(ID_member_initializer);
-        tmp.swap(final_initializers.get_sub().back());
+        // TODO(tautschnig): this code doesn't seem to make much sense as the
+        // ifthenelse only gets to have two operands (instead of three)
+        codet cond(ID_ifthenelse);
 
-        code_ifthenelset cond(
-          cpp_namet("@most_derived").as_expr(), std::move(tmp));
+        cond.copy_to_operands(cpp_namet("@most_derived").as_expr());
 
-        final_initializers.get_sub().back().swap(cond);
+        {
+          codet tmp(ID_member_initializer);
+          tmp.swap(final_initializers.get_sub().back());
+          cond.move_to_operands(tmp);
+          final_initializers.get_sub().back().swap(cond);
+        }
       }
     }
   }
@@ -691,7 +706,7 @@ void cpp_typecheckt::full_member_initialization(
       address_of_exprt address(var);
       assert(address.type() == c.type());
 
-      already_typechecked_exprt::make_already_typechecked(address);
+      already_typechecked(address);
 
       exprt ptrmember(ID_ptrmember);
       ptrmember.set(ID_component_name, c.get_name());

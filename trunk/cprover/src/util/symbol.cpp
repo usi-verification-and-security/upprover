@@ -12,7 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "source_location.h"
 #include "std_expr.h"
-#include "string_utils.h"
 #include "suffix.h"
 
 /// Dump the state of a symbol object to a given output stream.
@@ -125,7 +124,7 @@ symbol_exprt symbolt::symbol_expr() const
 }
 
 /// Check that the instance object is well formed.
-/// \return true if well-formed; false otherwise.
+/// \return: true if well-formed; false otherwise.
 bool symbolt::is_well_formed() const
 {
   // Well-formedness criterion number 1 is for a symbol
@@ -138,100 +137,10 @@ bool symbolt::is_well_formed() const
   // Well-formedness criterion number 2 is for a symbol
   // to have it's base name as a suffix to it's more
   // general name.
-
-  // Exception: Java symbols' base names do not have type signatures
-  // (for example, they can have name "someclass.method:(II)V" and base name
-  // "method")
-  if(
-    !has_suffix(id2string(name), id2string(base_name)) && mode != ID_java &&
-    mode != ID_cpp)
+  if(!has_suffix(id2string(name), id2string(base_name)))
   {
-    bool criterion_must_hold = true;
-
-    // There are some special cases where this criterion doesn't hold, check
-    // to see if we have one of those cases
-
-    if(is_type)
-    {
-      // Typedefs
-      if(
-        type.find(ID_C_typedef).is_not_nil() &&
-        type.find(ID_C_typedef).id() == base_name)
-      {
-        criterion_must_hold = false;
-      }
-
-      // Tag types
-      if(type.find(ID_tag).is_not_nil() && type.find(ID_tag).id() == base_name)
-      {
-        criterion_must_hold = false;
-      }
-    }
-
-    // Linker renaming may have added $linkN suffixes to the name, and other
-    // suffixes such as #return_value may have then be subsequently added.
-    // Strip out the first $linkN substring and then see if the criterion holds
-    const auto &unstripped_name = id2string(name);
-    const size_t dollar_link_start_pos = unstripped_name.find("$link");
-
-    if(dollar_link_start_pos != std::string::npos)
-    {
-      size_t dollar_link_end_pos = dollar_link_start_pos + 5;
-      while(isdigit(unstripped_name[dollar_link_end_pos]))
-      {
-        ++dollar_link_end_pos;
-      }
-
-      const auto stripped_name =
-        unstripped_name.substr(0, dollar_link_start_pos) +
-        unstripped_name.substr(dollar_link_end_pos, std::string::npos);
-
-      if(has_suffix(stripped_name, id2string(base_name)))
-        criterion_must_hold = false;
-    }
-
-    if(criterion_must_hold)
-    {
-      // For all other cases this criterion should hold
-      return false;
-    }
+    return false;
   }
 
   return true;
-}
-
-bool symbolt::operator==(const symbolt &other) const
-{
-  // clang-format off
-  return
-    type == other.type &&
-    value == other.value &&
-    location == other.location &&
-    name == other.name &&
-    module == other.module &&
-    base_name == other.base_name &&
-    mode == other.mode &&
-    pretty_name == other.pretty_name &&
-    is_type == other.is_type &&
-    is_macro == other.is_macro &&
-    is_exported == other.is_exported &&
-    is_input == other.is_input &&
-    is_output == other.is_output &&
-    is_state_var == other.is_state_var &&
-    is_property == other.is_property &&
-    is_parameter == other.is_parameter &&
-    is_auxiliary == other.is_auxiliary &&
-    is_weak == other.is_weak &&
-    is_lvalue == other.is_lvalue &&
-    is_static_lifetime == other.is_static_lifetime &&
-    is_thread_local == other.is_thread_local &&
-    is_file_local == other.is_file_local &&
-    is_extern == other.is_extern &&
-    is_volatile == other.is_volatile;
-  // clang-format on
-}
-
-bool symbolt::operator!=(const symbolt &other) const
-{
-  return !(*this == other);
 }

@@ -13,12 +13,10 @@ Author: Chris Smowton, chris.smowton@diffblue.com
 #include <json/json_parser.h>
 #include <util/namespace.h>
 
-#include <linking/linking.h>
-
 /// Parse a goto program in json form.
 /// \param instream: The input stream
 /// \param path: A file path
-/// \return boolean signifying success or failure of the parsing
+/// \return: boolean signifying success or failure of the parsing
 bool json_symtab_languaget::parse(
   std::istream &instream,
   const std::string &path)
@@ -29,19 +27,15 @@ bool json_symtab_languaget::parse(
 /// Typecheck a goto program in json form.
 /// \param symbol_table: The symbol table containing symbols read from file.
 /// \param module: A useless parameter, there for interface consistency.
-/// \return boolean signifying success or failure of the typechecking.
+/// \return: boolean signifying success or failure of the typechecking.
 bool json_symtab_languaget::typecheck(
   symbol_tablet &symbol_table,
   const std::string &module)
 {
-  (void)module; // unused parameter
-
-  symbol_tablet new_symbol_table;
-
   try
   {
-    symbol_table_from_json(parsed_json_file, new_symbol_table);
-    return linking(symbol_table, new_symbol_table, get_message_handler());
+    symbol_table_from_json(parsed_json_file, symbol_table);
+    return false;
   }
   catch(const std::string &str)
   {

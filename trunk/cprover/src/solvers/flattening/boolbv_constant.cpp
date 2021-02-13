@@ -31,10 +31,12 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
     {
       const bvt &tmp=convert_bv(*it);
 
-      DATA_INVARIANT_WITH_DIAGNOSTICS(
-        tmp.size() == op_width,
-        "convert_constant: unexpected operand width",
-        irep_pretty_diagnosticst{expr});
+      if(tmp.size()!=op_width)
+      {
+        error().source_location=expr.find_source_location();
+        error() << "convert_constant: unexpected operand width" << eom;
+        throw 0;
+      }
 
       for(std::size_t j=0; j<op_width; j++)
         bv[offset+j]=tmp[j];
@@ -66,12 +68,16 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
 
     return bv;
   }
-  else if(
-    expr_type.id() == ID_unsignedbv || expr_type.id() == ID_signedbv ||
-    expr_type.id() == ID_bv || expr_type.id() == ID_fixedbv ||
-    expr_type.id() == ID_floatbv || expr_type.id() == ID_c_enum ||
-    expr_type.id() == ID_c_enum_tag || expr_type.id() == ID_c_bool ||
-    expr_type.id() == ID_c_bit_field)
+  else if(expr_type.id()==ID_unsignedbv ||
+          expr_type.id()==ID_signedbv ||
+          expr_type.id()==ID_bv ||
+          expr_type.id()==ID_fixedbv ||
+          expr_type.id()==ID_floatbv ||
+          expr_type.id()==ID_c_enum ||
+          expr_type.id()==ID_c_enum_tag ||
+          expr_type.id()==ID_c_bool ||
+          expr_type.id()==ID_c_bit_field ||
+          expr_type.id()==ID_incomplete_c_enum)
   {
     const auto &value = expr.get_value();
 
@@ -97,10 +103,13 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
   {
     const std::string &binary=id2string(expr.get_value());
 
-    DATA_INVARIANT_WITH_DIAGNOSTICS(
-      binary.size() * 2 == width,
-      "wrong value length in constant",
-      irep_pretty_diagnosticst{expr});
+    if(binary.size()*2!=width)
+    {
+      error().source_location=expr.find_source_location();
+      error() << "wrong value length in constant: "
+              << expr.pretty() << eom;
+      throw 0;
+    }
 
     for(std::size_t i=0; i<binary.size(); i++)
     {
@@ -130,10 +139,10 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
         break;
 
       default:
-        DATA_INVARIANT_WITH_DIAGNOSTICS(
-          false,
-          "unknown character in Verilog constant",
-          irep_pretty_diagnosticst{expr});
+        error().source_location=expr.find_source_location();
+        error() << "unknown character in Verilog constant:"
+                << expr.pretty() << eom;
+        throw 0;
       }
     }
 

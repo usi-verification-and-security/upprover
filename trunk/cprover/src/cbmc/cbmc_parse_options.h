@@ -24,16 +24,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <analyses/goto_check.h>
 
-#include <goto-checker/bmc_util.h>
 #include <goto-checker/solver_factory.h>
 
 #include <goto-programs/goto_trace.h>
 
-#include <solvers/strings/string_refinement.h>
+#include <solvers/refinement/string_refinement.h>
 
-#include <json/json_interface.h>
-#include <xmllang/xml_interface.h>
+#include "bmc.h"
+#include "xml_interface.h"
 
+class bmct;
 class goto_functionst;
 class optionst;
 
@@ -50,8 +50,7 @@ class optionst;
   "(object-bits):" \
   OPT_GOTO_CHECK \
   "(no-assertions)(no-assumptions)" \
-  OPT_XML_INTERFACE \
-  OPT_JSON_INTERFACE \
+  "(xml-ui)(xml-interface)(json-ui)" \
   "(smt1)(smt2)(fpa)(cvc3)(cvc4)(boolector)(yices)(z3)(mathsat)" \
   "(cprover-smt2)" \
   "(no-sat-preprocessor)" \
@@ -77,14 +76,17 @@ class optionst;
   "(string-abstraction)(no-arch)(arch):" \
   "(round-to-nearest)(round-to-plus-inf)(round-to-minus-inf)(round-to-zero)" \
   OPT_FLUSH \
-  "(localize-faults)" \
+  "(localize-faults)(localize-faults-method):" \
   OPT_GOTO_TRACE \
   OPT_VALIDATE \
   OPT_ANSI_C_LANGUAGE \
   "(claim):(show-claims)(floatbv)(all-claims)(all-properties)" // legacy, and will eventually disappear // NOLINT(whitespace/line_length)
 // clang-format on
 
-class cbmc_parse_optionst : public parse_options_baset
+class cbmc_parse_optionst:
+  public parse_options_baset,
+  public xml_interfacet,
+  public messaget
 {
 public:
   virtual int doit() override;
@@ -108,10 +110,13 @@ public:
     goto_modelt &,
     const optionst &,
     const cmdlinet &,
+    messaget &,
     ui_message_handlert &);
 
 protected:
   goto_modelt goto_model;
+  ui_message_handlert ui_message_handler;
+  const path_strategy_choosert path_strategy_chooser;
 
   void register_languages();
   void get_command_line_options(optionst &);

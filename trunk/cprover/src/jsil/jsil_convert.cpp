@@ -80,18 +80,18 @@ bool jsil_convertt::convert_code(const symbolt &symbol, codet &code)
 
     if(a.rhs().id()==ID_with)
     {
-      exprt to_try = to_with_expr(a.rhs()).old();
+      exprt to_try=a.rhs().op0();
       codet t(code_assignt(a.lhs(), to_try));
       if(convert_code(symbol, t))
         return true;
 
-      irep_idt c_target =
-        to_symbol_expr(to_with_expr(a.rhs()).where()).get_identifier();
+      irep_idt c_target=
+        to_symbol_expr(a.rhs().op1()).get_identifier();
       code_gotot g(c_target);
 
       code_try_catcht t_c(std::move(t));
       // Adding empty symbol to catch decl
-      code_declt d(symbol_exprt::typeless("decl_symbol"));
+      code_declt d(symbol_exprt("decl_symbol"));
       t_c.add_catch(d, g);
       t_c.add_source_location()=code.source_location();
 

@@ -63,10 +63,11 @@ public:
   using domaint = std::vector<typet>;
 
   mathematical_function_typet(const domaint &_domain, const typet &_codomain)
-    : type_with_subtypest(
-        ID_mathematical_function,
-        {type_with_subtypest(irep_idt(), _domain), _codomain})
+    : type_with_subtypest(ID_mathematical_function)
   {
+    subtypes().resize(2);
+    domain() = _domain;
+    codomain() = _codomain;
   }
 
   domaint &domain()
@@ -99,8 +100,8 @@ public:
 };
 
 /// Check whether a reference to a typet is a \ref mathematical_function_typet.
-/// \param type: Source type.
-/// \return True if \p type is a \ref mathematical_function_typet.
+/// \param type Source type.
+/// \return True if \param type is a \ref mathematical_function_typet.
 template <>
 inline bool can_cast_type<mathematical_function_typet>(const typet &type)
 {
@@ -113,7 +114,7 @@ inline bool can_cast_type<mathematical_function_typet>(const typet &type)
 /// mathematical_function_typet. Will fail with a precondition violation if type
 /// doesn't match.
 ///
-/// \param type: Source type.
+/// \param type Source type.
 /// \return Object of type \ref mathematical_function_typet.
 inline const mathematical_function_typet &
 to_mathematical_function_type(const typet &type)

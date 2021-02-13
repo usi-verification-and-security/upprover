@@ -8,7 +8,7 @@ Author: Georg Weissenbacher, georg.weissenbacher@inf.ethz.ch
 
 #include "bv_minimize.h"
 
-#include <solvers/prop/prop_minimize.h>
+#include <solvers/prop/minimize.h>
 
 void bv_minimizet::add_objective(
   prop_minimizet &prop_minimize,
@@ -56,7 +56,8 @@ void bv_minimizet::operator()(const minimization_listt &symbols)
 {
   // build bit-wise objective function
 
-  prop_minimizet prop_minimize(boolbv, log.get_message_handler());
+  prop_minimizet prop_minimize(boolbv);
+  prop_minimize.set_message_handler(get_message_handler());
 
   for(minimization_listt::const_iterator
       l_it=symbols.begin();

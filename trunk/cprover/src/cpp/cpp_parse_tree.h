@@ -28,12 +28,4 @@ public:
   void clear();
 };
 
-class uninitialized_typet : public typet
-{
-public:
-  uninitialized_typet() : typet(static_cast<const typet &>(get_nil_irep()))
-  {
-  }
-};
-
 #endif // CPROVER_CPP_CPP_PARSE_TREE_H

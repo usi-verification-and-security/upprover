@@ -19,8 +19,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <ansi-c/ansi_c_language.h>
 #include <ansi-c/cprover_library.h>
 
-#include <assembler/remove_asm.h>
-
 #include <cpp/cpp_language.h>
 #include <cpp/cprover_library.h>
 
@@ -32,6 +30,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/initialize_goto_model.h>
 #include <goto-programs/link_to_library.h>
 #include <goto-programs/read_goto_binary.h>
+#include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_returns.h>
@@ -40,7 +39,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/set_properties.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/show_symbol_table.h>
-#include <goto-programs/validate_goto_model.h>
 
 #include <analyses/is_threaded.h>
 #include <analyses/goto_check.h>
@@ -69,11 +67,9 @@ Author: Daniel Kroening, kroening@kroening.com
 goto_analyzer_parse_optionst::goto_analyzer_parse_optionst(
   int argc,
   const char **argv)
-  : parse_options_baset(
-      GOTO_ANALYSER_OPTIONS,
-      argc,
-      argv,
-      std::string("GOTO-ANALYZER "))
+  : parse_options_baset(GOTO_ANALYSER_OPTIONS, argc, argv),
+    messaget(ui_message_handler),
+    ui_message_handler(cmdline, std::string("GOTO-ANALYZER ") + CBMC_VERSION)
 {
 }
 
@@ -133,10 +129,6 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("error-label", cmdline.get_values("error-label"));
 #endif
 
-  // The user should either select:
-  //  1. a specific analysis, or
-  //  2. a tuple of task / analyser options / outputs
-
   // Select a specific analysis
   if(cmdline.isset("taint"))
   {
@@ -191,6 +183,11 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("dot", true);
     options.set_option("outfile", cmdline.get_value("dot"));
   }
+
+  // The use should either select:
+  //  1. a specific analysis, or
+  //  2. a triple of task / analyzer / domain, or
+  //  3. one of the general display options
 
   // Task options
   if(cmdline.isset("show"))
@@ -251,57 +248,15 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
   if(options.get_bool_option("general-analysis") || reachability_task)
   {
     // Abstract interpreter choice
-    if(cmdline.isset("recursive-interprocedural"))
-      options.set_option("recursive-interprocedural", true);
-    else if(cmdline.isset("legacy-ait") || cmdline.isset("location-sensitive"))
-    {
-      options.set_option("legacy-ait", true);
-      // Fixes a number of other options as well
-      options.set_option("ahistorical", true);
-      options.set_option("history set", true);
-      options.set_option("one-domain-per-location", true);
-      options.set_option("storage set", true);
-    }
-    else if(cmdline.isset("legacy-concurrent") || cmdline.isset("concurrent"))
-    {
-      options.set_option("legacy-concurrent", true);
-      options.set_option("ahistorical", true);
-      options.set_option("history set", true);
-      options.set_option("one-domain-per-location", true);
-      options.set_option("storage set", true);
-    }
+    if(cmdline.isset("location-sensitive"))
+      options.set_option("location-sensitive", true);
+    else if(cmdline.isset("concurrent"))
+      options.set_option("concurrent", true);
     else
     {
-      // Silently default to legacy-ait for backwards compatability
-      options.set_option("legacy-ait", true);
-      // Fixes a number of other options as well
-      options.set_option("ahistorical", true);
-      options.set_option("history set", true);
-      options.set_option("one-domain-per-location", true);
-      options.set_option("storage set", true);
-    }
-
-    // History choice
-    if(cmdline.isset("ahistorical"))
-    {
-      options.set_option("ahistorical", true);
-      options.set_option("history set", true);
-    }
-    else if(cmdline.isset("call-stack"))
-    {
-      options.set_option("call-stack", true);
-      options.set_option(
-        "call-stack-recursion-limit", cmdline.get_value("call-stack"));
-      options.set_option("history set", true);
-    }
-
-    if(!options.get_bool_option("history set"))
-    {
-      // Default to ahistorical as it is the expected for of analysis
-      log.status() << "History not specified, defaulting to --ahistorical"
-                   << messaget::eom;
-      options.set_option("ahistorical", true);
-      options.set_option("history set", true);
+      // Silently default to location-sensitive as it's the "default"
+      // view of abstract interpretation.
+      options.set_option("location-sensitive", true);
     }
 
     // Domain choice
@@ -341,34 +296,10 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
       if(!options.get_bool_option("domain set"))
       {
         // Default to constants as it is light-weight but useful
-        log.status() << "Domain not specified, defaulting to --constants"
-                     << messaget::eom;
+        status() << "Domain not specified, defaulting to --constants" << eom;
         options.set_option("constants", true);
       }
     }
-  }
-
-  // Storage choice
-  if(cmdline.isset("one-domain-per-history"))
-  {
-    options.set_option("one-domain-per-history", true);
-    options.set_option("storage set", true);
-  }
-  else if(cmdline.isset("one-domain-per-location"))
-  {
-    options.set_option("one-domain-per-location", true);
-    options.set_option("storage set", true);
-  }
-
-  if(!options.get_bool_option("storage set"))
-  {
-    // one-domain-per-location and one-domain-per-history are effectively
-    // the same when using ahistorical so we default to per-history so that
-    // more sophisticated history objects work as expected
-    log.status() << "Storage not specified,"
-                 << " defaulting to --one-domain-per-history" << messaget::eom;
-    options.set_option("one-domain-per-history", true);
-    options.set_option("storage set", true);
   }
 
   if(cmdline.isset("validate-goto-model"))
@@ -379,103 +310,63 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
 
 /// For the task, build the appropriate kind of analyzer
 /// Ideally this should be a pure function of options.
-/// However at the moment some domains require the goto_model or parts of it
+/// However at the moment some domains require the goto_model
 ai_baset *goto_analyzer_parse_optionst::build_analyzer(
   const optionst &options,
   const namespacet &ns)
 {
-  // These support all of the option categories
-  if(options.get_bool_option("recursive-interprocedural"))
-  {
-    // Build the history factory
-    std::unique_ptr<ai_history_factory_baset> hf = nullptr;
-    if(options.get_bool_option("ahistorical"))
-    {
-      hf = util_make_unique<
-        ai_history_factory_default_constructort<ahistoricalt>>();
-    }
-    else if(options.get_bool_option("call-stack"))
-    {
-      hf = util_make_unique<call_stack_history_factoryt>(
-        options.get_unsigned_int_option("call-stack-recursion-limit"));
-    }
+  ai_baset *domain = nullptr;
 
-    // Build the domain factory
-    std::unique_ptr<ai_domain_factory_baset> df = nullptr;
-    if(options.get_bool_option("constants"))
-    {
-      df = util_make_unique<
-        ai_domain_factory_default_constructort<constant_propagator_domaint>>();
-    }
-    else if(options.get_bool_option("intervals"))
-    {
-      df = util_make_unique<
-        ai_domain_factory_default_constructort<interval_domaint>>();
-    }
-    // non-null is not fully supported, despite the historical options
-    // dependency-graph is quite heavily tied to the legacy-ait infrastructure
-
-    // Build the storage object
-    std::unique_ptr<ai_storage_baset> st = nullptr;
-    if(options.get_bool_option("one-domain-per-history"))
-    {
-      st = util_make_unique<history_sensitive_storaget>();
-    }
-    else if(options.get_bool_option("one-domain-per-location"))
-    {
-      st = util_make_unique<location_sensitive_storaget>();
-    }
-
-    // Only try to build the abstract interpreter if all the parts have been
-    // correctly specified and configured
-    if(hf != nullptr && df != nullptr && st != nullptr)
-    {
-      if(options.get_bool_option("recursive-interprocedural"))
-      {
-        return new ai_recursive_interproceduralt(
-          std::move(hf), std::move(df), std::move(st));
-      }
-      UNREACHABLE;
-    }
-  }
-  else if(options.get_bool_option("legacy-ait"))
+  if(options.get_bool_option("location-sensitive"))
   {
     if(options.get_bool_option("constants"))
     {
       // constant_propagator_ait derives from ait<constant_propagator_domaint>
-      return new constant_propagator_ait(goto_model.goto_functions);
+      domain=new constant_propagator_ait(goto_model.goto_functions);
     }
     else if(options.get_bool_option("dependence-graph"))
     {
-      return new dependence_grapht(ns);
+      domain=new dependence_grapht(ns);
     }
     else if(options.get_bool_option("intervals"))
     {
-      return new ait<interval_domaint>();
+      domain=new ait<interval_domaint>();
     }
 #if 0
     // Not actually implemented, despite the option...
     else if(options.get_bool_option("non-null"))
     {
-      return new ait<non_null_domaint>();
+      domain=new ait<non_null_domaint>();
     }
 #endif
   }
-  else if(options.get_bool_option("legacy-concurrent"))
+  else if(options.get_bool_option("concurrent"))
   {
 #if 0
-    // Very few domains can work with this interpreter
-    // as it requires that changes to the domain are
-    // 'non-revertable' and it has merge shared
-    if(options.get_bool_option("dependence-graph"))
+    // Disabled until merge_shared is implemented for these
+    if(options.get_bool_option("constants"))
     {
-      return new dependence_grapht(ns);
+      domain=new concurrency_aware_ait<constant_propagator_domaint>();
     }
+    else if(options.get_bool_option("dependence-graph"))
+    {
+      domain=new dependence_grapht(ns);
+    }
+    else if(options.get_bool_option("intervals"))
+    {
+      domain=new concurrency_aware_ait<interval_domaint>();
+    }
+#if 0
+    // Not actually implemented, despite the option...
+    else if(options.get_bool_option("non-null"))
+    {
+      domain=new concurrency_aware_ait<non_null_domaint>();
+    }
+#endif
 #endif
   }
 
-  // Construction failed due to configuration errors
-  return nullptr;
+  return domain;
 }
 
 /// invoke main modules
@@ -493,26 +384,48 @@ int goto_analyzer_parse_optionst::doit()
 
   optionst options;
   get_command_line_options(options);
-  messaget::eval_verbosity(
+  eval_verbosity(
     cmdline.get_value("verbosity"), messaget::M_STATISTICS, ui_message_handler);
 
   //
   // Print a banner
   //
-  log.status() << "GOTO-ANALYSER version " << CBMC_VERSION << " "
-               << sizeof(void *) * 8 << "-bit " << config.this_architecture()
-               << " " << config.this_operating_system() << messaget::eom;
+  status() << "GOTO-ANALYSER version " << CBMC_VERSION << " "
+           << sizeof(void *) * 8 << "-bit " << config.this_architecture() << " "
+           << config.this_operating_system() << eom;
 
   register_languages();
 
-  goto_model = initialize_goto_model(cmdline.args, ui_message_handler, options);
+  try
+  {
+    goto_model =
+      initialize_goto_model(cmdline.args, get_message_handler(), options);
+  }
+
+  catch(const char *e)
+  {
+    error() << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
+
+  catch(const std::string &e)
+  {
+    error() << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
+
+  catch(int e)
+  {
+    error() << "Numeric exception: " << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
 
   if(process_goto_program(options))
     return CPROVER_EXIT_INTERNAL_ERROR;
 
   if(cmdline.isset("validate-goto-model"))
   {
-    goto_model.validate();
+    goto_model.validate(validation_modet::INVARIANT);
   }
 
   // show it?
@@ -528,11 +441,41 @@ int goto_analyzer_parse_optionst::doit()
     cmdline.isset("list-goto-functions"))
   {
     show_goto_functions(
-      goto_model, ui_message_handler, cmdline.isset("list-goto-functions"));
+      goto_model,
+      get_message_handler(),
+      get_ui(),
+      cmdline.isset("list-goto-functions"));
     return CPROVER_EXIT_SUCCESS;
   }
 
-  return perform_analysis(options);
+  try
+  {
+    return perform_analysis(options);
+  }
+
+  catch(const char *e)
+  {
+    error() << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
+
+  catch(const std::string &e)
+  {
+    error() << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
+
+  catch(int e)
+  {
+    error() << "Numeric exception: " << e << eom;
+    return CPROVER_EXIT_EXCEPTION;
+  }
+
+  catch(const std::bad_alloc &)
+  {
+    error() << "Out of memory" << eom;
+    return CPROVER_EXIT_INTERNAL_OUT_OF_MEMORY;
+  }
 }
 
 
@@ -546,14 +489,15 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
     if(cmdline.isset("show-taint"))
     {
-      taint_analysis(goto_model, taint_file, ui_message_handler, true);
+      taint_analysis(goto_model, taint_file, get_message_handler(), true, "");
       return CPROVER_EXIT_SUCCESS;
     }
     else
     {
       std::string json_file=cmdline.get_value("json");
-      bool result = taint_analysis(
-        goto_model, taint_file, ui_message_handler, false, json_file);
+      bool result=
+        taint_analysis(
+          goto_model, taint_file, get_message_handler(), false, json_file);
       return result ? CPROVER_EXIT_VERIFICATION_UNSAFE : CPROVER_EXIT_SUCCESS;
     }
   }
@@ -573,8 +517,8 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       std::ofstream ofs(json_file);
       if(!ofs)
       {
-        log.error() << "Failed to open json output '" << json_file << "'"
-                    << messaget::eom;
+        error() << "Failed to open json output `"
+                << json_file << "'" << eom;
         return CPROVER_EXIT_INTERNAL_ERROR;
       }
 
@@ -598,8 +542,8 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       std::ofstream ofs(json_file);
       if(!ofs)
       {
-        log.error() << "Failed to open json output '" << json_file << "'"
-                    << messaget::eom;
+        error() << "Failed to open json output `"
+                << json_file << "'" << eom;
         return CPROVER_EXIT_INTERNAL_ERROR;
       }
 
@@ -623,8 +567,8 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       std::ofstream ofs(json_file);
       if(!ofs)
       {
-        log.error() << "Failed to open json output '" << json_file << "'"
-                    << messaget::eom;
+        error() << "Failed to open json output `"
+                << json_file << "'" << eom;
         return CPROVER_EXIT_INTERNAL_ERROR;
       }
 
@@ -655,12 +599,12 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
   if(cmdline.isset("show-properties"))
   {
-    show_properties(goto_model, ui_message_handler);
+    show_properties(goto_model, get_message_handler(), get_ui());
     return CPROVER_EXIT_SUCCESS;
   }
 
-  if(cmdline.isset("property"))
-    ::set_properties(goto_model, cmdline.get_values("property"));
+  if(set_properties())
+    return CPROVER_EXIT_SET_PROPERTIES_FAILED;
 
   if(options.get_bool_option("general-analysis"))
   {
@@ -676,29 +620,29 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
     if(!out)
     {
-      log.error() << "Failed to open output file '" << outfile << "'"
-                  << messaget::eom;
+      error() << "Failed to open output file `"
+              << outfile << "'" << eom;
       return CPROVER_EXIT_INTERNAL_ERROR;
     }
 
     // Build analyzer
-    log.status() << "Selecting abstract domain" << messaget::eom;
+    status() << "Selecting abstract domain" << eom;
     namespacet ns(goto_model.symbol_table);  // Must live as long as the domain.
     std::unique_ptr<ai_baset> analyzer(build_analyzer(options, ns));
 
     if(analyzer == nullptr)
     {
-      log.status() << "Task / Interpreter combination not supported"
-                   << messaget::eom;
+      status() << "Task / Interpreter / Domain combination not supported"
+               << messaget::eom;
       return CPROVER_EXIT_INTERNAL_ERROR;
     }
 
     // Run
-    log.status() << "Computing abstract states" << messaget::eom;
+    status() << "Computing abstract states" << eom;
     (*analyzer)(goto_model);
 
     // Perform the task
-    log.status() << "Performing task" << messaget::eom;
+    status() << "Performing task" << eom;
 
     bool result = true;
 
@@ -709,21 +653,27 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
     }
     else if(options.get_bool_option("show-on-source"))
     {
-      show_on_source(goto_model, *analyzer, ui_message_handler);
+      show_on_source(goto_model, *analyzer, get_message_handler());
       return CPROVER_EXIT_SUCCESS;
     }
     else if(options.get_bool_option("verify"))
     {
-      result = static_verifier(
-        goto_model, *analyzer, options, ui_message_handler, out);
+      result = static_verifier(goto_model,
+                               *analyzer,
+                               options,
+                               get_message_handler(),
+                               out);
     }
     else if(options.get_bool_option("simplify"))
     {
       PRECONDITION(!outfile.empty() && outfile != "-");
       output_stream.close();
       output_stream.open(outfile, std::ios::binary);
-      result = static_simplifier(
-        goto_model, *analyzer, options, ui_message_handler, out);
+      result = static_simplifier(goto_model,
+                                 *analyzer,
+                                 options,
+                                 get_message_handler(),
+                                 out);
     }
     else if(options.get_bool_option("unreachable-instructions"))
     {
@@ -748,7 +698,7 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
     }
     else
     {
-      log.error() << "Unhandled task" << messaget::eom;
+      error() << "Unhandled task" << eom;
       return CPROVER_EXIT_INTERNAL_ERROR;
     }
 
@@ -758,14 +708,43 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
 
   // Final defensive error case
-  log.error() << "no analysis option given -- consider reading --help"
-              << messaget::eom;
+  error() << "no analysis option given -- consider reading --help"
+          << eom;
   return CPROVER_EXIT_USAGE_ERROR;
+}
+
+bool goto_analyzer_parse_optionst::set_properties()
+{
+  try
+  {
+    if(cmdline.isset("property"))
+      ::set_properties(goto_model, cmdline.get_values("property"));
+  }
+
+  catch(const char *e)
+  {
+    error() << e << eom;
+    return true;
+  }
+
+  catch(const std::string &e)
+  {
+    error() << e << eom;
+    return true;
+  }
+
+  catch(int)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 bool goto_analyzer_parse_optionst::process_goto_program(
   const optionst &options)
 {
+  try
   {
     #if 0
     // Remove inline assembler; this needs to happen before
@@ -773,20 +752,19 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     remove_asm(goto_model);
 
     // add the library
-    log.status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << messaget::eom;
+    status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << eom;
     link_to_library(
       goto_model, ui_message_handler, cprover_cpp_library_factory);
     link_to_library(goto_model, ui_message_handler, cprover_c_library_factory);
     #endif
 
     // remove function pointers
-    log.status() << "Removing function pointers and virtual functions"
-                 << messaget::eom;
+    status() << "Removing function pointers and virtual functions" << eom;
     remove_function_pointers(
-      ui_message_handler, goto_model, cmdline.isset("pointer-check"));
+      get_message_handler(), goto_model, cmdline.isset("pointer-check"));
 
     // do partial inlining
-    log.status() << "Partial Inlining" << messaget::eom;
+    status() << "Partial Inlining" << eom;
     goto_partial_inline(goto_model, ui_message_handler);
 
     // remove returns, gcc vectors, complex
@@ -796,7 +774,7 @@ bool goto_analyzer_parse_optionst::process_goto_program(
 
 #if 0
     // add generic checks
-    log.status() << "Generic Property Instrumentation" << messaget::eom;
+    status() << "Generic Property Instrumentation" << eom;
     goto_check(options, goto_model);
 #else
     (void)options; // unused parameter
@@ -808,6 +786,30 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     // add loop ids
     goto_model.goto_functions.compute_loop_numbers();
   }
+
+  catch(const char *e)
+  {
+    error() << e << eom;
+    return true;
+  }
+
+  catch(const std::string &e)
+  {
+    error() << e << eom;
+    return true;
+  }
+
+  catch(int)
+  {
+    return true;
+  }
+
+  catch(const std::bad_alloc &)
+  {
+    error() << "Out of memory" << eom;
+    return true;
+  }
+
   return false;
 }
 
@@ -816,10 +818,10 @@ void goto_analyzer_parse_optionst::help()
 {
   // clang-format off
   std::cout << '\n' << banner_string("GOTO-ANALYZER", CBMC_VERSION) << '\n'
-            << align_center_with_border("Copyright (C) 2017-2018") << '\n'
-            << align_center_with_border("Daniel Kroening, Diffblue") << '\n'
-            << align_center_with_border("kroening@kroening.com") << '\n'
             <<
+    "* *                   Copyright (C) 2017-2018                    * *\n"
+    "* *                  Daniel Kroening, Diffblue                   * *\n"
+    "* *                   kroening@kroening.com                      * *\n"
     "\n"
     "Usage:                       Purpose:\n"
     "\n"
@@ -841,30 +843,14 @@ void goto_analyzer_parse_optionst::help()
     "\n"
     "Abstract interpreter options:\n"
     // NOLINTNEXTLINE(whitespace/line_length)
-    " --recursive-interprocedural  use recursion to handle interprocedural reasoning\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --legacy-ait                 recursion for function and one domain per location\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --legacy-concurrent          legacy-ait with an extended fixed-point for concurrency\n"
-    "\n"
-    "History options:\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --ahistorical                the most basic history, tracks locations only\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --call-stack n               track the calling location stack for each function\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    "                              limiting to at most n recursive loops, 0 to disable\n"
+    " --location-sensitive         use location-sensitive abstract interpreter\n"
+    " --concurrent                 use concurrency-aware abstract interpreter\n"
     "\n"
     "Domain options:\n"
-    " --constants                  a constant for each variable if possible\n"
-    " --intervals                  an interval for each variable\n"
-    " --non-null                   tracks which pointers are non-null\n"
+    " --constants                  constant domain\n"
+    " --intervals                  interval domain\n"
+    " --non-null                   non-null domain\n"
     " --dependence-graph           data and control dependencies between instructions\n" // NOLINT(*)
-    "\n"
-    "Storage options:\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --one-domain-per-history     stores a domain for each history object created\n"
-    " --one-domain-per-location    stores a domain for each location reached\n"
     "\n"
     "Output options:\n"
     " --text file_name             output results in plain text to given file\n"
@@ -906,6 +892,7 @@ void goto_analyzer_parse_optionst::help()
     " --gcc                        use GCC as preprocessor\n"
     #endif
     " --no-library                 disable built-in abstract C library\n"
+    "\n"
     HELP_FUNCTIONS
     "\n"
     "Program representations:\n"

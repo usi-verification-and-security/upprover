@@ -34,7 +34,7 @@ void cpp_typecheck_fargst::build(
   const side_effect_expr_function_callt &function_call)
 {
   in_use=true;
-  operands = function_call.arguments();
+  operands = function_call.op1().operands();
 }
 
 bool cpp_typecheck_fargst::match(
@@ -97,7 +97,7 @@ bool cpp_typecheck_fargst::match(
 
     // "this" is a special case -- we turn the pointer type
     // into a reference type to do the type matching
-    if(it == ops.begin() && parameter.get_this())
+    if(it==ops.begin() && parameter.get(ID_C_base_name)==ID_this)
     {
       type.set(ID_C_reference, true);
       type.set(ID_C_this, true);
@@ -126,7 +126,7 @@ bool cpp_typecheck_fargst::match(
       operand.id() == ID_initializer_list && cpp_typecheck.cpp_is_pod(type) &&
       operand.operands().size() == 1 &&
       cpp_typecheck.implicit_conversion_sequence(
-        to_unary_expr(operand).op(), type, new_expr, rank))
+        operand.op0(), type, new_expr, rank))
     {
       distance += rank;
     }

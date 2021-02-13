@@ -32,14 +32,17 @@ void cpp_typecheckt::typecheck_method_bodies()
 
     method_bodies.erase(method_bodies.begin());
 
+    if(method_symbol.name==ID_main)
+      add_argc_argv(method_symbol);
+
     exprt &body=method_symbol.value;
     if(body.id() == ID_cpp_not_typechecked)
       continue;
 
 #ifdef DEBUG
-    std::cout << "convert_method_body: " << method_symbol.name << '\n';
-    std::cout << "  is_not_nil: " << body.is_not_nil() << '\n';
-    std::cout << "  !is_zero: " << (!body.is_zero()) << '\n';
+  std::cout << "convert_method_body: " << method_symbol.name << std::endl;
+  std::cout << "  is_not_nil: " << body.is_not_nil() << std::endl;
+  std::cout << "  !is_zero: " << (!body.is_zero()) << std::endl;
 #endif
     if(body.is_not_nil() && !body.is_zero())
       convert_function(method_symbol);
@@ -51,18 +54,22 @@ void cpp_typecheckt::typecheck_method_bodies()
 void cpp_typecheckt::add_method_body(symbolt *_method_symbol)
 {
 #ifdef DEBUG
-  std::cout << "add_method_body: " << _method_symbol->name << '\n';
+  std::cout << "add_method_body: " << _method_symbol->name << std::endl;
 #endif
-  // Converting a method body might add method bodies for methods that we have
-  // already analyzed. Adding the same method more than once causes duplicated
-  // symbol prefixes, therefore we have to keep track.
-  if(methods_seen.insert(_method_symbol->name).second)
+
+  // We have to prevent the same method to be added multiple times
+  //   otherwise we get duplicated symbol prefixes
+  if(methods_seen.find(_method_symbol->name) != methods_seen.end())
   {
-    method_bodies.push_back(
-      method_bodyt(_method_symbol, template_map, instantiation_stack));
-  }
 #ifdef DEBUG
-  else
-    std::cout << "  already exists\n";
+    std::cout << "  already exists" << std::endl;
 #endif
+    return;
+  }
+  method_bodies.push_back(
+    method_bodyt(_method_symbol, template_map, instantiation_stack));
+
+  // Converting a method body might add method bodies for methods
+  // that we have already analyzed. Hence, we have to keep track.
+  methods_seen.insert(_method_symbol->name);
 }

@@ -53,7 +53,7 @@ public:
   }
 
   /// Postincrement operator
-  map_iteratort operator++(int)
+  const map_iteratort operator++(int)
   {
     map_iteratort tmp(*this);
     this->operator++();
@@ -113,8 +113,8 @@ class filter_iteratort
 public:
   using difference_type = typename iteratort::difference_type;
   using value_type = typename iteratort::value_type;
-  using pointer = typename iteratort::pointer;
-  using reference = typename iteratort::reference;
+  using pointer = const value_type *;
+  using reference = const value_type &;
   using iterator_category = std::forward_iterator_tag;
 
   bool operator==(const filter_iteratort &other) const
@@ -136,19 +136,29 @@ public:
   }
 
   /// Postincrement operator
-  filter_iteratort operator++(int)
+  const filter_iteratort operator++(int)
   {
     filter_iteratort tmp(*this);
     this->operator++();
     return tmp;
   }
 
-  reference operator*() const
+  value_type &operator*()
   {
     return *underlying;
   }
 
-  pointer operator->() const
+  value_type *operator->()
+  {
+    return &(*underlying);
+  }
+
+  const value_type &operator*() const
+  {
+    return *underlying;
+  }
+
+  const value_type *operator->() const
   {
     return &(*underlying);
   }
@@ -198,8 +208,8 @@ struct concat_iteratort
 public:
   using difference_type = typename first_iteratort::difference_type;
   using value_type = typename first_iteratort::value_type;
-  using pointer = typename first_iteratort::pointer;
-  using reference = typename first_iteratort::reference;
+  using pointer = const value_type *;
+  using reference = const value_type &;
   using iterator_category = std::forward_iterator_tag;
 
   static_assert(
@@ -228,21 +238,35 @@ public:
   }
 
   /// Postincrement operator
-  concat_iteratort operator++(int)
+  const concat_iteratort operator++(int)
   {
     concat_iteratort tmp(first_begin, first_end, second_begin);
     this->operator++();
     return tmp;
   }
 
-  reference operator*() const
+  value_type &operator*()
   {
     if(first_begin == first_end)
       return *second_begin;
     return *first_begin;
   }
 
-  pointer operator->() const
+  value_type *operator->()
+  {
+    if(first_begin == first_end)
+      return &(*second_begin);
+    return &(*first_begin);
+  }
+
+  const value_type &operator*() const
+  {
+    if(first_begin == first_end)
+      return *second_begin;
+    return *first_begin;
+  }
+
+  const value_type *operator->() const
   {
     if(first_begin == first_end)
       return &(*second_begin);
@@ -263,114 +287,6 @@ private:
   first_iteratort first_begin;
   first_iteratort first_end;
   second_iteratort second_begin;
-};
-
-/// Zip two ranges to make a range of pairs.
-/// On increment, both iterators are incremented.
-/// Ends when both of the two ranges reach their end if \p same_size is true,
-/// when one of the two ranges ends otherwise.
-/// \tparam same_size: if true invariants are checking that one range does not
-///     end before the other
-template <
-  typename first_iteratort,
-  typename second_iteratort,
-  bool same_size = true>
-struct zip_iteratort
-{
-public:
-  using difference_type = typename first_iteratort::difference_type;
-  using value_type = std::pair<
-    typename first_iteratort::value_type,
-    typename second_iteratort::value_type>;
-  using pointer = value_type *;
-  using reference = value_type &;
-  using iterator_category = std::forward_iterator_tag;
-
-  bool operator==(const zip_iteratort &other) const
-  {
-    if(!same_size && end_reached() && other.end_reached())
-      return true;
-
-    return first_begin == other.first_begin && first_end == other.first_end &&
-           second_begin == other.second_begin && second_end == other.second_end;
-  }
-
-  bool operator!=(const zip_iteratort &other) const
-  {
-    return !(*this == other);
-  }
-
-  /// Preincrement operator
-  zip_iteratort &operator++()
-  {
-    PRECONDITION(!end_reached());
-    ++first_begin;
-    ++second_begin;
-    INVARIANT(
-      !same_size ||
-        ((first_begin == first_end) == (second_begin == second_end)),
-      "Zipped ranges should have the same size");
-    current = !end_reached()
-                ? std::make_shared<value_type>(*first_begin, *second_begin)
-                : nullptr;
-    return *this;
-  }
-
-  /// Postincrement operator
-  zip_iteratort operator++(int)
-  {
-    zip_iteratort tmp(first_begin, first_end, second_begin, second_end);
-    this->operator++();
-    return tmp;
-  }
-
-  reference operator*() const
-  {
-    PRECONDITION(current != nullptr);
-    return *current;
-  }
-
-  pointer operator->() const
-  {
-    return current.get();
-  }
-
-  zip_iteratort(
-    first_iteratort _first_begin,
-    first_iteratort _first_end,
-    second_iteratort _second_begin,
-    second_iteratort _second_end)
-    : first_begin(std::move(_first_begin)),
-      first_end(std::move(_first_end)),
-      second_begin(std::move(_second_begin)),
-      second_end(std::move(_second_end))
-  {
-    PRECONDITION(
-      !same_size ||
-      ((first_begin == first_end) == (second_begin == second_end)));
-    if(first_begin != first_end)
-      current = util_make_unique<value_type>(*first_begin, *second_begin);
-  }
-
-private:
-  first_iteratort first_begin;
-  first_iteratort first_end;
-  second_iteratort second_begin;
-  second_iteratort second_end;
-  std::shared_ptr<value_type> current = nullptr;
-
-  bool end_reached() const
-  {
-    if(same_size)
-    {
-      INVARIANT(
-        (first_begin == first_end) == (second_begin == second_end),
-        "Zip ranges should have same size");
-      return first_begin == first_end;
-    }
-    else
-      return first_begin == first_end || second_begin == second_end;
-  }
 };
 
 /// A range is a pair of a begin and an end iterators.
@@ -395,15 +311,14 @@ template <typename iteratort>
 struct ranget final
 {
 public:
-  using value_type = typename iteratort::value_type;
+  using value_typet = typename iteratort::value_type;
 
-  ranget(iteratort begin, iteratort end)
-    : begin_value(std::move(begin)), end_value(std::move(end))
+  ranget(iteratort begin, iteratort end) : begin_value(begin), end_value(end)
   {
   }
 
   ranget<filter_iteratort<iteratort>>
-  filter(std::function<bool(const value_type &)> f)
+  filter(std::function<bool(const value_typet &)> f)
   {
     auto shared_f = std::make_shared<decltype(f)>(std::move(f));
     filter_iteratort<iteratort> filter_begin(shared_f, begin(), end());
@@ -420,9 +335,9 @@ public:
   template <typename functiont>
   auto map(functiont &&f) -> ranget<map_iteratort<
     iteratort,
-    typename std::result_of<functiont(value_type)>::type>>
+    typename std::result_of<functiont(value_typet)>::type>>
   {
-    using outputt = typename std::result_of<functiont(value_type)>::type;
+    using outputt = typename std::result_of<functiont(value_typet)>::type;
     auto shared_f = std::make_shared<
       std::function<outputt(const typename iteratort::value_type &)>>(
       std::forward<functiont>(f));
@@ -445,53 +360,12 @@ public:
       concat_begin, concat_end);
   }
 
-  /// Combine two ranges to make a range over pairs
-  /// \tparam same_size: if true, cause an invariant violation in case the end
-  ///   is not reached simultaneously for both ranges
-  template <bool same_size = true, typename other_iteratort>
-  ranget<zip_iteratort<iteratort, other_iteratort, same_size>>
-  zip(ranget<other_iteratort> other)
-  {
-    auto zip_begin = zip_iteratort<iteratort, other_iteratort, same_size>(
-      begin(), end(), other.begin(), other.end());
-    auto zip_end = zip_iteratort<iteratort, other_iteratort, same_size>(
-      end(), end(), other.end(), other.end());
-    return ranget<zip_iteratort<iteratort, other_iteratort, same_size>>(
-      zip_begin, zip_end);
-  }
-
-  template <bool same_size = true, typename containert>
-  auto zip(containert &container)
-    -> ranget<zip_iteratort<iteratort, decltype(container.begin()), same_size>>
-  {
-    return zip<same_size>(
-      ranget<decltype(container.begin())>{container.begin(), container.end()});
-  }
-
   bool empty() const
   {
     return begin_value == end_value;
   }
 
-  /// Return an new range containing the same elements except for the first
-  /// \p count elements.
-  /// If the range has fewer elements, returns an empty range.
-  ranget<iteratort> drop(std::size_t count) &&
-  {
-    for(; count > 0 && begin_value != end_value; --count)
-      ++begin_value;
-    return ranget<iteratort>{std::move(begin_value), std::move(end_value)};
-  }
-
-  /// Return an new range containing the same elements except for the first
-  /// \p count elements.
-  /// If the range has fewer elements, returns an empty range.
-  ranget<iteratort> drop(std::size_t count) const &
-  {
-    return ranget<iteratort>{begin(), end()}.drop(count);
-  }
-
-  iteratort begin() const
+  iteratort begin()
   {
     return begin_value;
   }
@@ -499,20 +373,6 @@ public:
   const iteratort &end() const
   {
     return end_value;
-  }
-
-  /// Constructs a collection containing the values, which this range iterates
-  /// over.
-  template <typename containert>
-  containert collect() const
-  {
-    return containert(begin(), end());
-  }
-
-  template <typename containert>
-  operator containert() const
-  {
-    return collect<containert>();
   }
 
 private:
@@ -531,17 +391,6 @@ auto make_range(containert &container) -> ranget<decltype(container.begin())>
 {
   return ranget<decltype(container.begin())>(
     container.begin(), container.end());
-}
-
-/// Utility function to make equal_range method of multimap easier to use by
-/// returning a ranget object. For instance, we can write:
-/// `for(auto value : equal_range(map, key).filter(...).map(...)) {...}`.
-template <typename multimapt>
-ranget<typename multimapt::const_iterator>
-equal_range(const multimapt &multimap, const typename multimapt::key_type &key)
-{
-  auto iterator_pair = multimap.equal_range(key);
-  return make_range(iterator_pair.first, iterator_pair.second);
 }
 
 #endif // CPROVER_UTIL_RANGE_H

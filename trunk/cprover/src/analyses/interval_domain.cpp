@@ -80,59 +80,37 @@ void interval_domaint::transform(
     break;
 
   case GOTO:
-  {
-    // Comparing iterators is safe as the target must be within the same list
-    // of instructions because this is a GOTO.
-    locationt next = from;
-    next++;
-    if(from->get_target() != next) // If equal then a skip
     {
-      if(next == to)
-        assume(not_exprt(instruction.get_condition()), ns);
-      else
-        assume(instruction.get_condition(), ns);
+      // Comparing iterators is safe as the target must be within the same list
+      // of instructions because this is a GOTO.
+      locationt next=from;
+      next++;
+      if(from->get_target() != next) // If equal then a skip
+      {
+        if(next == to)
+          assume(not_exprt(instruction.guard), ns);
+        else
+          assume(instruction.guard, ns);
+      }
     }
     break;
-  }
 
   case ASSUME:
-    assume(instruction.get_condition(), ns);
+    assume(instruction.guard, ns);
     break;
 
   case FUNCTION_CALL:
-  {
-    const code_function_callt &code_function_call =
-      to_code_function_call(instruction.code);
-    if(code_function_call.lhs().is_not_nil())
-      havoc_rec(code_function_call.lhs());
+    {
+      const code_function_callt &code_function_call=
+        to_code_function_call(instruction.code);
+      if(code_function_call.lhs().is_not_nil())
+        havoc_rec(code_function_call.lhs());
+    }
     break;
-  }
 
-  case CATCH:
-  case THROW:
-    DATA_INVARIANT(false, "Exceptions must be removed before analysis");
-    break;
-  case RETURN:
-    DATA_INVARIANT(false, "Returns must be removed before analysis");
-    break;
-  case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
-  case ATOMIC_END:   // Ignoring is a valid over-approximation
-  case END_FUNCTION: // No action required
-  case START_THREAD: // Require a concurrent analysis at higher level
-  case END_THREAD:   // Require a concurrent analysis at higher level
-  case ASSERT:       // No action required
-  case LOCATION:     // No action required
-  case SKIP:         // No action required
-    break;
-  case OTHER:
-#if 0
-    DATA_INVARIANT(false, "Unclear what is a safe over-approximation of OTHER");
-#endif
-    break;
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    DATA_INVARIANT(false, "Only complete instructions can be analyzed");
-    break;
+  default:
+    {
+    }
   }
 }
 
@@ -276,7 +254,7 @@ void interval_domaint::assume_rec(
 
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
-      mp_integer tmp = numeric_cast_v<mp_integer>(to_constant_expr(rhs));
+      mp_integer tmp = numeric_cast_v<mp_integer>(rhs);
       if(id==ID_lt)
         --tmp;
       integer_intervalt &ii=int_map[lhs_identifier];
@@ -301,7 +279,7 @@ void interval_domaint::assume_rec(
 
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
-      mp_integer tmp = numeric_cast_v<mp_integer>(to_constant_expr(lhs));
+      mp_integer tmp = numeric_cast_v<mp_integer>(lhs);
       if(id==ID_lt)
         ++tmp;
       integer_intervalt &ii=int_map[rhs_identifier];

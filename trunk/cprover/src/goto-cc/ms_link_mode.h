@@ -14,9 +14,10 @@ Date: July 2018
 #ifndef CPROVER_GOTO_CC_MS_LINK_MODE_H
 #define CPROVER_GOTO_CC_MS_LINK_MODE_H
 
-#include "cl_message_handler.h"
 #include "compile.h"
 #include "goto_cc_mode.h"
+
+#include <util/cout_message.h>
 
 class ms_link_modet : public goto_cc_modet
 {
@@ -27,7 +28,7 @@ public:
   explicit ms_link_modet(goto_cc_cmdlinet &);
 
 protected:
-  cl_message_handlert message_handler;
+  console_message_handlert message_handler;
 };
 
 #endif // CPROVER_GOTO_CC_MS_LINK_MODE_H

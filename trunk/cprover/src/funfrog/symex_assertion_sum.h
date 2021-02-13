@@ -59,8 +59,7 @@ Constructor
     unsigned _last_assertion_loc,
     bool _single_assertion_check,
     bool _do_guard_expl,
-    unsigned int _max_unwind, bool partial_loops,
-    guard_managert & guard_manager);
+    unsigned int _max_unwind, bool partial_loops);
     
   // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
   symex_assertion_sumt(
@@ -313,12 +312,12 @@ protected:
   }
 
   // Dead identifiers do not need to be considered in Phi function generation
-  bool is_dead_identifier(const irep_idt& identifier) {
-    if (identifier == goto_symext::statet::guard_identifier())
-      return true;
-
-    return dead_identifiers.find(identifier) != dead_identifiers.end();
-  }
+//  bool is_dead_identifier(const irep_idt& identifier) { //no usage anymore
+//    if (identifier == guard_identifier)
+//      return true;
+//
+//    return dead_identifiers.find(identifier) != dead_identifiers.end();
+//  }
 
   // Allocate new partition_interface
   partition_ifacet& new_partition_iface(call_tree_nodet& call_tree_node,
@@ -346,16 +345,16 @@ protected:
     const std::string &msg,
     statet &state) override;
 
-  // for loop unwinding
-  virtual bool get_unwind(
-    const symex_targett::sourcet &source,
-    const call_stackt &call_stack, // KE: changed to fit the override
-    unsigned unwind)
-  {
-    // returns true if we should not continue unwinding
-    // for support of different bounds in different loops, see how it's done in symex_bmct
-    return unwind >= max_unwind;
-  }
+  // for loop unwinding //SA: check for usage 5.11
+//  virtual bool get_unwind(
+//    const symex_targett::sourcet &source,
+//    const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
+//    unsigned unwind)
+//  {
+//    // returns true if we should not continue unwinding
+//    // for support of different bounds in different loops, see how it's done in symex_bmct
+//    return unwind >= max_unwind;
+//  }
 
   // unwind option
   unsigned int max_unwind;
@@ -431,8 +430,8 @@ private:
 // dropped by `goto_symext::merge_goto` on merging with branches where the
 // identifier is still live.
   void  stop_constant_propagation_for(const irep_idt & id) {
-    //state.propagation.remove(id);
-    state->propagation.erase_if_exists(id);
+    state->propagation.erase(id); //5.11
+    //state->propagation.erase_if_exists(id); //5.12
   }
 
   // this works only for identifiers of artificial symbols
@@ -448,8 +447,10 @@ private:
   // Get L1 version of a symbol
   ssa_exprt get_l1_ssa(const symbolt & symbol) {
     ssa_exprt ssa(symbol.symbol_expr());
-    auto res = state->rename_ssa<L1>(ssa, ns).get();
-    return res;
+    state->rename(ssa, ns, statet::levelt::L1); //5.11
+    return ssa;
+    //auto res = state->rename_ssa<L1>(ssa, ns).get(); //5.12
+    //return res;
   }
 
   dstringt get_l1_identifier(const symbolt & symbol) {
@@ -462,12 +463,16 @@ private:
   void reset_state(){
     auto* storage = &this->path_storage;
     assert(storage);
+
     // Clear the state
-    state = std::unique_ptr<statet>(new statet(
-	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
-	  symex_config.max_field_sensitivity_array_size,
-	  guard_manager,
-	  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
+    state = std::unique_ptr<statet> (new statet()); //5.11
+
+//    state = std::unique_ptr<statet>(new statet(   //5.12
+//	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
+//	  symex_config.max_field_sensitivity_array_size,
+//	  guard_manager,
+//	  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
+
 	ns = namespacet{outer_symbol_table, state->symbol_table};
 	// since not supporting multiple threads, we do not need to record events;
 	turn_off_recording_events();
@@ -475,7 +480,7 @@ private:
 
   void turn_off_recording_events() {
   	// turns off doing some book-keeping related to handling multiple threads by CProver
-	state->record_events.push(false);
+	state->record_events = false;
   }
     /// Assuming the program counter of \p state is currently pointing to a return
     /// instruction, assign the value in that return to the top frame's

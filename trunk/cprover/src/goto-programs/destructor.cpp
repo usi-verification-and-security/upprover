@@ -19,9 +19,9 @@ code_function_callt get_destructor(
   const namespacet &ns,
   const typet &type)
 {
-  if(type.id() == ID_struct_tag)
+  if(type.id() == ID_symbol_type)
   {
-    return get_destructor(ns, ns.follow_tag(to_struct_tag_type(type)));
+    return get_destructor(ns, ns.follow(type));
   }
   else if(type.id()==ID_struct)
   {

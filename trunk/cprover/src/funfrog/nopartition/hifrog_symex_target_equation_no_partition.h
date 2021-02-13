@@ -7,16 +7,16 @@
 #define HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H
 
 #include <goto-symex/symex_target_equation.h>
-#include <goto-symex/ssa_step.h>
-#include <util/ui_message.h>
+//#include <goto-symex/ssa_step.h>
+//#include <util/ui_message.h>
 
 class convertort;
 
 class hifrog_symex_target_equationt:public symex_target_equationt
 {
 public:
-    hifrog_symex_target_equationt(const namespacet &_ns, message_handlert & message_handler) :
-        symex_target_equationt(message_handler),
+    hifrog_symex_target_equationt(const namespacet &_ns) :
+        symex_target_equationt(),
 #       ifdef DISABLE_OPTIMIZATIONS
         dump_SSA_tree(false),
         ssa_tree_file_name("__ssa_tree_default"),

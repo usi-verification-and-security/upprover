@@ -55,13 +55,12 @@ bool jsil_entry_point(
 
   irep_idt main_symbol;
 
-  // find main symbol, if any is given
-  if(config.main.has_value())
+  // find main symbol
+  if(config.main!="")
   {
     std::list<irep_idt> matches;
 
-    forall_symbol_base_map(
-      it, symbol_table.symbol_base_map, config.main.value())
+    forall_symbol_base_map(it, symbol_table.symbol_base_map, config.main)
     {
       // look it up
       symbol_tablet::symbolst::const_iterator s_it=
@@ -77,15 +76,15 @@ bool jsil_entry_point(
     if(matches.empty())
     {
       messaget message(message_handler);
-      message.error() << "main symbol '" << config.main.value() << "' not found"
-                      << messaget::eom;
+      message.error() << "main symbol `" << config.main
+                      << "' not found" << messaget::eom;
       return true; // give up
     }
 
     if(matches.size()>=2)
     {
       messaget message(message_handler);
-      message.error() << "main symbol '" << config.main.value()
+      message.error() << "main symbol `" << config.main
                       << "' is ambiguous" << messaget::eom;
       return true;
     }
@@ -102,7 +101,7 @@ bool jsil_entry_point(
   if(s_it==symbol_table.symbols.end())
   {
     messaget message(message_handler);
-    message.error() << "main symbol '" << id2string(main_symbol)
+    message.error() << "main symbol `" << id2string(main_symbol)
                     << "' not in symbol table" << messaget::eom;
     return true; // give up, no main
   }
@@ -113,8 +112,8 @@ bool jsil_entry_point(
   if(symbol.value.is_nil())
   {
     messaget message(message_handler);
-    message.error() << "main symbol '" << main_symbol << "' has no body"
-                    << messaget::eom;
+    message.error() << "main symbol `" << main_symbol
+                    << "' has no body" << messaget::eom;
     return false; // give up
   }
 

@@ -10,11 +10,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_SOLVERS_SMT2_SMT2_TOKENIZER_H
 
 #include <util/exception_utils.h>
+#include <util/parser.h>
 
 #include <sstream>
 #include <string>
 
-class smt2_tokenizert
+class smt2_tokenizert:public parsert
 {
 public:
   explicit smt2_tokenizert(std::istream &_in) : peeked(false), token(NONE)
@@ -56,6 +57,10 @@ public:
     unsigned line_no;
   };
 
+protected:
+  std::string buffer;
+  bool quoted_symbol = false;
+  bool peeked;
   using tokent = enum {
     NONE,
     END_OF_FILE,
@@ -66,8 +71,9 @@ public:
     OPEN,
     CLOSE
   };
+  tokent token;
 
-  tokent next_token();
+  virtual tokent next_token();
 
   tokent peek()
   {
@@ -81,15 +87,9 @@ public:
     }
   }
 
-  const std::string &get_buffer() const
-  {
-    return buffer;
-  }
-
-  bool token_is_quoted_symbol() const
-  {
-    return quoted_symbol;
-  }
+  /// skip any tokens until all parentheses are closed
+  /// or the end of file is reached
+  void skip_to_end_of_list();
 
   /// generate an error exception, pre-filled with a message
   smt2_errort error(const std::string &message)
@@ -102,18 +102,6 @@ public:
   {
     return smt2_errort(line_no);
   }
-
-protected:
-  std::istream *in;
-  unsigned line_no;
-  std::string buffer;
-  bool quoted_symbol = false;
-  bool peeked;
-  tokent token;
-
-  /// skip any tokens until all parentheses are closed
-  /// or the end of file is reached
-  void skip_to_end_of_list();
 
 private:
   tokent get_decimal_numeral();

@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "shared_buffers.h"
 
 #include <util/c_types.h>
-#include <util/fresh_symbol.h>
 
 #include <linking/static_lifetime_init.h>
 
@@ -89,22 +88,21 @@ irep_idt shared_bufferst::add(
   const typet &type,
   bool instrument)
 {
-  const namespacet ns(symbol_table);
+  const irep_idt identifier=id2string(object)+suffix;
 
-  symbolt &new_symbol = get_fresh_aux_symbol(
-    type,
-    id2string(object) + suffix,
-    id2string(base_name) + suffix,
-    ns.lookup(object).location,
-    ns.lookup(object).mode,
-    symbol_table);
+  symbolt new_symbol;
+  new_symbol.name=identifier;
+  new_symbol.base_name=id2string(base_name)+suffix;
+  new_symbol.type=type;
   new_symbol.is_static_lifetime=true;
   new_symbol.value.make_nil();
 
   if(instrument)
-    instrumentations.insert(new_symbol.name);
+    instrumentations.insert(identifier);
 
-  return new_symbol.name;
+  symbolt *symbol_ptr;
+  symbol_table.move(new_symbol, symbol_ptr);
+  return identifier;
 }
 
 void shared_bufferst::add_initialization(goto_programt &goto_program)
@@ -319,8 +317,12 @@ void shared_bufferst::write(
   const exprt cond_expr=
     not_exprt(and_exprt(buff1_used_expr, buff0_used_expr));
 
-  target = goto_program.insert_before(
-    target, goto_programt::make_assertion(cond_expr, source_location));
+  target=goto_program.insert_before(target);
+  target->guard=cond_expr;
+  target->type=ASSERT;
+  target->code=code_assertt();
+  target->code.add_source_location()=source_location;
+  target->source_location=source_location;
   target++;
 
   // We update writers ownership of the values in the buffer
@@ -445,7 +447,6 @@ void shared_bufferst::det_flush(
 
 /// instruments read
 void shared_bufferst::nondet_flush(
-  const irep_idt &function_id,
   goto_programt &goto_program,
   goto_programt::targett &target,
   const source_locationt &source_location,
@@ -462,8 +463,8 @@ void shared_bufferst::nondet_flush(
   const varst &vars=(*this)(object);
 
   // Non deterministic choice
-  irep_idt choice0 = choice(function_id, "0");
-  irep_idt choice2 = choice(function_id, "2"); // delays the write flush
+  irep_idt choice0=choice(target->function, "0");
+  irep_idt choice2=choice(target->function, "2"); // delays the write flush
 
   const symbol_exprt choice0_expr=symbol_exprt(choice0, bool_typet());
   const symbol_exprt delay_expr=symbol_exprt(choice2, bool_typet());
@@ -689,7 +690,7 @@ void shared_bufferst::nondet_flush(
     // a thread can read the other threads' buffers
 
     // One extra non-deterministic choice needed
-    irep_idt choice1 = choice(function_id, "1");
+    irep_idt choice1=choice(target->function, "1");
     const symbol_exprt choice1_expr=symbol_exprt(choice1, bool_typet());
 
     // throw Boolean dice
@@ -1033,16 +1034,11 @@ void shared_bufferst::affected_by_delay(
 
     Forall_goto_program_instructions(i_it, f_it->second.body)
     {
-      rw_set_loct rw_set(
-        ns,
-        value_sets,
-        f_it->first,
-        i_it
+        rw_set_loct rw_set(ns, value_sets, i_it
 #ifdef LOCAL_MAY
-        ,
-        local_may
+        , local_may
 #endif
-      ); // NOLINT(whitespace/parens)
+        ); // NOLINT(whitespace/parens)
         forall_rw_set_w_entries(w_it, rw_set)
           forall_rw_set_r_entries(r_it, rw_set)
           {
@@ -1060,19 +1056,19 @@ void shared_bufferst::affected_by_delay(
 /// instruments the program for the pairs detected through the CFG
 void shared_bufferst::cfg_visitort::weak_memory(
   value_setst &value_sets,
-  const irep_idt &function_id,
+  const irep_idt &function,
   memory_modelt model)
 {
-  shared_buffers.message.debug()
-    << "visit function " << function_id << messaget::eom;
-  if(function_id == INITIALIZE_FUNCTION)
+  shared_buffers.message.debug() << "visit function "<< function
+                                 << messaget::eom;
+  if(function == INITIALIZE_FUNCTION)
     return;
 
   namespacet ns(symbol_table);
-  goto_programt &goto_program = goto_functions.function_map[function_id].body;
+  goto_programt &goto_program=goto_functions.function_map[function].body;
 
 #ifdef LOCAL_MAY
-  local_may_aliast local_may(goto_functions.function_map[function_id]);
+  local_may_aliast local_may(goto_functions.function_map[function]);
 #endif
 
   Forall_goto_program_instructions(i_it, goto_program)
@@ -1096,14 +1092,9 @@ void shared_bufferst::cfg_visitort::weak_memory(
     {
       try
       {
-        rw_set_loct rw_set(
-          ns,
-          value_sets,
-          function_id,
-          i_it
+        rw_set_loct rw_set(ns, value_sets, i_it
 #ifdef LOCAL_MAY
-          ,
-          local_may
+        , local_may
 #endif
         ); // NOLINT(whitespace/parens)
 
@@ -1122,7 +1113,8 @@ void shared_bufferst::cfg_visitort::weak_memory(
           original_instruction.source_location;
 
         // ATOMIC_BEGIN: we make the whole thing atomic
-        instruction = goto_programt::make_atomic_begin(source_location);
+        instruction.make_atomic_begin();
+        instruction.source_location=source_location;
         i_it++;
 
         // we first perform (non-deterministically) up to 2 writes for
@@ -1135,13 +1127,9 @@ void shared_bufferst::cfg_visitort::weak_memory(
 
           if(shared_buffers.is_buffered(ns, e_it->second.symbol_expr, false))
             shared_buffers.nondet_flush(
-              function_id,
-              goto_program,
-              i_it,
-              source_location,
-              e_it->second.object,
+              goto_program, i_it, source_location, e_it->second.object,
               current_thread,
-              (model == TSO || model == PSO || model == RMO));
+              (model==TSO || model==PSO || model==RMO));
         }
 
         // Now perform the write(s).
@@ -1196,7 +1184,8 @@ void shared_bufferst::cfg_visitort::weak_memory(
                     vars.read_delayed, bool_typet());
 
                   // One extra non-deterministic choice needed
-                  irep_idt choice1 = shared_buffers.choice(function_id, "1");
+                  irep_idt choice1=shared_buffers.choice(
+                    instruction.function, "1");
                   const symbol_exprt choice1_expr=symbol_exprt(choice1,
                     bool_typet());
                   const exprt nondet_bool_expr =
@@ -1214,7 +1203,7 @@ void shared_bufferst::cfg_visitort::weak_memory(
                     read_delayed_expr,
                     if_exprt(
                       choice1_expr,
-                      dereference_exprt{new_read_expr},
+                      dereference_exprt(new_read_expr, vars.type),
                       to_replace_expr),
                     to_replace_expr); // original_instruction.code.op1());
 
@@ -1256,8 +1245,9 @@ void shared_bufferst::cfg_visitort::weak_memory(
           }
 
         // ATOMIC_END
-        i_it = goto_program.insert_before(
-          i_it, goto_programt::make_atomic_end(source_location));
+        i_it=goto_program.insert_before(i_it);
+        i_it->make_atomic_end();
+        i_it->source_location=source_location;
         i_it++;
 
         i_it--; // the for loop already counts us up
@@ -1282,7 +1272,8 @@ void shared_bufferst::cfg_visitort::weak_memory(
         original_instruction.source_location;
 
       // ATOMIC_BEGIN
-      instruction = goto_programt::make_atomic_begin(source_location);
+      instruction.make_atomic_begin();
+      instruction.source_location=source_location;
       i_it++;
 
       // does it for all the previous statements
@@ -1295,8 +1286,9 @@ void shared_bufferst::cfg_visitort::weak_memory(
       }
 
       // ATOMIC_END
-      i_it = goto_program.insert_before(
-        i_it, goto_programt::make_atomic_end(source_location));
+      i_it=goto_program.insert_before(i_it);
+      i_it->make_atomic_end();
+      i_it->source_location=source_location;
       i_it++;
 
       i_it--; // the for loop already counts us up
@@ -1304,7 +1296,7 @@ void shared_bufferst::cfg_visitort::weak_memory(
     else if(is_lwfence(instruction, ns))
     {
       // po -- remove the lwfence
-      *i_it = goto_programt::make_skip(i_it->source_location);
+      i_it->make_skip();
     }
     else if(instruction.is_function_call())
     {

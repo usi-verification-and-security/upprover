@@ -34,7 +34,6 @@ public:
   {
     const namespacet *ns=nullptr;
     propt *prop=nullptr;
-    message_handlert *message_handler = nullptr;
   };
 
   explicit bv_refinementt(const infot &info);
@@ -55,7 +54,9 @@ protected:
   bvt convert_mult(const mult_exprt &expr) override;
   bvt convert_div(const div_exprt &expr) override;
   bvt convert_mod(const mod_exprt &expr) override;
-  bvt convert_floatbv_op(const ieee_float_op_exprt &) override;
+  bvt convert_floatbv_op(const exprt &expr) override;
+
+  void set_assumptions(const bvt &_assumptions) override;
 
 private:
   // the list of operator approximations
@@ -76,8 +77,8 @@ private:
     bvt op0_bv, op1_bv, op2_bv, result_bv;
     mp_integer op0_value, op1_value, op2_value, result_value;
 
-    std::vector<exprt> under_assumptions;
-    std::vector<exprt> over_assumptions;
+    bvt under_assumptions;
+    bvt over_assumptions;
 
     // the kind of under- or over-approximation
     unsigned under_state, over_state;
@@ -106,7 +107,7 @@ private:
 
   bool progress;
   std::list<approximationt> approximations;
-
+  bvt parent_assumptions;
 protected:
   // use gui format
   configt config_;

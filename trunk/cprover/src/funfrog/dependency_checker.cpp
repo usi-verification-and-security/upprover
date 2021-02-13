@@ -104,7 +104,7 @@ void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
       it!=equation.SSA_steps.end();
       it++)
     {
-      SSA_stept& SSA_step=(*it);
+      symex_target_equationt::SSA_stept& SSA_step=(*it);
       this->SSA_steps.push_back(SSA_step);
       SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
     }
@@ -540,7 +540,7 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
 
 void dependency_checkert::print_SSA_steps()
 {
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       it->output(std::cout);
     }
@@ -558,7 +558,7 @@ void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equatio
   const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
   for(auto ssa_step : SSA_steps)
   {
-    SSA_stept& SSA_step = *ssa_step;
+    symex_target_equationt::SSA_stept& SSA_step = *ssa_step;
     this->SSA_steps.push_back(SSA_step);
     SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
   }
@@ -811,7 +811,7 @@ std::pair<bool, timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{
         // TODO: create solver according to current settings?
-        const solver_optionst solver_options; // Set defaults inside
+        solver_optionst solver_options; // Set defaults inside
         satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns, *message_handler);
         decider->new_partition();
 

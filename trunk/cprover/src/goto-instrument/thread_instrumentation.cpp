@@ -35,20 +35,23 @@ void thread_exit_instrumentation(goto_programt &goto_program)
   assert(end->is_end_function());
 
   source_locationt source_location=end->source_location;
+  irep_idt function=end->function;
 
   goto_program.insert_before_swap(end);
 
   const string_constantt mutex_locked_string("mutex-locked");
 
+  binary_exprt get_may("get_may");
+
   // NULL is any
-  binary_predicate_exprt get_may{
-    null_pointer_exprt(pointer_type(empty_typet())),
-    ID_get_may,
-    address_of_exprt(mutex_locked_string)};
+  get_may.op0()=null_pointer_exprt(pointer_type(empty_typet()));
+  get_may.op1()=address_of_exprt(mutex_locked_string);
 
-  *end = goto_programt::make_assertion(not_exprt(get_may), source_location);
+  end->make_assertion(not_exprt(get_may));
 
+  end->source_location=source_location;
   end->source_location.set_comment("mutexes must not be locked on thread exit");
+  end->function=function;
 }
 
 void thread_exit_instrumentation(goto_modelt &goto_model)
@@ -99,13 +102,15 @@ void mutex_init_instrumentation(
 
       if(code_assign.lhs().type()==lock_type)
       {
+        goto_programt::targett t=goto_program.insert_after(it);
+
         const code_function_callt call(
           f_it->second.symbol_expr(),
           {address_of_exprt(code_assign.lhs()),
            address_of_exprt(string_constantt("mutex-init"))});
 
-        goto_program.insert_after(
-          it, goto_programt::make_function_call(call, it->source_location));
+        t->make_function_call(call);
+        t->source_location=it->source_location;
       }
     }
   }

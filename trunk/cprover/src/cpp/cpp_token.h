@@ -29,9 +29,9 @@ public:
   {
     kind=0;
     data.clear();
-    text.clear();
+    text="";
     line_no=0;
-    filename.clear();
+    filename="";
   }
 
   void swap(cpp_tokent &token)

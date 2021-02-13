@@ -540,7 +540,7 @@ bvt bv_utilst::negate(const bvt &bv)
 
 bvt bv_utilst::negate_no_overflow(const bvt &bv)
 {
-  prop.l_set_to_false(overflow_negate(bv));
+  prop.l_set_to(overflow_negate(bv), false);
   return negate(bv);
 }
 
@@ -780,7 +780,9 @@ bvt bv_utilst::absolute_value(const bvt &bv)
 
 bvt bv_utilst::cond_negate_no_overflow(const bvt &bv, literalt cond)
 {
-  prop.l_set_to_true(prop.limplies(cond, !overflow_negate(bv)));
+  prop.l_set_to(
+    prop.limplies(cond, !overflow_negate(bv)),
+    true);
 
   return cond_negate(bv, cond);
 }
@@ -800,7 +802,7 @@ bvt bv_utilst::signed_multiplier_no_overflow(
 
   bvt result=unsigned_multiplier_no_overflow(neg0, neg1);
 
-  prop.l_set_to_false(result[result.size() - 1]);
+  prop.l_set_to(result[result.size()-1], false);
 
   literalt result_sign=prop.lxor(sign0, sign1);
 
@@ -816,9 +818,8 @@ bvt bv_utilst::multiplier(
   {
   case representationt::SIGNED: return signed_multiplier(op0, op1);
   case representationt::UNSIGNED: return unsigned_multiplier(op0, op1);
+  default: UNREACHABLE;
   }
-
-  UNREACHABLE;
 }
 
 bvt bv_utilst::multiplier_no_overflow(
@@ -832,9 +833,8 @@ bvt bv_utilst::multiplier_no_overflow(
     return signed_multiplier_no_overflow(op0, op1);
   case representationt::UNSIGNED:
     return unsigned_multiplier_no_overflow(op0, op1);
+  default: UNREACHABLE;
   }
-
-  UNREACHABLE;
 }
 
 void bv_utilst::signed_divider(
@@ -887,6 +887,8 @@ void bv_utilst::divider(
     signed_divider(op0, op1, result, remainer); break;
   case representationt::UNSIGNED:
     unsigned_divider(op0, op1, result, remainer); break;
+  default:
+    UNREACHABLE;
   }
 }
 
@@ -989,10 +991,11 @@ void bv_utilst::equal_const_register(const bvt &var)
   return;
 }
 
+
 /// The obvious recursive comparison, the interesting thing is that it is cached
 /// so the literals are shared between constants.
 /// \param Bit:vectors for a variable and a const to compare, note that
-///   to avoid significant amounts of copying these are mutable and consumed.
+/// to avoid significant amounts of copying these are mutable and consumed.
 /// \return The literal that is true if and only if all the bits in var and
 ///   const are equal.
 literalt bv_utilst::equal_const_rec(bvt &var, bvt &constant)

@@ -21,13 +21,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /*! \brief TO_BE_DOCUMENTED
 */
-class propt
+class propt:public messaget
 {
 public:
-  explicit propt(message_handlert &message_handler) : log(message_handler)
-  {
-  }
-
+  propt() { }
   virtual ~propt() { }
 
   // boolean operators
@@ -97,7 +94,7 @@ public:
   // solving
   virtual const std::string solver_text()=0;
   enum class resultt { P_SATISFIABLE, P_UNSATISFIABLE, P_ERROR };
-  resultt prop_solve();
+  virtual resultt prop_solve()=0;
 
   // satisfying assignment
   virtual tvt l_get(literalt a) const=0;
@@ -116,19 +113,12 @@ public:
   // Resource limits:
   virtual void set_time_limit_seconds(uint32_t)
   {
-    log.warning() << "CPU limit ignored (not implemented)" << messaget::eom;
+    warning() << "CPU limit ignored (not implemented)" << eom;
   }
 
-  std::size_t get_number_of_solver_calls() const;
-
 protected:
-  virtual resultt do_prop_solve() = 0;
-
   // to avoid a temporary for lcnf(...)
   bvt lcnf_bv;
-
-  messaget log;
-  std::size_t number_of_solver_calls = 0;
 };
 
 #endif // CPROVER_SOLVERS_PROP_PROP_H

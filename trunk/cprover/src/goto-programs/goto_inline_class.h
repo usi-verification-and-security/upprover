@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/message.h>
 #include <util/json.h>
+#include <util/json_expr.h>
 
 #include "goto_functions.h"
 
@@ -178,13 +179,14 @@ protected:
   void parameter_assignments(
     const goto_programt::targett target,
     const irep_idt &function_name,
-    const goto_functiont::parameter_identifierst &parameter_identifiers,
+    const code_typet &code_type,
     const exprt::operandst &arguments,
     goto_programt &dest);
 
   void parameter_destruction(
     const goto_programt::targett target,
-    const goto_functiont::parameter_identifierst &parameter_identifiers,
+    const irep_idt &function_name,
+    const code_typet &code_type,
     goto_programt &dest);
 
   // goto functions that were already inlined transitively

@@ -20,11 +20,9 @@ irep_idt byte_extract_id()
   case configt::ansi_ct::endiannesst::IS_BIG_ENDIAN:
     return ID_byte_extract_big_endian;
 
-  case configt::ansi_ct::endiannesst::NO_ENDIANNESS:
+  default:
     UNREACHABLE;
   }
-
-  UNREACHABLE;
 }
 
 irep_idt byte_update_id()
@@ -37,9 +35,7 @@ irep_idt byte_update_id()
   case configt::ansi_ct::endiannesst::IS_BIG_ENDIAN:
     return ID_byte_update_big_endian;
 
-  case configt::ansi_ct::endiannesst::NO_ENDIANNESS:
+  default:
     UNREACHABLE;
   }
-
-  UNREACHABLE;
 }

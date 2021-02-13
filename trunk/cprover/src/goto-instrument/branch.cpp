@@ -45,23 +45,24 @@ void branch(
       // T': id("not-taken");   t3
       // ...
 
-      if(i_it->is_goto() && !i_it->get_condition().is_constant())
+      if(i_it->is_goto() &&
+         !i_it->guard.is_constant())
       {
         // negate condition
-        i_it->set_condition(boolean_negate(i_it->get_condition()));
+        i_it->guard = boolean_negate(i_it->guard);
 
-        goto_programt::targett t1 = body.insert_after(
-          i_it,
-          goto_programt::make_function_call(
-            function_to_call(goto_model.symbol_table, id, "taken")));
+        goto_programt::targett t1=body.insert_after(i_it);
+        t1->make_function_call(
+          function_to_call(goto_model.symbol_table, id, "taken"));
+        t1->function=f_it->first;
 
-        goto_programt::targett t2 = body.insert_after(
-          t1, goto_programt::make_goto(i_it->get_target(), true_exprt()));
+        goto_programt::targett t2=body.insert_after(t1);
+        t2->make_goto(i_it->get_target());
 
-        goto_programt::targett t3 = body.insert_after(
-          t2,
-          goto_programt::make_function_call(
-            function_to_call(goto_model.symbol_table, id, "not-taken")));
+        goto_programt::targett t3=body.insert_after(t2);
+        t3->make_function_call(
+          function_to_call(goto_model.symbol_table, id, "not-taken"));
+        t3->function=f_it->first;
         i_it->targets.clear();
         i_it->targets.push_back(t3);
       }

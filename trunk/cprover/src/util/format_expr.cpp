@@ -19,7 +19,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "format_type.h"
 #include "ieee_float.h"
 #include "invariant.h"
-#include "mathematical_expr.h"
 #include "mp_arith.h"
 #include "rational.h"
 #include "rational_tools.h"
@@ -28,7 +27,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "string2int.h"
 #include "string_utils.h"
 
-#include <map>
 #include <ostream>
 #include <stack>
 
@@ -104,7 +102,9 @@ static std::ostream &format_rec(std::ostream &os, const multi_ary_exprt &src)
 
   std::string operator_str = id2string(src.id()); // default
 
-  if(src.id() == ID_equal && to_equal_expr(src).op0().type().id() == ID_bool)
+  if(
+    src.id() == ID_equal && !src.operands().empty() &&
+    src.op0().type().id() == ID_bool)
   {
     operator_str = u8"\u21d4"; // <=>, U+21D4
   }
@@ -224,18 +224,12 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
 {
   const auto &id = expr.id();
 
-  if(
-    id == ID_plus || id == ID_mult || id == ID_and || id == ID_or ||
-    id == ID_xor)
-  {
+  if(id == ID_plus || id == ID_mult || id == ID_and || id == ID_or)
     return format_rec(os, to_multi_ary_expr(expr));
-  }
   else if(
-    id == ID_lt || id == ID_gt || id == ID_ge || id == ID_le || id == ID_div ||
+    id == ID_lt || id == ID_gt || id == ID_ge || id == ID_le ||
     id == ID_minus || id == ID_implies || id == ID_equal || id == ID_notequal)
-  {
     return format_rec(os, to_binary_expr(expr));
-  }
   else if(id == ID_not || id == ID_unary_minus)
     return format_rec(os, to_unary_expr(expr));
   else if(id == ID_constant)
@@ -323,31 +317,6 @@ std::ostream &format_rec(std::ostream &os, const exprt &expr)
       for(const auto &s : to_code_block(code).statements())
         os << ' ' << format(s);
       return os << " }";
-    }
-    else if(statement == ID_dead)
-    {
-      return os << "dead " << format(to_code_dead(code).symbol()) << ";";
-    }
-    else if(statement == ID_decl)
-    {
-      const auto &declaration_symb = to_code_decl(code).symbol();
-      return os << "decl " << format(declaration_symb.type()) << " "
-                << format(declaration_symb) << ";";
-    }
-    else if(statement == ID_function_call)
-    {
-      const auto &func_call = to_code_function_call(code);
-      os << to_symbol_expr(func_call.function()).get_identifier() << "(";
-
-      // Join all our arguments together.
-      join_strings(
-        os,
-        func_call.arguments().begin(),
-        func_call.arguments().end(),
-        ", ",
-        [](const exprt &expr) { return format(expr); });
-
-      return os << ");";
     }
     else
       return fallback_format_rec(os, expr);

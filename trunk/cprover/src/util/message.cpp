@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "message.h"
 
-#include "json.h"
 #include "string2int.h"
 
 void message_handlert::print(
@@ -26,30 +25,30 @@ void message_handlert::print(
 
   if(!file.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="file "+id2string(file);
   }
   if(!line.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="line "+id2string(line);
   }
   if(!column.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="column "+id2string(column);
   }
   if(!function.empty())
   {
-    if(!dest.empty())
+    if(dest!="")
       dest+=' ';
     dest+="function "+id2string(function);
   }
 
-  if(!dest.empty())
+  if(dest!="")
     dest+=": ";
   dest+=message;
 
@@ -92,9 +91,9 @@ const messaget::commandt messaget::bright_cyan(96);
 
 /// Parse a (user-)provided string as a verbosity level and set it as the
 /// verbosity of dest.
-/// \param user_input: Input string; if empty, the default verbosity is used.
-/// \param default_verbosity: Verbosity to use if no value is provided.
-/// \param dest: message handler the verbosity of which is to be set.
+/// \param user_input  Input string; if empty, the default verbosity is used.
+/// \param default_verbosity  Verbosity to use if no value is provided.
+/// \param dest  message handler the verbosity of which is to be set.
 /// \return Computed verbosity
 unsigned messaget::eval_verbosity(
   const std::string &user_input,
@@ -128,8 +127,8 @@ unsigned messaget::eval_verbosity(
 /// configured verbosity is at least as high as that of \p message_stream.  Use
 /// whenever generating output involves additional computational effort that
 /// should only be spent when such output will actually be displayed.
-/// \param message_stream: Output message stream
-/// \param output_generator: Function generating output
+/// \param message_stream  Output message stream
+/// \param output_generator  Function generating output
 void messaget::conditional_output(
   mstreamt &message_stream,
   const std::function<void(mstreamt &)> &output_generator) const
@@ -140,15 +139,4 @@ void messaget::conditional_output(
   {
     output_generator(mstream);
   }
-}
-
-messaget::mstreamt &messaget::mstreamt::operator<<(const json_objectt &data)
-{
-  if(this->tellp() > 0)
-    *this << eom; // force end of previous message
-  if(message.message_handler)
-  {
-    message.message_handler->print(message_level, data);
-  }
-  return *this;
 }

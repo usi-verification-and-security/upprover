@@ -13,6 +13,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/expr_util.h>
 #include <util/arith_tools.h>
 
+#include <langapi/language_util.h>
+
+#include <solvers/refinement/string_refinement_invariant.h>
 #include <solvers/floatbv/float_utils.h>
 
 // Parameters
@@ -23,22 +26,23 @@ void bv_refinementt::approximationt::add_over_assumption(literalt l)
 {
   // if it's a constant already, give up
   if(!l.is_constant())
-    over_assumptions.push_back(literal_exprt(l));
+    over_assumptions.push_back(l);
 }
 
 void bv_refinementt::approximationt::add_under_assumption(literalt l)
 {
   // if it's a constant already, give up
   if(!l.is_constant())
-    under_assumptions.push_back(literal_exprt(l));
+    under_assumptions.push_back(l);
 }
 
-bvt bv_refinementt::convert_floatbv_op(const ieee_float_op_exprt &expr)
+bvt bv_refinementt::convert_floatbv_op(const exprt &expr)
 {
   if(!config_.refine_arithmetic)
     return SUB::convert_floatbv_op(expr);
 
-  if(expr.type().id() != ID_floatbv)
+  if(ns.follow(expr.type()).id()!=ID_floatbv ||
+     expr.operands().size()!=3)
     return SUB::convert_floatbv_op(expr);
 
   bvt bv;
@@ -56,7 +60,7 @@ bvt bv_refinementt::convert_mult(const mult_exprt &expr)
 
   const exprt::operandst &operands=expr.operands();
 
-  const typet &type = expr.type();
+  const typet &type=ns.follow(expr.type());
 
   PRECONDITION(operands.size()>=2);
 
@@ -162,11 +166,14 @@ void bv_refinementt::check_SAT(approximationt &a)
 
   // see if the satisfying assignment is spurious in any way
 
-  const typet &type = a.expr.type();
+  const typet &type=ns.follow(a.expr.type());
 
   if(type.id()==ID_floatbv)
   {
-    const auto &float_op = to_ieee_float_op_expr(a.expr);
+    // these are all ternary
+    INVARIANT(
+      a.expr.operands().size()==3,
+      string_refinement_invariantt("all floatbv typed exprs are ternary"));
 
     if(a.over_state==MAX_STATE)
       return;
@@ -178,8 +185,7 @@ void bv_refinementt::check_SAT(approximationt &a)
     o1.unpack(a.op1_value);
 
     // get actual rounding mode
-    constant_exprt rounding_mode_expr =
-      to_constant_expr(get(float_op.rounding_mode()));
+    exprt rounding_mode_expr = get(a.expr.op2());
     const std::size_t rounding_mode_int =
       numeric_cast_v<std::size_t>(rounding_mode_expr);
     ieee_floatt::rounding_modet rounding_mode =
@@ -204,23 +210,21 @@ void bv_refinementt::check_SAT(approximationt &a)
     if(result.pack()==a.result_value) // ok
       return;
 
-#ifdef DEBUG
+    #ifdef DEBUG
     ieee_floatt rr(spec);
     rr.unpack(a.result_value);
 
-    log.debug() << "S1: " << o0 << " " << a.expr.id() << " " << o1
-                << " != " << rr << messaget::eom;
-    log.debug() << "S2: " << integer2binary(a.op0_value, spec.width()) << " "
-                << a.expr.id() << " "
-                << integer2binary(a.op1_value, spec.width())
-                << "!=" << integer2binary(a.result_value, spec.width())
-                << messaget::eom;
-    log.debug() << "S3: " << integer2binary(a.op0_value, spec.width()) << " "
-                << a.expr.id() << " "
-                << integer2binary(a.op1_value, spec.width())
-                << "==" << integer2binary(result.pack(), spec.width())
-                << messaget::eom;
-#endif
+    debug() << "S1: " << o0 << " " << a.expr.id() << " " << o1
+              << " != " << rr << eom;
+    debug() << "S2: " << integer2binary(a.op0_value, spec.width())
+                        << " " << a.expr.id() << " " <<
+                           integer2binary(a.op1_value, spec.width())
+              << "!=" << integer2binary(a.result_value, spec.width()) << eom;
+    debug() << "S3: " << integer2binary(a.op0_value, spec.width())
+                        << " " << a.expr.id() << " " <<
+                           integer2binary(a.op1_value, spec.width())
+              << "==" << integer2binary(result.pack(), spec.width()) << eom;
+    #endif
 
     if(a.over_state<config_.max_node_refinement)
     {
@@ -278,7 +282,8 @@ void bv_refinementt::check_SAT(approximationt &a)
   {
     // these are all binary
     INVARIANT(
-      a.expr.operands().size() == 2, "all (un)signedbv typed exprs are binary");
+      a.expr.operands().size()==2,
+      string_refinement_invariantt("all (un)signedbv typed exprs are binary"));
 
     // already full interpretation?
     if(a.over_state>0)
@@ -353,8 +358,8 @@ void bv_refinementt::check_SAT(approximationt &a)
     UNREACHABLE;
   }
 
-  log.status() << "Found spurious '" << a.as_string() << "' (state "
-               << a.over_state << ")" << messaget::eom;
+  status() << "Found spurious `" << a.as_string()
+           << "' (state " << a.over_state << ")" << eom;
 
   progress=true;
   if(a.over_state<MAX_STATE)
@@ -369,8 +374,8 @@ void bv_refinementt::check_UNSAT(approximationt &a)
   if(!this->conflicts_with(a))
     return;
 
-  log.status() << "Found assumption for '" << a.as_string()
-               << "' in proof (state " << a.under_state << ")" << messaget::eom;
+  status() << "Found assumption for `" << a.as_string()
+           << "' in proof (state " << a.under_state << ")" << eom;
 
   PRECONDITION(!a.under_assumptions.empty());
 
@@ -454,13 +459,8 @@ void bv_refinementt::check_UNSAT(approximationt &a)
 bool bv_refinementt::conflicts_with(approximationt &a)
 {
   for(std::size_t i=0; i<a.under_assumptions.size(); i++)
-  {
-    if(prop.is_in_conflict(
-         to_literal_expr(a.under_assumptions[i]).get_literal()))
-    {
+    if(prop.is_in_conflict(a.under_assumptions[i]))
       return true;
-    }
-  }
 
   return false;
 }
@@ -497,21 +497,21 @@ bv_refinementt::add_approximation(
 
   if(a.no_operands==1)
   {
-    a.op0_bv = convert_bv(to_unary_expr(expr).op());
+    a.op0_bv=convert_bv(expr.op0());
     set_frozen(a.op0_bv);
   }
   else if(a.no_operands==2)
   {
-    a.op0_bv = convert_bv(to_binary_expr(expr).op0());
-    a.op1_bv = convert_bv(to_binary_expr(expr).op1());
+    a.op0_bv=convert_bv(expr.op0());
+    a.op1_bv=convert_bv(expr.op1());
     set_frozen(a.op0_bv);
     set_frozen(a.op1_bv);
   }
   else if(a.no_operands==3)
   {
-    a.op0_bv = convert_bv(to_multi_ary_expr(expr).op0());
-    a.op1_bv = convert_bv(to_multi_ary_expr(expr).op1());
-    a.op2_bv = convert_bv(to_multi_ary_expr(expr).op2());
+    a.op0_bv=convert_bv(expr.op0());
+    a.op1_bv=convert_bv(expr.op1());
+    a.op2_bv=convert_bv(expr.op2());
     set_frozen(a.op0_bv);
     set_frozen(a.op1_bv);
     set_frozen(a.op2_bv);
@@ -528,5 +528,9 @@ bv_refinementt::add_approximation(
 
 std::string bv_refinementt::approximationt::as_string() const
 {
+  #if 0
+  return from_expr(expr);
+  #else
   return std::to_string(id_nr)+"/"+id2string(expr.id());
+  #endif
 }

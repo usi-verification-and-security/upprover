@@ -1,4 +1,3 @@
-solvers
 solvers/prop
-solvers/bdd
+solvers/miniBDD
 util

@@ -463,8 +463,6 @@ inline int strncmp(const char *s1, const char *s2, size_t n)
   #else
   __CPROVER_size_t i=0;
   unsigned char ch1, ch2;
-  if(n == 0)
-    return 0;
   do
   {
     ch1=s1[i];
@@ -507,8 +505,6 @@ inline int strncasecmp(const char *s1, const char *s2, size_t n)
   #else
   __CPROVER_size_t i=0;
   unsigned char ch1, ch2;
-  if(n == 0)
-    return 0;
   do
   {
     ch1=s1[i];
@@ -575,7 +571,7 @@ inline char *strdup(const char *str)
   __CPROVER_HIDE:;
   __CPROVER_size_t bufsz;
   bufsz=(strlen(str)+1);
-  char *cpy = (char *)calloc(bufsz * sizeof(char), sizeof(char));
+  char *cpy=(char *)malloc(bufsz*sizeof(char));
   if(cpy==((void *)0)) return 0;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assume(__CPROVER_buffer_size(cpy)==bufsz);

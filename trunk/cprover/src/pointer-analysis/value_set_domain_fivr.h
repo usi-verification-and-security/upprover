@@ -24,32 +24,33 @@ public:
 
   // overloading
 
-  void output(const namespacet &ns, std::ostream &out) const override
+  virtual void output(
+    const namespacet &ns,
+    std::ostream &out) const
   {
     value_set.output(ns, out);
   }
 
-  void initialize(const namespacet &) override
+  virtual void initialize(
+    const namespacet &)
   {
     value_set.clear();
   }
 
-  bool transform(
+  virtual bool transform(
     const namespacet &ns,
-    const irep_idt &function_from,
     locationt from_l,
-    const irep_idt &function_to,
-    locationt to_l) override;
+    locationt to_l);
 
-  void get_reference_set(
+  virtual void get_reference_set(
     const namespacet &ns,
     const exprt &expr,
-    expr_sett &expr_set) override
+    expr_sett &expr_set)
   {
     value_set.get_reference_set(expr, expr_set, ns);
   }
 
-  void clear(void) override
+  virtual void clear(void)
   {
     value_set.clear();
   }

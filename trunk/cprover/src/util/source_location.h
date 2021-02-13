@@ -13,6 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "invariant.h"
 #include "irep.h"
 #include "optional.h"
+#include "prefix.h"
 
 #include <string>
 
@@ -88,11 +89,6 @@ public:
     return get(ID_basic_block_covered_lines);
   }
 
-  const irep_idt &get_basic_block_source_lines() const
-  {
-    return get(ID_basic_block_source_lines);
-  }
-
   void set_file(const irep_idt &file)
   {
     set(ID_file, file);
@@ -159,11 +155,6 @@ public:
     return set(ID_basic_block_covered_lines, covered_lines);
   }
 
-  void set_basic_block_source_lines(const irep_idt &source_lines)
-  {
-    return set(ID_basic_block_source_lines, source_lines);
-  }
-
   void set_hide()
   {
     set(ID_hide, true);
@@ -174,7 +165,12 @@ public:
     return get_bool(ID_hide);
   }
 
-  static bool is_built_in(const std::string &s);
+  static bool is_built_in(const std::string &s)
+  {
+    std::string built_in1="<built-in-"; // "<built-in-additions>";
+    std::string built_in2="<builtin-"; // "<builtin-architecture-strings>";
+    return has_prefix(s, built_in1) || has_prefix(s, built_in2);
+  }
 
   bool is_built_in() const
   {
@@ -191,16 +187,6 @@ public:
   }
 
   optionalt<std::string> full_path() const;
-
-  void add_pragma(const irep_idt &pragma)
-  {
-    add(ID_pragma).add(pragma);
-  }
-
-  const irept::named_subt &get_pragmas() const
-  {
-    return find(ID_pragma).get_named_sub();
-  }
 
 protected:
   std::string as_string(bool print_cwd) const;

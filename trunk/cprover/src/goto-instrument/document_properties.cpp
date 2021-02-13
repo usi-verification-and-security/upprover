@@ -57,7 +57,9 @@ private:
 
   static void strip_space(std::list<linet> &lines);
 
-  std::string get_code(const source_locationt &source_location);
+  void get_code(
+    const source_locationt &source_location,
+    std::string &dest);
 
   struct doc_claimt
   {
@@ -146,25 +148,26 @@ bool is_empty(const std::string &s)
   return true;
 }
 
-std::string
-document_propertiest::get_code(const source_locationt &source_location)
+void document_propertiest::get_code(
+  const source_locationt &source_location,
+  std::string &dest)
 {
+  dest="";
+
   const irep_idt &file=source_location.get_file();
   const irep_idt &source_line = source_location.get_line();
 
-  if(file.empty() || source_line.empty())
-    return "";
+  if(file == "" || source_line == "")
+    return;
 
   std::ifstream in(id2string(file));
-
-  std::string dest;
 
   if(!in)
   {
     dest+="ERROR: unable to open ";
     dest+=id2string(file);
     dest+="\n";
-    return dest;
+    return;
   }
 
   int line_int = unsafe_string2int(id2string(source_line));
@@ -265,8 +268,6 @@ document_propertiest::get_code(const source_locationt &source_location)
 
     dest+=tmp+"\n";
   }
-
-  return dest;
 }
 
 void document_propertiest::doit()
@@ -297,9 +298,10 @@ void document_propertiest::doit()
   for(claim_sett::const_iterator it=claim_set.begin();
       it!=claim_set.end(); it++)
   {
+    std::string code;
     const source_locationt &source_location=it->first;
 
-    std::string code = get_code(source_location);
+    get_code(source_location, code);
 
     switch(format)
     {

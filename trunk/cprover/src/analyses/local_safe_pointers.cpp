@@ -11,6 +11,7 @@ Author: Diffblue Ltd
 
 #include "local_safe_pointers.h"
 
+#include <util/base_type.h>
 #include <util/expr_iterator.h>
 #include <util/expr_util.h>
 #include <util/format_expr.h>
@@ -43,7 +44,7 @@ static optionalt<goto_null_checkt> get_null_checked_expr(const exprt &expr)
   // Reduce some roundabout ways of saying "x != null", e.g. "!(x == null)".
   while(normalized_expr.id() == ID_not)
   {
-    normalized_expr = to_not_expr(normalized_expr).op();
+    normalized_expr = normalized_expr.op0();
     checked_when_taken = !checked_when_taken;
   }
 
@@ -55,8 +56,8 @@ static optionalt<goto_null_checkt> get_null_checked_expr(const exprt &expr)
 
   if(normalized_expr.id() == ID_notequal)
   {
-    const exprt &op0 = skip_typecast(to_notequal_expr(normalized_expr).op0());
-    const exprt &op1 = skip_typecast(to_notequal_expr(normalized_expr).op1());
+    const exprt &op0 = skip_typecast(normalized_expr.op0());
+    const exprt &op1 = skip_typecast(normalized_expr.op1());
 
     if(op0.type().id() == ID_pointer &&
        op0 == null_pointer_exprt(to_pointer_type(op0.type())))
@@ -81,7 +82,8 @@ static optionalt<goto_null_checkt> get_null_checked_expr(const exprt &expr)
 /// \param goto_program: program to analyse
 void local_safe_pointerst::operator()(const goto_programt &goto_program)
 {
-  std::set<exprt, type_comparet> checked_expressions(type_comparet{});
+  std::set<exprt, base_type_comparet> checked_expressions(
+    base_type_comparet{ns});
 
   for(const auto &instruction : goto_program.instructions)
   {
@@ -96,7 +98,8 @@ void local_safe_pointerst::operator()(const goto_programt &goto_program)
         checked_expressions = findit->second;
       else
       {
-        checked_expressions = std::set<exprt, type_comparet>(type_comparet{});
+        checked_expressions =
+          std::set<exprt, base_type_comparet>(base_type_comparet{ns});
       }
     }
 
@@ -119,14 +122,11 @@ void local_safe_pointerst::operator()(const goto_programt &goto_program)
     case RETURN:
     case THROW:
     case CATCH:
-    case END_FUNCTION:
-    case ATOMIC_BEGIN:
-    case ATOMIC_END:
       break;
 
     // Possible checks:
     case ASSUME:
-      if(auto assume_check = get_null_checked_expr(instruction.get_condition()))
+      if(auto assume_check = get_null_checked_expr(instruction.guard))
       {
         if(assume_check->checked_when_taken)
           checked_expressions.insert(assume_check->checked_expr);
@@ -147,9 +147,7 @@ void local_safe_pointerst::operator()(const goto_programt &goto_program)
         // merge point and everything will be assumed maybe-null in any case.
         if(target_emplace_result.second)
         {
-          if(
-            auto conditional_check =
-              get_null_checked_expr(instruction.get_condition()))
+          if(auto conditional_check = get_null_checked_expr(instruction.guard))
           {
             // Add the GOTO condition to either the target or current state,
             // as appropriate:
@@ -166,13 +164,7 @@ void local_safe_pointerst::operator()(const goto_programt &goto_program)
 
       break;
 
-    case ASSIGN:
-    case START_THREAD:
-    case END_THREAD:
-    case FUNCTION_CALL:
-    case OTHER:
-    case INCOMPLETE_GOTO:
-    case NO_INSTRUCTION_TYPE:
+    default:
       // Pessimistically assume all other instructions might overwrite any
       // pointer with a possibly-null value.
       checked_expressions.clear();
@@ -185,11 +177,8 @@ void local_safe_pointerst::operator()(const goto_programt &goto_program)
 /// \param out: stream to write output to
 /// \param goto_program: GOTO program analysed (the same one passed to
 ///   operator())
-/// \param ns: namespace
 void local_safe_pointerst::output(
-  std::ostream &out,
-  const goto_programt &goto_program,
-  const namespacet &ns)
+  std::ostream &out, const goto_programt &goto_program)
 {
   forall_goto_program_instructions(i_it, goto_program)
   {
@@ -216,7 +205,7 @@ void local_safe_pointerst::output(
     }
 
     out << '\n';
-    goto_program.output_instruction(ns, irep_idt(), out, *i_it);
+    goto_program.output_instruction(ns, "", out, *i_it);
     out << '\n';
   }
 }
@@ -229,11 +218,8 @@ void local_safe_pointerst::output(
 /// \param out: stream to write output to
 /// \param goto_program: GOTO program analysed (the same one passed to
 ///   operator())
-/// \param ns: namespace
 void local_safe_pointerst::output_safe_dereferences(
-  std::ostream &out,
-  const goto_programt &goto_program,
-  const namespacet &ns)
+  std::ostream &out, const goto_programt &goto_program)
 {
   forall_goto_program_instructions(i_it, goto_program)
   {
@@ -249,25 +235,24 @@ void local_safe_pointerst::output_safe_dereferences(
     {
       out << "{";
       bool first = true;
-      i_it->apply([&first, &out](const exprt &e) {
-        for(auto subexpr_it = e.depth_begin(), subexpr_end = e.depth_end();
-            subexpr_it != subexpr_end;
-            ++subexpr_it)
+      for(auto subexpr_it = i_it->code.depth_begin(),
+            subexpr_end = i_it->code.depth_end();
+          subexpr_it != subexpr_end;
+          ++subexpr_it)
+      {
+        if(subexpr_it->id() == ID_dereference)
         {
-          if(subexpr_it->id() == ID_dereference)
-          {
-            if(!first)
-              out << ", ";
-            first = true;
-            format_rec(out, to_dereference_expr(*subexpr_it).pointer());
-          }
+          if(!first)
+            out << ", ";
+          first = true;
+          format_rec(out, subexpr_it->op0());
         }
-      });
+      }
       out << "}";
     }
 
     out << '\n';
-    goto_program.output_instruction(ns, irep_idt(), out, *i_it);
+    goto_program.output_instruction(ns, "", out, *i_it);
     out << '\n';
   }
 }
@@ -281,6 +266,17 @@ bool local_safe_pointerst::is_non_null_at_program_point(
   auto findit = non_null_expressions.find(program_point->location_number);
   if(findit == non_null_expressions.end())
     return false;
+  const exprt *tocheck = &expr;
+  while(tocheck->id() == ID_typecast)
+    tocheck = &tocheck->op0();
+  return findit->second.count(*tocheck) != 0;
+}
 
-  return findit->second.count(skip_typecast(expr)) != 0;
+bool local_safe_pointerst::base_type_comparet::operator()(
+  const exprt &e1, const exprt &e2) const
+{
+  if(base_type_eq(e1, e2, ns))
+    return false;
+  else
+    return e1 < e2;
 }

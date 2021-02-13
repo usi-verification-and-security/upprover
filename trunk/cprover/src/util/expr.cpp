@@ -23,18 +23,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <stack>
 
-std::size_t exprt::size() const
-{
-  // Initial size of 1 to count self.
-  std::size_t size = 1;
-  for(const auto &op : operands())
-  {
-    size += op.size();
-  }
-
-  return size;
-}
-
 /// Move the given argument to the end of `exprt`'s operands.
 /// The argument is destroyed and mutated to a reference to a nil `irept`.
 /// \param expr: `exprt` to append to the operands
@@ -78,6 +66,16 @@ void exprt::move_to_operands(exprt &e1, exprt &e2, exprt &e3)
   op.back().swap(e2);
   op.push_back(static_cast<const exprt &>(get_nil_irep()));
   op.back().swap(e3);
+}
+
+/// Create a \ref typecast_exprt to the given type.
+/// \param _type: cast destination type
+/// \deprecated use constructors instead
+void exprt::make_typecast(const typet &_type)
+{
+  typecast_exprt new_expr(*this, _type);
+
+  swap(new_expr);
 }
 
 /// Return whether the expression is a constant.
@@ -223,12 +221,11 @@ bool exprt::is_one() const
   return false;
 }
 
-
 /// Get a \ref source_locationt from the expression or from its operands
 /// (non-recursively).
 /// If no source location is found, a nil `source_locationt` is returned.
 /// \return A source location if found in the expression or its operands, nil
-///   otherwise.
+/// otherwise.
 const source_locationt &exprt::find_source_location() const
 {
   const source_locationt &l=source_location();
@@ -246,87 +243,40 @@ const source_locationt &exprt::find_source_location() const
   return static_cast<const source_locationt &>(get_nil_irep());
 }
 
-template <typename T>
-void visit_post_template(std::function<void(T &)> visitor, T *_expr)
+void exprt::visit(expr_visitort &visitor)
 {
-  struct stack_entryt
-  {
-    T *e;
-    bool operands_pushed;
-    explicit stack_entryt(T *_e) : e(_e), operands_pushed(false)
-    {
-    }
-  };
+  std::stack<exprt *> stack;
 
-  std::stack<stack_entryt> stack;
-
-  stack.emplace(_expr);
+  stack.push(this);
 
   while(!stack.empty())
   {
-    auto &top = stack.top();
-    if(top.operands_pushed)
-    {
-      visitor(*top.e);
-      stack.pop();
-    }
-    else
-    {
-      // do modification of 'top' before pushing in case 'top' isn't stable
-      top.operands_pushed = true;
-      for(auto &op : top.e->operands())
-        stack.emplace(&op);
-    }
-  }
-}
-
-void exprt::visit_post(std::function<void(exprt &)> visitor)
-{
-  visit_post_template(visitor, this);
-}
-
-void exprt::visit_post(std::function<void(const exprt &)> visitor) const
-{
-  visit_post_template(visitor, this);
-}
-
-template <typename T>
-static void visit_pre_template(std::function<void(T &)> visitor, T *_expr)
-{
-  std::stack<T *> stack;
-
-  stack.push(_expr);
-
-  while(!stack.empty())
-  {
-    T &expr = *stack.top();
+    exprt &expr=*stack.top();
     stack.pop();
 
     visitor(expr);
 
-    for(auto &op : expr.operands())
-      stack.push(&op);
+    Forall_operands(it, expr)
+      stack.push(&(*it));
   }
-}
-
-void exprt::visit_pre(std::function<void(exprt &)> visitor)
-{
-  visit_pre_template(visitor, this);
-}
-
-void exprt::visit_pre(std::function<void(const exprt &)> visitor) const
-{
-  visit_pre_template(visitor, this);
-}
-
-void exprt::visit(expr_visitort &visitor)
-{
-  visit_pre([&visitor](exprt &e) { visitor(e); });
 }
 
 void exprt::visit(const_expr_visitort &visitor) const
 {
-  visit_pre([&visitor](const exprt &e) { visitor(e); });
+  std::stack<const exprt *> stack;
+
+  stack.push(this);
+
+  while(!stack.empty())
+  {
+    const exprt &expr=*stack.top();
+    stack.pop();
+
+    visitor(expr);
+
+    forall_operands(it, expr)
+      stack.push(&(*it));
+  }
 }
 
 depth_iteratort exprt::depth_begin()

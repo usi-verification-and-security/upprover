@@ -13,48 +13,45 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "expr.h"
 #include "expr_util.h"
 #include "invariant.h"
-#include "mathematical_expr.h"
 #include "namespace.h"
 #include "std_expr.h"
 
-simplify_exprt::resultt<> simplify_exprt::simplify_boolean(const exprt &expr)
+bool simplify_exprt::simplify_boolean(exprt &expr)
 {
   if(!expr.has_operands())
-    return unchanged(expr);
+    return true;
+
+  exprt::operandst &operands=expr.operands();
 
   if(expr.type().id()!=ID_bool)
-    return unchanged(expr);
+    return true;
 
   if(expr.id()==ID_implies)
   {
-    const auto &implies_expr = to_implies_expr(expr);
-
-    if(
-      implies_expr.op0().type().id() != ID_bool ||
-      implies_expr.op1().type().id() != ID_bool)
-    {
-      return unchanged(expr);
-    }
+    if(operands.size()!=2 ||
+       operands.front().type().id()!=ID_bool ||
+       operands.back().type().id()!=ID_bool)
+      return true;
 
     // turn a => b into !a || b
 
-    binary_exprt new_expr = implies_expr;
-    new_expr.id(ID_or);
-    new_expr.op0() = simplify_not(not_exprt(new_expr.op0()));
-    return changed(simplify_node(new_expr));
+    expr.id(ID_or);
+    expr.op0() = boolean_negate(expr.op0());
+    simplify_node(expr.op0());
+    simplify_node(expr);
+    return false;
   }
   else if(expr.id()==ID_xor)
   {
-    bool no_change = true;
-    bool negate = false;
+    bool result=true;
 
-    exprt::operandst new_operands = expr.operands();
+    bool negate=false;
 
-    for(exprt::operandst::const_iterator it = new_operands.begin();
-        it != new_operands.end();)
+    for(exprt::operandst::const_iterator it=operands.begin();
+        it!=operands.end();)
     {
       if(it->type().id()!=ID_bool)
-        return unchanged(expr);
+        return true;
 
       bool erase;
 
@@ -68,56 +65,53 @@ simplify_exprt::resultt<> simplify_exprt::simplify_boolean(const exprt &expr)
 
       if(erase)
       {
-        it = new_operands.erase(it);
-        no_change = false;
+        it=operands.erase(it);
+        result=false;
       }
       else
         it++;
     }
 
-    if(new_operands.empty())
+    if(operands.empty())
     {
-      return make_boolean_expr(negate);
+      expr.make_bool(negate);
+      return false;
     }
-    else if(new_operands.size() == 1)
+    else if(operands.size()==1)
     {
+      exprt tmp(operands.front());
       if(negate)
-        return changed(simplify_not(not_exprt(new_operands.front())));
-      else
-        return std::move(new_operands.front());
+        tmp = boolean_negate(operands.front());
+      expr.swap(tmp);
+      return false;
     }
 
-    if(!no_change)
-    {
-      auto tmp = expr;
-      tmp.operands() = std::move(new_operands);
-      return std::move(tmp);
-    }
+    return result;
   }
   else if(expr.id()==ID_and || expr.id()==ID_or)
   {
     std::unordered_set<exprt, irep_hash> expr_set;
 
-    bool no_change = true;
+    bool result=true;
 
-    exprt::operandst new_operands = expr.operands();
-
-    for(exprt::operandst::const_iterator it = new_operands.begin();
-        it != new_operands.end();)
+    for(exprt::operandst::const_iterator it=operands.begin();
+        it!=operands.end();)
     {
       if(it->type().id()!=ID_bool)
-        return unchanged(expr);
+        return true;
 
       bool is_true=it->is_true();
       bool is_false=it->is_false();
 
       if(expr.id()==ID_and && is_false)
       {
-        return false_exprt();
+        expr=false_exprt();
+        return false;
       }
       else if(expr.id()==ID_or && is_true)
       {
-        return true_exprt();
+        expr=true_exprt();
+        return false;
       }
 
       bool erase=
@@ -126,100 +120,107 @@ simplify_exprt::resultt<> simplify_exprt::simplify_boolean(const exprt &expr)
 
       if(erase)
       {
-        it = new_operands.erase(it);
-        no_change = false;
+        it=operands.erase(it);
+        result=false;
       }
       else
         it++;
     }
 
     // search for a and !a
-    for(const exprt &op : new_operands)
-      if(
-        op.id() == ID_not && op.type().id() == ID_bool &&
-        expr_set.find(to_not_expr(op).op()) != expr_set.end())
+    for(const exprt &op : operands)
+      if(op.id()==ID_not &&
+         op.operands().size()==1 &&
+         op.type().id()==ID_bool &&
+         expr_set.find(op.op0())!=expr_set.end())
       {
-        return make_boolean_expr(expr.id() == ID_or);
+        expr.make_bool(expr.id()==ID_or);
+        return false;
       }
 
-    if(new_operands.empty())
+    if(operands.empty())
     {
-      return make_boolean_expr(expr.id() == ID_and);
+      expr.make_bool(expr.id()==ID_and);
+      return false;
     }
-    else if(new_operands.size() == 1)
+    else if(operands.size()==1)
     {
-      return std::move(new_operands.front());
+      exprt tmp(operands.front());
+      expr.swap(tmp);
+      return false;
     }
 
-    if(!no_change)
-    {
-      auto tmp = expr;
-      tmp.operands() = std::move(new_operands);
-      return std::move(tmp);
-    }
+    return result;
   }
 
-  return unchanged(expr);
+  return true;
 }
 
-simplify_exprt::resultt<> simplify_exprt::simplify_not(const not_exprt &expr)
+bool simplify_exprt::simplify_not(exprt &expr)
 {
-  const exprt &op = expr.op();
+  if(expr.operands().size()!=1)
+    return true;
+
+  exprt &op=expr.op0();
 
   if(expr.type().id()!=ID_bool ||
      op.type().id()!=ID_bool)
-  {
-    return unchanged(expr);
-  }
+    return true;
 
   if(op.id()==ID_not) // (not not a) == a
   {
-    return to_not_expr(op).op();
+    if(op.operands().size()==1)
+    {
+      exprt tmp;
+      tmp.swap(op.op0());
+      expr.swap(tmp);
+      return false;
+    }
   }
   else if(op.is_false())
   {
-    return true_exprt();
+    expr=true_exprt();
+    return false;
   }
   else if(op.is_true())
   {
-    return false_exprt();
+    expr=false_exprt();
+    return false;
   }
   else if(op.id()==ID_and ||
           op.id()==ID_or)
   {
-    exprt tmp = op;
+    exprt tmp;
+    tmp.swap(op);
+    expr.swap(tmp);
 
-    Forall_operands(it, tmp)
+    Forall_operands(it, expr)
     {
-      *it = simplify_not(not_exprt(*it));
+      *it = boolean_negate(*it);
+      simplify_node(*it);
     }
 
-    tmp.id(tmp.id() == ID_and ? ID_or : ID_and);
+    expr.id(expr.id()==ID_and?ID_or:ID_and);
 
-    return std::move(tmp);
+    return false;
   }
   else if(op.id()==ID_notequal) // !(a!=b) <-> a==b
   {
-    exprt tmp = op;
-    tmp.id(ID_equal);
-    return std::move(tmp);
+    exprt tmp;
+    tmp.swap(op);
+    expr.swap(tmp);
+    expr.id(ID_equal);
+    return false;
   }
   else if(op.id()==ID_exists) // !(exists: a) <-> forall: not a
   {
     auto const &op_as_exists = to_exists_expr(op);
     forall_exprt rewritten_op(
       op_as_exists.symbol(), not_exprt(op_as_exists.where()));
-    rewritten_op.where() = simplify_node(rewritten_op.where());
-    return std::move(rewritten_op);
-  }
-  else if(op.id() == ID_forall) // !(forall: a) <-> exists: not a
-  {
-    auto const &op_as_forall = to_forall_expr(op);
-    exists_exprt rewritten_op(
-      op_as_forall.symbol(), not_exprt(op_as_forall.where()));
-    rewritten_op.where() = simplify_node(rewritten_op.where());
-    return std::move(rewritten_op);
+    simplify_node(rewritten_op.where());
+    expr = rewritten_op;
+    return false;
   }
 
-  return unchanged(expr);
+  return true;
 }

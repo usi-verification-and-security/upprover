@@ -12,12 +12,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 #include <util/byte_operators.h>
-#include <util/expr_util.h>
 #include <util/pointer_offset_size.h>
 #include <util/std_expr.h>
+#include <util/throw_with_nested.h>
 
 #include <solvers/lowering/expr_lowering.h>
+#include <solvers/lowering/flatten_byte_extract_exceptions.h>
 
+#include "bv_conversion_exceptions.h"
 #include "bv_endianness_map.h"
 
 bvt map_bv(const bv_endianness_mapt &map, const bvt &src)
@@ -38,11 +40,18 @@ bvt map_bv(const bv_endianness_mapt &map, const bvt &src)
 
 bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 {
-  // array logic does not handle byte operators, thus lower when operating on
-  // unbounded arrays
+  // if we extract from an unbounded array, call the flattening code
   if(is_unbounded_array(expr.op().type()))
   {
-    return convert_bv(lower_byte_extract(expr, ns));
+    try
+    {
+      return convert_bv(lower_byte_extract(expr, ns));
+    }
+    catch(const flatten_byte_extract_exceptiont &)
+    {
+      util_throw_with_nested(
+        bitvector_conversion_exceptiont("Can't convert byte_extraction", expr));
+    }
   }
 
   const std::size_t width = boolbv_width(expr.type());
@@ -82,10 +91,8 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
     object_descriptor_exprt o;
     o.build(expr.op(), ns);
     CHECK_RETURN(o.offset().id() != ID_unknown);
-
-    o.offset() =
-      typecast_exprt::conditional_cast(o.offset(), expr.offset().type());
-
+    if(o.offset().type() != expr.offset().type())
+      o.offset().make_typecast(expr.offset().type());
     byte_extract_exprt be(
       expr.id(),
       o.root_object(),
@@ -96,6 +103,7 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
   }
 
   const exprt &op=expr.op();
+  const exprt &offset=expr.offset();
   PRECONDITION(
     expr.id() == ID_byte_extract_little_endian ||
     expr.id() == ID_byte_extract_big_endian);
@@ -136,14 +144,18 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
 
       // add implications
 
-      // type of index operand
-      const typet &constant_type = expr.offset().type();
+      equal_exprt equality;
+      equality.lhs()=offset; // index operand
+
+      typet constant_type=offset.type(); // type of index operand
 
       bvt equal_bv;
       equal_bv.resize(width);
 
       for(std::size_t i=0; i<bytes; i++)
       {
+        equality.rhs()=from_integer(i, constant_type);
+
         std::size_t offset=i*byte_width;
 
         for(std::size_t j=0; j<width; j++)
@@ -152,20 +164,22 @@ bvt boolbvt::convert_byte_extract(const byte_extract_exprt &expr)
           else
             equal_bv[j]=const_literal(true);
 
-        prop.l_set_to_true(prop.limplies(
-          convert(equal_exprt(expr.offset(), from_integer(i, constant_type))),
-          prop.land(equal_bv)));
+        prop.l_set_to_true(
+          prop.limplies(convert(equality), prop.land(equal_bv)));
       }
     }
     else
     {
-      // type of index operand
-      const typet &constant_type = expr.offset().type();
+      equal_exprt equality;
+      equality.lhs()=offset; // index operand
+
+      typet constant_type(offset.type()); // type of index operand
 
       for(std::size_t i=0; i<bytes; i++)
       {
-        literalt e =
-          convert(equal_exprt(expr.offset(), from_integer(i, constant_type)));
+        equality.rhs()=from_integer(i, constant_type);
+
+        literalt e=convert(equality);
 
         std::size_t offset=i*byte_width;
 

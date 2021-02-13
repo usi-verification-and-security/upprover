@@ -34,14 +34,14 @@ const std::string satcheck_zcoret::solver_text()
   return "ZCore";
 }
 
-propt::resultt satcheck_zcoret::do_prop_solve()
+propt::resultt satcheck_zcoret::prop_solve()
 {
   // We start counting at 1, thus there is one variable fewer.
   {
     std::string msg=
       std::to_string(no_variables()-1)+" variables, "+
       std::to_string(no_clauses())+" clauses";
-    log.statistics() << msg << messaget::eom;
+    messaget::status() << msg << messaget::eom;
   }
 
   // get the core

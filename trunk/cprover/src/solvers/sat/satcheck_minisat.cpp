@@ -150,12 +150,15 @@ void satcheck_minisat1_baset::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_minisat1_baset::do_prop_solve()
+propt::resultt satcheck_minisat1_baset::prop_solve()
 {
   PRECONDITION(status != ERROR);
 
-  log.statistics() << (_no_variables - 1) << " variables, "
-                   << solver->nClauses() << " clauses" << messaget::eom;
+  {
+    messaget::status() <<
+      (_no_variables-1) << " variables, " <<
+      solver->nClauses() << " clauses" << messaget::eom;
+  }
 
   add_variables();
 
@@ -179,7 +182,7 @@ propt::resultt satcheck_minisat1_baset::do_prop_solve()
     if(solver->solve(MiniSat_assumptions))
     {
       msg="SAT checker: instance is SATISFIABLE";
-      log.status() << msg << messaget::eom;
+      messaget::status() << msg << messaget::eom;
       status=SAT;
       return P_SATISFIABLE;
     }
@@ -187,7 +190,7 @@ propt::resultt satcheck_minisat1_baset::do_prop_solve()
       msg="SAT checker: instance is UNSATISFIABLE";
   }
 
-  log.status() << msg << messaget::eom;
+  messaget::status() << msg << messaget::eom;
   status=UNSAT;
   return P_UNSATISFIABLE;
 }
@@ -262,11 +265,11 @@ const std::string satcheck_minisat1_prooft::solver_text()
   return "MiniSAT + Proof";
 }
 
-propt::resultt satcheck_minisat1_coret::do_prop_solve()
+propt::resultt satcheck_minisat1_coret::prop_solve()
 {
   propt::resultt r;
 
-  r = satcheck_minisat1_prooft::do_prop_solve();
+  r=satcheck_minisat1_prooft::prop_solve();
 
   if(status==UNSAT)
   {

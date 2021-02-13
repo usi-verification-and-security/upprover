@@ -28,17 +28,17 @@ bool core_checkert::assertion_holds_smt_no_partition(
 //  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 
-  hifrog_symex_target_equationt equation(ns, message_handler);
+  hifrog_symex_target_equationt equation(ns);
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
     equation.set_dump_SSA_tree(true);
     equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
   }
 #endif
-  guard_managert guard_manager;
+  //guard_managert guard_manager;
   std::unique_ptr<path_storaget> worklist;
   symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler,
-                             get_main_function() ,guard_manager ,!no_slicing_option};
+                             get_main_function() ,!no_slicing_option};
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 

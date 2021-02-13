@@ -23,6 +23,8 @@ class typet;
 class member_exprt;
 class constant_exprt;
 
+// these return 'nullopt' on failure
+
 optionalt<mp_integer> member_offset(
   const struct_typet &type,
   const irep_idt &member,
@@ -42,25 +44,32 @@ pointer_offset_bits(const typet &type, const namespacet &ns);
 optionalt<mp_integer>
 compute_pointer_offset(const exprt &expr, const namespacet &ns);
 
-optionalt<exprt> member_offset_expr(const member_exprt &, const namespacet &ns);
+// these return 'nil' on failure
 
-optionalt<exprt> member_offset_expr(
+exprt member_offset_expr(
+  const member_exprt &,
+  const namespacet &ns);
+
+exprt member_offset_expr(
   const struct_typet &type,
   const irep_idt &member,
   const namespacet &ns);
 
-optionalt<exprt> size_of_expr(const typet &type, const namespacet &ns);
+exprt size_of_expr(
+  const typet &type,
+  const namespacet &ns);
 
-optionalt<exprt>
-build_sizeof_expr(const constant_exprt &expr, const namespacet &ns);
+exprt build_sizeof_expr(
+  const constant_exprt &expr,
+  const namespacet &ns);
 
-optionalt<exprt> get_subexpression_at_offset(
+exprt get_subexpression_at_offset(
   const exprt &expr,
   const mp_integer &offset,
   const typet &target_type,
   const namespacet &ns);
 
-optionalt<exprt> get_subexpression_at_offset(
+exprt get_subexpression_at_offset(
   const exprt &expr,
   const exprt &offset,
   const typet &target_type,

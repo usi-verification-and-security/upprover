@@ -27,16 +27,17 @@ template<typename T>
 class satcheck_minisat2_baset:public cnf_solvert
 {
 public:
-  satcheck_minisat2_baset(T *, message_handlert &message_handler);
+  explicit satcheck_minisat2_baset(T *);
   virtual ~satcheck_minisat2_baset();
 
-  tvt l_get(literalt a) const override final;
+  virtual resultt prop_solve() override;
+  virtual tvt l_get(literalt a) const final;
 
-  void lcnf(const bvt &bv) override final;
-  void set_assignment(literalt a, bool value) override;
+  virtual void lcnf(const bvt &bv) final;
+  virtual void set_assignment(literalt a, bool value) override;
 
   // extra MiniSat feature: solve with assumptions
-  void set_assumptions(const bvt &_assumptions) override;
+  virtual void set_assumptions(const bvt &_assumptions) override;
 
   // extra MiniSat feature: default branching decision
   void set_polarity(literalt a, bool value);
@@ -47,15 +48,9 @@ public:
   // extra MiniSat feature: permit previously interrupted SAT query to continue
   void clear_interrupt();
 
-  bool is_in_conflict(literalt a) const override;
-  bool has_set_assumptions() const override final
-  {
-    return true;
-  }
-  bool has_is_in_conflict() const override final
-  {
-    return true;
-  }
+  virtual bool is_in_conflict(literalt a) const override;
+  virtual bool has_set_assumptions() const final { return true; }
+  virtual bool has_is_in_conflict() const final { return true; }
 
   void set_time_limit_seconds(uint32_t lim) override
   {
@@ -63,8 +58,6 @@ public:
   }
 
 protected:
-  resultt do_prop_solve() override;
-
   T *solver;
   uint32_t time_limit_seconds;
 
@@ -76,17 +69,17 @@ class satcheck_minisat_no_simplifiert:
   public satcheck_minisat2_baset<Minisat::Solver>
 {
 public:
-  explicit satcheck_minisat_no_simplifiert(message_handlert &message_handler);
-  const std::string solver_text() override;
+  satcheck_minisat_no_simplifiert();
+  virtual const std::string solver_text();
 };
 
 class satcheck_minisat_simplifiert:
   public satcheck_minisat2_baset<Minisat::SimpSolver>
 {
 public:
-  explicit satcheck_minisat_simplifiert(message_handlert &message_handler);
-  const std::string solver_text() override final;
-  void set_frozen(literalt a) override final;
+  satcheck_minisat_simplifiert();
+  virtual const std::string solver_text() final;
+  virtual void set_frozen(literalt a) final;
   bool is_eliminated(literalt a) const;
 };
 

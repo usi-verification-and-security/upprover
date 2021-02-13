@@ -69,12 +69,12 @@ with_exprt make_with_expr(const update_exprt &src)
   const exprt::operandst &designator=src.designator();
   PRECONDITION(!designator.empty());
 
-  with_exprt result{exprt{}, exprt{}, exprt{}};
+  with_exprt result;
   exprt *dest=&result;
 
   forall_expr(it, designator)
   {
-    with_exprt tmp{exprt{}, exprt{}, exprt{}};
+    with_exprt tmp;
 
     if(it->id()==ID_index_designator)
     {
@@ -104,9 +104,10 @@ exprt is_not_zero(
   // Note that this returns a proper bool_typet(), not a C/C++ boolean.
   // To get a C/C++ boolean, add a further typecast.
 
-  const typet &src_type = src.type().id() == ID_c_enum_tag
-                            ? ns.follow_tag(to_c_enum_tag_type(src.type()))
-                            : src.type();
+  const typet &src_type=
+    src.type().id()==ID_c_enum_tag?
+    ns.follow_tag(to_c_enum_tag_type(src.type())):
+    ns.follow(src.type());
 
   if(src_type.id()==ID_bool) // already there
     return src; // do nothing
@@ -115,10 +116,9 @@ exprt is_not_zero(
     src_type.id()==ID_floatbv?ID_ieee_float_notequal:ID_notequal;
 
   exprt zero=from_integer(0, src_type);
-  // Use tag type if applicable:
-  zero.type() = src.type();
+  CHECK_RETURN(zero.is_not_nil());
 
-  binary_relation_exprt comparison(src, id, std::move(zero));
+  binary_exprt comparison(src, id, zero, bool_typet());
   comparison.add_source_location()=src.source_location();
 
   return std::move(comparison);
@@ -171,12 +171,10 @@ bool has_subtype(
 
     if(pred(top))
       return true;
+    else if(top.id() == ID_symbol)
+      push_if_not_visited(ns.follow(top));
     else if(top.id() == ID_c_enum_tag)
       push_if_not_visited(ns.follow_tag(to_c_enum_tag_type(top)));
-    else if(top.id() == ID_struct_tag)
-      push_if_not_visited(ns.follow_tag(to_struct_tag_type(top)));
-    else if(top.id() == ID_union_tag)
-      push_if_not_visited(ns.follow_tag(to_union_tag_type(top)));
     else if(top.id() == ID_struct || top.id() == ID_union)
     {
       for(const auto &comp : to_struct_union_type(top).components())
@@ -207,8 +205,12 @@ if_exprt lift_if(const exprt &src, std::size_t operand_number)
   const exprt true_case=if_expr.true_case();
   const exprt false_case=if_expr.false_case();
 
-  if_exprt result(if_expr.cond(), src, src);
+  if_exprt result;
+  result.cond()=if_expr.cond();
+  result.type()=src.type();
+  result.true_case()=src;
   result.true_case().operands()[operand_number]=true_case;
+  result.false_case()=src;
   result.false_case().operands()[operand_number]=false_case;
 
   return result;
@@ -268,45 +270,8 @@ bool is_constantt::is_constant_address_of(const exprt &expr) const
   {
     return is_constant_address_of(to_member_expr(expr).compound());
   }
-  else if(expr.id() == ID_dereference)
-  {
-    const dereference_exprt &deref = to_dereference_expr(expr);
-
-    return is_constant(deref.pointer());
-  }
   else if(expr.id() == ID_string_constant)
     return true;
 
   return false;
-}
-
-constant_exprt make_boolean_expr(bool value)
-{
-  if(value)
-    return true_exprt();
-  else
-    return false_exprt();
-}
-
-exprt make_and(exprt a, exprt b)
-{
-  PRECONDITION(a.type().id() == ID_bool && b.type().id() == ID_bool);
-  if(b.is_constant())
-  {
-    if(b.get(ID_value) == ID_false)
-      return false_exprt{};
-    return a;
-  }
-  if(a.is_constant())
-  {
-    if(a.get(ID_value) == ID_false)
-      return false_exprt{};
-    return b;
-  }
-  if(b.id() == ID_and)
-  {
-    b.add_to_operands(std::move(a));
-    return b;
-  }
-  return and_exprt{std::move(a), std::move(b)};
 }

@@ -37,17 +37,15 @@ public:
   }
 
   /// Instruments a goto program
-  /// \param function_id: name of \p goto_program
   /// \param goto_program: a goto program
   /// \param basic_blocks: detected basic blocks
   virtual void operator()(
-    const irep_idt &function_id,
     goto_programt &goto_program,
     const cover_blocks_baset &basic_blocks) const
   {
     Forall_goto_program_instructions(i_it, goto_program)
     {
-      instrument(function_id, goto_program, i_it, basic_blocks);
+      instrument(goto_program, i_it, basic_blocks);
     }
   }
 
@@ -60,7 +58,6 @@ protected:
 
   /// Override this method to implement an instrumenter
   virtual void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const = 0;
@@ -68,12 +65,13 @@ protected:
   void initialize_source_location(
     goto_programt::targett t,
     const std::string &comment,
-    const irep_idt &function_id) const
+    const irep_idt &function) const
   {
     t->source_location.set_comment(comment);
     t->source_location.set(ID_coverage_criterion, coverage_criterion);
     t->source_location.set_property_class(property_class);
-    t->source_location.set_function(function_id);
+    t->source_location.set_function(function);
+    t->function = function;
   }
 
   bool is_non_cover_assertion(goto_programt::const_targett t) const
@@ -93,16 +91,14 @@ public:
     const goal_filterst &);
 
   /// Applies all instrumenters to the given goto program
-  /// \param function_id: name of \p goto_program
   /// \param goto_program: a goto program
   /// \param basic_blocks: detected basic blocks of the goto program
   void operator()(
-    const irep_idt &function_id,
     goto_programt &goto_program,
     const cover_blocks_baset &basic_blocks) const
   {
     for(const auto &instrumenter : instrumenters)
-      (*instrumenter)(function_id, goto_program, basic_blocks);
+      (*instrumenter)(goto_program, basic_blocks);
   }
 
 private:
@@ -122,7 +118,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -141,7 +136,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -160,7 +154,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -179,7 +172,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -198,7 +190,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -217,7 +208,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -236,7 +226,6 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
@@ -255,14 +244,13 @@ public:
 
 protected:
   void instrument(
-    const irep_idt &function_id,
     goto_programt &,
     goto_programt::targett &,
     const cover_blocks_baset &) const override;
 };
 
 void cover_instrument_end_of_function(
-  const irep_idt &function_id,
+  const irep_idt &function,
   goto_programt &goto_program);
 
 #endif // CPROVER_GOTO_INSTRUMENT_COVER_INSTRUMENT_H

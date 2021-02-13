@@ -72,16 +72,6 @@ void cpp_internal_additions(std::ostream &out)
       << CPROVER_PREFIX "threads_exited[__CPROVER::constant_infinity_uint];"
       << '\n';
   out << "unsigned long " CPROVER_PREFIX "next_thread_id = 0;" << '\n';
-  // TODO: thread_local is still broken
-  out << "void* "
-      << CPROVER_PREFIX "thread_keys[__CPROVER::constant_infinity_uint];"
-      << '\n';
-  // TODO: thread_local is still broken
-  out << "void (*"
-      << CPROVER_PREFIX "thread_key_dtors[__CPROVER::constant_infinity_uint])"
-      << "(void *);" << '\n';
-  // TODO: thread_local is still broken
-  out << "unsigned long " CPROVER_PREFIX "next_thread_key = 0;" << '\n';
   out << "extern unsigned char "
       << CPROVER_PREFIX "memory[__CPROVER::constant_infinity_uint];" << '\n';
 
@@ -95,7 +85,6 @@ void cpp_internal_additions(std::ostream &out)
   out << "const void *" CPROVER_PREFIX "memory_leak = 0;" << '\n';
   out << "void *" CPROVER_PREFIX "allocate("
       << CPROVER_PREFIX "size_t size, " CPROVER_PREFIX "bool zero);" << '\n';
-  out << "const void *" CPROVER_PREFIX "alloca_object = 0;" << '\n';
 
   // auxiliaries for new/delete
   out << "void *__new(__CPROVER::size_t);" << '\n';

@@ -21,9 +21,7 @@ public:
             hifrog_symex_target_equationt & _target,
             message_handlert & _message_handler,
             const goto_programt & _goto_program,
-            guard_managert & guard_manager,
             bool _use_slicing = true
-
     );
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
@@ -52,7 +50,7 @@ public:
 protected:
     bool get_unwind(
     const symex_targett::sourcet &source,
-    const call_stackt &context,
+    const statet::call_stackt &context,
     unsigned unwind);
 
 private:
@@ -60,19 +58,17 @@ private:
     void reset_state(){
       auto* storage = &this->path_storage;
       // Clear the statePrt
-      auto state = std::unique_ptr<statet>(new statet(
-          symex_targett::sourcet(goto_functionst::entry_point(), goto_program),
-          symex_config.max_field_sensitivity_array_size,
-          guard_manager,
-          [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
-      ns = namespacet{outer_symbol_table, state->symbol_table};
+      auto state = std::unique_ptr<statet>(new statet());
+//          symex_targett::sourcet(goto_functionst::entry_point(), goto_program),
+//          [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
+//      ns = namespacet{outer_symbol_table, state->symbol_table};
       // since not supporting multiple threads, we do not need to record events;
       turn_off_recording_events();
     }
-    
+
     void turn_off_recording_events() {
       // turns off doing some book-keeping related to handling multiple threads by CProver
-      statePtr->record_events.push(false);
+      statePtr->record_events = false;
     }
     
     unsigned int max_unwind = 1;

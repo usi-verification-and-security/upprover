@@ -9,40 +9,32 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_SMT2_SMT2_PARSER_H
 #define CPROVER_SOLVERS_SMT2_SMT2_PARSER_H
 
-#include <map>
-#include <unordered_map>
+#include <stack>
 
-#include <util/mathematical_types.h>
 #include <util/std_expr.h>
 
 #include "smt2_tokenizer.h"
 
-class smt2_parsert
+class smt2_parsert:public smt2_tokenizert
 {
 public:
   explicit smt2_parsert(std::istream &_in)
-    : exit(false), smt2_tokenizer(_in), parenthesis_level(0)
+    : smt2_tokenizert(_in), exit(false), parenthesis_level(0)
   {
-    setup_commands();
-    setup_sorts();
-    setup_expressions();
   }
 
-  void parse()
+  bool parse() override
   {
     command_sequence();
+    return false;
   }
 
   struct idt
   {
-    using kindt = enum { VARIABLE, BINDING, PARAMETER };
-
-    idt(kindt _kind, const exprt &expr)
-      : kind(_kind), type(expr.type()), definition(expr)
+    idt():type(nil_typet())
     {
     }
 
-    kindt kind;
     typet type;
     exprt definition;
     std::vector<irep_idt> parameters;
@@ -53,13 +45,6 @@ public:
 
   struct named_termt
   {
-    /// Default-constructing a symbol_exprt is deprecated, thus make sure we
-    /// always construct a named_termt from an initialized \p _name
-    named_termt(const exprt &_term, const symbol_exprt &_name)
-      : term(_term), name(_name)
-    {
-    }
-
     exprt term;
     symbol_exprt name;
   };
@@ -69,32 +54,24 @@ public:
 
   bool exit;
 
-  smt2_tokenizert::smt2_errort error(const std::string &message)
-  {
-    return smt2_tokenizer.error(message);
-  }
-
-  smt2_tokenizert::smt2_errort error()
-  {
-    return smt2_tokenizer.error();
-  }
-
   /// This skips tokens until all bracketed expressions are closed
   void skip_to_end_of_list();
 
 protected:
-  smt2_tokenizert smt2_tokenizer;
-  // we extend next_token to track the parenthesis level
+  // we override next_token to track the parenthesis level
   std::size_t parenthesis_level;
-  smt2_tokenizert::tokent next_token();
+  tokent next_token() override;
+
+  void command_sequence();
+
+  virtual void command(const std::string &);
 
   // for let/quantifier bindings, function parameters
   using renaming_mapt=std::map<irep_idt, irep_idt>;
   renaming_mapt renaming_map;
   using renaming_counterst=std::map<irep_idt, unsigned>;
   renaming_counterst renaming_counters;
-  irep_idt add_fresh_id(const irep_idt &, idt::kindt, const exprt &);
-  void add_unique_id(const irep_idt &, const exprt &);
+  irep_idt get_fresh_id(const irep_idt &);
   irep_idt rename_id(const irep_idt &) const;
 
   struct signature_with_parameter_idst
@@ -119,16 +96,14 @@ protected:
     }
   };
 
-  // expressions
-  std::unordered_map<std::string, std::function<exprt()>> expressions;
-  void setup_expressions();
+  void ignore_command();
   exprt expression();
   exprt function_application();
   exprt function_application_ieee_float_op(
     const irep_idt &,
     const exprt::operandst &);
-  exprt function_application_ieee_float_eq(const exprt::operandst &);
   exprt function_application_fp(const exprt::operandst &);
+  typet sort();
   exprt::operandst operands();
   typet function_signature_declaration();
   signature_with_parameter_idst function_signature_definition();
@@ -140,7 +115,7 @@ protected:
   exprt let_expression();
   exprt quantifier_expression(irep_idt);
   exprt function_application(
-    const symbol_exprt &function,
+    const irep_idt &identifier,
     const exprt::operandst &op);
 
   /// Apply typecast to signedbv to expressions in vector
@@ -148,19 +123,6 @@ protected:
 
   /// Apply typecast to unsignedbv to given expression
   exprt cast_bv_to_unsigned(const exprt &);
-
-  // sorts
-  typet sort();
-  std::unordered_map<std::string, std::function<typet()>> sorts;
-  void setup_sorts();
-
-  // hashtable for all commands
-  std::unordered_map<std::string, std::function<void()>> commands;
-
-  void command_sequence();
-  void command(const std::string &);
-  void ignore_command();
-  void setup_commands();
 };
 
 #endif // CPROVER_SOLVERS_SMT2_SMT2_PARSER_H

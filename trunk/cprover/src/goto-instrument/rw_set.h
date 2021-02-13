@@ -18,6 +18,7 @@ Date: February 2006
 #include <vector>
 #include <set>
 
+#include <util/guard.h>
 #include <util/std_expr.h>
 
 #include <goto-programs/goto_model.h>
@@ -47,11 +48,7 @@ public:
     irep_idt object;
     exprt guard;
 
-    entryt(
-      const symbol_exprt &_symbol_expr,
-      const irep_idt &_object,
-      const exprt &_guard)
-      : symbol_expr(_symbol_expr), object(_object), guard(_guard)
+    entryt():guard(true_exprt())
     {
     }
   };
@@ -124,31 +121,26 @@ public:
   _rw_set_loct(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
     goto_programt::const_targett _target,
-    local_may_aliast &may)
-    : rw_set_baset(_ns),
-      value_sets(_value_sets),
-      function_id(_function_id),
-      target(_target),
-      local_may(may)
+    local_may_aliast &may):
+    rw_set_baset(_ns),
+    value_sets(_value_sets),
+    target(_target),
+    local_may(may)
 #else
   _rw_set_loct(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
-    goto_programt::const_targett _target)
-    : rw_set_baset(_ns),
-      value_sets(_value_sets),
-      function_id(_function_id),
-      target(_target)
+    goto_programt::const_targett _target):
+    rw_set_baset(_ns),
+    value_sets(_value_sets),
+    target(_target)
 #endif
   {
   }
 
 protected:
   value_setst &value_sets;
-  const irep_idt function_id;
   const goto_programt::const_targett target;
 
 #ifdef LOCAL_MAY
@@ -157,17 +149,17 @@ protected:
 
   void read(const exprt &expr)
   {
-    read_write_rec(expr, true, false, "", exprt::operandst());
+    read_write_rec(expr, true, false, "", guardt());
   }
 
-  void read(const exprt &expr, const exprt::operandst &guard_conjuncts)
+  void read(const exprt &expr, const guardt &guard)
   {
-    read_write_rec(expr, true, false, "", guard_conjuncts);
+    read_write_rec(expr, true, false, "", guard);
   }
 
   void write(const exprt &expr)
   {
-    read_write_rec(expr, false, true, "", exprt::operandst());
+    read_write_rec(expr, false, true, "", guardt());
   }
 
   void compute();
@@ -176,10 +168,9 @@ protected:
 
   void read_write_rec(
     const exprt &expr,
-    bool r,
-    bool w,
+    bool r, bool w,
     const std::string &suffix,
-    const exprt::operandst &guard_conjuncts);
+    const guardt &guard);
 };
 
 class rw_set_loct:public _rw_set_loct
@@ -189,17 +180,15 @@ public:
   rw_set_loct(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
     goto_programt::const_targett _target,
-    local_may_aliast &may)
-    : _rw_set_loct(_ns, _value_sets, _function_id, _target, may)
+    local_may_aliast &may):
+    _rw_set_loct(_ns, _value_sets, _target, may)
 #else
   rw_set_loct(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
-    goto_programt::const_targett _target)
-    : _rw_set_loct(_ns, _value_sets, _function_id, _target)
+    goto_programt::const_targett _target):
+    _rw_set_loct(_ns, _value_sets, _target)
 #endif
   {
     compute();
@@ -250,19 +239,17 @@ public:
   rw_set_with_trackt(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
     goto_programt::const_targett _target,
-    local_may_aliast &may)
-    : _rw_set_loct(_ns, _value_sets, _function_id, _target, may),
-      dereferencing(false)
+    local_may_aliast &may):
+    _rw_set_loct(_ns, _value_sets, _target, may),
+    dereferencing(false)
 #else
   rw_set_with_trackt(
     const namespacet &_ns,
     value_setst &_value_sets,
-    const irep_idt &_function_id,
-    goto_programt::const_targett _target)
-    : _rw_set_loct(_ns, _value_sets, _function_id, _target),
-      dereferencing(false)
+    goto_programt::const_targett _target):
+    _rw_set_loct(_ns, _value_sets, _target),
+    dereferencing(false)
 #endif
   {
     compute();

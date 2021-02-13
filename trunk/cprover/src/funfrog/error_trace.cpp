@@ -37,7 +37,8 @@ void error_tracet::build_goto_trace(
   for(auto ssa_step_ptr : SSA_steps)
   {
     const auto & SSA_step = *ssa_step_ptr;
-    if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
+    //if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
+    if(!solver->is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -119,8 +120,10 @@ void error_tracet::build_goto_trace(
     if(SSA_step.is_assert() || SSA_step.is_assume() || SSA_step.is_goto())
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
-      goto_trace_step.cond_value = solver->is_assignment_true(
-          convertor->convert_bool_expr(SSA_step.cond_handle));
+//      goto_trace_step.cond_value = solver->is_assignment_true(
+//          convertor->convert_bool_expr(SSA_step.cond_handle));
+        goto_trace_step.cond_value=
+                solver->is_assignment_true(literal_to_flaref(SSA_step.cond_literal));
       
       // we stop after a violated assertion
       if(SSA_step.is_assert() && !goto_trace_step.cond_value)
@@ -149,9 +152,10 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(ssa_solvert &decide
             it!=SSA_steps.end();
             it++)
         {
-            const SSA_stept &SSA_step = **it;
+            const symex_target_equationt::SSA_stept &SSA_step = **it;
             
-            if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
+            //if (!solver->is_assignment_true(convertor->convert_bool_expr(SSA_step.guard_handle)))
+            if(!solver->is_assignment_true(literal_to_flaref(SSA_step.guard_literal)))
                 continue;
             if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
                 continue;

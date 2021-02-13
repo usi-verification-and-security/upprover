@@ -8,6 +8,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "assembler_parser.h"
 
+#include <iostream>
+
 assembler_parsert assembler_parser;
 
 extern char *yyassemblertext;

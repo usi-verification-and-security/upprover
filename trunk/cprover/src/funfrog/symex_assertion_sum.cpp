@@ -23,8 +23,8 @@
 #include "utils/expressions_utils.h"
 #include "format_type.h"
 #include "goto-symex/goto_symex_state.h"
-#include "goto-symex/symex_assign.h"
-#include "goto-symex/expr_skeleton.h"
+//#include "goto-symex/symex_assign.h"
+//#include "goto-symex/expr_skeleton.h"
 #include "goto-symex/renaming_level.h"
 #include <memory>
 #include <algorithm>
@@ -55,8 +55,8 @@ symex_assertion_sumt::symex_assertion_sumt(
 	message_handlert & _message_handler,
 	const goto_programt & _goto_program, unsigned int _last_assertion_loc,
 	bool _single_assertion_check, bool _do_guard_expl, unsigned int _max_unwind,
-	bool partial_loops, guard_managert & guard_manager)
-	: goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage, guard_manager),
+	bool partial_loops)
+	: goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
 	  goto_functions(_goto_functions),
 	  call_tree_root(_call_info),
 	  current_call_tree_node(&_call_info),
@@ -252,8 +252,8 @@ void symex_assertion_sumt::symex_step(
   const get_goto_functiont &get_goto_function,
   statet &state)
 {
-  const auto loop_id =
-      goto_programt::loop_id(state.source.function_id, *state.source.pc);
+  const auto loop_id = goto_programt::loop_id(*state.source.pc);
+      //goto_programt::loop_id(state.source.function_id, *state.source.pc);
 #ifdef DEBUG_PARTITIONING
   std::cout << "\n**********************\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
@@ -261,10 +261,10 @@ void symex_assertion_sumt::symex_step(
   {
     std::cout << "Guard: " << format(state.guard.as_expr()) << '\n';
     std::cout << "Code: " << format(state.source.pc->code) << '\n';
-    std::cout << "Unwind: " << state.call_stack().top().loop_iterations[loop_id].count << '\n';
+    std::cout << "Unwind: " << state.top().loop_iterations[loop_id].count << '\n';
     std::cout << "Unwind Info: "
               << "unwind in last goto was " << prev_unwind_counter
-              << " a function " << (state.call_stack().top().loop_iterations.empty() ? "with no" : "with") << " loops"
+              << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
               << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
   }
 #endif
@@ -281,7 +281,7 @@ void symex_assertion_sumt::symex_step(
   //--unwind or --depth being exceeded usually meant setting the guard false
   switch(instruction.type) {
     case SKIP:
-      if (state.reachable)
+      if(!state.guard.is_false())
         target.location(state.guard.as_expr(), state.source);
       symex_transition(state);
       break;
@@ -290,55 +290,53 @@ void symex_assertion_sumt::symex_step(
       //decrement_unwinding_counter();
       store_return_value(state, get_current_deferred_function());
       end_symex(state);
-      prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
       break;
   
     case LOCATION:
-      if (state.reachable)
+      if (!state.guard.is_false())
         target.location(state.guard.as_expr(), state.source);
       symex_transition(state);
       break;
   
     case GOTO:
-      prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
-      if (state.reachable) { //code from cprover 5.12
-        symex_goto(state); 
-      } else {
-        symex_unreachable_goto(state);
-      }
+      symex_goto(state);  //same as cbmc 5.11
       break;
+//      prev_unwind_counter = state.top().loop_iterations[loop_id].count; //SA: 5.12
+//      if (state.reachable) { //code from cprover 5.12
+//        symex_goto(state);
+//      } else {
+//        symex_unreachable_goto(state);
+//      }
+//      break;
     
-    case ASSUME: //different in HiFrog vs CBMC
-      if (state.reachable) //old cprover:  if(!state.guard.is_false())
+    case ASSUME: //same as CBMC 5.11
+      if(!state.guard.is_false())
       {
-        const exprt cond = instruction.get_condition();
-        exprt simplified_cond = clean_expr(cond, state, false);
-        simplified_cond = state.rename<L2>(std::move(simplified_cond), ns).get();
-        symex_assume_l2(state, simplified_cond);
+          exprt tmp=instruction.guard;
+          clean_expr(tmp, state, false);
+          state.rename(tmp, ns);
+          symex_assume(state, tmp);
       }
+
       symex_transition(state);
       break;
 
     case ASSERT:
-      if(state.reachable && !ignore_assertions) //different in HiFrog vs CBMC
+      if(!state.guard.is_false()) //different in HiFrog vs CBMC 5.11
       {
         if (get_current_deferred_function().call_tree_node.is_assertion_enabled(state.source.pc))
         {
           // Skip asserts that are not currently being checked
           if (current_assertion->assertion_matches(state.depth, state.source.pc))
           {
-            // code from goto_symext::symex_assert
-            exprt condition = clean_expr(instruction.get_condition(), state, false);
-            // now rename, enables propagation //SA: make sure propagation not to mess locality of partitions
-            exprt l2_condition = state.rename(std::move(condition), ns).get();
-  
-            //do_simplify(l2_condition); don't simplify, else evaluates every assert to true
-  
+            exprt tmp(instruction.guard);
+            clean_expr(tmp, state, false);
             std::string msg = id2string(state.source.pc->source_location.get_comment());
             if(msg.empty()) {
               msg = "assertion";
             }
-            vcc(l2_condition, msg, state);
+            vcc(tmp, msg, state);
           
             // Checks which assert it is, and if we end the loop here
 #ifdef DEBUG_PARTITIONING
@@ -390,13 +388,13 @@ void symex_assertion_sumt::symex_step(
       break;
     
     case ASSIGN: //original
-      if(state.reachable)
-          symex_assign(state, instruction.get_assign());
+      if(!state.guard.is_false())
+          symex_assign(state, to_code_assign(instruction.code));
       symex_transition(state);
       break;
     
     case FUNCTION_CALL: //different in Hifrog vs CBMC(commented)
-      if(state.reachable)
+      if(!state.guard.is_false())
       {
 //            symex_function_call(
 //                    get_goto_function, state, instruction.get_function_call());
@@ -406,18 +404,18 @@ void symex_assertion_sumt::symex_step(
         handle_function_call(state, deref_code);
       }
       //else
-      prev_unwind_counter = state.call_stack().top().loop_iterations[loop_id].count;
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
       symex_transition(state);
       break;
     
     case OTHER:
-      if(state.reachable)
+      if(!state.guard.is_false())
           symex_other(state);
       symex_transition(state);
       break;
     
     case DECL:
-      if(state.reachable)
+      if(!state.guard.is_false())
           symex_decl(state);
       symex_transition(state);
       break;
@@ -492,23 +490,23 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
    
 #   ifdef DEBUG_PARTITIONING
 //    std::cerr << std::endl << "Current names L2 (" <<
-//            state.get_level2().current_names.size() << "):" << std::endl;
+//            state.level2.current_names.size() << "):" << std::endl;
 //    for (statet::level2t::current_namest::const_iterator it =
-//            state.get_level2().current_names.begin();
-//            it != state.get_level2().current_names.end(); ++it) {
+//            state.level2.current_names.begin();
+//            it != state.level2.current_names.end(); ++it) {
 //      std::cerr << it->first.c_str() << " : " << it->second.count << std::endl;
 //    } //iterate
 //    symex_renaming_levelt::viewt view;
-//    state.get_level2().current_names.get_view(view);
+//    state.level2.current_names.get_view(view);
 //    for(const auto &pair : view)
 //    {
 //      std::cerr << pair.first.c_str() << " : " << pair.second.second << std::endl;
 //    }
 //    std::cerr << std::endl << "Current names L1 (" <<
-//            state.call_stack().top().level1.current_names.size() << "):" << std::endl;
+//            state.top().level1.current_names.size() << "):" << std::endl;
 //    for (statet::level1t::current_namest::const_iterator it =
-//            state.call_stack().top().level1.current_names.begin();
-//            it != state.call_stack().top().level1.current_names.end();
+//            state.top().level1.current_names.begin();
+//            it != state.top().level1.current_names.end();
 //            ++it) {
 //      std::cerr << it->first.c_str() << " : " << it->second << std::endl;
 //    }
@@ -530,23 +528,25 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   equation.select_partition(deferred_function.partition_iface.partition_id);
 
   // Prepare (and empty) the current state
-  state.guard = guardt(true_exprt(), guard_manager);
-  state.reachable = true;
+  //state.guard.add(true_exprt()); //SA// behaves like assume(1); is that what we need?
+  guardt guard;
+  //state.guard = guardt(true_exprt(), guard_manager); 5.12
+  //state.reachable = true; 5.12
     
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
   const goto_functionst::goto_functiont& function = get_function(function_id);
   const goto_programt& body = function.body;
   state.source.pc = body.instructions.begin();
-  state.call_stack().top().end_of_function = --body.instructions.end();
-  state.call_stack().top().goto_state_map.clear();
-  state.call_stack().top().local_objects.clear();
+  state.top().end_of_function = --body.instructions.end();
+  state.top().goto_state_map.clear();
+  state.top().local_objects.clear();
 
   // Setup temporary store for return value
   if (partition_iface.returns_value) {
-    state.call_stack().top().return_value = get_tmp_ret_val_symbol(partition_iface).symbol_expr();
+    state.top().return_value = get_tmp_ret_val_symbol(partition_iface).symbol_expr();
   } else {
-    state.call_stack().top().return_value.make_nil();
+    state.top().return_value.make_nil();
   }
 
   // Add an assumption of the function call_site symbol
@@ -567,14 +567,17 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     assert(lhs.id()==ID_symbol &&
        lhs.get_bool(ID_C_SSA_symbol) &&
        !lhs.has_operands());
-    
-    guardt guard{true_exprt{}, guard_manager};
+
+    guardt guard; //SA: double check
+    //guardt guard{true_exprt{}, guard_manager};
+    //  state.guard.add(true_exprt()); //SA: behaves like assume(1); is that what we need?
     // without multithreading, no need to record events
     //state.record_events=false;
     
     assignment_typet assignment_type;
     assignment_type = symex_targett::assignment_typet::HIDDEN;
-    symex_assignt{state, assignment_type, ns, symex_config, target}.assign_symbol(lhs, expr_skeletont{}, *it1, {});
+    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, assignment_type);
+    //symex_assignt{state, assignment_type, ns, symex_config, target}.assign_symbol(lhs, expr_skeletont{}, *it1, {}); //5.12
   }
 }
 
@@ -882,7 +885,7 @@ void symex_assertion_sumt::store_return_value(
     return;
   
   const ssa_exprt & lhs = to_ssa_expr(partition_iface.retval_symbol);
-  const auto& rhs = to_symbol_expr(state.call_stack().top().return_value);
+  const auto& rhs = to_symbol_expr(state.top().return_value);
   
   assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
 
@@ -908,25 +911,31 @@ void symex_assertion_sumt::clear_locals_versions(statet &state)
 {
   if (current_call_tree_node->get_function_id() != ID_nil) {
 
-    const std::set<irep_idt>& local_identifiers = state.call_stack().top().local_objects;
+    const std::set<irep_idt>& local_identifiers = state.top().local_objects;
     // Clear locals from l2 cache
     //iterate over std::set<irep_idt>::const_iterator
     for (const irep_idt & local_id : local_identifiers) {
 #ifdef DEBUG_PARTITIONING
       std::cout << "local_identifiers size: " << local_identifiers.size() << std::endl;
-      std::cerr << "Level2 size: " << state.get_level2().current_names.size() << std::endl;
+      std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
       std::cerr << "Removing local:" << local_id.c_str() << " (" <<
-                //        state.call_stack().top().level1.get_original_name(local_id) << "): " <<
-                state.get_level2().current_names.find(local_id).has_value() << std::endl;
+                //        state.top().level1.get_original_name(local_id) << "): " <<
+                state.level2.current_names.find(local_id).has_value() << std::endl;
 #endif
-      auto it2 = state.get_level2().current_names.find(local_id); //returns null if not found
-      // FIXME: MB:SA test if this behaviour is correct
-      if(it2) {
-        // MB: hack to do what we were doing before, but not sure why we do it
-        symex_level2t & mutable_level = const_cast<symex_level2t&>(state.get_level2());
-        ssa_exprt ssa_copy = it2->get().first;
-        mutable_level.current_names.update(local_id, [](std::pair<ssa_exprt, size_t>& val) { val.first.remove_level_2(); });
-      }
+        // FIXME: MB: test if this behaviour is correct
+
+        auto it2 = state.level2.current_names.find(local_id);
+        if(it2 != state.level2.current_names.end())
+            state.level2.current_names[local_id].first.remove_level_2();
+
+        //commented 5.12
+//      auto it2 = state.level2.current_names.find(local_id); //returns null if not found
+//      if(it2) {
+//        // MB: hack to do what we were doing before, but not sure why we do it
+//        symex_level2t & mutable_level = const_cast<symex_level2t&>(state.level2);
+//        ssa_exprt ssa_copy = it2->get().first;
+//        mutable_level.current_names.update(local_id, [](std::pair<ssa_exprt, size_t>& val) { val.first.remove_level_2(); });
+//      }
     }
   }
 }
@@ -971,8 +980,10 @@ void symex_assertion_sumt::handle_function_call(
    
     if (function_call.lhs().is_not_nil())
     {
-      exprt rhs = path_storage.build_symex_nondet(function_call.lhs().type(), function_call.source_location());
-      code_assignt code(function_call.lhs(), rhs);
+       //exprt rhs = path_storage.build_symex_nondet(function_call.lhs().type(), function_call.source_location()); //5.12
+        exprt rhs = build_symex_nondet(function_call.lhs().type()); //5.11 SA: double check
+        rhs.add_source_location() = function_call.source_location();
+        code_assignt code(function_call.lhs(), rhs);
       symex_assign(state, code);
 #ifdef DISABLE_OPTIMIZATIONS
       expr_pretty_print(std::cout << "** lhs: ", code.lhs()); std::cout << std::endl;
@@ -1143,8 +1154,11 @@ void symex_assertion_sumt::produce_callsite_symbols(
 void symex_assertion_sumt::produce_callend_assumption(
         const partition_ifacet& partition_iface, statet& state)
 {
-  exprt tmp = state.guard.guard_expr(partition_iface.callend_symbol);
-  target.assumption(state.guard.as_expr(), tmp, state.source);
+//    exprt tmp = state.guard.guard_expr(partition_iface.callend_symbol);
+//  target.assumption(state.guard.as_expr(), tmp, state.source);
+    exprt tmp(partition_iface.callend_symbol);
+    state.guard.guard_expr(tmp);
+    target.assumption(state.guard.as_expr(), tmp, state.source);
 }
 
 /*******************************************************************
@@ -1170,7 +1184,8 @@ void symex_assertion_sumt::raw_assignment(
   assert(!lhs.get_level_2().empty());
 
   exprt ssa_rhs = rhs;
-  ssa_rhs = state.rename(ssa_rhs, ns).get();
+  //ssa_rhs = state.rename(ssa_rhs, ns).get();
+  state.rename(ssa_rhs, ns);
   do_simplify(ssa_rhs); //SA: make sure not to mess with preserving locality in partitions
 
   // the following block is what we want from state.assign
@@ -1189,7 +1204,7 @@ void symex_assertion_sumt::raw_assignment(
   // do the assignment
 
   target.assignment(
-    guardt(true_exprt(), guard_manager).as_expr(),
+    guardt().as_expr(),
     lhs,
     lhs, l1_lhs,
     ssa_rhs,
@@ -1212,15 +1227,25 @@ void symex_assertion_sumt::vcc(
   statet &state)
 {
   state.total_vccs++;
-  // get the current L2 version of the L1 symbol
-  exprt expr_l2 = state.rename<L2>(condition, ns).get();
-  
-  if(expr_l2.is_true())
+  exprt expr = condition;
+  state.rename(expr, ns);
+  if(expr.is_true())
     return;
-  
-  const exprt guarded_condition = state.guard.guard_expr(expr_l2);
+
+  state.guard.guard_expr(expr);
+
   state.remaining_vccs++;
-  target.assertion(state.guard.as_expr(), guarded_condition, msg, state.source);
+  target.assertion(state.guard.as_expr(), expr, msg, state.source);
+
+// get the current L2 version of the L1 symbol
+//  exprt expr_l2 = state.rename<L2>(condition, ns).get();
+//
+//  if(expr_l2.is_true())
+//    return;
+//
+//  const exprt guarded_condition = state.guard.guard_expr(expr_l2);
+//  state.remaining_vccs++;
+//  target.assertion(state.guard.as_expr(), guarded_condition, msg, state.source);
 }
 
 /*******************************************************************\
@@ -1246,11 +1271,12 @@ void symex_assertion_sumt::end_symex(statet &state)
 \*******************************************************************/
 bool symex_assertion_sumt::is_unwind_loop(statet &state)
 {
-  framet &frame=state.call_stack().top();
-  const auto loop_id =
-      goto_programt::loop_id(state.source.function_id, *state.source.pc);
+  statet::framet &frame=state.top();
+  const auto loop_id = goto_programt::loop_id(*state.source.pc);
+    //goto_programt::loop_id(state.source.function_id, *state.source.pc);
+
   unsigned unwind_counter = // KE: for case 3. Not sure, can be the other option
-            state.call_stack().top().loop_iterations[loop_id].count;
+            state.top().loop_iterations[loop_id].count;
 //  unwind_counter++; //fixme: why not to use this to show if we are in a LOOP?!
 //  if(!should_stop_unwind(state.source, state.call_stack(), unwind_counter))
 //  {
@@ -1269,7 +1295,7 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
       return true;
   }
     // KE: unwind_counter isn't initialized, my guess is case 3 described below
-    // Either shall be state.call_stack().top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+    // Either shall be state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
     // OR frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count
   else if (!frame.loop_iterations.empty() && prev_unwind_counter <= unwind_counter)
   {    //normal flow
@@ -1321,8 +1347,10 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
   stop_constant_propagation_for(ssa.get_identifier());
   
   // get the current L2 version of the L1 symbol
-  exprt res = state->rename<L2>(ssa, ns).get();
-  return to_ssa_expr(res);
+  state->rename(ssa, ns, goto_symex_statet::levelt::L2);
+  return ssa;
+  //exprt res = state->rename<L2>(ssa, ns).get(); //5.12
+  //return to_ssa_expr(res);
 }
 
 /*******************************************************************
@@ -1334,20 +1362,36 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
 
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
-  // get the current L1 version of the symbol
-  ssa_exprt ssa = get_l1_ssa(symbol);
+  // get the current L1 version of the symbol; identifier should be l0 or l1, make sure it's l1
+  ssa_exprt ssa_l1 = get_l1_ssa(symbol);
   irep_idt ssa_l1_identifier = get_l1_identifier(symbol); //e.g: "hifrog::fun_start!0"
-  
-  //safety
-  const auto p_it = state->get_level2().current_names.find(ssa_l1_identifier);
-  assert(p_it.has_value());
-  
-  //incrementing the counter
-  const_cast<symex_level2t&>(state->get_level2()).increase_generation(
-      ssa_l1_identifier, ssa, state->get_l2_name_provider());
-  
-  // get the correct L2 version after incrementing the counter
-  return get_current_version(symbol);
+//
+//  //safety
+//  const auto p_it = state->level2.current_names.find(ssa_l1_identifier);
+//  assert(p_it.has_value());
+//
+//  //incrementing the counter
+//  const_cast<symex_level2t&>(state->level2).increase_generation( //5.12
+//      ssa_l1_identifier, ssa, state->get_l2_name_provider());
+//
+//  // get the correct L2 version after incrementing the counter
+//  return get_current_version(symbol);
+
+    // get the current L1 version of the symbol //5.10
+    assert(state->level2.current_names.find(ssa_l1_identifier) != state->level2.current_names.end());
+   // state->level2.increase_counter(ssa_l1_identifier);
+    // get the correct L2 version after incrementing  the counter
+    //return get_current_version(symbol);
+
+
+    //5.11
+    // do the l2 renaming
+    const auto level2_it =
+            const_cast<symex_level2t&>(state->level2).current_names.emplace(ssa_l1_identifier, std::make_pair(ssa_l1, 0)).first;
+    symex_renaming_levelt::increase_counter(level2_it);
+    // get the correct L2 version after incrementing  the counter
+    return get_current_version(symbol);
+
 }
 
 /*******************************************************************
@@ -1392,10 +1436,15 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version
   ssa_exprt l1_ssa = get_l1_ssa(symbol);
-  const irep_idt l1_id = l1_ssa.get_l1_object_identifier(); //e.g: "main::#return_value!0"
-  //assert(state.get_level2().current_names.find(l1_id) == state.get_level2().current_names.end()); ///.has_value
+  auto l1_id = l1_ssa.get_l1_object_identifier();
+  assert(state->level2.current_names.find(l1_id) == state->level2.current_names.end());
+  // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but I fail to see the reason
+  state->level2.current_names[l1_id] = std::make_pair(l1_ssa,0);
+
+  //const irep_idt l1_id = l1_ssa.get_l1_object_identifier(); //e.g: "main::#return_value!0"
+  //assert(state.level2.current_names.find(l1_id) == state.level2.current_names.end()); ///.has_value
   // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but why?
-  const_cast<symex_level2t&>(state->get_level2()).current_names.insert(l1_id,std::make_pair(l1_ssa,0));
+  //const_cast<symex_level2t&>(state->level2).current_names.insert(l1_id,std::make_pair(l1_ssa,0));
 }
 
 /*******************************************************************
@@ -1499,19 +1548,18 @@ void symex_assertion_sumt::add_globals_to_state(statet & state)
 //  their declaration would not be encountered -> problem
 //  the following is taken from goto_symext::symex_decl
     ssa_exprt ssa(symbol.symbol_expr());
-    ssa = state.rename_ssa<L1>(ssa, ns).get();
+    state.rename(ssa, ns, goto_symex_statet::L1);
+    //ssa = state.rename_ssa<L1>(ssa, ns).get();
     const auto & l1_identifier = ssa.get_identifier();
     state.rename(ssa.type(), l1_identifier, ns);
     ssa.update_type();
-    // end of section taken from CPROVER
-    //assert(state.get_level2().current_names.find(l1_identifier) == state.get_level2().current_names.end());
-    const auto p_it = state.get_level2().current_names.find(l1_identifier);
-    assert(!p_it);
-    const_cast<symex_level2t&>(state.get_level2()).current_names.insert(l1_identifier,std::make_pair(ssa, 0));
-//        }
+    assert(state.level2.current_names.find(l1_identifier) == state.level2.current_names.end());
+    state.level2.current_names[l1_identifier] = std::make_pair(ssa, 0);
+//    const auto p_it = state.level2.current_names.find(l1_identifier);
+//    assert(!p_it);
+//    const_cast<symex_level2t&>(state.level2).current_names.insert(l1_identifier,std::make_pair(ssa, 0));
   }
 }
-
 
 /*******************************************************************\
 
@@ -1592,7 +1640,7 @@ Note:
 \*******************************************************************/
 void symex_assertion_sumt::return_assignment(statet &state)
 {
-  const framet &frame = state.call_stack().top();
+  const statet::framet &frame = state.top();
   
   const goto_programt::instructiont &instruction = *state.source.pc;
   PRECONDITION(instruction.is_return());

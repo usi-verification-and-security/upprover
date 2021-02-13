@@ -47,7 +47,7 @@ remove_const_function_pointerst::remove_const_function_pointerst(
 /// variations within.
 /// \param base_expression: The function call through a function pointer
 /// \param out_functions: The functions that (symbols of type ID_code) the base
-///   expression could take.
+/// expression could take.
 /// \return Returns true if it was able to resolve the call, false if not. If it
 ///   returns true, out_functions will be populated by all the possible values
 ///   the function pointer could be.
@@ -75,7 +75,7 @@ exprt remove_const_function_pointerst::replace_const_symbols(
     if(is_const_expression(expression))
     {
       const symbolt &symbol =
-        symbol_table.lookup_ref(to_symbol_expr(expression).get_identifier());
+        *symbol_table.lookup(to_symbol_expr(expression).get_identifier());
       if(symbol.type.id()!=ID_code)
       {
         const exprt &symbol_value=symbol.value;
@@ -111,7 +111,8 @@ exprt remove_const_function_pointerst::replace_const_symbols(
 exprt remove_const_function_pointerst::resolve_symbol(
   const symbol_exprt &symbol_expr) const
 {
-  const symbolt &symbol = symbol_table.lookup_ref(symbol_expr.get_identifier());
+  const symbolt &symbol=
+    *symbol_table.lookup(symbol_expr.get_identifier());
   return symbol.value;
 }
 

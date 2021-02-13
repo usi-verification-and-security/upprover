@@ -9,6 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "boolbv.h"
 
 #include <util/arith_tools.h>
+#include <util/base_type.h>
 
 bvt boolbvt::convert_struct(const struct_exprt &expr)
 {
@@ -36,7 +37,7 @@ bvt boolbvt::convert_struct(const struct_exprt &expr)
     const exprt &op=*op_it;
 
     DATA_INVARIANT_WITH_DIAGNOSTICS(
-      subtype == op.type(),
+      base_type_eq(subtype, op.type(), ns),
       "type of a struct expression operand shall equal the type of the "
       "corresponding struct component",
       expr.find_source_location(),

@@ -12,11 +12,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_INSTRUMENT_UNWINDSET_H
 #define CPROVER_GOTO_INSTRUMENT_UNWINDSET_H
 
-#include <list>
 #include <map>
 #include <string>
 
-#include <util/deprecate.h>
 #include <util/irep.h>
 #include <util/optional.h>
 
@@ -33,11 +31,7 @@ public:
   void parse_unwind(const std::string &unwind);
 
   // limit for instances of a loop
-  DEPRECATED(SINCE(2019, 11, 15, "use parse_unwindset(list) instead"))
   void parse_unwindset(const std::string &unwindset);
-
-  // limit for instances of a loop
-  void parse_unwindset(const std::list<std::string> &unwindset);
 
   // queries
   optionalt<unsigned> get_limit(const irep_idt &loop, unsigned thread_id) const;
@@ -57,8 +51,6 @@ protected:
   using thread_loop_mapt =
     std::map<std::pair<irep_idt, unsigned>, optionalt<unsigned>>;
   thread_loop_mapt thread_loop_map;
-
-  void parse_unwindset_one_loop(std::string loop_limit);
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_UNWINDSET_H

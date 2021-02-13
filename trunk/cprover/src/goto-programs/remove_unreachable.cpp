@@ -48,7 +48,7 @@ void remove_unreachable(goto_programt &goto_program)
     if(reachable.find(it)==reachable.end() &&
        !it->is_end_function())
     {
-      it->turn_into_skip();
+      it->make_skip();
       did_something = true;
     }
   }

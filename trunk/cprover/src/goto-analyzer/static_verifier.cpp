@@ -8,11 +8,10 @@ Author: Martin Brain, martin.brain@cs.ox.ac.uk
 
 #include "static_verifier.h"
 
-#include <util/json_irep.h>
+#include <util/json_expr.h>
 #include <util/message.h>
 #include <util/namespace.h>
 #include <util/options.h>
-#include <util/range.h>
 
 #include <goto-programs/goto_model.h>
 
@@ -21,71 +20,11 @@ Author: Martin Brain, martin.brain@cs.ox.ac.uk
 struct static_verifier_resultt
 {
   // clang-format off
-  enum statust { TRUE, FALSE, BOTTOM, UNKNOWN } status;
+  enum { TRUE, FALSE, BOTTOM, UNKNOWN } status;
   // clang-format on
   source_locationt source_location;
   irep_idt function_id;
 };
-
-void static_verifier(
-  const abstract_goto_modelt &abstract_goto_model,
-  const ai_baset &ai,
-  propertiest &properties)
-{
-  const namespacet ns{abstract_goto_model.get_symbol_table()};
-  // this is mutable because we want to change the property status
-  // in this loop
-  for(auto &property : properties)
-  {
-    auto &property_status = property.second.status;
-    const goto_programt::const_targett &property_location = property.second.pc;
-    exprt condition = property_location->get_condition();
-    const std::shared_ptr<const ai_baset::statet> predecessor_state_copy =
-      ai.abstract_state_before(property_location);
-    // simplify the condition given the domain information we have
-    // about the state right before the assertion is evaluated
-    predecessor_state_copy->ai_simplify(condition, ns);
-    // if the condition simplifies to true the assertion always succeeds
-    if(condition.is_true())
-    {
-      property_status = property_statust::PASS;
-    }
-    // if the condition simplifies to false the assertion always fails
-    else if(condition.is_false())
-    {
-      property_status = property_statust::FAIL;
-    }
-    // if the domain state is bottom then the assertion is definitely
-    // unreachable
-    else if(predecessor_state_copy->is_bottom())
-    {
-      property_status = property_statust::NOT_REACHABLE;
-    }
-    // if the condition isn't definitely true, false or unreachable
-    // we don't know whether or not it may fail
-    else
-    {
-      property_status = property_statust::UNKNOWN;
-    }
-  }
-}
-
-/// Makes a status message string from a status.
-static const char *message(const static_verifier_resultt::statust &status)
-{
-  switch(status)
-  {
-  case static_verifier_resultt::TRUE:
-    return "SUCCESS";
-  case static_verifier_resultt::FALSE:
-    return "FAILURE (if reachable)";
-  case static_verifier_resultt::BOTTOM:
-    return "SUCCESS (unreachable)";
-  case static_verifier_resultt::UNKNOWN:
-    return "UNKNOWN";
-  }
-  UNREACHABLE;
-}
 
 static void static_verifier_json(
   const std::vector<static_verifier_resultt> &results,
@@ -93,13 +32,36 @@ static void static_verifier_json(
   std::ostream &out)
 {
   m.status() << "Writing JSON report" << messaget::eom;
-  out << make_range(results)
-           .map([](const static_verifier_resultt &result) {
-             return json_objectt{
-               {"status", json_stringt{message(result.status)}},
-               {"sourceLocation", json(result.source_location)}};
-           })
-           .collect<json_arrayt>();
+
+  json_arrayt json_result;
+
+  for(const auto &result : results)
+  {
+    json_objectt &j = json_result.push_back().make_object();
+
+    switch(result.status)
+    {
+    case static_verifier_resultt::TRUE:
+      j["status"] = json_stringt("SUCCESS");
+      break;
+
+    case static_verifier_resultt::FALSE:
+      j["status"] = json_stringt("FAILURE (if reachable)");
+      break;
+
+    case static_verifier_resultt::BOTTOM:
+      j["status"] = json_stringt("SUCCESS (unreachable)");
+      break;
+
+    case static_verifier_resultt::UNKNOWN:
+      j["status"] = json_stringt("UNKNOWN");
+      break;
+    }
+
+    j["sourceLocation"] = json(result.source_location);
+  }
+
+  out << json_result;
 }
 
 static void static_verifier_xml(
@@ -109,7 +71,7 @@ static void static_verifier_xml(
 {
   m.status() << "Writing XML report" << messaget::eom;
 
-  xmlt xml_result{"cprover"};
+  xmlt xml_result;
 
   for(const auto &result : results)
   {
@@ -262,38 +224,13 @@ static void static_verifier_console(
     m.result() << '\n';
 }
 
-static static_verifier_resultt::statust
-check_assertion(const ai_domain_baset &domain, exprt e, const namespacet &ns)
-{
-  if(domain.is_bottom())
-  {
-    return static_verifier_resultt::BOTTOM;
-  }
-
-  domain.ai_simplify(e, ns);
-  if(e.is_true())
-  {
-    return static_verifier_resultt::TRUE;
-  }
-  else if(e.is_false())
-  {
-    return static_verifier_resultt::FALSE;
-  }
-  else
-  {
-    return static_verifier_resultt::UNKNOWN;
-  }
-
-  UNREACHABLE;
-}
-
 /// Runs the analyzer and then prints out the domain
 /// \param goto_model: the program analyzed
 /// \param ai: the abstract interpreter after it has been run to fix point
 /// \param options: the parsed user options
 /// \param message_handler: the system message handler
 /// \param out: output stream for the printing
-/// \return false on success with the domain printed to out
+/// \return: false on success with the domain printed to out
 bool static_verifier(
   const goto_modelt &goto_model,
   const ai_baset &ai,
@@ -324,130 +261,33 @@ bool static_verifier(
       if(!i_it->is_assert())
         continue;
 
-      exprt e(i_it->get_condition());
+      exprt e(i_it->guard);
+      auto dp = ai.abstract_state_before(i_it);
+      const ai_domain_baset &domain(*dp);
+      domain.ai_simplify(e, ns);
 
       results.push_back(static_verifier_resultt());
       auto &result = results.back();
 
-      // If there are multiple, distinct histories that reach the same location
-      // we can get better results by checking with each individually rather
-      // than merging all of them and doing one check.
-      const auto trace_set_pointer =
-        ai.abstract_traces_before(i_it); // Keep a pointer so refcount > 0
-      const auto &trace_set = *trace_set_pointer;
-
-      if(trace_set.size() == 0) // i.e. unreachable
+      if(e.is_true())
+      {
+        result.status = static_verifier_resultt::TRUE;
+        ++pass;
+      }
+      else if(e.is_false())
+      {
+        result.status = static_verifier_resultt::FALSE;
+        ++fail;
+      }
+      else if(domain.is_bottom())
       {
         result.status = static_verifier_resultt::BOTTOM;
         ++pass;
       }
-      else if(trace_set.size() == 1)
-      {
-        auto dp = ai.abstract_state_before(i_it);
-
-        result.status = check_assertion(*dp, e, ns);
-        switch(result.status)
-        {
-        case static_verifier_resultt::BOTTOM:
-          ++pass;
-          break;
-        case static_verifier_resultt::TRUE:
-          ++pass;
-          break;
-        case static_verifier_resultt::FALSE:
-          ++fail;
-          break;
-        case static_verifier_resultt::UNKNOWN:
-          ++unknown;
-          break;
-        default:
-          UNREACHABLE;
-        }
-      }
       else
       {
-        // Multiple traces, verify against each one
-        std::size_t unreachable_traces = 0;
-        std::size_t true_traces = 0;
-        std::size_t false_traces = 0;
-        std::size_t unknown_traces = 0;
-
-        for(const auto &trace_ptr : trace_set)
-        {
-          auto dp = ai.abstract_state_before(trace_ptr);
-
-          result.status = check_assertion(*dp, e, ns);
-          switch(result.status)
-          {
-          case static_verifier_resultt::BOTTOM:
-            ++unreachable_traces;
-            break;
-          case static_verifier_resultt::TRUE:
-            ++true_traces;
-            break;
-          case static_verifier_resultt::FALSE:
-            ++false_traces;
-            break;
-          case static_verifier_resultt::UNKNOWN:
-            ++unknown_traces;
-            break;
-          default:
-            UNREACHABLE;
-          }
-        }
-
-        // Join the results
-        if(unknown_traces != 0)
-        {
-          // If any trace is unknown, the final result must be unknown
-          result.status = static_verifier_resultt::UNKNOWN;
-          ++unknown;
-        }
-        else
-        {
-          if(false_traces == 0)
-          {
-            // Definitely true; the only question is how
-            ++pass;
-            if(true_traces == 0)
-            {
-              // Definitely not reachable
-              INVARIANT(
-                unreachable_traces == trace_set.size(),
-                "All traces must not reach the assertion");
-              result.status = static_verifier_resultt::BOTTOM;
-            }
-            else
-            {
-              // At least one trace (may) reach it.
-              // All traces that reach it are safe.
-              result.status = static_verifier_resultt::TRUE;
-            }
-          }
-          else
-          {
-            // At lease one trace (may) reach it and it is false on that trace
-            if(true_traces == 0)
-            {
-              // All traces that (may) reach it are false
-              ++fail;
-              result.status = static_verifier_resultt::FALSE;
-            }
-            else
-            {
-              // The awkward case, there are traces that (may) reach it and
-              // some are true, some are false.  It is not entirely fair to say
-              // "FAILURE (if reachable)" because it's a bit more complex than
-              // that, "FAILURE (if reachable via a particular trace)" would be
-              // more accurate summary of what we know at this point.
-              // Given that all results of FAILURE from this analysis are
-              // caveated with some reachability questions, the following is not
-              // entirely unreasonable.
-              ++fail;
-              result.status = static_verifier_resultt::FALSE;
-            }
-          }
-        }
+        result.status = static_verifier_resultt::UNKNOWN;
+        ++unknown;
       }
 
       result.source_location = i_it->source_location;

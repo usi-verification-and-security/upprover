@@ -9,11 +9,11 @@
 #define YYSTYPE unsigned
 #define YYSTYPE_IS_TRIVIAL 1
 
-#define mto(x, y) parser_stack(x).add_to_operands(std::move(parser_stack(y)))
+#define mto(x, y) stack(x).move_to_operands(stack(y))
 #define mts(x, y) (to_type_with_subtypes(stack_type(x)).move_to_subtypes(stack_type(y)))
 #define binary(x, y, l, id, z) { init(x, id); \
-  parser_stack(x).add_source_location()=parser_stack(l).source_location(); \
-  parser_stack(x).add_to_operands(std::move(parser_stack(y)), std::move(parser_stack(z))); }
+  stack(x).add_source_location()=stack(l).source_location(); \
+  stack(x).reserve_operands(2); mto(x, y); mto(x, z); }
 
 /*******************************************************************\
 
@@ -47,7 +47,7 @@ Function: init
 inline static void init(YYSTYPE &expr, const irep_idt &id)
 {
   newstack(expr);
-  parser_stack(expr).id(id);
+  stack(expr).id(id);
 }
 
 /*******************************************************************\
@@ -64,7 +64,7 @@ Function: set
 
 inline static void set(YYSTYPE expr, const irep_idt &id)
 {
-  parser_stack(expr).id(id);
+  stack(expr).id(id);
 }
 
 /*******************************************************************\
@@ -82,7 +82,8 @@ Function: statement
 static void statement(YYSTYPE &expr, const irep_idt &id)
 {
   set(expr, ID_code);
-  parser_stack(expr).set(ID_statement, id);
+  stack(expr).type().id(ID_code);
+  stack(expr).set(ID_statement, id);
 }
 
 /*******************************************************************\
@@ -140,7 +141,7 @@ Function: merge_types
 #if 0
 static void merge_types(const YYSTYPE dest, const YYSTYPE src)
 {
-  merge_types(parser_stack(dest), parser_stack(src));
+  merge_types(stack(dest), stack(src));
 }
 #endif
 
@@ -158,7 +159,7 @@ Function: merge
 
 static YYSTYPE merge(const YYSTYPE src1, const YYSTYPE src2)
 {
-  merge_types(parser_stack(src1), parser_stack(src2));
+  merge_types(stack(src1), stack(src2));
   return src1;
 }
 
@@ -224,7 +225,7 @@ static void make_subtype(typet &dest, typet &src)
       }
       else if(p->is_nil())
         assert(false);
-      else if(p->id().empty())
+      else if(p->id()==irep_idt())
         assert(false);
       else
       {
@@ -247,7 +248,7 @@ static void make_subtype(typet &dest, typet &src)
             auto &merged_type = to_merged_type(*p);
             p=&merged_type.last_type();
           }
-          else if(p->id().empty())
+          else if(p->id()==irep_idt())
             assert(false);
           else if(p->is_nil())
             assert(false);
@@ -329,7 +330,7 @@ Function: create_function_scope
 
 static void create_function_scope(const YYSTYPE d)
 {
-  ansi_c_declarationt &declaration=to_ansi_c_declaration(parser_stack(d));
+  ansi_c_declarationt &declaration=to_ansi_c_declaration(stack(d));
   ansi_c_declaratort &declarator=declaration.declarator();
 
   irep_idt function_name=declarator.get_base_name();

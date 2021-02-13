@@ -48,7 +48,6 @@ public:
 
   goto_program_difft get_diff(const irep_idt &function) const;
 
-private:
   const goto_functionst &old_goto_functions;
   const namespacet ns_old;
   const goto_functionst &new_goto_functions;
@@ -84,6 +83,7 @@ private:
 
   const differences_mapt &differences_map() const;
 
+private:
   differences_mapt differences_map_;
 };
 

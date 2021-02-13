@@ -10,10 +10,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_MP_ARITH_H
 #define CPROVER_UTIL_MP_ARITH_H
 
-#include <iosfwd>
 #include <string>
+#include <iosfwd>
+#include <limits>
 
 #include "big-int/bigint.hh"
+#include "optional.h"
+#include "deprecate.h"
 
 // NOLINTNEXTLINE(readability/identifiers)
 typedef BigInt mp_integer;
@@ -47,5 +50,17 @@ const std::string integer2string(const mp_integer &, unsigned base=10);
 const mp_integer string2integer(const std::string &, unsigned base=10);
 const std::string integer2binary(const mp_integer &, std::size_t width);
 const mp_integer binary2integer(const std::string &, bool is_signed);
+
+/// \deprecated use numeric_cast_v<unsigned long long> instead
+DEPRECATED("Use numeric_cast_v<unsigned long long> instead")
+mp_integer::ullong_t integer2ulong(const mp_integer &);
+
+/// \deprecated use numeric_cast_v<std::size_t> instead
+DEPRECATED("Use numeric_cast_v<std::size_t> instead")
+std::size_t integer2size_t(const mp_integer &);
+
+/// \deprecated use numeric_cast_v<unsigned> instead
+DEPRECATED("Use numeric_cast_v<unsigned> instead")
+unsigned integer2unsigned(const mp_integer &);
 
 #endif // CPROVER_UTIL_MP_ARITH_H

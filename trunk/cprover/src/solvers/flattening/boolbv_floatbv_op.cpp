@@ -23,18 +23,11 @@ bvt boolbvt::convert_floatbv_typecast(const floatbv_typecast_exprt &expr)
   bvt bv0=convert_bv(op0);
   bvt bv1=convert_bv(op1);
 
-  const typet &src_type = expr.op0().type();
-  const typet &dest_type = expr.type();
+  const typet &src_type=ns.follow(expr.op0().type());
+  const typet &dest_type=ns.follow(expr.type());
 
   if(src_type==dest_type) // redundant type cast?
     return bv0;
-
-  if(src_type.id() == ID_c_bit_field)
-  {
-    // go through underlying type
-    return convert_floatbv_typecast(floatbv_typecast_exprt(
-      typecast_exprt(op0, src_type.subtype()), op1, dest_type));
-  }
 
   float_utilst float_utils(prop);
 
@@ -79,26 +72,32 @@ bvt boolbvt::convert_floatbv_typecast(const floatbv_typecast_exprt &expr)
     return conversion_failed(expr);
 }
 
-bvt boolbvt::convert_floatbv_op(const ieee_float_op_exprt &expr)
+bvt boolbvt::convert_floatbv_op(const exprt &expr)
 {
-  const exprt &lhs = expr.lhs();
-  const exprt &rhs = expr.rhs();
-  const exprt &rounding_mode = expr.rounding_mode();
+  const exprt::operandst &operands=expr.operands();
+
+  if(operands.size()!=3)
+    throw "operator "+expr.id_string()+" takes three operands";
+
+  const exprt &lhs = expr.op0();
+  const exprt &rhs = expr.op1();
+  const exprt &rounding_mode = expr.op2();
 
   bvt lhs_as_bv = convert_bv(lhs);
   bvt rhs_as_bv = convert_bv(rhs);
   bvt rounding_mode_as_bv = convert_bv(rounding_mode);
 
+  const typet &resolved_type = ns.follow(expr.type());
   DATA_INVARIANT_WITH_DIAGNOSTICS(
-    lhs.type() == expr.type() && rhs.type() == expr.type(),
-    "both operands of a floating point operator must match the expression type",
+    lhs.type() == resolved_type && rhs.type() == resolved_type,
+    "both operands of a floating point operator must have the same type",
     irep_pretty_diagnosticst{expr});
 
   float_utilst float_utils(prop);
 
   float_utils.set_rounding_mode(rounding_mode_as_bv);
 
-  if(expr.type().id() == ID_floatbv)
+  if(resolved_type.id() == ID_floatbv)
   {
     float_utils.spec=ieee_float_spect(to_floatbv_type(expr.type()));
 
@@ -115,15 +114,15 @@ bvt boolbvt::convert_floatbv_op(const ieee_float_op_exprt &expr)
     else
       UNREACHABLE;
   }
-  else if(expr.type().id() == ID_vector || expr.type().id() == ID_complex)
+  else if(resolved_type.id() == ID_vector || resolved_type.id() == ID_complex)
   {
-    const typet &subtype = expr.type().subtype();
+    const typet &subtype = ns.follow(resolved_type.subtype());
 
     if(subtype.id()==ID_floatbv)
     {
       float_utils.spec=ieee_float_spect(to_floatbv_type(subtype));
 
-      std::size_t width = boolbv_width(expr.type());
+      std::size_t width = boolbv_width(resolved_type);
       std::size_t sub_width=boolbv_width(subtype);
 
       DATA_INVARIANT(

@@ -15,19 +15,22 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "optional.h"
 #include "std_expr.h"
 
-#include <limits>
+#include "deprecate.h"
 
 class typet;
 
+// this one will go away
 // returns 'true' on error
 /// \deprecated: use the constant_exprt version instead
+DEPRECATED("Use the constant_exprt version instead")
 bool to_integer(const exprt &expr, mp_integer &int_value);
 
-/// Convert a constant expression \p expr to an arbitrary-precision integer.
-/// \param  expr: Source expression
-/// \param [out] int_value: Integer value (only modified if conversion succeeds)
-/// \return False if, and only if, the conversion was successful.
+// returns 'true' on error
 bool to_integer(const constant_exprt &expr, mp_integer &int_value);
+
+// returns 'true' on error
+DEPRECATED("Use numeric_cast<unsigned>(e) instead")
+bool to_unsigned_integer(const constant_exprt &expr, unsigned &uint_value);
 
 /// Numerical cast provides a unified way of converting from one numerical type
 /// to another.
@@ -43,19 +46,10 @@ struct numeric_castt<mp_integer> final
 {
   optionalt<mp_integer> operator()(const exprt &expr) const
   {
-    if(expr.id() != ID_constant)
-      return {};
-    else
-      return operator()(to_constant_expr(expr));
-  }
-
-  optionalt<mp_integer> operator()(const constant_exprt &expr) const
-  {
     mp_integer out;
-    if(to_integer(expr, out))
+    if(expr.id() != ID_constant || to_integer(to_constant_expr(expr), out))
       return {};
-    else
-      return out;
+    return out;
   }
 };
 
@@ -85,13 +79,22 @@ public:
   // Conversion from mp_integer to integral type T
   optionalt<T> operator()(const mp_integer &mpi) const
   {
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
     static_assert(
       std::numeric_limits<T>::max() <=
           std::numeric_limits<decltype(get_val(mpi))>::max() &&
         std::numeric_limits<T>::min() >=
           std::numeric_limits<decltype(get_val(mpi))>::min(),
       "Numeric cast only works for types smaller than long long");
-
+#else
+    // std::numeric_limits<> methods are not declared constexpr in old versions
+    // of VS
+    PRECONDITION(
+      std::numeric_limits<T>::max() <=
+        std::numeric_limits<decltype(get_val(mpi))>::max() &&
+      std::numeric_limits<T>::min() >=
+        std::numeric_limits<decltype(get_val(mpi))>::min());
+#endif
     if(
       mpi <= std::numeric_limits<T>::max() &&
       mpi >= std::numeric_limits<T>::min())
@@ -104,15 +107,6 @@ public:
   // Conversion from expression
   optionalt<T> operator()(const exprt &expr) const
   {
-    if(expr.id() == ID_constant)
-      return numeric_castt<T>{}(to_constant_expr(expr));
-    else
-      return {};
-  }
-
-  // Conversion from expression
-  optionalt<T> operator()(const constant_exprt &expr) const
-  {
     if(auto mpi_opt = numeric_castt<mp_integer>{}(expr))
       return numeric_castt<T>{}(*mpi_opt);
     else
@@ -123,8 +117,8 @@ public:
 /// Converts an expression to any integral type
 /// \tparam Target: type to convert to
 /// \param arg: expression to convert
-/// \return optional integer of type Target if conversion is possible, empty
-///   optional otherwise.
+/// \return optional integer of type Target if conversion is possible,
+///         empty optional otherwise.
 template <typename Target>
 optionalt<Target> numeric_cast(const exprt &arg)
 {
@@ -150,7 +144,7 @@ Target numeric_cast_v(const mp_integer &arg)
 /// \param arg: constant expression
 /// \return value of type Target
 template <typename Target>
-Target numeric_cast_v(const constant_exprt &arg)
+Target numeric_cast_v(const exprt &arg)
 {
   const auto maybe = numeric_castt<Target>{}(arg);
   INVARIANT_WITH_DIAGNOSTICS(

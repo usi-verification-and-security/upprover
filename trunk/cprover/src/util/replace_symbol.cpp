@@ -25,10 +25,7 @@ void replace_symbolt::insert(
   const symbol_exprt &old_expr,
   const exprt &new_expr)
 {
-  PRECONDITION_WITH_DIAGNOSTICS(
-    old_expr.type() == new_expr.type(),
-    "types to be replaced should match. old type:\n" +
-      old_expr.type().pretty() + "\nnew.type:\n" + new_expr.type().pretty());
+  PRECONDITION(old_expr.type() == new_expr.type());
   expr_map.insert(std::pair<irep_idt, exprt>(
     old_expr.get_identifier(), new_expr));
 }
@@ -49,8 +46,7 @@ bool replace_symbolt::replace_symbol_expr(symbol_exprt &s) const
 
   DATA_INVARIANT(
     s.type() == it->second.type(),
-    "types to be replaced should match. s.type:\n" + s.type().pretty() +
-      "\nit->second.type:\n" + it->second.type().pretty());
+    "type of symbol to be replaced should match");
   static_cast<exprt &>(s) = it->second;
 
   return false;

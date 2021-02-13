@@ -14,8 +14,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <goto-programs/goto_program.h>
 
-#include "renaming_level.h"
-
 class ssa_exprt;
 class symbol_exprt;
 
@@ -37,33 +35,30 @@ public:
   struct sourcet
   {
     unsigned thread_nr;
-    irep_idt function_id;
+    irep_idt function;
     // The program counter is an iterator which indicates where the execution
     // is in its program sequence
     goto_programt::const_targett pc;
+    bool is_set;
 
-    sourcet(const irep_idt &_function_id, goto_programt::const_targett _pc)
-      : thread_nr(0), function_id(_function_id), pc(_pc)
+    sourcet() : thread_nr(0), function(irep_idt()), is_set(false)
+    {
+    }
+
+    sourcet(const irep_idt &_function, goto_programt::const_targett _pc)
+      : thread_nr(0), function(_function), pc(_pc), is_set(true)
     {
     }
 
     explicit sourcet(
-      const irep_idt &_function_id,
+      const irep_idt &_function,
       const goto_programt &_goto_program)
       : thread_nr(0),
-        function_id(_function_id),
-        pc(_goto_program.instructions.begin())
+        function(_function),
+        pc(_goto_program.instructions.begin()),
+        is_set(true)
     {
     }
-
-    sourcet(sourcet &&other) noexcept
-      : thread_nr(other.thread_nr), function_id(other.function_id), pc(other.pc)
-    {
-    }
-
-    sourcet(const sourcet &other) = default;
-    sourcet &operator=(const sourcet &other) = default;
-    sourcet &operator=(sourcet &&other) = default;
   };
 
   enum class assignment_typet
@@ -127,7 +122,6 @@ public:
   /// Declare a fresh variable. The `cond_expr` is _lhs==lhs_.
   /// \param guard: Precondition for a declaration of this variable
   /// \param ssa_lhs: Variable to be declared, must be symbol (and not nil)
-  /// \param initializer: Initial value
   /// \param source: Pointer to location in the input GOTO program of this
   ///  declaration
   /// \param assignment_type: To distinguish between different types of
@@ -135,9 +129,8 @@ public:
   virtual void decl(
     const exprt &guard,
     const ssa_exprt &ssa_lhs,
-    const exprt &initializer,
     const sourcet &source,
-    assignment_typet assignment_type) = 0;
+    assignment_typet assignment_type)=0;
 
   /// Remove a variable from the scope.
   /// \param guard: Precondition for removal of this variable
@@ -151,29 +144,25 @@ public:
 
   /// Record a function call.
   /// \param guard: Precondition for calling a function
-  /// \param function_id: Name of the function
+  /// \param function_identifier: Name of the function
   /// \param ssa_function_arguments: Vector of arguments in SSA form
   /// \param source: To location in the input GOTO program of this
   /// \param hidden: Should this step be recorded as hidden?
   ///  function call
   virtual void function_call(
     const exprt &guard,
-    const irep_idt &function_id,
-    const std::vector<renamedt<exprt, L2>> &ssa_function_arguments,
+    const irep_idt &function_identifier,
+    const std::vector<exprt> &ssa_function_arguments,
     const sourcet &source,
     bool hidden) = 0;
 
   /// Record return from a function.
   /// \param guard: Precondition for returning from a function
-  /// \param function_id: Name of the function from which we return
   /// \param source: Pointer to location in the input GOTO program of this
   /// \param hidden: Should this step be recorded as hidden?
   ///  function return
-  virtual void function_return(
-    const exprt &guard,
-    const irep_idt &function_id,
-    const sourcet &source,
-    bool hidden) = 0;
+  virtual void
+  function_return(const exprt &guard, const sourcet &source, bool hidden) = 0;
 
   /// Record a location.
   /// \param guard: Precondition for reaching this location
@@ -193,7 +182,7 @@ public:
     const exprt &guard,
     const sourcet &source,
     const irep_idt &output_id,
-    const std::list<renamedt<exprt, L2>> &args) = 0;
+    const std::list<exprt> &args)=0;
 
   /// Record formatted output.
   /// \param guard: Precondition for writing to the output
@@ -250,8 +239,8 @@ public:
   ///  goto instruction
   virtual void goto_instruction(
     const exprt &guard,
-    const renamedt<exprt, L2> &cond,
-    const sourcet &source) = 0;
+    const exprt &cond,
+    const sourcet &source)=0;
 
   /// Record a _global_ constraint: there is no guard limiting its scope.
   /// \param cond: Condition represented by this constraint

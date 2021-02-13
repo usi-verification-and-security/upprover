@@ -17,7 +17,9 @@ bvtypet get_bvtype(const typet &type)
     return bvtypet::IS_UNSIGNED;
   else if(type.id()==ID_c_bool)
     return bvtypet::IS_C_BOOL;
-  else if(type.id() == ID_c_enum || type.id() == ID_c_enum_tag)
+  else if(type.id()==ID_c_enum ||
+          type.id()==ID_c_enum_tag ||
+          type.id()==ID_incomplete_c_enum)
     return bvtypet::IS_C_ENUM;
   else if(type.id()==ID_floatbv)
     return bvtypet::IS_FLOAT;

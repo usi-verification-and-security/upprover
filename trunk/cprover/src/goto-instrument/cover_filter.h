@@ -15,9 +15,8 @@ Author: Daniel Kroening
 #include <regex>
 #include <memory>
 
-#include <util/invariant.h>
 #include <util/message.h>
-#include <util/symbol.h>
+#include <util/invariant.h>
 
 #include <goto-programs/goto_model.h>
 
@@ -36,7 +35,7 @@ public:
 
   /// Returns true if the function passes the filter criteria
   virtual bool operator()(
-    const symbolt &identifier,
+    const irep_idt &identifier,
     const goto_functionst::goto_functiont &goto_function) const = 0;
 
   /// Can be called after final filter application to report
@@ -86,7 +85,7 @@ public:
   /// \param identifier: function name
   /// \param goto_function: goto function
   bool operator()(
-    const symbolt &identifier,
+    const irep_idt &identifier,
     const goto_functionst::goto_functiont &goto_function) const
   {
     for(const auto &filter : filters)
@@ -152,44 +151,8 @@ public:
   }
 
   bool operator()(
-    const symbolt &identifier,
+    const irep_idt &identifier,
     const goto_functionst::goto_functiont &goto_function) const override;
-};
-
-class file_filtert : public function_filter_baset
-{
-public:
-  explicit file_filtert(
-    message_handlert &message_handler,
-    const irep_idt &file_id)
-    : function_filter_baset(message_handler), file_id(file_id)
-  {
-  }
-
-  bool operator()(
-    const symbolt &identifier,
-    const goto_functionst::goto_functiont &goto_function) const override;
-
-private:
-  irep_idt file_id;
-};
-
-class single_function_filtert : public function_filter_baset
-{
-public:
-  explicit single_function_filtert(
-    message_handlert &message_handler,
-    const irep_idt &function_id)
-    : function_filter_baset(message_handler), function_id(function_id)
-  {
-  }
-
-  bool operator()(
-    const symbolt &identifier,
-    const goto_functionst::goto_functiont &goto_function) const override;
-
-private:
-  irep_idt function_id;
 };
 
 /// Filters functions that match the provided pattern
@@ -205,7 +168,7 @@ public:
   }
 
   bool operator()(
-    const symbolt &identifier,
+    const irep_idt &identifier,
     const goto_functionst::goto_functiont &goto_function) const override;
 
 private:
@@ -222,7 +185,7 @@ public:
   }
 
   bool operator()(
-    const symbolt &identifier,
+    const irep_idt &identifier,
     const goto_functionst::goto_functiont &goto_function) const override;
 };
 

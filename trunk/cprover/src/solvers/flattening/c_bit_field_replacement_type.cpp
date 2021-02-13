@@ -6,9 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include "c_bit_field_replacement_type.h"
 
-#include <util/invariant.h>
+#include "c_bit_field_replacement_type.h"
 
 typet c_bit_field_replacement_type(
   const c_bit_field_typet &src,
@@ -24,18 +23,21 @@ typet c_bit_field_replacement_type(
     result.set_width(src.get_width());
     return std::move(result);
   }
-  else
+  else if(subtype.id()==ID_c_enum_tag)
   {
-    PRECONDITION(subtype.id() == ID_c_enum_tag);
-
     const typet &sub_subtype=
       ns.follow_tag(to_c_enum_tag_type(subtype)).subtype();
 
-    PRECONDITION(
-      sub_subtype.id() == ID_signedbv || sub_subtype.id() == ID_unsignedbv);
-
-    bitvector_typet result = to_bitvector_type(sub_subtype);
-    result.set_width(src.get_width());
-    return std::move(result);
+    if(sub_subtype.id()==ID_signedbv ||
+       sub_subtype.id()==ID_unsignedbv)
+    {
+      bitvector_typet result=to_bitvector_type(sub_subtype);
+      result.set_width(src.get_width());
+      return std::move(result);
+    }
+    else
+      return nil_typet();
   }
+  else
+    return nil_typet();
 }

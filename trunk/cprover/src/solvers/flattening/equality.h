@@ -14,15 +14,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/expr.h>
 
-#include <solvers/prop/prop_conv_solver.h>
+#include <solvers/prop/prop_conv.h>
 
 class equalityt:public prop_conv_solvert
 {
 public:
-  equalityt(propt &_prop, message_handlert &message_handler)
-    : prop_conv_solvert(_prop, message_handler)
-  {
-  }
+  equalityt(
+    const namespacet &_ns,
+    propt &_prop):prop_conv_solvert(_ns, _prop) { }
 
   virtual literalt equality(const exprt &e1, const exprt &e2);
 

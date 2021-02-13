@@ -95,7 +95,7 @@ void cpp_typecheckt::typecheck_class_template(
       if(previous.name!=symbol_name || id_set.size()>1)
       {
         error().source_location=cpp_name.source_location();
-        str << "template declaration of '" << base_name.c_str()
+        str << "template declaration of `" << base_name.c_str()
             << " does not match previous declaration\n";
         str << "location of previous definition: " << previous.location;
         throw 0;
@@ -120,9 +120,10 @@ void cpp_typecheckt::typecheck_class_template(
     if(has_body && previous_has_body)
     {
       error().source_location=cpp_name.source_location();
-      error() << "template struct '" << base_name << "' defined previously\n"
-              << "location of previous definition: " << previous_symbol.location
-              << eom;
+      error() << "template struct `" << base_name
+              << "' defined previously\n"
+              << "location of previous definition: "
+              << previous_symbol.location << eom;
       throw 0;
     }
 
@@ -157,10 +158,8 @@ void cpp_typecheckt::typecheck_class_template(
         previous_declaration.template_type());
     }
 
-    INVARIANT(
-      cpp_scopes.id_map[symbol_name]->is_template_scope(),
-      "symbol should be in template scope");
-
+    assert(cpp_scopes.id_map[symbol_name]->id_class ==
+           cpp_idt::id_classt::TEMPLATE_SCOPE);
     return;
   }
 
@@ -198,10 +197,8 @@ void cpp_typecheckt::typecheck_class_template(
 
   // link the template symbol with the template scope
   cpp_scopes.id_map[symbol_name]=&template_scope;
-
-  INVARIANT(
-    cpp_scopes.id_map[symbol_name]->is_template_scope(),
-    "symbol should be in template scope");
+  assert(cpp_scopes.id_map[symbol_name]->id_class ==
+         cpp_idt::id_classt::TEMPLATE_SCOPE);
 }
 
 /// typecheck function templates
@@ -232,7 +229,7 @@ void cpp_typecheckt::typecheck_function_template(
   typet function_type=
     declarator.merge_type(declaration.type());
 
-  cpp_convert_plain_type(function_type, get_message_handler());
+  cpp_convert_plain_type(function_type);
 
   irep_idt symbol_name=
     function_template_identifier(
@@ -256,7 +253,7 @@ void cpp_typecheckt::typecheck_function_template(
     if(has_value && previous_has_value)
     {
       error().source_location=cpp_name.source_location();
-      error() << "function template symbol '" << base_name
+      error() << "function template symbol `" << base_name
               << "' declared previously\n"
               << "location of previous definition: "
               << previous_symbol->second.location << eom;
@@ -303,9 +300,8 @@ void cpp_typecheckt::typecheck_function_template(
             id2string(new_symbol->base_name);
 
   // link the template symbol with the template scope
+  assert(template_scope.id_class==cpp_idt::id_classt::TEMPLATE_SCOPE);
   cpp_scopes.id_map[symbol_name] = &template_scope;
-  INVARIANT(
-    template_scope.is_template_scope(), "symbol should be in template scope");
 }
 
 /// typecheck class template members; these can be methods or static members
@@ -357,31 +353,32 @@ void cpp_typecheckt::typecheck_class_template_member(
   {
     error() << cpp_scopes.current_scope();
     error().source_location=cpp_name.source_location();
-    error() << "class template '"
-            << cpp_name.get_sub().front().get(ID_identifier) << "' not found"
-            << eom;
+    error() << "class template `"
+            << cpp_name.get_sub().front().get(ID_identifier)
+            << "' not found" << eom;
     throw 0;
   }
   else if(id_set.size()>1)
   {
     error().source_location=cpp_name.source_location();
-    error() << "class template '"
-            << cpp_name.get_sub().front().get(ID_identifier) << "' is ambiguous"
-            << eom;
+    error() << "class template `"
+            << cpp_name.get_sub().front().get(ID_identifier)
+            << "' is ambiguous" << eom;
     throw 0;
   }
   else if((*(id_set.begin()))->id_class!=cpp_idt::id_classt::TEMPLATE)
   {
     // std::cerr << *(*id_set.begin()) << '\n';
     error().source_location=cpp_name.source_location();
-    error() << "class template '"
+    error() << "class template `"
             << cpp_name.get_sub().front().get(ID_identifier)
             << "' is not a template" << eom;
     throw 0;
   }
 
   const cpp_idt &cpp_id=**(id_set.begin());
-  symbolt &template_symbol = symbol_table.get_writeable_ref(cpp_id.identifier);
+  symbolt &template_symbol=
+    *symbol_table.get_writeable(cpp_id.identifier);
 
   exprt &template_methods =
     static_cast<exprt &>(template_symbol.value.add(ID_template_methods));
@@ -560,13 +557,14 @@ void cpp_typecheckt::convert_class_template_specialization(
   if(id_set.empty())
   {
     error().source_location=type.source_location();
-    error() << "class template '" << base_name << "' not found" << eom;
+    error() << "class template `" << base_name << "' not found" << eom;
     throw 0;
   }
   else if(id_set.size()>1)
   {
     error().source_location=type.source_location();
-    error() << "class template '" << base_name << "' is ambiguous" << eom;
+    error() << "class template `" << base_name << "' is ambiguous"
+            << eom;
     throw 0;
   }
 
@@ -659,13 +657,15 @@ void cpp_typecheckt::convert_template_function_or_member_specialization(
     if(id_set.empty())
     {
       error().source_location=cpp_name.source_location();
-      error() << "template function '" << base_name << "' not found" << eom;
+      error() << "template function `" << base_name << "' not found"
+              << eom;
       throw 0;
     }
     else if(id_set.size()>1)
     {
       error().source_location=cpp_name.source_location();
-      error() << "template function '" << base_name << "' is ambiguous" << eom;
+      error() << "template function `" << base_name
+              << "' is ambiguous" << eom;
       throw 0;
     }
 
@@ -715,7 +715,11 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
   std::string id_suffix="template::"+std::to_string(template_counter++);
 
   // produce a new scope for the template parameters
-  cpp_scopet &template_scope = cpp_scopes.current_scope().new_scope(id_suffix);
+  cpp_scopet &template_scope=
+    cpp_scopes.current_scope().new_scope(
+      cpp_scopes.current_scope().prefix+id_suffix);
+
+  template_scope.prefix=template_scope.get_parent().prefix+id_suffix;
   template_scope.id_class=cpp_idt::id_classt::TEMPLATE_SCOPE;
 
   cpp_scopes.go_to(template_scope);
@@ -770,7 +774,7 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
     // is it a type or not?
     if(declaration.get_bool(ID_is_type))
     {
-      parameter = type_exprt(template_parameter_symbol_typet(identifier));
+      parameter = exprt(ID_type, symbol_typet(identifier));
       parameter.type().add_source_location()=declaration.find_source_location();
     }
     else
@@ -804,7 +808,7 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
 
     if(cpp_declarator_converter.is_typedef)
     {
-      parameter = exprt(ID_type, struct_tag_typet(symbol.name));
+      parameter = exprt(ID_type, symbol_typet(symbol.name));
       parameter.type().add_source_location()=declaration.find_location();
     }
     else
@@ -818,6 +822,9 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
     #endif
   }
 
+  // continue without adding to the prefix
+  template_scope.prefix=template_scope.get_parent().prefix;
+
   return template_scope;
 }
 
@@ -829,7 +836,7 @@ cpp_template_args_tct cpp_typecheckt::typecheck_template_args(
   const cpp_template_args_non_tct &template_args)
 {
   // old stuff
-  PRECONDITION(template_args.id() != ID_already_typechecked);
+  assert(template_args.id()!=ID_already_typechecked);
 
   assert(template_symbol.type.get_bool(ID_is_template));
 

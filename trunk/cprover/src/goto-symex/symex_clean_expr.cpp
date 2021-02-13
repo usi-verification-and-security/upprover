@@ -12,35 +12,26 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "goto_symex.h"
 
 #include <util/arith_tools.h>
+#include <util/base_type.h>
 #include <util/byte_operators.h>
 #include <util/c_types.h>
-#include <util/expr_iterator.h>
-#include <util/nodiscard.h>
 #include <util/pointer_offset_size.h>
-#include <util/simplify_expr.h>
-
-#include "expr_skeleton.h"
-#include "symex_assign.h"
-#include "symex_dereference_state.h"
-
-#include <pointer-analysis/value_set_dereference.h>
 
 /// Given an expression, find the root object and the offset into it.
 ///
 /// The extra complication to be considered here is that the expression may
 /// have any number of ternary expressions mixed with type casts.
-static void
-process_array_expr(exprt &expr, bool do_simplify, const namespacet &ns)
+void goto_symext::process_array_expr(exprt &expr)
 {
   // This may change the type of the expression!
 
   if(expr.id()==ID_if)
   {
     if_exprt &if_expr=to_if_expr(expr);
-    process_array_expr(if_expr.true_case(), do_simplify, ns);
-    process_array_expr(if_expr.false_case(), do_simplify, ns);
+    process_array_expr(if_expr.true_case());
+    process_array_expr(if_expr.false_case());
 
-    if(if_expr.true_case() != if_expr.false_case())
+    if(!base_type_eq(if_expr.true_case(), if_expr.false_case(), ns))
     {
       byte_extract_exprt be(
         byte_extract_id(),
@@ -58,7 +49,7 @@ process_array_expr(exprt &expr, bool do_simplify, const namespacet &ns)
     // strip
     exprt tmp = to_address_of_expr(expr).object();
     expr.swap(tmp);
-    process_array_expr(expr, do_simplify, ns);
+    process_array_expr(expr);
   }
   else if(expr.id()==ID_symbol &&
           expr.get_bool(ID_C_SSA_symbol) &&
@@ -69,34 +60,28 @@ process_array_expr(exprt &expr, bool do_simplify, const namespacet &ns)
     exprt tmp=index_expr.array();
     expr.swap(tmp);
 
-    process_array_expr(expr, do_simplify, ns);
+    process_array_expr(expr);
   }
   else if(expr.id() != ID_symbol)
   {
     object_descriptor_exprt ode;
     ode.build(expr, ns);
+    do_simplify(ode.offset());
 
     expr = ode.root_object();
-
-    // If we arrive at a void-typed object (typically the result of failing to
-    // dereference a void* pointer) there is nothing else to be done - it has
-    // void-type and the caller needs to handle this case gracefully.
-    if(expr.type().id() == ID_empty)
-      return;
 
     if(!ode.offset().is_zero())
     {
       if(expr.type().id() != ID_array)
       {
-        auto array_size = size_of_expr(expr.type(), ns);
-        CHECK_RETURN(array_size.has_value());
-        if(do_simplify)
-          simplify(array_size.value(), ns);
-        expr = byte_extract_exprt(
-          byte_extract_id(),
-          expr,
-          from_integer(0, index_type()),
-          array_typet(char_type(), array_size.value()));
+        exprt array_size = size_of_expr(expr.type(), ns);
+        do_simplify(array_size);
+        expr =
+          byte_extract_exprt(
+            byte_extract_id(),
+            expr,
+            from_integer(0, index_type()),
+            array_typet(char_type(), array_size));
       }
 
       // given an array type T[N], i.e., an array of N elements of type T, and a
@@ -106,16 +91,15 @@ process_array_expr(exprt &expr, bool do_simplify, const namespacet &ns)
       const typet &array_size_type = prev_array_type.size().type();
       const typet &subtype = prev_array_type.subtype();
 
-      exprt new_offset =
-        typecast_exprt::conditional_cast(ode.offset(), array_size_type);
-      auto subtype_size_opt = size_of_expr(subtype, ns);
-      CHECK_RETURN(subtype_size_opt.has_value());
-      exprt subtype_size = typecast_exprt::conditional_cast(
-        subtype_size_opt.value(), array_size_type);
+      exprt new_offset(ode.offset());
+      if(new_offset.type() != array_size_type)
+        new_offset.make_typecast(array_size_type);
+      exprt subtype_size = size_of_expr(subtype, ns);
+      if(subtype_size.type() != array_size_type)
+        subtype_size.make_typecast(array_size_type);
       new_offset = div_exprt(new_offset, subtype_size);
       minus_exprt new_size(prev_array_type.size(), new_offset);
-      if(do_simplify)
-        simplify(new_size, ns);
+      do_simplify(new_size);
 
       array_typet new_array_type(subtype, new_size);
 
@@ -127,19 +111,6 @@ process_array_expr(exprt &expr, bool do_simplify, const namespacet &ns)
           new_array_type);
     }
   }
-}
-
-void goto_symext::process_array_expr(statet &state, exprt &expr)
-{
-  symex_dereference_statet symex_dereference_state(state, ns);
-
-  value_set_dereferencet dereference(
-    ns, state.symbol_table, symex_dereference_state, language_mode, false);
-
-  expr = dereference.dereference(expr);
-  lift_lets(state, expr);
-
-  ::process_array_expr(expr, symex_config.simplify_opt, ns);
 }
 
 /// Rewrite index/member expressions in byte_extract to offset
@@ -169,7 +140,9 @@ replace_nondet(exprt &expr, symex_nondet_generatort &build_symex_nondet)
 {
   if(expr.id() == ID_side_effect && expr.get(ID_statement) == ID_nondet)
   {
-    expr = build_symex_nondet(expr.type(), expr.source_location());
+    nondet_symbol_exprt new_expr = build_symex_nondet(expr.type());
+    new_expr.add_source_location() = expr.source_location();
+    expr.swap(new_expr);
   }
   else
   {
@@ -178,64 +151,17 @@ replace_nondet(exprt &expr, symex_nondet_generatort &build_symex_nondet)
   }
 }
 
-void goto_symext::lift_let(statet &state, const let_exprt &let_expr)
+void goto_symext::clean_expr(
+  exprt &expr,
+  statet &state,
+  const bool write)
 {
-  exprt let_value = clean_expr(let_expr.value(), state, false);
-  let_value = state.rename(std::move(let_value), ns).get();
-  do_simplify(let_value);
-
-  exprt::operandst value_assignment_guard;
-  symex_assignt{
-    state, symex_targett::assignment_typet::HIDDEN, ns, symex_config, target}
-    .assign_symbol(
-      to_ssa_expr(state.rename<L1>(let_expr.symbol(), ns).get()),
-      expr_skeletont{},
-      let_value,
-      value_assignment_guard);
-
-  // Schedule the bound variable to be cleaned up at the end of symex_step:
-  instruction_local_symbols.push_back(let_expr.symbol());
-}
-
-void goto_symext::lift_lets(statet &state, exprt &rhs)
-{
-  for(auto it = rhs.depth_begin(), itend = rhs.depth_end(); it != itend;)
-  {
-    if(it->id() == ID_let)
-    {
-      // Visit post-order, so more-local definitions are made before usage:
-      exprt &replaced_expr = it.mutate();
-      let_exprt &replaced_let = to_let_expr(replaced_expr);
-      lift_lets(state, replaced_let.value());
-      lift_lets(state, replaced_let.where());
-
-      lift_let(state, replaced_let);
-      replaced_expr = replaced_let.where();
-
-      it.next_sibling_or_parent();
-    }
-    else if(it->id() == ID_exists || it->id() == ID_forall)
-    {
-      // expressions within exists/forall may depend on bound variables, we
-      // cannot safely lift let expressions out of those, just skip
-      it.next_sibling_or_parent();
-    }
-    else
-      ++it;
-  }
-}
-
-NODISCARD exprt
-goto_symext::clean_expr(exprt expr, statet &state, const bool write)
-{
-  replace_nondet(expr, path_storage.build_symex_nondet);
+  replace_nondet(expr, build_symex_nondet);
   dereference(expr, state, write);
-  lift_lets(state, expr);
 
   // make sure all remaining byte extract operations use the root
   // object to avoid nesting of with/update and byte_update when on
   // lhs
   if(write)
     adjust_byte_extract_rec(expr, ns);
-  return expr;
 }

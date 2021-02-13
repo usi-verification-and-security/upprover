@@ -23,8 +23,6 @@ Date: September 2011
 
 #include <set>
 
-#include <util/fresh_symbol.h>
-
 #include <goto-programs/remove_skip.h>
 
 #include <linking/static_lifetime_init.h>
@@ -38,7 +36,7 @@ Date: September 2011
 void introduce_temporaries(
   value_setst &value_sets,
   symbol_tablet &symbol_table,
-  const irep_idt &function_id,
+  const irep_idt &function,
   goto_programt &goto_program,
 #ifdef LOCAL_MAY
   const goto_functionst::goto_functiont &goto_function,
@@ -46,6 +44,7 @@ void introduce_temporaries(
   messaget &message)
 {
   namespacet ns(symbol_table);
+  unsigned tmp_counter=0;
 
 #ifdef LOCAL_MAY
   local_may_aliast local_may(goto_function);
@@ -61,38 +60,36 @@ void introduce_temporaries(
        instruction.is_assert() ||
        instruction.is_assume())
     {
-      rw_set_loct rw_set(
-        ns,
-        value_sets,
-        function_id,
-        i_it
+      rw_set_loct rw_set(ns, value_sets, i_it
 #ifdef LOCAL_MAY
-        ,
-        local_may
+      , local_may
 #endif
       ); // NOLINT(whitespace/parens)
       if(rw_set.empty())
         continue;
 
-      symbolt &new_symbol = get_fresh_aux_symbol(
-        bool_typet(),
-        id2string(function_id),
-        "$tmp_guard",
-        instruction.source_location,
-        ns.lookup(function_id).mode,
-        symbol_table);
+      symbolt new_symbol;
+      new_symbol.base_name="$tmp_guard";
+      new_symbol.name=
+        id2string(function)+"$tmp_guard"+std::to_string(tmp_counter++);
+      new_symbol.type=bool_typet();
       new_symbol.is_static_lifetime=true;
       new_symbol.is_thread_local=true;
       new_symbol.value.make_nil();
 
       symbol_exprt symbol_expr=new_symbol.symbol_expr();
 
-      goto_programt::instructiont new_i = goto_programt::make_assignment(
-        code_assignt(symbol_expr, instruction.get_condition()),
-        instruction.source_location);
+      symbolt *symbol_ptr;
+      symbol_table.move(new_symbol, symbol_ptr);
+
+      goto_programt::instructiont new_i;
+      new_i.make_assignment();
+      new_i.code=code_assignt(symbol_expr, instruction.guard);
+      new_i.source_location=instruction.source_location;
+      new_i.function=instruction.function;
 
       // replace guard
-      instruction.set_condition(symbol_expr);
+      instruction.guard=symbol_expr;
       goto_program.insert_before_swap(i_it, new_i);
 
       i_it++; // step forward
@@ -241,7 +238,7 @@ void weak_memory(
     const std::pair<m_itt, m_itt> ran=
       shared_buffers.cycles_loc.equal_range(*it);
     for(m_itt ran_it=ran.first; ran_it!=ran.second; ran_it++)
-      message.result() << (it->empty() ? "fence" : *it) << ", "
+      message.result() << ((*it)==""?"fence":*it) << ", "
                        << ran_it->second << messaget::eom;
   }
 

@@ -1,5 +1,0 @@
-ansi-c
-goto-programs
-langapi
-util
-sys

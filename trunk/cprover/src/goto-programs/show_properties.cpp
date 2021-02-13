@@ -13,8 +13,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/json_irep.h>
-#include <util/xml_irep.h>
+#include <util/xml.h>
+#include <util/xml_expr.h>
+#include <util/json.h>
+#include <util/json_expr.h>
 
 #include <langapi/language_util.h>
 
@@ -61,7 +63,8 @@ void show_properties(
 
     const irep_idt &comment=source_location.get_comment();
     const irep_idt &property_class=source_location.get_property_class();
-    const irep_idt description = (comment.empty() ? "assertion" : comment);
+    const irep_idt description=
+      (comment==""?"assertion":comment);
 
     irep_idt property_id=source_location.get_property_id();
 
@@ -70,18 +73,16 @@ void show_properties(
     case ui_message_handlert::uit::XML_UI:
       {
         // use me instead
-        xmlt xml_property(
-          "property",
-          {{"name", id2string(property_id)},
-           {"class", id2string(property_class)}},
-          {});
+        xmlt xml_property("property");
+        xml_property.set_attribute("name", id2string(property_id));
+        xml_property.set_attribute("class", id2string(property_class));
 
         xmlt &property_l=xml_property.new_element();
         property_l=xml(source_location);
 
         xml_property.new_element("description").data=id2string(description);
-        xml_property.new_element("expression").data =
-          from_expr(ns, identifier, ins.get_condition());
+        xml_property.new_element("expression").data=
+          from_expr(ns, identifier, ins.guard);
 
         msg.result() << xml_property;
       }
@@ -96,8 +97,7 @@ void show_properties(
 
       msg.result() << "  " << ins.source_location << '\n'
                    << "  " << description << '\n'
-                   << "  " << from_expr(ns, identifier, ins.get_condition())
-                   << '\n';
+                   << "  " << from_expr(ns, identifier, ins.guard) << '\n';
 
       msg.result() << messaget::eom;
       break;
@@ -124,23 +124,22 @@ void convert_properties_json(
     const irep_idt &comment=source_location.get_comment();
     // const irep_idt &function=location.get_function();
     const irep_idt &property_class=source_location.get_property_class();
-    const irep_idt description = (comment.empty() ? "assertion" : comment);
+    const irep_idt description=
+      (comment==""?"assertion":comment);
 
     irep_idt property_id=source_location.get_property_id();
 
-    json_objectt json_property{
-      {"name", json_stringt(property_id)},
-      {"class", json_stringt(property_class)},
-      {"sourceLocation", json(source_location)},
-      {"description", json_stringt(description)},
-      {"expression",
-       json_stringt(from_expr(ns, identifier, ins.get_condition()))}};
-
+    json_objectt &json_property=
+      json_properties.push_back(jsont()).make_object();
+    json_property["name"] = json_stringt(property_id);
+    json_property["class"] = json_stringt(property_class);
     if(!source_location.get_basic_block_covered_lines().empty())
       json_property["coveredLines"] =
         json_stringt(source_location.get_basic_block_covered_lines());
-
-    json_properties.push_back(std::move(json_property));
+    json_property["sourceLocation"]=json(source_location);
+    json_property["description"] = json_stringt(description);
+    json_property["expression"]=
+      json_stringt(from_expr(ns, identifier, ins.guard));
   }
 }
 
@@ -155,31 +154,32 @@ void show_properties_json(
   for(const auto &fct : goto_functions.function_map)
     convert_properties_json(json_properties, ns, fct.first, fct.second.body);
 
-  json_objectt json_result{{"properties", json_properties}};
+  json_objectt json_result;
+  json_result["properties"] = json_properties;
   msg.result() << json_result;
 }
 
 void show_properties(
   const namespacet &ns,
-  ui_message_handlert &ui_message_handler,
+  message_handlert &message_handler,
+  ui_message_handlert::uit ui,
   const goto_functionst &goto_functions)
 {
-  ui_message_handlert::uit ui = ui_message_handler.get_ui();
   if(ui == ui_message_handlert::uit::JSON_UI)
-    show_properties_json(ns, ui_message_handler, goto_functions);
+    show_properties_json(ns, message_handler, goto_functions);
   else
     for(const auto &fct : goto_functions.function_map)
-      show_properties(ns, fct.first, ui_message_handler, ui, fct.second.body);
+      show_properties(ns, fct.first, message_handler, ui, fct.second.body);
 }
 
 void show_properties(
   const goto_modelt &goto_model,
-  ui_message_handlert &ui_message_handler)
+  message_handlert &message_handler,
+  ui_message_handlert::uit ui)
 {
-  ui_message_handlert::uit ui = ui_message_handler.get_ui();
   const namespacet ns(goto_model.symbol_table);
   if(ui == ui_message_handlert::uit::JSON_UI)
-    show_properties_json(ns, ui_message_handler, goto_model.goto_functions);
+    show_properties_json(ns, message_handler, goto_model.goto_functions);
   else
-    show_properties(ns, ui_message_handler, goto_model.goto_functions);
+    show_properties(ns, message_handler, ui, goto_model.goto_functions);
 }

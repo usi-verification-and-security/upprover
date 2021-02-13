@@ -17,7 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/base_type.h>
 #include <util/find_symbols.h>
-#include <util/mathematical_types.h>
 #include <util/pointer_offset_size.h>
 #include <util/simplify_expr.h>
 
@@ -58,7 +57,9 @@ static const typet &follow_tags_symbols(
   const namespacet &ns,
   const typet &type)
 {
-  if(type.id() == ID_c_enum_tag)
+  if(type.id() == ID_symbol_type)
+    return ns.follow(type);
+  else if(type.id()==ID_c_enum_tag)
     return ns.follow_tag(to_c_enum_tag_type(type));
   else if(type.id()==ID_struct_tag)
     return ns.follow_tag(to_struct_tag_type(type));
@@ -79,40 +80,37 @@ std::string linkingt::type_to_string_verbose(
     std::string result=followed.id_string();
 
     const std::string &tag=followed.get_string(ID_tag);
-    if(!tag.empty())
+    if(tag!="")
       result+=" "+tag;
+    result+=" {\n";
 
-    if(to_struct_union_type(followed).is_incomplete())
+    for(const auto &c : to_struct_union_type(followed).components())
     {
-      result += "   (incomplete)";
+      const typet &subtype = c.type();
+      result+="  ";
+      result += type_to_string(symbol.name, subtype);
+      result+=' ';
+
+      if(!c.get_base_name().empty())
+        result += id2string(c.get_base_name());
+      else
+        result += id2string(c.get_name());
+
+      result+=";\n";
     }
-    else
-    {
-      result += " {\n";
 
-      for(const auto &c : to_struct_union_type(followed).components())
-      {
-        const typet &subtype = c.type();
-        result += "  ";
-        result += type_to_string(symbol.name, subtype);
-        result += ' ';
-
-        if(!c.get_base_name().empty())
-          result += id2string(c.get_base_name());
-        else
-          result += id2string(c.get_name());
-
-        result += ";\n";
-      }
-
-      result += '}';
-    }
+    result+='}';
 
     return result;
   }
   else if(followed.id()==ID_pointer)
   {
     return type_to_string_verbose(symbol, followed.subtype()) + " *";
+  }
+  else if(followed.id()==ID_incomplete_struct ||
+          followed.id()==ID_incomplete_union)
+  {
+    return type_to_string(symbol.name, type) + "   (incomplete)";
   }
 
   return type_to_string(symbol.name, type);
@@ -143,8 +141,7 @@ void linkingt::detailed_conflict_report_rec(
     if(depth>0 &&
        !base_type_eq(t1.subtype(), t2.subtype(), ns))
     {
-      if(conflict_path.type().id() == ID_pointer)
-        conflict_path = dereference_exprt(conflict_path);
+      conflict_path=dereference_exprt(conflict_path);
 
       detailed_conflict_report_rec(
         old_symbol,
@@ -227,7 +224,7 @@ void linkingt::detailed_conflict_report_rec(
             {
               std::string msg_bak;
               msg_bak.swap(msg);
-              symbol_exprt c = symbol_exprt::typeless(ID_C_this);
+              symbol_exprt c(ID_C_this);
               detailed_conflict_report_rec(
                 old_symbol,
                 new_symbol,
@@ -359,8 +356,8 @@ void linkingt::detailed_conflict_report_rec(
   if(!msg.empty())
   {
     error() << '\n';
-    error() << "reason for conflict at "
-            << expr_to_string(irep_idt(), conflict_path) << ": " << msg << '\n';
+    error() << "reason for conflict at " << expr_to_string("", conflict_path)
+            << ": " << msg << '\n';
 
     error() << '\n';
     error() << type_to_string_verbose(old_symbol, t1) << '\n';
@@ -379,12 +376,13 @@ void linkingt::link_error(
 {
   error().source_location=new_symbol.location;
 
-  error() << "error: " << msg << " '" << old_symbol.display_name() << "'"
-          << '\n';
-  error() << "old definition in module '" << old_symbol.module << "' "
+  error() << "error: " << msg << " `"
+          << old_symbol.display_name()
+          << "'" << '\n';
+  error() << "old definition in module `" << old_symbol.module << "' "
           << old_symbol.location << '\n'
           << type_to_string_verbose(old_symbol) << '\n';
-  error() << "new definition in module '" << new_symbol.module << "' "
+  error() << "new definition in module `" << new_symbol.module << "' "
           << new_symbol.location << '\n'
           << type_to_string_verbose(new_symbol) << eom;
 }
@@ -459,7 +457,8 @@ void linkingt::duplicate_code_symbol(
     // return type are an error as we would end up with assignments with
     // mismatching types; as we currently do not patch these by inserting type
     // casts we need to fail hard
-    if(old_symbol.type.get_bool(ID_C_incomplete) && old_symbol.value.is_nil())
+    if(!old_symbol.location.get_function().empty() &&
+       old_symbol.value.is_nil())
     {
       if(base_type_eq(old_t.return_type(), new_t.return_type(), ns))
          link_warning(
@@ -476,8 +475,8 @@ void linkingt::duplicate_code_symbol(
       old_symbol.location=new_symbol.location;
       old_symbol.is_weak=new_symbol.is_weak;
     }
-    else if(
-      new_symbol.type.get_bool(ID_C_incomplete) && new_symbol.value.is_nil())
+    else if(!new_symbol.location.get_function().empty() &&
+            new_symbol.value.is_nil())
     {
       if(base_type_eq(old_t.return_type(), new_t.return_type(), ns))
         link_warning(
@@ -773,10 +772,9 @@ void linkingt::duplicate_code_symbol(
       // keep the one in old_symbol -- libraries come last!
       warning().source_location=new_symbol.location;
 
-      warning() << "function '" << old_symbol.name << "' in module '"
-                << new_symbol.module
-                << "' is shadowed by a definition in module '"
-                << old_symbol.module << "'" << eom;
+      warning() << "function `" << old_symbol.name << "' in module `"
+        << new_symbol.module << "' is shadowed by a definition in module `"
+        << old_symbol.module << "'" << eom;
     }
     else
       link_error(
@@ -795,10 +793,10 @@ bool linkingt::adjust_object_type_rec(
     return false;
 
   if(
-    t1.id() == ID_struct_tag || t1.id() == ID_union_tag ||
-    t1.id() == ID_c_enum_tag)
+    t1.id() == ID_symbol_type || t1.id() == ID_struct_tag ||
+    t1.id() == ID_union_tag || t1.id() == ID_c_enum_tag)
   {
-    const irep_idt &identifier = to_tag_type(t1).get_identifier();
+    const irep_idt &identifier=t1.get(ID_identifier);
 
     if(info.o_symbols.insert(identifier).second)
     {
@@ -812,10 +810,10 @@ bool linkingt::adjust_object_type_rec(
     return false;
   }
   else if(
-    t2.id() == ID_struct_tag || t2.id() == ID_union_tag ||
-    t2.id() == ID_c_enum_tag)
+    t2.id() == ID_symbol_type || t2.id() == ID_struct_tag ||
+    t2.id() == ID_union_tag || t2.id() == ID_c_enum_tag)
   {
-    const irep_idt &identifier = to_tag_type(t2).get_identifier();
+    const irep_idt &identifier=t2.get(ID_identifier);
 
     if(info.n_symbols.insert(identifier).second)
     {
@@ -839,32 +837,15 @@ bool linkingt::adjust_object_type_rec(
     // ignore
     return false;
   }
-  else if(
-    t1.id() == ID_struct && to_struct_type(t1).is_incomplete() &&
-    t2.id() == ID_struct && !to_struct_type(t2).is_incomplete())
+  else if((t1.id()==ID_incomplete_struct && t2.id()==ID_struct) ||
+          (t1.id()==ID_incomplete_union && t2.id()==ID_union))
   {
     info.set_to_new=true; // store new type
 
     return false;
   }
-  else if(
-    t1.id() == ID_union && to_union_type(t1).is_incomplete() &&
-    t2.id() == ID_union && !to_union_type(t2).is_incomplete())
-  {
-    info.set_to_new = true; // store new type
-
-    return false;
-  }
-  else if(
-    t1.id() == ID_struct && !to_struct_type(t1).is_incomplete() &&
-    t2.id() == ID_struct && to_struct_type(t2).is_incomplete())
-  {
-    // ignore
-    return false;
-  }
-  else if(
-    t1.id() == ID_union && !to_union_type(t1).is_incomplete() &&
-    t2.id() == ID_union && to_union_type(t2).is_incomplete())
+  else if((t1.id()==ID_struct && t2.id()==ID_incomplete_struct) ||
+          (t1.id()==ID_union && t2.id()==ID_incomplete_union))
   {
     // ignore
     return false;
@@ -1070,7 +1051,7 @@ void linkingt::duplicate_object_symbol(
   {
     // the type has been updated, now make sure that the initialising assignment
     // will have matching types
-    old_symbol.value = typecast_exprt(old_symbol.value, old_symbol.type);
+    old_symbol.value.make_typecast(old_symbol.type);
   }
 }
 
@@ -1128,43 +1109,31 @@ void linkingt::duplicate_type_symbol(
   if(old_symbol.type==new_symbol.type)
     return;
 
-  if(
-    old_symbol.type.id() == ID_struct &&
-    to_struct_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_struct &&
-    !to_struct_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_incomplete_struct &&
+     new_symbol.type.id()==ID_struct)
   {
     old_symbol.type=new_symbol.type;
     old_symbol.location=new_symbol.location;
     return;
   }
 
-  if(
-    old_symbol.type.id() == ID_struct &&
-    !to_struct_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_struct &&
-    to_struct_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_struct &&
+     new_symbol.type.id()==ID_incomplete_struct)
   {
     // ok, keep old
     return;
   }
 
-  if(
-    old_symbol.type.id() == ID_union &&
-    to_union_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_union &&
-    !to_union_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_incomplete_union &&
+     new_symbol.type.id()==ID_union)
   {
     old_symbol.type=new_symbol.type;
     old_symbol.location=new_symbol.location;
     return;
   }
 
-  if(
-    old_symbol.type.id() == ID_union &&
-    !to_union_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_union &&
-    to_union_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_union &&
+     new_symbol.type.id()==ID_incomplete_union)
   {
     // ok, keep old
     return;
@@ -1214,32 +1183,20 @@ bool linkingt::needs_renaming_type(
   if(old_symbol.type==new_symbol.type)
     return false;
 
-  if(
-    old_symbol.type.id() == ID_struct &&
-    to_struct_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_struct &&
-    !to_struct_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_incomplete_struct &&
+     new_symbol.type.id()==ID_struct)
     return false; // not different
 
-  if(
-    old_symbol.type.id() == ID_struct &&
-    !to_struct_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_struct &&
-    to_struct_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_struct &&
+     new_symbol.type.id()==ID_incomplete_struct)
     return false; // not different
 
-  if(
-    old_symbol.type.id() == ID_union &&
-    to_union_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_union &&
-    !to_union_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_incomplete_union &&
+     new_symbol.type.id()==ID_union)
     return false; // not different
 
-  if(
-    old_symbol.type.id() == ID_union &&
-    !to_union_type(old_symbol.type).is_incomplete() &&
-    new_symbol.type.id() == ID_union &&
-    to_union_type(new_symbol.type).is_incomplete())
+  if(old_symbol.type.id()==ID_union &&
+     new_symbol.type.id()==ID_incomplete_union)
     return false; // not different
 
   if(old_symbol.type.id()==ID_array &&
@@ -1310,7 +1267,7 @@ void linkingt::rename_symbols(
 
   for(const irep_idt &id : needs_to_be_renamed)
   {
-    symbolt &new_symbol = src_symbol_table.get_writeable_ref(id);
+    symbolt &new_symbol=*src_symbol_table.get_writeable(id);
 
     irep_idt new_identifier;
 
@@ -1373,7 +1330,7 @@ void linkingt::copy_symbols()
   // Now do the collisions
   for(const irep_idt &collision : collisions)
   {
-    symbolt &old_symbol = main_symbol_table.get_writeable_ref(collision);
+    symbolt &old_symbol=*main_symbol_table.get_writeable(collision);
     symbolt &new_symbol=src_symbols.at(collision);
 
     if(new_symbol.is_type)

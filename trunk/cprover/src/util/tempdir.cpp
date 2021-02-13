@@ -13,8 +13,6 @@ Author: CM Wintersteiger
 #ifdef _MSC_VER
 #pragma warning(disable:4668)
   // using #if/#elif on undefined macro
-#pragma warning(disable : 5039)
-// pointer or reference to potentially throwing function passed to extern C
 #endif
 #include <windows.h>
 #include <io.h>
@@ -23,7 +21,6 @@ Author: CM Wintersteiger
 #endif
 
 #include <cstdlib>
-#include <cstring>
 #include <vector>
 
 #if defined(__linux__) || \
@@ -89,16 +86,7 @@ std::string get_temporary_directory(const std::string &name_template)
   const char *td = mkdtemp(t.data());
   if(!td)
     throw system_exceptiont("Failed to create temporary directory");
-
-  errno = 0;
-  char *wd = realpath(td, nullptr);
-
-  if(wd == nullptr || errno != 0)
-    throw system_exceptiont(
-      std::string("realpath failed: ") + std::strerror(errno));
-
-  result = std::string(wd);
-  free(wd);
+  result = std::string(td);
 #endif
 
   return result;

@@ -34,7 +34,7 @@ void set_properties(
       property_set.find(property_id);
 
     if(c_it==property_set.end())
-      it->turn_into_skip();
+      it->make_skip();
     else
       property_set.erase(c_it);
   }
@@ -60,9 +60,9 @@ void label_properties(
     irep_idt function=it->source_location.get_function();
 
     std::string prefix=id2string(function);
-    if(!it->source_location.get_property_class().empty())
+    if(it->source_location.get_property_class()!="")
     {
-      if(!prefix.empty())
+      if(prefix!="")
         prefix+=".";
 
       std::string class_infix=
@@ -74,7 +74,7 @@ void label_properties(
       prefix+=class_infix;
     }
 
-    if(!prefix.empty())
+    if(prefix!="")
       prefix+=".";
 
     std::size_t &count=property_counters[prefix];
@@ -109,7 +109,8 @@ void set_properties(
   property_set.insert(properties.begin(), properties.end());
 
   Forall_goto_functions(it, goto_functions)
-    set_properties(it->second.body, property_set);
+    if(!it->second.is_inlined())
+      set_properties(it->second.body, property_set);
 
   if(!property_set.empty())
     throw invalid_command_line_argument_exceptiont(
@@ -136,12 +137,21 @@ void make_assertions_false(goto_modelt &goto_model)
 void make_assertions_false(
   goto_functionst &goto_functions)
 {
-  for(auto &f : goto_functions.function_map)
+  for(goto_functionst::function_mapt::iterator
+      f_it=goto_functions.function_map.begin();
+      f_it!=goto_functions.function_map.end();
+      f_it++)
   {
-    for(auto &i : f.second.body.instructions)
+    goto_programt &goto_program=f_it->second.body;
+
+    for(goto_programt::instructionst::iterator
+        i_it=goto_program.instructions.begin();
+        i_it!=goto_program.instructions.end();
+        i_it++)
     {
-      if(i.is_assert())
-        i.set_condition(false_exprt());
+      if(!i_it->is_assert())
+        continue;
+      i_it->guard=false_exprt();
     }
   }
 }

@@ -12,8 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <string>
 
-// C++20 will have std::string::ends_with
-
 inline bool has_suffix(const std::string &s, const std::string &suffix)
 {
   if(suffix.size()>s.size())

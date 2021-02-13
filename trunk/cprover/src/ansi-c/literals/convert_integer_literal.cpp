@@ -90,8 +90,8 @@ exprt convert_integer_literal(const std::string &src)
     else
       c_type=is_unsigned?ID_unsigned_long_long_int:ID_signed_long_long_int;
 
-    bitvector_typet type(
-      is_unsigned ? ID_unsignedbv : ID_signedbv, width_suffix);
+    typet type=typet(is_unsigned?ID_unsignedbv:ID_signedbv);
+    type.set(ID_width, width_suffix);
     type.set(ID_C_c_type, c_type);
 
     exprt result=from_integer(value, type);
@@ -166,15 +166,21 @@ exprt convert_integer_literal(const std::string &src)
       c_type=ID_signed_long_long_int;
   }
 
-  bitvector_typet type(is_signed ? ID_signedbv : ID_unsignedbv, width);
+  typet type=typet(is_signed?ID_signedbv:ID_unsignedbv);
+
+  type.set(ID_width, width);
   type.set(ID_C_c_type, c_type);
 
   exprt result;
 
   if(is_imaginary)
   {
-    result = complex_exprt(
-      from_integer(0, type), from_integer(value, type), complex_typet(type));
+    complex_typet complex_type;
+    complex_type.subtype()=type;
+    result=exprt(ID_complex, complex_type);
+    result.operands().resize(2);
+    result.op0()=from_integer(0, type);
+    result.op1()=from_integer(value, type);
   }
   else
   {

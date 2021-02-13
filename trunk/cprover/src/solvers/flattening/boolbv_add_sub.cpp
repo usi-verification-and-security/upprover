@@ -19,7 +19,7 @@ bvt boolbvt::convert_add_sub(const exprt &expr)
     expr.id() == ID_plus || expr.id() == ID_minus ||
     expr.id() == "no-overflow-plus" || expr.id() == "no-overflow-minus");
 
-  const typet &type = expr.type();
+  const typet &type=ns.follow(expr.type());
 
   if(type.id()!=ID_unsignedbv &&
      type.id()!=ID_signedbv &&
@@ -41,7 +41,7 @@ bvt boolbvt::convert_add_sub(const exprt &expr)
     !operands.empty(),
     "operator " + expr.id_string() + " takes at least one operand");
 
-  const exprt &op0 = to_multi_ary_expr(expr).op0();
+  const exprt &op0=expr.op0();
   DATA_INVARIANT(
     op0.type() == type, "add/sub with mixed types:\n" + expr.pretty());
 
@@ -53,8 +53,9 @@ bvt boolbvt::convert_add_sub(const exprt &expr)
   bool no_overflow=(expr.id()=="no-overflow-plus" ||
                     expr.id()=="no-overflow-minus");
 
-  typet arithmetic_type =
-    (type.id() == ID_vector || type.id() == ID_complex) ? type.subtype() : type;
+  typet arithmetic_type=
+    (type.id()==ID_vector || type.id()==ID_complex)?
+      ns.follow(type.subtype()):type;
 
   bv_utilst::representationt rep=
     (arithmetic_type.id()==ID_signedbv ||

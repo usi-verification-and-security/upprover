@@ -12,13 +12,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/invariant.h>
 #include <util/std_types.h>
 
-/// Flatten arrays constructed from a single element.
 bvt boolbvt::convert_array_of(const array_of_exprt &expr)
 {
   DATA_INVARIANT(
     expr.type().id() == ID_array, "array_of expression shall have array type");
 
-  const array_typet &array_type = expr.type();
+  const array_typet &array_type=to_array_type(expr.type());
 
   if(is_unbounded_array(array_type))
     return conversion_failed(expr);
@@ -37,15 +36,15 @@ bvt boolbvt::convert_array_of(const array_of_exprt &expr)
 
   const exprt &array_size=array_type.size();
 
-  const auto size = numeric_cast<mp_integer>(array_size);
+  mp_integer size;
 
-  if(!size.has_value())
+  if(to_integer(array_size, size))
     return conversion_failed(expr);
 
-  const bvt &tmp = convert_bv(expr.what());
+  const bvt &tmp=convert_bv(expr.op0());
 
   INVARIANT(
-    *size * tmp.size() == width,
+    size * tmp.size() == width,
     "total array bit width shall equal the number of elements times the "
     "element bit with");
 

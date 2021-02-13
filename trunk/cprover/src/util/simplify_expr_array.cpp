@@ -9,108 +9,114 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "simplify_expr_class.h"
 
 #include "arith_tools.h"
-#include "byte_operators.h"
 #include "namespace.h"
 #include "pointer_offset_size.h"
 #include "replace_expr.h"
 #include "std_expr.h"
-#include "string_constant.h"
 
-simplify_exprt::resultt<>
-simplify_exprt::simplify_index(const index_exprt &expr)
+bool simplify_exprt::simplify_index(exprt &expr)
 {
-  bool no_change = true;
-
-  // copy
-  auto new_expr = expr;
-
-  // references
-  auto &index = new_expr.index();
-  auto &array = new_expr.array();
+  bool result=true;
 
   // extra arithmetic optimizations
+  const exprt &index=to_index_expr(expr).index();
+  const exprt &array=to_index_expr(expr).array();
 
-  if(index.id() == ID_div)
+  if(index.id()==ID_div &&
+     index.operands().size()==2)
   {
-    const auto &index_div_expr = to_div_expr(index);
-
-    if(
-      index_div_expr.dividend().id() == ID_mult &&
-      index_div_expr.dividend().operands().size() == 2 &&
-      to_mult_expr(index_div_expr.dividend()).op1() == index_div_expr.divisor())
+    if(index.op0().id()==ID_mult &&
+       index.op0().operands().size()==2 &&
+       index.op0().op1()==index.op1())
     {
-      // this rewrites (a*b)/b to a
-      index = to_mult_expr(index_div_expr.dividend()).op0();
-      no_change = false;
+      exprt tmp=index.op0().op0();
+      expr.op1()=tmp;
+      result=false;
     }
-    else if(
-      index_div_expr.dividend().id() == ID_mult &&
-      index_div_expr.dividend().operands().size() == 2 &&
-      to_mult_expr(index_div_expr.dividend()).op0() == index_div_expr.divisor())
+    else if(index.op0().id()==ID_mult &&
+            index.op0().operands().size()==2 &&
+            index.op0().op0()==index.op1())
     {
-      // this rewrites (a*b)/a to b
-      index = to_mult_expr(index_div_expr.dividend()).op1();
-      no_change = false;
+      exprt tmp=index.op0().op1();
+      expr.op1()=tmp;
+      result=false;
     }
   }
 
-  if(array.id() == ID_array_comprehension)
+  if(array.id()==ID_lambda)
   {
     // simplify (lambda i: e)(x) to e[i/x]
 
-    const auto &comprehension = to_array_comprehension_expr(array);
+    const exprt &lambda_expr=array;
 
-    if(index.type() == comprehension.arg().type())
+    if(lambda_expr.operands().size()!=2)
+      return true;
+
+    if(expr.op1().type()==lambda_expr.op0().type())
     {
-      exprt tmp = comprehension.body();
-      replace_expr(comprehension.arg(), index, tmp);
-      return changed(simplify_rec(tmp));
+      exprt tmp=lambda_expr.op1();
+      replace_expr(lambda_expr.op0(), expr.op1(), tmp);
+      expr.swap(tmp);
+      return false;
     }
   }
   else if(array.id()==ID_with)
   {
     // we have (a WITH [i:=e])[j]
 
-    if(array.operands().size() != 3)
-      return unchanged(expr);
+    const exprt &with_expr=array;
 
-    const auto &with_expr = to_with_expr(array);
+    if(with_expr.operands().size()!=3)
+      return true;
 
-    if(with_expr.where() == index)
+    if(with_expr.op1()==expr.op1())
     {
       // simplify (e with [i:=v])[i] to v
-      return with_expr.new_value();
+      exprt tmp=with_expr.op2();
+      expr.swap(tmp);
+      return false;
     }
     else
     {
       // Turn (a with i:=x)[j] into (i==j)?x:a[j].
       // watch out that the type of i and j might be different.
-      const exprt rhs_casted =
-        typecast_exprt::conditional_cast(with_expr.where(), index.type());
+      equal_exprt equality_expr(expr.op1(), with_expr.op1());
 
-      exprt equality_expr = simplify_inequality(equal_exprt(index, rhs_casted));
+      if(equality_expr.lhs().type()!=equality_expr.rhs().type())
+        equality_expr.rhs().make_typecast(equality_expr.lhs().type());
 
-      exprt new_index_expr = simplify_index(
-        index_exprt(with_expr.old(), index, new_expr.type())); // recursive call
+      simplify_inequality(equality_expr);
+
+      index_exprt new_index_expr;
+      new_index_expr.type()=expr.type();
+      new_index_expr.array()=with_expr.op0();
+      new_index_expr.index()=expr.op1();
+
+      simplify_index(new_index_expr); // recursive call
 
       if(equality_expr.is_true())
       {
-        return with_expr.new_value();
+        expr=with_expr.op2();
+        return false;
       }
       else if(equality_expr.is_false())
       {
-        return new_index_expr;
+        expr.swap(new_index_expr);
+        return false;
       }
 
-      if_exprt if_expr(equality_expr, with_expr.new_value(), new_index_expr);
-      return changed(simplify_if(if_expr));
+      if_exprt if_expr(equality_expr, with_expr.op2(), new_index_expr);
+      simplify_if(if_expr);
+
+      expr.swap(if_expr);
+
+      return false;
     }
   }
-  else if(
-    array.id() == ID_constant || array.id() == ID_array ||
-    array.id() == ID_vector)
+  else if(array.id()==ID_constant ||
+          array.id()==ID_array)
   {
-    const auto i = numeric_cast<mp_integer>(index);
+    const auto i = numeric_cast<mp_integer>(expr.op1());
 
     if(!i.has_value())
     {
@@ -122,14 +128,16 @@ simplify_exprt::simplify_index(const index_exprt &expr)
     else
     {
       // ok
-      return array.operands()[numeric_cast_v<std::size_t>(*i)];
+      exprt tmp = array.operands()[numeric_cast_v<std::size_t>(*i)];
+      expr.swap(tmp);
+      return false;
     }
   }
   else if(array.id()==ID_string_constant)
   {
-    const auto i = numeric_cast<mp_integer>(index);
+    const auto i = numeric_cast<mp_integer>(expr.op1());
 
-    const std::string &value = id2string(to_string_constant(array).get_value());
+    const irep_idt &value=array.get(ID_value);
 
     if(!i.has_value())
     {
@@ -143,56 +151,62 @@ simplify_exprt::simplify_index(const index_exprt &expr)
       // terminating zero?
       const char v =
         (*i == value.size()) ? 0 : value[numeric_cast_v<std::size_t>(*i)];
-      return from_integer(v, new_expr.type());
+      exprt tmp=from_integer(v, expr.type());
+      expr.swap(tmp);
+      return false;
     }
   }
   else if(array.id()==ID_array_of)
   {
-    return to_array_of_expr(array).what();
+    if(array.operands().size()==1)
+    {
+      exprt tmp=array.op0();
+      expr.swap(tmp);
+      return false;
+    }
   }
   else if(array.id() == ID_array_list)
   {
     // These are index/value pairs, alternating.
     for(size_t i=0; i<array.operands().size()/2; i++)
     {
-      exprt tmp_index = typecast_exprt(array.operands()[i * 2], index.type());
+      exprt tmp_index=array.operands()[i*2];
+      tmp_index.make_typecast(index.type());
       simplify(tmp_index);
       if(tmp_index==index)
       {
-        return array.operands()[i * 2 + 1];
+        exprt tmp=array.operands()[i*2+1];
+        expr.swap(tmp);
+        return false;
       }
     }
   }
   else if(array.id()==ID_byte_extract_little_endian ||
           array.id()==ID_byte_extract_big_endian)
   {
-    const auto &byte_extract_expr = to_byte_extract_expr(array);
-
-    if(array.type().id() == ID_array || array.type().id() == ID_vector)
+    if(array.type().id() == ID_array)
     {
-      optionalt<typet> subtype;
-      if(array.type().id() == ID_array)
-        subtype = to_array_type(array.type()).subtype();
-      else
-        subtype = to_vector_type(array.type()).subtype();
+      const auto &array_type = to_array_type(array.type());
 
       // This rewrites byte_extract(s, o, array_type)[i]
       // to byte_extract(s, o+offset, sub_type)
 
-      auto sub_size = pointer_offset_size(*subtype, ns);
+      auto sub_size = pointer_offset_size(array_type.subtype(), ns);
       if(!sub_size.has_value())
-        return unchanged(expr);
+        return true;
 
       // add offset to index
-      mult_exprt offset(
-        from_integer(*sub_size, byte_extract_expr.offset().type()), index);
-      exprt final_offset =
-        simplify_node(plus_exprt(byte_extract_expr.offset(), offset));
+      mult_exprt offset(from_integer(*sub_size, array.op1().type()), index);
+      plus_exprt final_offset(array.op1(), offset);
+      simplify_node(final_offset);
 
       exprt result_expr(array.id(), expr.type());
-      result_expr.add_to_operands(byte_extract_expr.op(), final_offset);
+      result_expr.add_to_operands(array.op0(), final_offset);
+      expr.swap(result_expr);
 
-      return changed(simplify_rec(result_expr));
+      simplify_rec(expr);
+
+      return false;
     }
   }
   else if(array.id()==ID_if)
@@ -203,14 +217,13 @@ simplify_exprt::simplify_index(const index_exprt &expr)
     index_exprt idx_false=to_index_expr(expr);
     idx_false.array()=if_expr.false_case();
 
-    new_expr.array() = if_expr.true_case();
+    to_index_expr(expr).array()=if_expr.true_case();
 
-    exprt result = if_exprt(cond, new_expr, idx_false, expr.type());
-    return changed(simplify_rec(result));
+    expr=if_exprt(cond, expr, idx_false, expr.type());
+    simplify_rec(expr);
+
+    return false;
   }
 
-  if(no_change)
-    return unchanged(expr);
-  else
-    return std::move(new_expr);
+  return result;
 }

@@ -97,6 +97,11 @@ public:
     return !is_thread_local;
   }
 
+  bool is_procedure_local() const
+  {
+    return !is_static_lifetime;
+  }
+
   bool is_function() const
   {
     return !is_type && !is_macro && type.id()==ID_code;
@@ -117,24 +122,8 @@ public:
     value = exprt(ID_compiled);
   }
 
-  /// Returns true iff the symbol is marked for internal use.
-  bool is_hidden() const
-  {
-    return is_auxiliary;
-  }
-
-  /// Mark a symbol for internal use. This is advisory and may be utilized,
-  /// e.g., to filter output.
-  void set_hidden()
-  {
-    is_auxiliary = true;
-  }
-
   /// Check that a symbol is well formed.
   bool is_well_formed() const;
-
-  bool operator==(const symbolt &other) const;
-  bool operator!=(const symbolt &other) const;
 };
 
 std::ostream &operator<<(std::ostream &out, const symbolt &symbol);

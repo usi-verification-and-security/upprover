@@ -16,14 +16,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/c_types.h>
 #include <util/format_constant.h>
 #include <util/simplify_expr.h>
-#include <util/std_expr.h>
 
 const exprt printf_formattert::make_type(
   const exprt &src, const typet &dest)
 {
   if(src.type()==dest)
     return src;
-  return simplify_expr(typecast_exprt(src, dest), ns);
+  exprt tmp=src;
+  tmp.make_typecast(dest);
+  simplify(tmp, ns);
+  return tmp;
 }
 
 void printf_formattert::operator()(
@@ -134,15 +136,12 @@ void printf_formattert::process_format(std::ostream &out)
         break;
       // this is the address of a string
       const exprt &op=*(next_operand++);
-      if(
-        op.id() == ID_address_of &&
-        to_address_of_expr(op).object().id() == ID_index &&
-        to_index_expr(to_address_of_expr(op).object()).array().id() ==
-          ID_string_constant)
-      {
-        out << format_constant(
-          to_index_expr(to_address_of_expr(op).object()).array());
-      }
+      if(op.id()==ID_address_of &&
+         op.operands().size()==1 &&
+         op.op0().id()==ID_index &&
+         op.op0().operands().size()==2 &&
+         op.op0().op0().id()==ID_string_constant)
+        out << format_constant(op.op0().op0());
     }
     break;
 

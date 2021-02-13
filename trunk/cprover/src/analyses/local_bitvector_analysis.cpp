@@ -60,9 +60,13 @@ bool local_bitvector_analysist::merge(points_tot &a, points_tot &b)
 /// \return return 'true' iff we track the object with given identifier
 bool local_bitvector_analysist::is_tracked(const irep_idt &identifier)
 {
-  localst::locals_sett::const_iterator it = locals.locals.find(identifier);
-  return it != locals.locals.end() && ns.lookup(*it).type.id() == ID_pointer &&
-         !dirty(identifier);
+  localst::locals_mapt::const_iterator it=locals.locals_map.find(identifier);
+  if(it==locals.locals_map.end() ||
+     it->second.type().id()!=ID_pointer ||
+     dirty(identifier))
+    return false;
+
+  return true;
 }
 
 void local_bitvector_analysist::assign_lhs(
@@ -176,26 +180,23 @@ local_bitvector_analysist::flagst local_bitvector_analysist::get_rec(
   }
   else if(rhs.id()==ID_plus)
   {
-    const auto &plus_expr = to_plus_expr(rhs);
-
-    if(plus_expr.operands().size() >= 3)
+    if(rhs.operands().size()>=3)
     {
-      DATA_INVARIANT(
-        plus_expr.op0().type().id() == ID_pointer,
-        "pointer in pointer-typed sum must be op0");
-      return get_rec(plus_expr.op0(), loc_info_src) | flagst::mk_uses_offset();
+      assert(rhs.op0().type().id()==ID_pointer);
+      return get_rec(rhs.op0(), loc_info_src) |
+             flagst::mk_uses_offset();
     }
-    else if(plus_expr.operands().size() == 2)
+    else if(rhs.operands().size()==2)
     {
       // one must be pointer, one an integer
-      if(plus_expr.op0().type().id() == ID_pointer)
+      if(rhs.op0().type().id()==ID_pointer)
       {
-        return get_rec(plus_expr.op0(), loc_info_src) |
+        return get_rec(rhs.op0(), loc_info_src) |
                flagst::mk_uses_offset();
       }
-      else if(plus_expr.op1().type().id() == ID_pointer)
+      else if(rhs.op1().type().id()==ID_pointer)
       {
-        return get_rec(plus_expr.op1(), loc_info_src) |
+        return get_rec(rhs.op1(), loc_info_src) |
                flagst::mk_uses_offset();
       }
       else
@@ -206,11 +207,10 @@ local_bitvector_analysist::flagst local_bitvector_analysist::get_rec(
   }
   else if(rhs.id()==ID_minus)
   {
-    const auto &op0 = to_minus_expr(rhs).op0();
-
-    if(op0.type().id() == ID_pointer)
+    if(rhs.op0().type().id()==ID_pointer)
     {
-      return get_rec(op0, loc_info_src) | flagst::mk_uses_offset();
+      return get_rec(rhs.op0(), loc_info_src) |
+             flagst::mk_uses_offset();
     }
     else
       return flagst::mk_unknown();
@@ -254,11 +254,9 @@ void local_bitvector_analysist::build()
   // Gather the objects we track, and
   // feed in sufficiently bad defaults for their value
   // in the entry location.
-  for(const auto &local : locals.locals)
-  {
-    if(is_tracked(local))
-      loc_infos[0][pointers.number(local)] = flagst::mk_unknown();
-  }
+  for(const auto &local : locals.locals_map)
+    if(is_tracked(local.first))
+      loc_infos[0][pointers.number(local.first)]=flagst::mk_unknown();
 
   while(!work_queue.empty())
   {
@@ -273,77 +271,48 @@ void local_bitvector_analysist::build()
     switch(instruction.type)
     {
     case ASSIGN:
-    {
-      const code_assignt &code_assign = to_code_assign(instruction.code);
-      assign_lhs(
-        code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
+      {
+        const code_assignt &code_assign=to_code_assign(instruction.code);
+        assign_lhs(
+          code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
+      }
       break;
-    }
 
     case DECL:
-    {
-      const code_declt &code_decl = to_code_decl(instruction.code);
-      assign_lhs(
-        code_decl.symbol(),
-        exprt(ID_uninitialized),
-        loc_info_src,
-        loc_info_dest);
+      {
+        const code_declt &code_decl=to_code_decl(instruction.code);
+        assign_lhs(
+          code_decl.symbol(),
+          exprt(ID_uninitialized),
+          loc_info_src,
+          loc_info_dest);
+      }
       break;
-    }
 
     case DEAD:
-    {
-      const code_deadt &code_dead = to_code_dead(instruction.code);
-      assign_lhs(
-        code_dead.symbol(),
-        exprt(ID_uninitialized),
-        loc_info_src,
-        loc_info_dest);
+      {
+        const code_deadt &code_dead=to_code_dead(instruction.code);
+        assign_lhs(
+          code_dead.symbol(),
+          exprt(ID_uninitialized),
+          loc_info_src,
+          loc_info_dest);
+      }
       break;
-    }
 
     case FUNCTION_CALL:
-    {
-      const code_function_callt &code_function_call =
-        to_code_function_call(instruction.code);
-      if(code_function_call.lhs().is_not_nil())
-        assign_lhs(
-          code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
+      {
+        const code_function_callt &code_function_call=
+          to_code_function_call(instruction.code);
+        if(code_function_call.lhs().is_not_nil())
+          assign_lhs(
+            code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
+      }
       break;
-    }
 
-    case CATCH:
-    case THROW:
-#if 0
-      DATA_INVARIANT(false, "Exceptions must be removed before analysis");
-      break;
-#endif
-    case RETURN:
-#if 0
-      DATA_INVARIANT(false, "Returns must be removed before analysis");
-      break;
-#endif
-    case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
-    case ATOMIC_END:   // Ignoring is a valid over-approximation
-    case LOCATION:     // No action required
-    case START_THREAD: // Require a concurrent analysis at higher level
-    case END_THREAD:   // Require a concurrent analysis at higher level
-    case SKIP:         // No action required
-    case ASSERT:       // No action required
-    case ASSUME:       // Ignoring is a valid over-approximation
-    case GOTO:         // Ignoring the guard is a valid over-approximation
-    case END_FUNCTION: // No action required
-      break;
-    case OTHER:
-#if 0
-      DATA_INVARIANT(
-        false, "Unclear what is a safe over-approximation of OTHER");
-#endif
-      break;
-    case INCOMPLETE_GOTO:
-    case NO_INSTRUCTION_TYPE:
-      DATA_INVARIANT(false, "Only complete instructions can be analyzed");
-      break;
+    default:
+      {
+      }
     }
 
     for(const auto &succ : node.successors)
@@ -380,7 +349,7 @@ void local_bitvector_analysist::output(
     }
 
     out << "\n";
-    goto_function.body.output_instruction(ns, irep_idt(), out, *i_it);
+    goto_function.body.output_instruction(ns, "", out, *i_it);
     out << "\n";
 
     l++;

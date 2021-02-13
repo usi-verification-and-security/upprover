@@ -15,6 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/std_expr.h>
 #include <util/std_code.h>
+#include <util/base_type.h>
 
 #include <util/invariant.h>
 
@@ -65,24 +66,20 @@ aliasingt aliasing(
   const namespacet &ns)
 {
   // deal with some dereferencing
-  if(
-    e1.id() == ID_dereference &&
-    to_dereference_expr(e1).pointer().id() == ID_address_of)
-  {
-    return aliasing(
-      to_address_of_expr(to_dereference_expr(e1).pointer()).object(), e2, ns);
-  }
+  if(e1.id()==ID_dereference &&
+     e1.operands().size()==1 &&
+     e1.op0().id()==ID_address_of &&
+     e1.op0().operands().size()==1)
+    return aliasing(e1.op0().op0(), e2, ns);
 
-  if(
-    e2.id() == ID_dereference &&
-    to_dereference_expr(e2).pointer().id() == ID_address_of)
-  {
-    return aliasing(
-      e1, to_address_of_expr(to_dereference_expr(e2).pointer()).object(), ns);
-  }
+  if(e2.id()==ID_dereference &&
+     e2.operands().size()==1 &&
+     e2.op0().id()==ID_address_of &&
+     e2.op0().operands().size()==1)
+    return aliasing(e1, e2.op0().op0(), ns);
 
   // fairly radical. Ignores struct prefixes and the like.
-  if(e1.type() != e2.type())
+  if(!base_type_eq(e1.type(), e2.type(), ns))
     return aliasingt::A_MUSTNOT;
 
   // syntactically the same?
@@ -169,8 +166,12 @@ void rewrite_assignment(exprt &lhs, exprt &rhs)
     irep_idt component_name=member_expr.get_component_name();
     exprt new_lhs=member_expr.struct_op();
 
-    with_exprt new_rhs(new_lhs, exprt(ID_member_name), rhs);
+    with_exprt new_rhs;
+    new_rhs.type()=new_lhs.type();
+    new_rhs.old()=new_lhs;
+    new_rhs.where().id(ID_member_name);
     new_rhs.where().set(ID_component_name, component_name);
+    new_rhs.new_value()=rhs;
 
     lhs=new_lhs;
     rhs=new_rhs;
@@ -182,7 +183,11 @@ void rewrite_assignment(exprt &lhs, exprt &rhs)
     const index_exprt index_expr=to_index_expr(lhs);
     exprt new_lhs=index_expr.array();
 
-    with_exprt new_rhs(new_lhs, index_expr.index(), rhs);
+    with_exprt new_rhs;
+    new_rhs.type()=new_lhs.type();
+    new_rhs.old()=new_lhs;
+    new_rhs.where()=index_expr.index();
+    new_rhs.new_value()=rhs;
 
     lhs=new_lhs;
     rhs=new_rhs;

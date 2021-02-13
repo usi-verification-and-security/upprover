@@ -90,12 +90,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   call_tree_nodet& call_info = omega.get_call_tree_root();
   std::unique_ptr<path_storaget> worklist;
-  guard_managert guard_manager;
+  //guard_managert guard_manager;
   
   symex_assertion_sumt symex{
           omega.get_goto_functions(), call_info, options, *worklist, ns.get_symbol_table(),
           equation, message_handler, goto_program, last_assertion_loc,
-          single_assertion_check, true, unwind_bound, false, guard_manager};
+          single_assertion_check, true, unwind_bound, false};
   symex.set_assertion_info_to_verify(&assertion);
 
   formula_managert ssaTosmt = formula_managert(equation, message_handler);

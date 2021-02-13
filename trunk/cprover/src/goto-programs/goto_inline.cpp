@@ -15,6 +15,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/prefix.h>
 #include <util/cprover_prefix.h>
+#include <util/base_type.h>
 #include <util/std_code.h>
 #include <util/std_expr.h>
 
@@ -54,9 +55,9 @@ void goto_inline(
   if(it==goto_functions.function_map.end())
     return;
 
-  goto_functiont &entry_function = it->second;
+  goto_functiont &goto_function=it->second;
   DATA_INVARIANT(
-    entry_function.body_available(),
+    goto_function.body_available(),
     "body of entry point function must be available");
 
   // gather all calls
@@ -85,7 +86,7 @@ void goto_inline(
   }
 
   goto_inline.goto_inline(
-    goto_functionst::entry_point(), entry_function, inline_map, true);
+    goto_functionst::entry_point(), goto_function, inline_map, true);
 
   // clean up
   Forall_goto_functions(f_it, goto_functions)
@@ -179,23 +180,24 @@ void goto_partial_inline(
       const symbol_exprt &symbol_expr=to_symbol_expr(function_expr);
       const irep_idt id=symbol_expr.get_identifier();
 
-      goto_functionst::function_mapt::const_iterator called_it =
+      goto_functionst::function_mapt::const_iterator f_it=
         goto_functions.function_map.find(id);
 
-      if(called_it == goto_functions.function_map.end())
+      if(f_it==goto_functions.function_map.end())
         // Function not loaded, can't check size
         continue;
 
       // called function
-      const goto_functiont &called_function = called_it->second;
+      const goto_functiont &goto_function=f_it->second;
 
-      if(!called_function.body_available())
+      if(!goto_function.body_available())
         // The bodies of functions that don't have bodies can't be inlined.
         continue;
 
-      if(
-        to_code_type(ns.lookup(id).type).get_inlined() ||
-        called_function.body.instructions.size() <= smallfunc_limit)
+      const goto_programt &goto_program=goto_function.body;
+
+      if(goto_function.is_inlined() ||
+         goto_program.instructions.size()<=smallfunc_limit)
       {
         PRECONDITION(i_it->is_function_call());
 

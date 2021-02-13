@@ -14,8 +14,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <list>
 
 #include <util/irep.h>
-#include <util/magic.h>
-#include <util/optional.h>
 
 class cmdlinet;
 class optionst;
@@ -37,11 +35,8 @@ struct object_factory_parameterst
   size_t max_nondet_array_length = 5;
 
   /// Maximum value for the non-deterministically-chosen length of a string.
-  /// Defaults to MAX_CONCRETE_STRING_SIZE - 1 such that even with a null
-  /// terminator all strings can be rendered concretely by string-refinement's
-  /// `get_array` function, which is used by `--trace` among other C/JBMC
-  /// options.
-  size_t max_nondet_string_length = MAX_CONCRETE_STRING_SIZE - 1;
+  size_t max_nondet_string_length =
+    static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max());
 
   /// Minimum value for the non-deterministically-chosen length of a string.
   size_t min_nondet_string_length = 0;

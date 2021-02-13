@@ -165,12 +165,12 @@ int parser_hifrogt::doit()
     //customized
     if(cmdline.args.empty())
     {
-        log.error() << "Please provide an input file" << messaget::eom;
+        error() << "Please provide an input file" << messaget::eom;
         return CPROVER_EXIT_INCORRECT_TASK;
     }
     else if (cmdline.args.size()>1)
     {
-        log.error() << "Please give exactly one source file" << messaget::eom;
+        error() << "Please give exactly one source file" << messaget::eom;
         return CPROVER_EXIT_INCORRECT_TASK;
     }
     
@@ -180,7 +180,7 @@ int parser_hifrogt::doit()
     //
     // Print a banner
     //
-    log.status() << "HiFrog version " << HIFROG_VERSION << " " << sizeof(void *) * 8
+    status() << "HiFrog version " << HIFROG_VERSION << " " << sizeof(void *) * 8
                  << "-bit " << configt::this_architecture() << " "
                  << configt::this_operating_system() << messaget::eom;
     
@@ -190,20 +190,12 @@ int parser_hifrogt::doit()
     if(cmdline.isset("module") ||
        cmdline.isset("gen-interface"))
     {
-        log.error() << "This version of CBMC has no support for "
+        error() << "This version of CBMC has no support for "
                        " hardware modules. Please use hw-cbmc."
                     << messaget::eom;
         return CPROVER_EXIT_USAGE_ERROR;
     }
     register_languages();
-    
-    // configure gcc, if required
-    if(config.ansi_c.preprocessor == configt::ansi_ct::preprocessort::GCC)
-    {
-        gcc_versiont gcc_version;
-        gcc_version.get("gcc");
-        configure_gcc(gcc_version);
-    }
     
     if(cmdline.isset("test-preprocessor"))
         return test_c_preprocessor(ui_message_handler)
@@ -220,9 +212,9 @@ int parser_hifrogt::doit()
     {
         if(
                 cmdline.args.size() != 1 ||
-                is_goto_binary(cmdline.args[0], ui_message_handler))
+                is_goto_binary(cmdline.args[0]))
         {
-            log.error() << "Please give exactly one source file" << messaget::eom;
+            error() << "Please give exactly one source file" << messaget::eom;
             return CPROVER_EXIT_INCORRECT_TASK;
         }
         
@@ -236,7 +228,7 @@ int parser_hifrogt::doit()
         
         if(!infile)
         {
-            log.error() << "failed to open input file '" << filename << "'"
+            error() << "failed to open input file '" << filename << "'"
                         << messaget::eom;
             return CPROVER_EXIT_INCORRECT_TASK;
         }
@@ -246,7 +238,7 @@ int parser_hifrogt::doit()
         
         if(language==nullptr)
         {
-            log.error() << "failed to figure out type of file '" << filename << "'"
+            error() << "failed to figure out type of file '" << filename << "'"
                         << messaget::eom;
             return CPROVER_EXIT_INCORRECT_TASK;
         }
@@ -254,11 +246,11 @@ int parser_hifrogt::doit()
         language->set_language_options(options);
         language->set_message_handler(ui_message_handler);
         
-        log.status() << "Parsing " << filename << messaget::eom;
+        status() << "Parsing " << filename << messaget::eom;
         
         if(language->parse(infile, filename))
         {
-            log.error() << "PARSING ERROR" << messaget::eom;
+            error() << "PARSING ERROR" << messaget::eom;
             return CPROVER_EXIT_INCORRECT_TASK;
         }
         
@@ -276,12 +268,12 @@ int parser_hifrogt::doit()
     if(get_goto_program_ret!=-1)
         return get_goto_program_ret;
     
-    if(cmdline.isset("show-claims") || // will go away
-       cmdline.isset("show-properties")) // use this one
-    {
-        show_properties(goto_model, ui_message_handler);
-        return CPROVER_EXIT_SUCCESS;
-    }
+//    if(cmdline.isset("show-claims") || // will go away
+//       cmdline.isset("show-properties")) // use this one
+//    {
+//        show_properties(goto_model, ui_message_handler);
+//        return CPROVER_EXIT_SUCCESS;
+//    }
     
     if(set_properties(goto_model))
         return CPROVER_EXIT_SET_PROPERTIES_FAILED;
@@ -293,7 +285,7 @@ int parser_hifrogt::doit()
     
     if(cmdline.isset("list-templates")) {
         if (options.get_option("logic") != "prop") {
-            log.status() <<"Listing templates\n"<< messaget::eom;
+            status() <<"Listing templates\n"<< messaget::eom;
             
             UserDefinedSummaryt uds;
             namespacet ns(goto_model.get_symbol_table());
@@ -303,12 +295,12 @@ int parser_hifrogt::doit()
                                     options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE), ui_message_handler);
         }
         else{
-            log.error() <<"Error: invalid request for listing the template; it is supported only in LRA and EUF"<< messaget::eom;
+            error() <<"Error: invalid request for listing the template; it is supported only in LRA and EUF"<< messaget::eom;
         }
         return CPROVER_EXIT_SUCCESS;
     }
     
-    calculate_show_claims(goto_model);
+    //calculate_show_claims(goto_model);
     
     if(validate_input_options()) {
         //perform standalone check for stream of assertions in a specific source file
@@ -320,11 +312,11 @@ int parser_hifrogt::doit()
                      claim_user_nr);
     }
     else {
-        log.status() << "Typo! Please see --help to correct the user's options "<< messaget::eom;
+        status() << "Typo! Please see --help to correct the user's options "<< messaget::eom;
         return CPROVER_EXIT_INCORRECT_TASK;
     }
     
-    log.status() <<"#X: Done." << messaget::eom;
+    status() <<"#X: Done." << messaget::eom;
     
     return CPROVER_EXIT_SUCCESS;
 }

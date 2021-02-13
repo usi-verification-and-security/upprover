@@ -19,54 +19,47 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 static std::string do_prefix(const std::string &s)
 {
-  if(s.find(',') != std::string::npos || (!s.empty() && isdigit(s[0])))
+  if(s.find(',')!=std::string::npos ||
+     (s!="" && isdigit(s[0])))
     return std::to_string(s.size())+"_"+s;
 
   return s;
 }
 
-static std::string irep2name(const irept &irep)
+static void irep2name(const irept &irep, std::string &result)
 {
-  std::string result;
+  result="";
 
   if(is_reference(static_cast<const typet&>(irep)))
     result+="reference";
 
-  if(is_rvalue_reference(static_cast<const typet &>(irep)))
-    result += "rvalue_reference";
-
-  if(irep.id() == ID_frontend_pointer)
-  {
-    if(irep.get_bool(ID_C_reference))
-      result += "reference";
-
-    if(irep.get_bool(ID_C_rvalue_reference))
-      result += "rvalue_reference";
-  }
-  else if(!irep.id().empty())
+  if(irep.id()!="")
     result+=do_prefix(irep.id_string());
 
-  if(irep.get_named_sub().empty() && irep.get_sub().empty())
-    return result;
+  if(irep.get_named_sub().empty() &&
+     irep.get_sub().empty() &&
+     irep.get_comments().empty())
+    return;
 
   result+='(';
   bool first=true;
 
   forall_named_irep(it, irep.get_named_sub())
-    if(!irept::is_comment(it->first))
-    {
-      if(first)
-        first = false;
-      else
-        result += ',';
+  {
+    if(first)
+      first=false;
+    else
+      result+=',';
 
-      result += do_prefix(name2string(it->first));
+    result+=do_prefix(name2string(it->first));
 
-      result += '=';
-      result += irep2name(it->second);
-    }
+    result+='=';
+    std::string tmp;
+    irep2name(it->second, tmp);
+    result+=tmp;
+  }
 
-  forall_named_irep(it, irep.get_named_sub())
+  forall_named_irep(it, irep.get_comments())
     if(it->first==ID_C_constant ||
        it->first==ID_C_volatile ||
        it->first==ID_C_restricted)
@@ -77,7 +70,9 @@ static std::string irep2name(const irept &irep)
         result+=',';
       result+=do_prefix(name2string(it->first));
       result+='=';
-      result += irep2name(it->second);
+      std::string tmp;
+      irep2name(it->second, tmp);
+      result+=tmp;
     }
 
   forall_irep(it, irep.get_sub())
@@ -86,12 +81,12 @@ static std::string irep2name(const irept &irep)
       first=false;
     else
       result+=',';
-    result += irep2name(*it);
+    std::string tmp;
+    irep2name(*it, tmp);
+    result+=tmp;
   }
 
   result+=')';
-
-  return result;
 }
 
 std::string cpp_type2name(const typet &type)
@@ -170,7 +165,9 @@ std::string cpp_type2name(const typet &type)
   else
   {
     // give up
-    return irep2name(type);
+    std::string tmp;
+    irep2name(type, tmp);
+    return tmp;
   }
 
   return result;
@@ -178,5 +175,7 @@ std::string cpp_type2name(const typet &type)
 
 std::string cpp_expr2name(const exprt &expr)
 {
-  return irep2name(expr);
+  std::string tmp;
+  irep2name(expr, tmp);
+  return tmp;
 }

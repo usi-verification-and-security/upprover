@@ -15,7 +15,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 class namespacet;
 
-#include "deprecate.h"
 #include "source_location.h"
 #include "validate_types.h"
 #include "validation_mode.h"
@@ -31,18 +30,10 @@ public:
   typet() { }
 
   explicit typet(const irep_idt &_id):irept(_id) { }
-
-#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 6
-  typet(irep_idt _id, typet _subtype)
-    : irept(std::move(_id), {}, {std::move(_subtype)})
+  typet(const irep_idt &_id, const typet &_subtype):irept(_id)
   {
+    subtype()=_subtype;
   }
-#else
-  typet(irep_idt _id, typet _subtype) : irept(std::move(_id))
-  {
-    subtype() = std::move(_subtype);
-  }
-#endif
 
   const typet &subtype() const
   {
@@ -96,8 +87,7 @@ public:
   ///
   /// The validation mode indicates whether well-formedness check failures are
   /// reported via DATA_INVARIANT violations or exceptions.
-  static void
-  check(const typet &, const validation_modet = validation_modet::INVARIANT)
+  static void check(const typet &, const validation_modet)
   {
   }
 
@@ -145,9 +135,13 @@ public:
 class type_with_subtypet:public typet
 {
 public:
-  type_with_subtypet(irep_idt _id, typet _subtype)
-    : typet(std::move(_id), std::move(_subtype))
+  DEPRECATED("use type_with_subtypet(id, subtype) instead")
+  explicit type_with_subtypet(const irep_idt &_id):typet(_id) { }
+
+  type_with_subtypet(const irep_idt &_id, const typet &_subtype):
+    typet(_id)
   {
+    subtype()=_subtype;
   }
 
   #if 0
@@ -176,6 +170,12 @@ class type_with_subtypest:public typet
 {
 public:
   typedef std::vector<typet> subtypest;
+
+  DEPRECATED("use type_with_subtypest(id, subtypes) instead")
+  type_with_subtypest() { }
+
+  DEPRECATED("use type_with_subtypest(id, subtypes) instead")
+  explicit type_with_subtypest(const irep_idt &_id):typet(_id) { }
 
   type_with_subtypest(const irep_idt &_id, const subtypest &_subtypes)
     : typet(_id)

@@ -38,7 +38,7 @@ static exprt build_class_identifier(
       first_member_name,
       components.front().type());
 
-    if(first_member_name == JAVA_CLASS_IDENTIFIER_FIELD_NAME)
+    if(first_member_name=="@class_identifier")
     {
       // found it
       return std::move(member_expr);
@@ -67,17 +67,17 @@ exprt get_class_identifier_field(
   const auto &points_to=this_expr.type().subtype();
   if(points_to==empty_typet())
     this_expr=typecast_exprt(this_expr, pointer_type(suggested_type));
-  const dereference_exprt deref{this_expr};
+  const dereference_exprt deref(this_expr, this_expr.type().subtype());
   return build_class_identifier(deref, ns);
 }
 
 /// If expr has its components filled in then sets the `@class_identifier`
 /// member of the struct
 /// \remarks Follows through base class members until it gets to the object
-///   type that contains the `@class_identifier` member
+/// type that contains the `@class_identifier` member
 /// \param expr: An expression that represents a struct
 /// \param ns: The namespace used to resolve symbol references in the type of
-///   the struct
+/// the struct
 /// \param class_type: A symbol whose identifier is the name of the class
 void set_class_identifier(
   struct_exprt &expr,
@@ -92,7 +92,7 @@ void set_class_identifier(
     return;
   PRECONDITION(!expr.operands().empty());
 
-  if(components.front().get_name() == JAVA_CLASS_IDENTIFIER_FIELD_NAME)
+  if(components.front().get_name()=="@class_identifier")
   {
     INVARIANT(
       expr.op0().id()==ID_constant, "@class_identifier must be a constant");

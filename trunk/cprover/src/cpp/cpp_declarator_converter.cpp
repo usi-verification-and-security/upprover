@@ -11,10 +11,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include "cpp_declarator_converter.h"
 
-#include <util/c_types.h>
-#include <util/mathematical_types.h>
 #include <util/source_location.h>
 #include <util/std_types.h>
+
+#include <util/c_types.h>
 
 #include "cpp_type2name.h"
 #include "cpp_typecheck.h"
@@ -53,9 +53,6 @@ symbolt &cpp_declarator_convertert::convert(
   final_type=declarator.merge_type(declaration_type);
   assert(final_type.is_not_nil());
 
-  cpp_storage_spect final_storage_spec = storage_spec;
-  final_storage_spec |= cpp_storage_spect(final_type);
-
   cpp_template_args_non_tct template_args;
 
   // run resolver on scope
@@ -67,22 +64,11 @@ symbolt &cpp_declarator_convertert::convert(
     cpp_typecheck_resolve.resolve_scope(
       declarator.name(), base_name, template_args);
 
-    cpp_scopet *friend_scope = nullptr;
-
-    if(is_friend)
-    {
-      friend_scope = &cpp_typecheck.cpp_scopes.current_scope();
-      save_scope.restore();
-    }
-
     scope=&cpp_typecheck.cpp_scopes.current_scope();
 
-    // check the declarator-part of the type, in the current scope
+    // check the declarator-part of the type, in that scope
     if(declarator.value().is_nil() || !cpp_typecheck.has_auto(final_type))
       cpp_typecheck.typecheck_type(final_type);
-
-    if(friend_scope)
-      scope = friend_scope;
   }
 
   is_code=is_code_type(final_type);
@@ -93,13 +79,10 @@ symbolt &cpp_declarator_convertert::convert(
 
   get_final_identifier();
 
-  if(is_typedef)
-    final_type.set(ID_C_typedef, final_identifier);
-
   // first see if it is a member
-  if(scope->id_class == cpp_idt::id_classt::CLASS)
+  if(scope->id_class==cpp_idt::id_classt::CLASS && !is_friend)
   {
-    // it's a member! it must be declared already, unless it's a friend
+    // it's a member! it must be declared already
 
     typet &method_qualifier=
       static_cast<typet &>(declarator.method_qualifier());
@@ -121,35 +104,23 @@ symbolt &cpp_declarator_convertert::convert(
     {
       // adjust type if it's a non-static member function
       if(final_type.id()==ID_code)
-      {
-        cpp_save_scopet save_scope(cpp_typecheck.cpp_scopes);
-        cpp_typecheck.cpp_scopes.go_to(*scope);
-
         cpp_typecheck.add_this_to_method_type(
           cpp_typecheck.lookup(scope->identifier),
           to_code_type(final_type),
           method_qualifier);
-      }
 
       get_final_identifier();
 
       // try again
       maybe_symbol=cpp_typecheck.symbol_table.get_writeable(final_identifier);
-      if(!maybe_symbol && is_friend)
-      {
-        symbolt &friend_symbol =
-          convert_new_symbol(final_storage_spec, member_spec, declarator);
-        // mark it as weak so that the full declaration can replace the symbol
-        friend_symbol.is_weak = true;
-        return friend_symbol;
-      }
-      else if(!maybe_symbol)
+      if(!maybe_symbol)
       {
         cpp_typecheck.error().source_location=
           declarator.name().source_location();
-        cpp_typecheck.error()
-          << "member '" << base_name << "' not found in scope '"
-          << scope->identifier << "'" << messaget::eom;
+        cpp_typecheck.error() << "member `" << base_name
+                              << "' not found in scope `"
+                              << scope->identifier << "'"
+                              << messaget::eom;
         throw 0;
       }
     }
@@ -171,7 +142,9 @@ symbolt &cpp_declarator_convertert::convert(
           cpp_typecheck_resolvet::wantt::TYPE,
           cpp_typecheck_fargst());
 
-      if(symbol_expr.id() != ID_type)
+      if(
+        symbol_expr.id() != ID_type ||
+        symbol_expr.type().id() != ID_symbol_type)
       {
         cpp_typecheck.error().source_location=name.source_location();
         cpp_typecheck.error() << "error: expected type"
@@ -193,7 +166,7 @@ symbolt &cpp_declarator_convertert::convert(
         type, declarator.member_initializers());
     }
 
-    if(!final_storage_spec.is_extern())
+    if(!storage_spec.is_extern())
       symbol.is_extern=false;
 
     // initializer?
@@ -219,10 +192,10 @@ symbolt &cpp_declarator_convertert::convert(
     const auto maybe_symbol=
       cpp_typecheck.symbol_table.get_writeable(final_identifier);
     if(!maybe_symbol)
-      return convert_new_symbol(final_storage_spec, member_spec, declarator);
+      return convert_new_symbol(storage_spec, member_spec, declarator);
     symbolt &symbol=*maybe_symbol;
 
-    if(!final_storage_spec.is_extern())
+    if(!storage_spec.is_extern())
       symbol.is_extern = false;
 
     if(declarator.get_bool(ID_C_template_case))
@@ -284,14 +257,16 @@ void cpp_declarator_convertert::combine_types(
           if(i != 0 || !symbol_code_type.get_bool(ID_C_is_virtual))
           {
             cpp_typecheck.error().source_location=source_location;
-            cpp_typecheck.error()
-              << "symbol '" << symbol.display_name() << "': parameter "
-              << (i + 1) << " type mismatch\n"
-              << "previous type: "
-              << cpp_typecheck.to_string(symbol_parameter.type())
-              << "\nnew type: "
-              << cpp_typecheck.to_string(decl_parameter.type())
-              << messaget::eom;
+            cpp_typecheck.error() << "symbol `" << symbol.display_name()
+                                  << "': parameter " << (i+1)
+                                  << " type mismatch\n"
+                                  << "previous type: "
+                                  << cpp_typecheck.to_string(
+                                       symbol_parameter.type())
+                                  << "\nnew type: "
+                                  << cpp_typecheck.to_string(
+                                       decl_parameter.type())
+                                  << messaget::eom;
             throw 0;
           }
         }
@@ -299,8 +274,7 @@ void cpp_declarator_convertert::combine_types(
         if(symbol.value.is_nil())
         {
           symbol_parameter.set_base_name(decl_parameter.get_base_name());
-          // set an empty identifier when no body is available
-          symbol_parameter.set_identifier(irep_idt());
+          symbol_parameter.set_identifier(decl_parameter.get_identifier());
           symbol_parameter.add_source_location()=
             decl_parameter.source_location();
         }
@@ -322,10 +296,12 @@ void cpp_declarator_convertert::combine_types(
   }
 
   cpp_typecheck.error().source_location=source_location;
-  cpp_typecheck.error() << "symbol '" << symbol.display_name()
+  cpp_typecheck.error() << "symbol `" << symbol.display_name()
                         << "' already declared with different type:\n"
-                        << "original: " << cpp_typecheck.to_string(symbol.type)
-                        << "\n     new: " << cpp_typecheck.to_string(final_type)
+                        << "original: "
+                        << cpp_typecheck.to_string(symbol.type)
+                        << "\n     new: "
+                        << cpp_typecheck.to_string(final_type)
                         << messaget::eom;
   throw 0;
 }
@@ -370,24 +346,20 @@ void cpp_declarator_convertert::handle_initializer(
   }
   else
   {
-#if 0
-    cpp_typecheck.error().source_location=source_location;
+    #if 0
+    cpp_typecheck.error().source_location=declarator.name());
 
     if(is_code)
-    {
-      cpp_typecheck.error() << "body of function '"
+      cpp_typecheck.str << "body of function `"
                         << symbol.display_name()
-                        << "' has already been defined" << messaget::eom;
-    }
+                        << "' has already been defined";
     else
-    {
-      cpp_typecheck.error() << "symbol '"
+      cpp_typecheck.str << "symbol `"
                         << symbol.display_name()
-                        << "' already has an initializer" << messaget::eom;
-    }
+                        << "' already has an initializer";
 
     throw 0;
-#endif
+    #endif
   }
 }
 
@@ -396,7 +368,9 @@ void cpp_declarator_convertert::get_final_identifier()
   std::string identifier=id2string(base_name);
 
   // main is always "C" linkage, as a matter of principle
-  if(is_code && base_name == ID_main && scope->prefix.empty())
+  if(is_code &&
+     base_name==ID_main &&
+     scope->prefix=="")
   {
     linkage_spec=ID_C;
   }
@@ -430,7 +404,9 @@ void cpp_declarator_convertert::get_final_identifier()
     }
   }
 
-  final_identifier = scope->prefix + identifier;
+  final_identifier=
+    scope->prefix+
+    identifier;
 }
 
 symbolt &cpp_declarator_convertert::convert_new_symbol(
@@ -446,9 +422,6 @@ symbolt &cpp_declarator_convertert::convert_new_symbol(
   symbol.base_name=base_name;
   symbol.value=declarator.value();
   symbol.location=declarator.name().source_location();
-  symbol.is_extern = storage_spec.is_extern();
-  symbol.is_parameter = declarator.get_is_parameter();
-  symbol.is_weak = storage_spec.is_weak();
   symbol.mode=linkage_spec==ID_auto?ID_cpp:linkage_spec;
   symbol.module=cpp_typecheck.module;
   symbol.type=final_type;
@@ -456,47 +429,54 @@ symbolt &cpp_declarator_convertert::convert_new_symbol(
   symbol.is_macro=is_typedef && !is_template_parameter;
   symbol.pretty_name=pretty_name;
 
-  if(is_code && !symbol.is_type)
+  // Constant? These are propagated.
+  if(symbol.type.get_bool(ID_C_constant) &&
+     symbol.value.is_not_nil())
+    symbol.is_macro=true;
+
+  if(member_spec.is_inline())
+    symbol.type.set(ID_C_inlined, true);
+
+  if(!symbol.is_type)
   {
-    // it is a function
-    symbol.is_static_lifetime = false;
-    symbol.is_thread_local = false;
-
-    symbol.is_file_local = storage_spec.is_static();
-
-    if(member_spec.is_inline())
-      to_code_type(symbol.type).set_inlined(true);
-
-    if(symbol.value.is_nil())
+    if(is_code)
     {
-      // we don't need the identifiers
-      for(auto &parameter : to_code_type(symbol.type).parameters())
-        parameter.set_identifier(irep_idt());
+      // it is a function
+      if(storage_spec.is_static())
+        symbol.is_file_local=true;
     }
-  }
-  else
-  {
-    symbol.is_lvalue =
-      !is_reference(symbol.type) &&
-      !(symbol.type.get_bool(ID_C_constant) && is_number(symbol.type) &&
-        symbol.value.id() == ID_constant);
+    else
+    {
+      // it is a variable
+      symbol.is_state_var=true;
+      symbol.is_lvalue = !is_reference(symbol.type) &&
+                         !(symbol.type.get_bool(ID_C_constant) &&
+                         is_number(symbol.type) &&
+                         symbol.value.id() == ID_constant);
 
-    symbol.is_static_lifetime =
-      !symbol.is_macro && !symbol.is_type &&
-      (cpp_typecheck.cpp_scopes.current_scope().is_global_scope() ||
-       storage_spec.is_static());
+      if(cpp_typecheck.cpp_scopes.current_scope().is_global_scope())
+      {
+        symbol.is_static_lifetime=true;
 
-    symbol.is_thread_local =
-      (!symbol.is_static_lifetime && !storage_spec.is_extern()) ||
-      storage_spec.is_thread_local();
-
-    symbol.is_file_local =
-      symbol.is_macro ||
-      (!cpp_typecheck.cpp_scopes.current_scope().is_global_scope() &&
-       !storage_spec.is_extern()) ||
-      (cpp_typecheck.cpp_scopes.current_scope().is_global_scope() &&
-       storage_spec.is_static()) ||
-      symbol.is_parameter;
+        if(storage_spec.is_extern())
+          symbol.is_extern=true;
+      }
+      else
+      {
+        if(storage_spec.is_static())
+        {
+          symbol.is_static_lifetime=true;
+          symbol.is_file_local=true;
+        }
+        else if(storage_spec.is_extern())
+        {
+          cpp_typecheck.error().source_location=storage_spec.location();
+          cpp_typecheck.error() << "external storage not permitted here"
+                                << messaget::eom;
+          throw 0;
+        }
+      }
+    }
   }
 
   if(symbol.is_static_lifetime)
@@ -528,8 +508,9 @@ symbolt &cpp_declarator_convertert::convert_new_symbol(
       if(!id.is_class() && !id.is_enum())
       {
         cpp_typecheck.error().source_location=new_symbol->location;
-        cpp_typecheck.error()
-          << "'" << base_name << "' already in scope" << messaget::eom;
+        cpp_typecheck.error() << "`" << base_name
+                              << "' already in scope"
+                              << messaget::eom;
         throw 0;
       }
     }

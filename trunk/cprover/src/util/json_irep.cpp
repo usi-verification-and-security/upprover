@@ -20,7 +20,7 @@ Author: Thomas Kiley, thomas.kiley@diffblue.com
 /// To convert to JSON from an irep structure by recursively generating JSON
 /// for the different sub trees.
 /// \param _include_comments: when writing JSON, should the comments
-///   sub tree be included.
+/// sub tree be included.
 json_irept::json_irept(bool _include_comments):
   include_comments(_include_comments)
 {
@@ -29,15 +29,19 @@ json_irept::json_irept(bool _include_comments):
 /// To convert to JSON from an irep structure by recursively generating JSON
 /// for the different sub trees.
 /// \param irep: The irep structure to turn into json
-/// \return The json object.
+/// \return: The json object.
 json_objectt json_irept::convert_from_irep(const irept &irep) const
 {
   json_objectt irep_object;
 
-  irep_object["id"] = json_stringt(irep.id_string());
+  if(irep.id()!=ID_nil)
+    irep_object["id"]=json_stringt(irep.id_string());
 
   convert_sub_tree("sub", irep.get_sub(), irep_object);
   convert_named_sub_tree("namedSub", irep.get_named_sub(), irep_object);
+
+  if(include_comments)
+    convert_named_sub_tree("comment", irep.get_comments(), irep_object);
 
   return irep_object;
 }
@@ -82,11 +86,10 @@ void json_irept::convert_named_sub_tree(
   {
     json_objectt sub_objects;
     for(const auto &sub_tree : sub_trees)
-      if(include_comments || !irept::is_comment(sub_tree.first))
-      {
-        json_objectt sub_object = convert_from_irep(sub_tree.second);
-        sub_objects[id2string(sub_tree.first)] = sub_object;
-      }
+    {
+      json_objectt sub_object=convert_from_irep(sub_tree.second);
+      sub_objects[id2string(sub_tree.first)]=sub_object;
+    }
     parent[sub_tree_id]=sub_objects;
   }
 }
@@ -96,69 +99,27 @@ void json_irept::convert_named_sub_tree(
 /// \return result - irep equivalent of input
 irept json_irept::convert_from_json(const jsont &in) const
 {
-  if(!in.is_object())
+  std::vector<std::string> have_keys;
+  for(const auto &keyval : in.object)
+    have_keys.push_back(keyval.first);
+  std::sort(have_keys.begin(), have_keys.end());
+  if(have_keys!=std::vector<std::string>{"comment", "id", "namedSub", "sub"})
   {
     throw deserialization_exceptiont(
-      "irep JSON representation must be an object");
+      "irep JSON representation is missing one of needed keys: "
+      "'id', 'sub', 'namedSub', 'comment'");
   }
 
-  const json_objectt &json_object = to_json_object(in);
+  irept out(in["id"].value);
 
-  irept out;
+  for(const auto &sub : in["sub"].array)
+    out.get_sub().push_back(convert_from_json(sub));
 
-  {
-    const auto it = json_object.find("id");
+  for(const auto &named_sub : in["namedSub"].object)
+    out.add(named_sub.first)=convert_from_json(named_sub.second);
 
-    if(it != json_object.end())
-    {
-      out.id(it->second.value);
-    }
-  }
-
-  {
-    const auto it = json_object.find("sub");
-
-    if(it != json_object.end())
-    {
-      for(const auto &sub : to_json_array(it->second))
-        out.get_sub().push_back(convert_from_json(sub));
-    }
-  }
-
-  {
-    const auto it = json_object.find("namedSub");
-
-    if(it != json_object.end())
-    {
-      for(const auto &named_sub : to_json_object(it->second))
-        out.add(named_sub.first) = convert_from_json(named_sub.second);
-    }
-  }
+  for(const auto &comment : in["comment"].object)
+    out.add(comment.first)=convert_from_json(comment.second);
 
   return out;
-}
-
-json_objectt json(const source_locationt &location)
-{
-  json_objectt result;
-
-  if(!location.get_working_directory().empty())
-    result["workingDirectory"] = json_stringt(location.get_working_directory());
-
-  if(!location.get_file().empty())
-    result["file"] = json_stringt(location.get_file());
-
-  if(!location.get_line().empty())
-    result["line"] = json_stringt(location.get_line());
-
-  if(!location.get_column().empty())
-    result["column"] = json_stringt(location.get_column());
-
-  if(!location.get_function().empty())
-    result["function"] = json_stringt(location.get_function());
-
-  if(!location.get_java_bytecode_index().empty())
-    result["bytecodeIndex"] = json_stringt(location.get_java_bytecode_index());
-
-  return result;
 }

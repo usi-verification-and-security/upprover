@@ -22,16 +22,19 @@ public:
   postconditiont(
     const namespacet &_ns,
     const value_sett &_value_set,
-    const SSA_stept &_SSA_step,
-    const goto_symex_statet &_s)
-    : ns(_ns), value_set(_value_set), SSA_step(_SSA_step), s(_s)
+    const symex_target_equationt::SSA_stept &_SSA_step,
+    const goto_symex_statet &_s):
+    ns(_ns),
+    value_set(_value_set),
+    SSA_step(_SSA_step),
+    s(_s)
   {
   }
 
 protected:
   const namespacet &ns;
   const value_sett &value_set;
-  const SSA_stept &SSA_step;
+  const symex_target_equationt::SSA_stept &SSA_step;
   const goto_symex_statet &s;
 
 public:
@@ -130,8 +133,8 @@ void postconditiont::strengthen(exprt &dest)
        SSA_step.ssa_lhs.type().id()==ID_struct)
       return;
 
-    exprt equality =
-      get_original_name(equal_exprt{SSA_step.ssa_lhs, SSA_step.ssa_rhs});
+    equal_exprt equality(SSA_step.ssa_lhs, SSA_step.ssa_rhs);
+    s.get_original_name(equality);
 
     if(dest.is_true())
       dest.swap(equality);
@@ -160,12 +163,20 @@ bool postconditiont::is_used(
   else if(expr.id()==ID_dereference)
   {
     // aliasing may happen here
-    const std::vector<exprt> expr_set =
-      value_set.get_value_set(to_dereference_expr(expr).pointer(), ns);
-    const auto original_names = make_range(expr_set).map(
-      [](const exprt &e) { return get_original_name(e); });
-    const std::unordered_set<irep_idt> symbols =
-      find_symbols_or_nexts(original_names.begin(), original_names.end());
+    value_setst::valuest expr_set;
+    value_set.get_value_set(to_dereference_expr(expr).pointer(), expr_set, ns);
+    std::unordered_set<irep_idt> symbols;
+
+    for(value_setst::valuest::const_iterator
+        it=expr_set.begin();
+        it!=expr_set.end();
+        it++)
+    {
+      exprt tmp(*it);
+      s.get_original_name(tmp);
+      find_symbols(tmp, symbols);
+    }
+
     return symbols.find(identifier)!=symbols.end();
   }
   else

@@ -110,10 +110,10 @@ void acceleration_utilst::find_modified(
   }
 }
 
+
 bool acceleration_utilst::check_inductive(
   std::map<exprt, polynomialt> polynomials,
-  patht &path,
-  guard_managert &guard_manager)
+  patht &path)
 {
   // Checking that our polynomial is inductive with respect to the loop body is
   // equivalent to checking safety of the following program:
@@ -126,7 +126,7 @@ bool acceleration_utilst::check_inductive(
   // assert (target1==polynomial1);
   // assert (target2==polynomial2);
   // ...
-  scratch_programt program(symbol_table, message_handler, guard_manager);
+  scratch_programt program(symbol_table, message_handler);
   std::vector<exprt> polynomials_hold;
   substitutiont substitution;
 
@@ -137,32 +137,36 @@ bool acceleration_utilst::check_inductive(
       ++it)
   {
     const equal_exprt holds(it->first, it->second.to_expr());
-    program.add(goto_programt::make_assumption(holds));
+    program.add_instruction(ASSUME)->guard=holds;
 
     polynomials_hold.push_back(holds);
   }
 
   program.append_path(path);
 
-  auto inc_loop_counter = code_assignt(
-    loop_counter,
-    plus_exprt(loop_counter, from_integer(1, loop_counter.type())));
-
-  program.add(goto_programt::make_assignment(inc_loop_counter));
+  codet inc_loop_counter=
+    code_assignt(
+      loop_counter,
+      plus_exprt(loop_counter, from_integer(1, loop_counter.type())));
+  program.add_instruction(ASSIGN)->code=inc_loop_counter;
 
   ensure_no_overflows(program);
 
-  for(const auto &p : polynomials_hold)
-    program.add(goto_programt::make_assertion(p));
+  for(std::vector<exprt>::iterator it=polynomials_hold.begin();
+      it!=polynomials_hold.end();
+      ++it)
+  {
+    program.add_instruction(ASSERT)->guard=*it;
+  }
 
 #ifdef DEBUG
   std::cout << "Checking following program for inductiveness:\n";
-  program.output(ns, irep_idt(), std::cout);
+  program.output(ns, "", std::cout);
 #endif
 
   try
   {
-    if(program.check_sat(guard_manager))
+    if(program.check_sat())
     {
       // We found a counterexample to inductiveness... :-(
   #ifdef DEBUG
@@ -211,15 +215,23 @@ void acceleration_utilst::stash_variables(
   expr_sett modified,
   substitutiont &substitution)
 {
-  find_symbols_sett vars =
-    find_symbols_or_nexts(modified.begin(), modified.end());
-  const irep_idt &loop_counter_name =
-    to_symbol_expr(loop_counter).get_identifier();
+  find_symbols_sett vars;
+
+  for(expr_sett::iterator it=modified.begin();
+      it!=modified.end();
+      ++it)
+  {
+    find_symbols(*it, vars);
+  }
+
+  irep_idt loop_counter_name=to_symbol_expr(loop_counter).get_identifier();
   vars.erase(loop_counter_name);
 
-  for(const irep_idt &symbol : vars)
+  for(find_symbols_sett::iterator it=vars.begin();
+      it!=vars.end();
+      ++it)
   {
-    const symbolt &orig = symbol_table.lookup_ref(symbol);
+    symbolt orig=*symbol_table.lookup(*it);
     symbolt stashed_sym=fresh_symbol("polynomial::stash", orig.type);
     substitution[orig.symbol_expr()]=stashed_sym.symbol_expr();
     program.assign(stashed_sym.symbol_expr(), orig.symbol_expr());
@@ -264,7 +276,7 @@ exprt acceleration_utilst::precondition(patht &path)
     }
     else if(t->is_assume() || t->is_assert())
     {
-      ret = implies_exprt(t->get_condition(), ret);
+      ret=implies_exprt(t->guard, ret);
     }
     else
     {
@@ -323,7 +335,8 @@ void acceleration_utilst::push_nondet(exprt &expr)
     push_nondet(*it);
   }
 
-  if(expr.id() == ID_not && to_not_expr(expr).op().id() == ID_nondet)
+  if(expr.id()==ID_not &&
+     expr.op0().id()==ID_nondet)
   {
     expr = side_effect_expr_nondett(expr.type(), expr.source_location());
   }
@@ -333,8 +346,8 @@ void acceleration_utilst::push_nondet(exprt &expr)
           expr.id()==ID_le ||
           expr.id()==ID_ge)
   {
-    const auto &rel_expr = to_binary_relation_expr(expr);
-    if(rel_expr.lhs().id() == ID_nondet || rel_expr.rhs().id() == ID_nondet)
+    if(expr.op0().id()==ID_nondet ||
+       expr.op1().id()==ID_nondet)
     {
       expr = side_effect_expr_nondett(expr.type(), expr.source_location());
     }
@@ -344,8 +357,7 @@ void acceleration_utilst::push_nondet(exprt &expr)
 bool acceleration_utilst::do_assumptions(
   std::map<exprt, polynomialt> polynomials,
   patht &path,
-  exprt &guard,
-  guard_managert &guard_manager)
+  exprt &guard)
 {
   // We want to check that if an assumption fails, the next iteration can't be
   // feasible again.  To do this we check the following program for safety:
@@ -372,7 +384,7 @@ bool acceleration_utilst::do_assumptions(
   // assert(!precondition);
 
   exprt condition=precondition(path);
-  scratch_programt program(symbol_table, message_handler, guard_manager);
+  scratch_programt program(symbol_table, message_handler);
 
   substitutiont substitution;
   stash_polynomials(program, polynomials, substitution, path);
@@ -425,19 +437,19 @@ bool acceleration_utilst::do_assumptions(
 
   ensure_no_overflows(program);
 
-  program.add(goto_programt::make_assertion(condition));
+  program.add_instruction(ASSERT)->guard=condition;
 
   guard=not_exprt(condition);
   simplify(guard, ns);
 
 #ifdef DEBUG
   std::cout << "Checking following program for monotonicity:\n";
-  program.output(ns, irep_idt(), std::cout);
+  program.output(ns, "", std::cout);
 #endif
 
   try
   {
-    if(program.check_sat(guard_manager))
+    if(program.check_sat())
     {
   #ifdef DEBUG
       std::cout << "Path is not monotone\n";
@@ -485,7 +497,7 @@ void acceleration_utilst::ensure_no_overflows(scratch_programt &program)
 #endif
 
   instrumenter.add_overflow_checks();
-  program.add(goto_programt::make_assumption(not_exprt(overflow_var)));
+  program.add_instruction(ASSUME)->guard=not_exprt(overflow_var);
 
   // goto_functionst::goto_functiont fn;
   // fn.body.instructions.swap(program.instructions);
@@ -878,7 +890,7 @@ bool acceleration_utilst::do_nonrecursive(
   // for these variables by just forward simulating the path and
   // taking the expressions we get at the end.
   replace_mapt state;
-  std::unordered_set<index_exprt, irep_hash> array_writes;
+  expr_sett array_writes;
   expr_sett arrays_written;
   expr_sett arrays_read;
 
@@ -915,8 +927,8 @@ bool acceleration_utilst::do_nonrecursive(
   {
     if(it->is_assign())
     {
-      exprt lhs = it->get_assign().lhs();
-      exprt rhs = it->get_assign().rhs();
+      exprt lhs=it->code.op0();
+      exprt rhs=it->code.op1();
 
       if(lhs.id()==ID_dereference)
       {
@@ -929,22 +941,21 @@ bool acceleration_utilst::do_nonrecursive(
 
       if(lhs.id()==ID_index)
       {
-        auto &lhs_index_expr = to_index_expr(lhs);
-        replace_expr(state, lhs_index_expr.index());
-        array_writes.insert(lhs_index_expr);
+        replace_expr(state, lhs.op1());
+        array_writes.insert(lhs);
 
-        if(arrays_written.find(lhs_index_expr.array()) != arrays_written.end())
+        if(arrays_written.find(lhs.op0())!=arrays_written.end())
         {
           // We've written to this array before -- be conservative and bail
           // out now.
 #ifdef DEBUG
-          std::cout << "Bailing out on array written to twice in loop: "
-                    << expr2c(lhs_index_expr.array(), ns) << '\n';
+          std::cout << "Bailing out on array written to twice in loop: " <<
+            expr2c(lhs.op0(), ns) << '\n';
 #endif
           return false;
         }
 
-        arrays_written.insert(lhs_index_expr.array());
+        arrays_written.insert(lhs.op0());
       }
 
       replace_expr(state, rhs);
@@ -984,10 +995,12 @@ bool acceleration_utilst::do_nonrecursive(
     }
   }
 
-  for(const auto &write : array_writes)
+  for(expr_sett::iterator it=array_writes.begin();
+      it!=array_writes.end();
+      ++it)
   {
-    const auto &lhs = write;
-    const auto &rhs = state[write];
+    const exprt &lhs=*it;
+    const exprt &rhs=state[*it];
 
     if(!assign_array(lhs, rhs, program))
     {
@@ -1003,7 +1016,7 @@ bool acceleration_utilst::do_nonrecursive(
 }
 
 bool acceleration_utilst::assign_array(
-  const index_exprt &lhs,
+  const exprt &lhs,
   const exprt &rhs,
   scratch_programt &program)
 {
@@ -1071,7 +1084,7 @@ bool acceleration_utilst::assign_array(
   {
     if(idx.id()==ID_pointer_offset)
     {
-      poly.from_expr(to_unary_expr(idx).op());
+      poly.from_expr(idx.op0());
     }
     else
     {
@@ -1111,13 +1124,13 @@ bool acceleration_utilst::assign_array(
   {
     replace_expr(
       loop_counter, from_integer(0, loop_counter.type()), lower_bound);
-    lower_bound = simplify_expr(std::move(lower_bound), ns);
+    simplify_expr(lower_bound, ns);
   }
   else
   {
     replace_expr(
       loop_counter, from_integer(0, loop_counter.type()), upper_bound);
-    upper_bound = simplify_expr(std::move(upper_bound), ns);
+    simplify_expr(upper_bound, ns);
   }
 
   if(stride==0)
@@ -1194,13 +1207,10 @@ void acceleration_utilst::gather_array_accesses(
   const exprt &e,
   expr_sett &arrays)
 {
-  if(e.id() == ID_index)
+  if(e.id()==ID_index ||
+     e.id()==ID_dereference)
   {
-    arrays.insert(to_index_expr(e).array());
-  }
-  else if(e.id() == ID_dereference)
-  {
-    arrays.insert(to_dereference_expr(e).pointer());
+    arrays.insert(e.op0());
   }
 
   forall_operands(it, e)
@@ -1225,7 +1235,7 @@ void acceleration_utilst::extract_polynomial(
     std::map<exprt, int> degrees;
 
     mp_integer mp=binary2integer(concrete_term.get_value().c_str(), true);
-    monomial.coeff = numeric_cast_v<int>(mp);
+    monomial.coeff=mp.to_long();
 
     if(monomial.coeff==0)
     {

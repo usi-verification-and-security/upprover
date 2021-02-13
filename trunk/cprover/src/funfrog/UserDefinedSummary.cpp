@@ -60,12 +60,12 @@ void UserDefinedSummaryt::dump_list_templates(
 
     std::unique_ptr<path_storaget> worklist;
     ui_message_handler.set_verbosity(messaget::M_STATISTICS);
-    guard_managert guard_manager; //since CBMC5.12
+    //guard_managert guard_manager; //since CBMC5.12
     symex_assertion_sumt symex(
             goto_functions, omega.get_call_tree_root(), options, *worklist, ns.get_symbol_table(),
             equation, ui_message_handler, goto_program, INT_MAX,
             true, true, unwind,
-            options.get_bool_option("partial-loops"), guard_manager);
+            options.get_bool_option("partial-loops"));
 
     symex.set_assertion_info_to_verify(&ass_info);
 

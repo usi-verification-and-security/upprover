@@ -70,11 +70,6 @@ public:
     return id_class==id_classt::TYPEDEF;
   }
 
-  bool is_template_scope() const
-  {
-    return id_class == id_classt::TEMPLATE_SCOPE;
-  }
-
   irep_idt identifier, base_name;
 
   // if it is a member or method, what class is it in?

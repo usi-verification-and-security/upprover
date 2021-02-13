@@ -79,7 +79,7 @@ void satcheck_booleforce_baset::lcnf(const bvt &bv)
   clause_counter++;
 }
 
-propt::resultt satcheck_booleforce_baset::do_prop_solve()
+propt::resultt satcheck_booleforce_baset::prop_solve()
 {
   PRECONDITION(status == SAT || status == INIT);
 
@@ -103,7 +103,7 @@ propt::resultt satcheck_booleforce_baset::do_prop_solve()
       break;
     }
 
-    log.status() << msg << messaget::eom;
+    messaget::status() << msg << messaget::eom;
   }
 
   if(result==BOOLEFORCE_UNSATISFIABLE)

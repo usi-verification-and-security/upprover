@@ -12,14 +12,15 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_ANALYSES_INVARIANT_SET_H
 #define CPROVER_ANALYSES_INVARIANT_SET_H
 
-#include <util/interval_template.h>
-#include <util/mp_arith.h>
-#include <util/numbering.h>
 #include <util/std_code.h>
-#include <util/threeval.h>
+#include <util/numbering.h>
 #include <util/union_find.h>
+#include <util/threeval.h>
+#include <util/mp_arith.h>
 
 #include <pointer-analysis/value_sets.h>
+
+#include "interval_template.h"
 
 class inv_object_storet
 {
@@ -50,7 +51,9 @@ public:
 
   void output(std::ostream &out) const;
 
-  std::string to_string(unsigned n) const;
+  std::string to_string(
+    unsigned n,
+    const irep_idt &identifier) const;
 
 protected:
   const namespacet &ns;
@@ -92,19 +95,18 @@ public:
   bool threaded;
   bool is_false;
 
-  invariant_sett(
-    value_setst &_value_sets,
-    inv_object_storet &_object_store,
-    const namespacet &_ns)
-    : threaded(false),
-      is_false(false),
-      value_sets(_value_sets),
-      object_store(_object_store),
-      ns(_ns)
+  invariant_sett():
+    threaded(false),
+    is_false(false),
+    value_sets(nullptr),
+    object_store(nullptr),
+    ns(nullptr)
   {
   }
 
-  void output(std::ostream &out) const;
+  void output(
+    const irep_idt &identifier,
+    std::ostream &out) const;
 
   // true = added something
   bool make_union(const invariant_sett &other_invariants);
@@ -143,6 +145,21 @@ public:
     const exprt &lhs,
     const exprt &rhs);
 
+  void set_value_sets(value_setst &_value_sets)
+  {
+    value_sets=&_value_sets;
+  }
+
+  void set_object_store(inv_object_storet &_object_store)
+  {
+    object_store=&_object_store;
+  }
+
+  void set_namespace(const namespacet &_ns)
+  {
+    ns=&_ns;
+  }
+
   static void intersection(ineq_sett &dest, const ineq_sett &other)
   {
     ineq_sett::iterator it_d=dest.begin();
@@ -180,9 +197,9 @@ public:
   void simplify(exprt &expr) const;
 
 protected:
-  value_setst &value_sets;
-  inv_object_storet &object_store;
-  const namespacet &ns;
+  value_setst *value_sets;
+  inv_object_storet *object_store;
+  const namespacet *ns;
 
   tvt implies_rec(const exprt &expr) const;
   static void nnf(exprt &expr, bool negate=false);
@@ -202,7 +219,9 @@ protected:
 
   void modifies(unsigned a);
 
-  std::string to_string(unsigned a) const;
+  std::string to_string(
+    unsigned a,
+    const irep_idt &identifier) const;
 
   bool get_object(
     const exprt &expr,

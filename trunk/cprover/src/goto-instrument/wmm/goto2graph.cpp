@@ -18,7 +18,6 @@ Date: 2012
 #include <fstream>
 
 #include <util/options.h>
-#include <util/prefix.h>
 
 #include <linking/static_lifetime_init.h>
 
@@ -146,32 +145,31 @@ unsigned instrumentert::goto2graph_cfg(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_function(
-  value_setst &value_sets,
-  memory_modelt model,
-  bool no_dependencies,
-  loop_strategyt replicate_body,
-  const irep_idt &function_id,
-  std::set<instrumentert::cfg_visitort::nodet> &ending_vertex)
+    value_setst &value_sets,
+    memory_modelt model,
+    bool no_dependencies,
+    loop_strategyt replicate_body,
+    const irep_idt &function,
+    std::set<instrumentert::cfg_visitort::nodet> &ending_vertex)
 {
   /* flow: egraph */
 
-  instrumenter.message.debug()
-    << "visit function " << function_id << messaget::eom;
+  instrumenter.message.debug() << "visit function "
+                               << function << messaget::eom;
 
-  if(function_id == INITIALIZE_FUNCTION)
+  if(function == INITIALIZE_FUNCTION)
   {
     return;
   }
 
 #ifdef LOCAL_MAY
   local_may_aliast local_may(
-    instrumenter.goto_functions.function_map[function_id]);
+    instrumenter.goto_functions.function_map[function]);
 #endif
 
   /* goes through the function */
-  goto_programt &goto_program =
-    instrumenter.goto_functions.function_map[function_id].body;
-  Forall_goto_program_instructions(i_it, goto_program)
+  Forall_goto_program_instructions(i_it,
+    instrumenter.goto_functions.function_map[function].body)
   {
     goto_programt::instructiont &instruction=*i_it;
 
@@ -200,18 +198,17 @@ void instrumentert::cfg_visitort::visit_cfg_function(
       #ifdef ATOMIC_BREAK
       visit_cfg_thread();
       #elif defined ATOMIC_FENCE
-      visit_cfg_fence(i_it, function_id);
-#else
+      visit_cfg_fence(i_it);
+      #else
       /* propagates */
       visit_cfg_propagate(i_it);
-#endif
+      #endif
     }
     /* a:=b -o-> Rb -po-> Wa */
     else if(instruction.is_assign())
     {
       visit_cfg_assign(
         value_sets,
-        function_id,
         i_it,
         no_dependencies
 #ifdef LOCAL_MAY
@@ -223,11 +220,11 @@ void instrumentert::cfg_visitort::visit_cfg_function(
     else if(is_fence(instruction, instrumenter.ns))
     {
       instrumenter.message.debug() << "Constructing a fence" << messaget::eom;
-      visit_cfg_fence(i_it, function_id);
+      visit_cfg_fence(i_it);
     }
     else if(model!=TSO && is_lwfence(instruction, instrumenter.ns))
     {
-      visit_cfg_lwfence(i_it, function_id);
+      visit_cfg_lwfence(i_it);
     }
     else if(model==TSO && is_lwfence(instruction, instrumenter.ns))
     {
@@ -237,7 +234,7 @@ void instrumentert::cfg_visitort::visit_cfg_function(
     else if(instruction.is_other()
       && instruction.code.get_statement()==ID_fence)
     {
-      visit_cfg_asm_fence(i_it, function_id);
+      visit_cfg_asm_fence(i_it);
     }
     else if(instruction.is_function_call())
     {
@@ -246,15 +243,9 @@ void instrumentert::cfg_visitort::visit_cfg_function(
     }
     else if(instruction.is_goto())
     {
-      visit_cfg_goto(
-        function_id,
-        goto_program,
-        i_it,
-        replicate_body,
-        value_sets
+      visit_cfg_goto(i_it, replicate_body, value_sets
 #ifdef LOCAL_MAY
-        ,
-        local_may
+        , local_may
 #endif
       ); // NOLINT(whitespace/parens)
     }
@@ -262,7 +253,7 @@ void instrumentert::cfg_visitort::visit_cfg_function(
     else if(instruction.is_return())
     {
       visit_cfg_propagate(i_it);
-      add_all_pos(it, out_nodes[function_id], in_pos[i_it]);
+      add_all_pos(it, out_nodes[function], in_pos[i_it]);
     }
 #endif
     else
@@ -276,16 +267,15 @@ void instrumentert::cfg_visitort::visit_cfg_function(
   egraph.map_data_dp.insert(new_dp);
   data_dp.print(instrumenter.message);
 
-  if(instrumenter.goto_functions.function_map[function_id]
-       .body.instructions.empty())
+  if(instrumenter.goto_functions.function_map[function]
+     .body.instructions.empty())
   {
     /* empty set of ending edges */
   }
   else
   {
-    goto_programt::instructionst::iterator it =
-      instrumenter.goto_functions.function_map[function_id]
-        .body.instructions.end();
+    goto_programt::instructionst::iterator it=instrumenter
+      .goto_functions.function_map[function].body.instructions.end();
     --it;
     ending_vertex=in_pos[it];
   }
@@ -406,15 +396,13 @@ event_idt alt_copy_segment(wmm_grapht &alt_egraph,
 }
 
 bool instrumentert::cfg_visitort::contains_shared_array(
-  const irep_idt &function_id,
   goto_programt::const_targett targ,
   goto_programt::const_targett i_it,
   value_setst &value_sets
-#ifdef LOCAL_MAY
-  ,
-  local_may_aliast local_may
-#endif
-  ) const // NOLINT(whitespace/parens)
+  #ifdef LOCAL_MAY
+  , local_may_aliast local_may
+  #endif
+) const
 {
   instrumenter.message.debug() << "contains_shared_array called for "
     << targ->source_location.get_line() << " and "
@@ -423,15 +411,10 @@ bool instrumentert::cfg_visitort::contains_shared_array(
   {
     instrumenter.message.debug() << "Do we have an array at line "
       <<cur->source_location.get_line()<<"?" << messaget::eom;
-    rw_set_loct rw_set(
-      ns,
-      value_sets,
-      function_id,
-      cur
-#ifdef LOCAL_MAY
-      ,
-      local_may
-#endif
+    rw_set_loct rw_set(ns, value_sets, cur
+      #ifdef LOCAL_MAY
+      , local_may
+      #endif
     ); // NOLINT(whitespace/parens)
     instrumenter.message.debug() << "Writes: "<<rw_set.w_entries.size()
       <<"; Reads:"<<rw_set.r_entries.size() << messaget::eom;
@@ -462,14 +445,11 @@ bool instrumentert::cfg_visitort::contains_shared_array(
 
 /// strategy: fwd/bwd alternation
 void inline instrumentert::cfg_visitort::visit_cfg_body(
-  const irep_idt &function_id,
-  const goto_programt &goto_program,
   goto_programt::const_targett i_it,
   loop_strategyt replicate_body,
   value_setst &value_sets
 #ifdef LOCAL_MAY
-  ,
-  local_may_aliast &local_may
+  , local_may_aliast &local_may
 #endif
 )
 {
@@ -487,15 +467,10 @@ void inline instrumentert::cfg_visitort::visit_cfg_body(
       switch(replicate_body)
       {
         case arrays_only:
-          duplicate_this = contains_shared_array(
-            function_id,
-            target,
-            i_it,
-            value_sets
-#ifdef LOCAL_MAY
-            ,
-            local_may
-#endif
+          duplicate_this=contains_shared_array(target, i_it, value_sets
+            #ifdef LOCAL_MAY
+            , local_may
+            #endif
           ); // NOLINT(whitespace/parens)
           break;
         case all_loops:
@@ -507,7 +482,7 @@ void inline instrumentert::cfg_visitort::visit_cfg_body(
       }
 
       if(duplicate_this)
-        visit_cfg_duplicate(goto_program, target, i_it);
+        visit_cfg_duplicate(target, i_it);
       else
         visit_cfg_backedge(target, i_it);
     }
@@ -515,11 +490,12 @@ void inline instrumentert::cfg_visitort::visit_cfg_body(
 }
 
 void inline instrumentert::cfg_visitort::visit_cfg_duplicate(
-  const goto_programt &goto_program,
   goto_programt::const_targett targ,
   goto_programt::const_targett i_it)
 {
   instrumenter.message.status() << "Duplication..." << messaget::eom;
+  const goto_functionst::goto_functiont &fun=
+    instrumenter.goto_functions.function_map[i_it->function];
 
   bool found_pos=false;
   goto_programt::const_targett new_targ=targ;
@@ -527,7 +503,8 @@ void inline instrumentert::cfg_visitort::visit_cfg_duplicate(
   if(in_pos[targ].empty())
   {
     /* tries to find the next node after the back edge */
-    for(; new_targ != goto_program.instructions.end(); ++new_targ)
+    for(; new_targ!=fun.body.instructions.end();
+      ++new_targ)
     {
       if(in_pos.find(new_targ)!=in_pos.end() && !in_pos[new_targ].empty())
       {
@@ -536,9 +513,6 @@ void inline instrumentert::cfg_visitort::visit_cfg_duplicate(
       }
     }
 
-    // The code below uses heuristics to limit false positives: no cycles across
-    // inlined functions, which we would detect when file names or
-    // (user-provided) function names change _within a single goto_program_.
     if(!found_pos
       || new_targ->source_location.get_function()
         !=targ->source_location.get_function()
@@ -646,14 +620,11 @@ void inline instrumentert::cfg_visitort::visit_cfg_backedge(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_goto(
-  const irep_idt &function_id,
-  const goto_programt &goto_program,
   goto_programt::instructionst::iterator i_it,
   loop_strategyt replicate_body,
   value_setst &value_sets
 #ifdef LOCAL_MAY
-  ,
-  local_may_aliast &local_may
+  , local_may_aliast &local_may
 #endif
 )
 {
@@ -669,15 +640,9 @@ void instrumentert::cfg_visitort::visit_cfg_goto(
   if(instruction.is_backwards_goto())
   {
     instrumenter.message.debug() << "backward goto" << messaget::eom;
-    visit_cfg_body(
-      function_id,
-      goto_program,
-      i_it,
-      replicate_body,
-      value_sets
+    visit_cfg_body(i_it, replicate_body, value_sets
 #ifdef LOCAL_MAY
-      ,
-      local_may
+    , local_may
 #endif
     ); // NOLINT(whitespace/parens)
   }
@@ -746,18 +711,11 @@ void instrumentert::cfg_visitort::visit_cfg_function_call(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_lwfence(
-  goto_programt::instructionst::iterator i_it,
-  const irep_idt &function_id)
+  goto_programt::instructionst::iterator i_it)
 {
   const goto_programt::instructiont &instruction=*i_it;
-  const abstract_eventt new_fence_event(
-    abstract_eventt::operationt::Lwfence,
-    thread,
-    "f",
-    instrumenter.unique_id++,
-    instruction.source_location,
-    function_id,
-    false);
+  const abstract_eventt new_fence_event(abstract_eventt::operationt::Lwfence,
+    thread, "f", instrumenter.unique_id++, instruction.source_location, false);
   const event_idt new_fence_node=egraph.add_node();
   egraph[new_fence_node](new_fence_event);
   const event_idt new_fence_gnode=egraph_alt.add_node();
@@ -785,8 +743,7 @@ void instrumentert::cfg_visitort::visit_cfg_lwfence(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_asm_fence(
-  goto_programt::instructionst::iterator i_it,
-  const irep_idt &function_id)
+  goto_programt::instructionst::iterator i_it)
 {
   const goto_programt::instructiont &instruction=*i_it;
   bool WRfence=instruction.code.get_bool(ID_WRfence);
@@ -796,21 +753,9 @@ void instrumentert::cfg_visitort::visit_cfg_asm_fence(
   bool WWcumul=instruction.code.get_bool(ID_WWcumul);
   bool RRcumul=instruction.code.get_bool(ID_RRcumul);
   bool RWcumul=instruction.code.get_bool(ID_RWcumul);
-  const abstract_eventt new_fence_event(
-    abstract_eventt::operationt::ASMfence,
-    thread,
-    "asm",
-    instrumenter.unique_id++,
-    instruction.source_location,
-    function_id,
-    false,
-    WRfence,
-    WWfence,
-    RRfence,
-    RWfence,
-    WWcumul,
-    RWcumul,
-    RRcumul);
+  const abstract_eventt new_fence_event(abstract_eventt::operationt::ASMfence,
+    thread, "asm", instrumenter.unique_id++, instruction.source_location,
+    false, WRfence, WWfence, RRfence, RWfence, WWcumul, RWcumul, RRcumul);
   const event_idt new_fence_node=egraph.add_node();
   egraph[new_fence_node](new_fence_event);
   const event_idt new_fence_gnode=egraph_alt.add_node();
@@ -839,26 +784,19 @@ void instrumentert::cfg_visitort::visit_cfg_asm_fence(
 
 void instrumentert::cfg_visitort::visit_cfg_assign(
   value_setst &value_sets,
-  const irep_idt &function_id,
   goto_programt::instructionst::iterator &i_it,
   bool no_dependencies
 #ifdef LOCAL_MAY
-  ,
-  local_may_aliast &local_may
+  , local_may_aliast &local_may
 #endif
-)
+  )
 {
   goto_programt::instructiont &instruction=*i_it;
 
   /* Read (Rb) */
-  rw_set_loct rw_set(
-    ns,
-    value_sets,
-    function_id,
-    i_it
+  rw_set_loct rw_set(ns, value_sets, i_it
 #ifdef LOCAL_MAY
-    ,
-    local_may
+    , local_may
 #endif
   ); // NOLINT(whitespace/parens)
 
@@ -891,14 +829,9 @@ void instrumentert::cfg_visitort::visit_cfg_assign(
     assert(read_expr);
 #endif
 
-    const abstract_eventt new_read_event(
-      abstract_eventt::operationt::Read,
-      thread,
-      id2string(read),
-      instrumenter.unique_id++,
-      instruction.source_location,
-      function_id,
-      local(read));
+    const abstract_eventt new_read_event(abstract_eventt::operationt::Read,
+      thread, id2string(read), instrumenter.unique_id++,
+      instruction.source_location, local(read));
 
     const event_idt new_read_node=egraph.add_node();
     egraph[new_read_node]=new_read_event;
@@ -994,14 +927,9 @@ void instrumentert::cfg_visitort::visit_cfg_assign(
     // assert(write_expr);
 
     /* creates Write */
-    const abstract_eventt new_write_event(
-      abstract_eventt::operationt::Write,
-      thread,
-      id2string(write),
-      instrumenter.unique_id++,
-      instruction.source_location,
-      function_id,
-      local(write));
+    const abstract_eventt new_write_event(abstract_eventt::operationt::Write,
+      thread, id2string(write), instrumenter.unique_id++,
+      instruction.source_location, local(write));
 
     const event_idt new_write_node=egraph.add_node();
     egraph[new_write_node](new_write_event);
@@ -1171,18 +1099,11 @@ void instrumentert::cfg_visitort::visit_cfg_assign(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_fence(
-  goto_programt::instructionst::iterator i_it,
-  const irep_idt &function_id)
+  goto_programt::instructionst::iterator i_it)
 {
   const goto_programt::instructiont &instruction=*i_it;
-  const abstract_eventt new_fence_event(
-    abstract_eventt::operationt::Fence,
-    thread,
-    "F",
-    instrumenter.unique_id++,
-    instruction.source_location,
-    function_id,
-    false);
+  const abstract_eventt new_fence_event(abstract_eventt::operationt::Fence,
+    thread, "F", instrumenter.unique_id++, instruction.source_location, false);
   const event_idt new_fence_node=egraph.add_node();
   egraph[new_fence_node](new_fence_event);
   const event_idt new_fence_gnode=egraph_alt.add_node();
@@ -1245,7 +1166,9 @@ void inline instrumentert::add_instr_to_interleaving(
   }
 
   /* add this instruction to the interleaving */
-  interleaving.add(goto_programt::instructiont(*it));
+  goto_programt::targett current_instruction=interleaving.add_instruction();
+  goto_programt::instructiont new_instruction(*it);
+  current_instruction->swap(new_instruction);
 }
 
 bool instrumentert::is_cfg_spurious(const event_grapht::critical_cyclet &cyc)
@@ -1357,8 +1280,7 @@ bool instrumentert::is_cfg_spurious(const event_grapht::critical_cyclet &cyc)
 
         if(!target_in_cycle)
         {
-          *int_it = goto_programt::make_assertion(
-            false_exprt(), int_it->source_location);
+          int_it->make_assertion(false_exprt());
           break;
         }
       }
@@ -1480,7 +1402,7 @@ void inline instrumentert::print_outputs_local(
       if(render_po_aligned)
         same_po[ev.thread].insert(*it_e);
       if(render_by_function)
-        same_file[ev.function_id].insert(*it_e);
+        same_file[ev.source_location.get_function()].insert(*it_e);
       else if(render_by_file)
         same_file[ev.source_location.get_file()].insert(*it_e);
       if(ev.thread>max_thread)

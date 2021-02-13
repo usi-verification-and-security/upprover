@@ -37,17 +37,21 @@ void cpp_typecheckt::default_dtor(
   decl.type().id(ID_function_type);
   decl.type().subtype().make_nil();
 
-  decl.value() = code_blockt();
+  decl.value().id(ID_code);
+  decl.value().add(ID_type).id(ID_code);
+  decl.value().set(ID_statement, ID_block);
   decl.add(ID_cv).make_nil();
   decl.add(ID_throw_decl).make_nil();
 
   dtor.add(ID_type).id(ID_destructor);
   dtor.add(ID_storage_spec).id(ID_cpp_storage_spec);
-  dtor.add_to_operands(std::move(decl));
+  dtor.move_to_operands(decl);
 }
 
 /// produces destructor code for a class object
-codet cpp_typecheckt::dtor(const symbolt &symbol, const symbol_exprt &this_expr)
+///
+///    Note:
+codet cpp_typecheckt::dtor(const symbolt &symbol)
 {
   assert(symbol.type.id()==ID_struct ||
          symbol.type.id()==ID_union);
@@ -81,11 +85,11 @@ codet cpp_typecheckt::dtor(const symbolt &symbol, const symbol_exprt &this_expr)
       address_of_exprt address(var);
       assert(address.type() == c.type());
 
-      already_typechecked_exprt::make_already_typechecked(address);
+      already_typechecked(address);
 
       exprt ptrmember(ID_ptrmember);
       ptrmember.set(ID_component_name, c.get_name());
-      ptrmember.operands().push_back(this_expr);
+      ptrmember.operands().push_back(exprt("cpp-this"));
 
       code_assignt assign(ptrmember, address);
       block.add(assign);
@@ -113,7 +117,8 @@ codet cpp_typecheckt::dtor(const symbolt &symbol, const symbol_exprt &this_expr)
 
     exprt member(ID_ptrmember, type);
     member.set(ID_component_cpp_name, cppname);
-    member.operands().push_back(this_expr);
+    member.operands().push_back(
+      symbol_exprt(ID_this, pointer_type(symbol.type)));
     member.add_source_location() = source_location;
 
     const bool disabled_access_control = disable_access_control;
@@ -138,7 +143,8 @@ codet cpp_typecheckt::dtor(const symbolt &symbol, const symbol_exprt &this_expr)
     DATA_INVARIANT(bit->id() == ID_base, "base class expression expected");
     const symbolt &psymb = lookup(bit->type());
 
-    dereference_exprt object{this_expr, psymb.type};
+    symbol_exprt this_ptr(ID_this, pointer_type(symbol.type));
+    dereference_exprt object(this_ptr, psymb.type);
     object.add_source_location() = source_location;
 
     const bool disabled_access_control = disable_access_control;

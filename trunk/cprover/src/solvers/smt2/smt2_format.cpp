@@ -46,17 +46,17 @@ std::ostream &smt2_format_rec(std::ostream &out, const exprt &expr)
 {
   if(expr.id() == ID_constant)
   {
-    const auto &constant_expr = to_constant_expr(expr);
-    const auto &value = constant_expr.get_value();
+    const auto &value = to_constant_expr(expr).get_value();
+
     const typet &expr_type = expr.type();
 
     if(expr_type.id() == ID_unsignedbv)
     {
       const std::size_t width = to_unsignedbv_type(expr_type).get_width();
 
-      const auto int_value = numeric_cast_v<mp_integer>(constant_expr);
+      const auto value = numeric_cast_v<mp_integer>(expr);
 
-      out << "(_ bv" << int_value << " " << width << ")";
+      out << "(_ bv" << value << " " << width << ")";
     }
     else if(expr_type.id() == ID_bool)
     {

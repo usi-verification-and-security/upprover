@@ -150,7 +150,7 @@ public:
     literalt new_variable() override;
 
 protected:
-    resultt do_prop_solve() override;
+    resultt prop_solve() override;
 
     // Solver verbosity
     unsigned solver_verbosity;

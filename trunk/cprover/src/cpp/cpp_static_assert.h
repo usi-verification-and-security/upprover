@@ -12,18 +12,14 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #ifndef CPROVER_CPP_CPP_STATIC_ASSERT_H
 #define CPROVER_CPP_CPP_STATIC_ASSERT_H
 
-#include <util/std_expr.h>
+#include <util/expr.h>
 
-class cpp_static_assertt : public binary_exprt
+class cpp_static_assertt:public exprt
 {
 public:
-  cpp_static_assertt(exprt _cond, exprt _description)
-    : binary_exprt(
-        std::move(_cond),
-        ID_cpp_static_assert,
-        std::move(_description),
-        typet())
+  cpp_static_assertt():exprt(ID_cpp_static_assert)
   {
+    operands().resize(2);
   }
 
   exprt &cond()

@@ -33,9 +33,7 @@ class slicing_criteriont
 {
 public:
   virtual ~slicing_criteriont();
-  virtual bool operator()(
-    const irep_idt &function_id,
-    goto_programt::const_targett) const = 0;
+  virtual bool operator()(goto_programt::const_targett) const = 0;
 };
 
 void full_slicer(

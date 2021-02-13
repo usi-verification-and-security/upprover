@@ -16,59 +16,65 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 #include "refined_string_type.h"
 #include "std_expr.h"
 
-inline binary_relation_exprt greater_or_equal_to(exprt lhs, exprt rhs)
+// Comparison on the length of the strings
+template <typename T>
+binary_relation_exprt length_ge(const T &lhs, const exprt &rhs)
 {
-  PRECONDITION(rhs.type() == lhs.type());
-  return binary_relation_exprt(std::move(lhs), ID_ge, std::move(rhs));
+  PRECONDITION(rhs.type() == lhs.length().type());
+  return binary_relation_exprt(lhs.length(), ID_ge, rhs);
 }
 
-inline binary_relation_exprt greater_than(exprt lhs, exprt rhs)
+template <typename T>
+binary_relation_exprt length_gt(const T &lhs, const exprt &rhs)
 {
-  PRECONDITION(rhs.type() == lhs.type());
-  return binary_relation_exprt(std::move(rhs), ID_lt, std::move(lhs));
+  PRECONDITION(rhs.type() == lhs.length().type());
+  return binary_relation_exprt(rhs, ID_lt, lhs.length());
 }
 
-inline binary_relation_exprt greater_than(const exprt &lhs, mp_integer i)
+template <typename T>
+binary_relation_exprt length_gt(const T &lhs, mp_integer i)
 {
-  return binary_relation_exprt(from_integer(i, lhs.type()), ID_lt, lhs);
+  return length_gt(lhs, from_integer(i, lhs.length().type()));
 }
 
-inline binary_relation_exprt less_than_or_equal_to(exprt lhs, exprt rhs)
+template <typename T>
+binary_relation_exprt length_le(const T &lhs, const exprt &rhs)
 {
-  PRECONDITION(rhs.type() == lhs.type());
-  return binary_relation_exprt(std::move(lhs), ID_le, std::move(rhs));
+  PRECONDITION(rhs.type() == lhs.length().type());
+  return binary_relation_exprt(lhs.length(), ID_le, rhs);
 }
 
-inline binary_relation_exprt
-less_than_or_equal_to(const exprt &lhs, mp_integer i)
+template <typename T>
+binary_relation_exprt length_le(const T &lhs, mp_integer i)
 {
-  return binary_relation_exprt(lhs, ID_le, from_integer(i, lhs.type()));
+  return length_le(lhs, from_integer(i, lhs.length().type()));
 }
 
-inline binary_relation_exprt less_than(exprt lhs, exprt rhs)
+template <typename T>
+equal_exprt length_eq(const T &lhs, const exprt &rhs)
 {
-  PRECONDITION(rhs.type() == lhs.type());
-  return binary_relation_exprt(std::move(lhs), ID_lt, std::move(rhs));
+  PRECONDITION(rhs.type() == lhs.length().type());
+  return equal_exprt(lhs.length(), rhs);
 }
 
-inline equal_exprt equal_to(exprt lhs, exprt rhs)
+template <typename T>
+equal_exprt length_eq(const T &lhs, mp_integer i)
 {
-  PRECONDITION(rhs.type() == lhs.type());
-  return equal_exprt(std::move(lhs), std::move(rhs));
-}
-
-inline equal_exprt equal_to(const exprt &lhs, mp_integer i)
-{
-  return equal_exprt(lhs, from_integer(i, lhs.type()));
+  return length_eq(lhs, from_integer(i, lhs.length().type()));
 }
 
 // Representation of strings as arrays
 class array_string_exprt : public exprt
 {
 public:
-  const typet &length_type() const
+  exprt &length()
   {
-    return to_array_type(type()).size().type();
+    return to_array_type(type()).size();
+  }
+
+  const exprt &length() const
+  {
+    return to_array_type(type()).size();
   }
 
   exprt &content()
@@ -88,7 +94,7 @@ public:
 
   index_exprt operator[](int i) const
   {
-    return index_exprt(content(), from_integer(i, length_type()));
+    return index_exprt(content(), from_integer(i, length().type()));
   }
 };
 
@@ -108,12 +114,17 @@ inline const array_string_exprt &to_array_string_expr(const exprt &expr)
 class refined_string_exprt : public struct_exprt
 {
 public:
+  refined_string_exprt() : struct_exprt()
+  {
+  }
+
   refined_string_exprt(
     const exprt &_length,
     const exprt &_content,
     const typet &type)
-    : struct_exprt({_length, _content}, type)
+    : struct_exprt(type)
   {
+    add_to_operands(_length, _content);
   }
 
   refined_string_exprt(const exprt &_length, const exprt &_content)
@@ -164,8 +175,7 @@ inline const refined_string_exprt &to_string_expr(const exprt &expr)
 template <>
 inline bool can_cast_expr<refined_string_exprt>(const exprt &base)
 {
-  return base.id() == ID_struct && base.operands().size() == 2 &&
-    is_refined_string_type(base.type());
+  return base.id() == ID_struct && base.operands().size() == 2;
 }
 
 inline void validate_expr(const refined_string_exprt &x)

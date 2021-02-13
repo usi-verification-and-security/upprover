@@ -18,7 +18,7 @@ Author: Grigory Fedyukovich
 satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options,
                                        const char * name, const namespacet & ns,
                                        message_handlert & message_handler)
-        : cnf_solvert(message_handler),
+        : cnf_solvert(),
           check_opensmt2t()
 {
     logic.reset(new Logic());
@@ -423,7 +423,7 @@ Function: satcheck_opensmt2t::prop_solve
 
 \*******************************************************************/
 
-propt::resultt satcheck_opensmt2t::do_prop_solve() {
+propt::resultt satcheck_opensmt2t::prop_solve() {
 
 #ifdef DISABLE_OPTIMIZATIONS   
   if (dump_queries){

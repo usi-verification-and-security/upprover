@@ -22,8 +22,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/remove_skip.h>
 #include <goto-programs/remove_unreachable.h>
 
-#include <util/exception_utils.h>
-#include <util/message.h>
+#include "util/message.h"
 
 #include "full_slicer_class.h"
 #include "reachability_slicer_class.h"
@@ -31,42 +30,30 @@ Author: Daniel Kroening, kroening@kroening.com
 /// Get the set of nodes that correspond to the given criterion, or that can
 /// appear in concurrent execution. None of these should be sliced away so
 /// they are used as a basis for the search.
-/// \param is_threaded: Instructions that might be executed concurrently
-/// \param criterion: The criterion we care about
+/// \param is_threaded Instructions that might be executed concurrently
+/// \param criterion The criterion we care about
 std::vector<reachability_slicert::cfgt::node_indext>
 reachability_slicert::get_sources(
   const is_threadedt &is_threaded,
   const slicing_criteriont &criterion)
 {
   std::vector<cfgt::node_indext> sources;
-  for(const auto &e_it : cfg.entries())
+  for(const auto &e_it : cfg.entry_map)
   {
-    if(
-      criterion(cfg[e_it.second].function_id, e_it.first) ||
-      is_threaded(e_it.first))
+    if(criterion(e_it.first) || is_threaded(e_it.first))
       sources.push_back(e_it.second);
-  }
-
-  if(sources.empty())
-  {
-    throw invalid_command_line_argument_exceptiont{
-      "no slicing criterion found",
-      "--property",
-      "provide at least one property using --property <property>"};
   }
 
   return sources;
 }
 
-bool reachability_slicert::is_same_target(
+static bool is_same_target(
   goto_programt::const_targett it1,
-  goto_programt::const_targett it2) const
+  goto_programt::const_targett it2)
 {
   // Avoid comparing iterators belonging to different functions, and therefore
   // different std::lists.
-  const auto &node1 = cfg.get_node(it1);
-  const auto &node2 = cfg.get_node(it2);
-  return node1.function_id == node2.function_id && it1 == it2;
+  return it1->function == it2->function && it1 == it2;
 }
 
 /// Perform backward depth-first search of the control-flow graph of the
@@ -105,7 +92,7 @@ reachability_slicert::backward_outwards_walk_from(
           "all function return edges should point to the successor of a "
           "FUNCTION_CALL instruction");
 
-        stack.push_back(cfg.get_node_index(std::prev(node.PC)));
+        stack.push_back(cfg.entry_map[std::prev(node.PC)]);
       }
       else
       {
@@ -154,7 +141,7 @@ void reachability_slicert::backward_inwards_walk_from(
           "all function return edges should point to the successor of a "
           "FUNCTION_CALL instruction");
 
-        stack.push_back(cfg.get_node_index(std::prev(node.PC)));
+        stack.push_back(cfg.entry_map[std::prev(node.PC)]);
       }
       else if(pred_node.PC->is_function_call())
       {
@@ -173,8 +160,8 @@ void reachability_slicert::backward_inwards_walk_from(
 /// goto program, starting from the nodes corresponding to the criterion and
 /// the instructions that might be executed concurrently. Set reaches_assertion
 /// to true for every instruction visited.
-/// \param is_threaded: Instructions that might be executed concurrently
-/// \param criterion: the criterion we are trying to hit
+/// \param is_threaded Instructions that might be executed concurrently
+/// \param criterion the criterion we are trying to hit
 void reachability_slicert::fixedpoint_to_assertions(
   const is_threadedt &is_threaded,
   const slicing_criteriont &criterion)
@@ -220,9 +207,8 @@ void reachability_slicert::forward_walk_call_instruction(
     while(!successor_pc->is_end_function())
       ++successor_pc;
 
-    if(!cfg.get_node(successor_pc).out.empty())
-      callsite_successor_stack.push_back(
-        cfg.get_node_index(callsite_successor_pc));
+    if(!cfg[cfg.entry_map[successor_pc]].out.empty())
+      callsite_successor_stack.push_back(cfg.entry_map[callsite_successor_pc]);
   }
   else
   {
@@ -312,8 +298,8 @@ void reachability_slicert::forward_inwards_walk_from(
 /// goto program, starting from the nodes corresponding to the criterion and
 /// the instructions that might be executed concurrently. Set reaches_assertion
 /// to true for every instruction visited.
-/// \param is_threaded: Instructions that might be executed concurrently
-/// \param criterion: the criterion we are trying to hit
+/// \param is_threaded Instructions that might be executed concurrently
+/// \param criterion the criterion we are trying to hit
 void reachability_slicert::fixedpoint_from_assertions(
   const is_threadedt &is_threaded,
   const slicing_criteriont &criterion)
@@ -341,14 +327,11 @@ void reachability_slicert::slice(goto_functionst &goto_functions)
     {
       Forall_goto_program_instructions(i_it, f_it->second.body)
       {
-        cfgt::nodet &e = cfg.get_node(i_it);
+        cfgt::nodet &e = cfg[cfg.entry_map[i_it]];
         if(
           !e.reaches_assertion && !e.reachable_from_assertion &&
           !i_it->is_end_function())
-        {
-          *i_it = goto_programt::make_assumption(
-            false_exprt(), i_it->source_location);
-        }
+          i_it->make_assumption(false_exprt());
       }
 
       // replace unreachable code by skip
@@ -361,10 +344,10 @@ void reachability_slicert::slice(goto_functionst &goto_functions)
 
 /// Perform reachability slicing on goto_model, with respect to the
 /// criterion given by all properties.
-/// \param goto_model: Goto program to slice
-/// \param include_forward_reachability: Determines if only instructions
-///   from which the criterion is reachable should be kept (false) or also
-///   those reachable from the criterion (true)
+/// \param goto_model Goto program to slice
+/// \param include_forward_reachability Determines if only instructions
+/// from which the criterion is reachable should be kept (false) or also
+/// those reachable from the criterion (true)
 void reachability_slicer(
   goto_modelt &goto_model,
   const bool include_forward_reachability)
@@ -375,12 +358,12 @@ void reachability_slicer(
 }
 
 /// Perform reachability slicing on goto_model for selected properties.
-/// \param goto_model: Goto program to slice
-/// \param properties: The properties relevant for the slicing (i.e. starting
-///   point for the search in the cfg)
-/// \param include_forward_reachability: Determines if only instructions
-///   from which the criterion is reachable should be kept (false) or also
-///   those reachable from the criterion (true)
+/// \param goto_model Goto program to slice
+/// \param properties The properties relevant for the slicing (i.e. starting
+/// point for the search in the cfg)
+/// \param include_forward_reachability Determines if only instructions
+/// from which the criterion is reachable should be kept (false) or also
+/// those reachable from the criterion (true)
 void reachability_slicer(
   goto_modelt &goto_model,
   const std::list<std::string> &properties,
@@ -392,10 +375,10 @@ void reachability_slicer(
 }
 
 /// Perform reachability slicing on goto_model for selected functions.
-/// \param goto_model: Goto program to slice
-/// \param functions_list: The functions relevant for the slicing (i.e. starting
-///   point for the search in the CFG). Anything that is reachable in the CFG
-///   starting from these functions will be kept.
+/// \param goto_model Goto program to slice
+/// \param functions_list The functions relevant for the slicing (i.e. starting
+/// point for the search in the CFG). Anything that is reachable in the CFG
+/// starting from these functions will be kept.
 void function_path_reachability_slicer(
   goto_modelt &goto_model,
   const std::list<std::string> &functions_list)
@@ -417,7 +400,7 @@ void function_path_reachability_slicer(
 /// Perform reachability slicing on goto_model, with respect to criterion
 /// comprising all properties. Only instructions from which the criterion
 /// is reachable will be kept.
-/// \param goto_model: Goto program to slice
+/// \param goto_model Goto program to slice
 void reachability_slicer(goto_modelt &goto_model)
 {
   reachability_slicer(goto_model, false);
@@ -425,9 +408,9 @@ void reachability_slicer(goto_modelt &goto_model)
 
 /// Perform reachability slicing on goto_model for selected properties. Only
 /// instructions from which the criterion is reachable will be kept.
-/// \param goto_model: Goto program to slice
-/// \param properties: The properties relevant for the slicing (i.e. starting
-///   point for the search in the cfg)
+/// \param goto_model Goto program to slice
+/// \param properties The properties relevant for the slicing (i.e. starting
+/// point for the search in the cfg)
 void reachability_slicer(
   goto_modelt &goto_model,
   const std::list<std::string> &properties)

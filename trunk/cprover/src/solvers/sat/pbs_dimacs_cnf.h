@@ -19,13 +19,12 @@ Author: Alex Groce
 class pbs_dimacs_cnft:public dimacs_cnft
 {
 public:
-  explicit pbs_dimacs_cnft(message_handlert &message_handler)
-    : dimacs_cnft(message_handler),
-      optimize(false),
-      maximize(false),
-      binary_search(false),
-      goal(0),
-      opt_sum(0)
+  pbs_dimacs_cnft():
+    optimize(false),
+    maximize(false),
+    binary_search(false),
+    goal(0),
+    opt_sum(0)
   {
   }
 
@@ -48,18 +47,18 @@ public:
 
   bool pbs_solve();
 
-  tvt l_get(literalt a) const override;
+  virtual resultt prop_solve();
+
+  virtual tvt l_get(literalt a) const;
 
   // dummy functions
 
-  const std::string solver_text() override
+  virtual const std::string solver_text()
   {
     return "PBS - Pseudo Boolean/CNF Solver and Optimizer";
   }
 
 protected:
-  resultt do_prop_solve() override;
-
   std::set<int> assigned;
 };
 

@@ -27,10 +27,14 @@ exprt static_analysis_baset::get_guard(
 {
   if(!from->is_goto())
     return true_exprt();
-  else if(std::next(from) == to)
-    return boolean_negate(from->get_condition());
-  else
-    return from->get_condition();
+
+  locationt next=from;
+  next++;
+
+  if(next==to)
+    return boolean_negate(from->guard);
+
+  return from->guard;
 }
 
 exprt static_analysis_baset::get_return_lhs(locationt to)
@@ -370,7 +374,7 @@ void static_analysis_baset::do_function_call_rec(
       calling_function,
       l_call,
       l_return,
-      to_if_expr(function).true_case(),
+      function.op1(),
       arguments,
       new_state,
       goto_functions);
@@ -379,7 +383,7 @@ void static_analysis_baset::do_function_call_rec(
       calling_function,
       l_call,
       l_return,
-      to_if_expr(function).false_case(),
+      function.op2(),
       arguments,
       *n2,
       goto_functions);

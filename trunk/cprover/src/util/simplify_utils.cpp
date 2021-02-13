@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include "simplify_utils.h"
-#include "as_const.h"
 
 #include <algorithm>
 
@@ -122,13 +121,13 @@ static const struct saj_tablet &sort_and_join(
 
 bool sort_and_join(exprt &expr)
 {
-  bool no_change = true;
+  bool result=true;
 
   if(!expr.has_operands())
     return true;
 
-  const struct saj_tablet &saj_entry =
-    sort_and_join(expr.id(), as_const(expr).type().id());
+  const struct saj_tablet &saj_entry=
+    sort_and_join(expr.id(), expr.type().id());
   if(saj_entry.id.empty())
     return true;
 
@@ -152,7 +151,7 @@ bool sort_and_join(exprt &expr)
       forall_operands(it2, *it)
         new_ops.push_back(*it2);
 
-      no_change = false;
+      result=false;
     }
     else
       new_ops.push_back(*it);
@@ -160,8 +159,8 @@ bool sort_and_join(exprt &expr)
 
   // sort it
 
-  no_change = sort_operands(new_ops) && no_change;
+  result=sort_operands(new_ops) && result;
   expr.operands().swap(new_ops);
 
-  return no_change;
+  return result;
 }

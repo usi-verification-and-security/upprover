@@ -16,19 +16,17 @@ Author: Daniel Kroening
 #include "cover_util.h"
 
 void cover_path_instrumentert::instrument(
-  const irep_idt &,
   goto_programt &,
   goto_programt::targett &i_it,
   const cover_blocks_baset &) const
 {
   if(is_non_cover_assertion(i_it))
-    i_it->turn_into_skip();
+    i_it->make_skip();
 
   // TODO: implement
 }
 
 void cover_assertion_instrumentert::instrument(
-  const irep_idt &function_id,
   goto_programt &,
   goto_programt::targett &i_it,
   const cover_blocks_baset &) const
@@ -38,12 +36,11 @@ void cover_assertion_instrumentert::instrument(
   {
     i_it->guard = false_exprt();
     initialize_source_location(
-      i_it, id2string(i_it->source_location.get_comment()), function_id);
+      i_it, id2string(i_it->source_location.get_comment()), i_it->function);
   }
 }
 
 void cover_cover_instrumentert::instrument(
-  const irep_idt &function_id,
   goto_programt &,
   goto_programt::targett &i_it,
   const cover_blocks_baset &) const
@@ -60,39 +57,32 @@ void cover_cover_instrumentert::instrument(
       code_function_call.arguments().size() == 1)
     {
       const exprt c = code_function_call.arguments()[0];
-      std::string comment = "condition '" + from_expr(ns, function_id, c) + "'";
+      std::string comment =
+        "condition `" + from_expr(ns, i_it->function, c) + "'";
       i_it->guard = not_exprt(c);
       i_it->type = ASSERT;
       i_it->code.clear();
-      initialize_source_location(i_it, comment, function_id);
+      initialize_source_location(i_it, comment, i_it->function);
     }
   }
   else if(is_non_cover_assertion(i_it))
-    i_it->turn_into_skip();
+    i_it->make_skip();
 }
 
 void cover_instrument_end_of_function(
-  const irep_idt &function_id,
+  const irep_idt &function,
   goto_programt &goto_program)
 {
-  const auto last_function_call = std::find_if(
-    goto_program.instructions.rbegin(),
-    goto_program.instructions.rend(),
-    [](const goto_programt::instructiont &instruction) {
-      return instruction.is_function_call();
-    });
-  INVARIANT(
-    last_function_call != goto_program.instructions.rend(),
-    "Goto program should have at least one function call");
-  INVARIANT(
-    last_function_call != goto_program.instructions.rbegin(),
-    "Goto program shouldn't end with a function call");
-  const auto if_it = last_function_call.base();
+  auto if_it = goto_program.instructions.end();
+  while(!if_it->is_function_call())
+    if_it--;
+  if_it++;
   const std::string &comment =
     "additional goal to ensure reachability of end of function";
   goto_program.insert_before_swap(if_it);
-  *if_it = goto_programt::make_assertion(false_exprt());
+  if_it->make_assertion(false_exprt());
   if_it->source_location.set_comment(comment);
   if_it->source_location.set_property_class("reachability_constraint");
-  if_it->source_location.set_function(function_id);
+  if_it->source_location.set_function(function);
+  if_it->function = function;
 }

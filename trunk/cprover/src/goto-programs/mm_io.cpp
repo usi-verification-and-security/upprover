@@ -23,10 +23,11 @@ void collect_deref_expr(
   const exprt &src,
   std::set<dereference_exprt> &dest)
 {
-  src.visit_pre([&dest](const exprt &e) {
-    if(e.id() == ID_dereference)
-      dest.insert(to_dereference_expr(e));
-  });
+  if(src.id()==ID_dereference)
+    dest.insert(to_dereference_expr(src));
+
+  for(const auto & op : src.operands())
+    collect_deref_expr(op, dest); // recursive call
 }
 
 void mm_io(
@@ -44,7 +45,7 @@ void mm_io(
 
     if(it->is_assign())
     {
-      auto a = it->get_assign();
+      auto &a=to_code_assign(it->code);
       collect_deref_expr(a.rhs(), deref_expr_r);
 
       if(mm_io_r.is_not_nil())
@@ -53,24 +54,25 @@ void mm_io(
         {
           const dereference_exprt &d=*deref_expr_r.begin();
           source_locationt source_location=it->source_location;
+          irep_idt function=it->function;
           const code_typet &ct=to_code_type(mm_io_r.type());
 
           irep_idt identifier=to_symbol_expr(mm_io_r).get_identifier();
-          auto return_value = return_value_symbol(identifier, ns);
+          irep_idt r_identifier=id2string(identifier)+RETURN_VALUE_SUFFIX;
+          symbol_exprt return_value(r_identifier, ct.return_type());
           if_exprt if_expr(integer_address(d.pointer()), return_value, d);
-          if(!replace_expr(d, if_expr, a.rhs()))
-            it->set_assign(a);
+          replace_expr(d, if_expr, a.rhs());
 
           const typet &pt=ct.parameters()[0].type();
           const typet &st=ct.parameters()[1].type();
-          auto size_opt = size_of_expr(d.type(), ns);
-          CHECK_RETURN(size_opt.has_value());
+          exprt size=size_of_expr(d.type(), ns);
           const code_function_callt fc(
             mm_io_r,
-            {typecast_exprt(d.pointer(), pt),
-             typecast_exprt(size_opt.value(), st)});
+            {typecast_exprt(d.pointer(), pt), typecast_exprt(size, st)});
           goto_function.body.insert_before_swap(it);
-          *it = goto_programt::make_function_call(fc, source_location);
+          it->make_function_call(fc);
+          it->source_location=source_location;
+          it->function=function;
           it++;
         }
       }
@@ -81,19 +83,21 @@ void mm_io(
         {
           const dereference_exprt &d=to_dereference_expr(a.lhs());
           source_locationt source_location=it->source_location;
+          irep_idt function=it->function;
           const code_typet &ct=to_code_type(mm_io_w.type());
           const typet &pt=ct.parameters()[0].type();
           const typet &st=ct.parameters()[1].type();
           const typet &vt=ct.parameters()[2].type();
-          auto size_opt = size_of_expr(d.type(), ns);
-          CHECK_RETURN(size_opt.has_value());
+          exprt size=size_of_expr(d.type(), ns);
           const code_function_callt fc(
             mm_io_w,
             {typecast_exprt(d.pointer(), pt),
-             typecast_exprt(size_opt.value(), st),
+             typecast_exprt(size, st),
              typecast_exprt(a.rhs(), vt)});
           goto_function.body.insert_before_swap(it);
-          *it = goto_programt::make_function_call(fc, source_location);
+          it->make_function_call(fc);
+          it->source_location=source_location;
+          it->function=function;
           it++;
         }
       }

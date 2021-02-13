@@ -78,12 +78,23 @@ public:
   void compute_target_numbers();
   void compute_incoming_edges();
 
+  /// update the function member in each instruction by setting it to
+  /// the goto function's identifier
+  void update_instructions_function()
+  {
+    for(auto &func : function_map)
+    {
+      func.second.update_instructions_function(func.first);
+    }
+  }
+
   void update()
   {
     compute_incoming_edges();
     compute_target_numbers();
     compute_location_numbers();
     compute_loop_numbers();
+    update_instructions_function();
   }
 
   /// Get the identifier of the entry point to a goto model
@@ -111,7 +122,23 @@ public:
   ///
   /// The validation mode indicates whether well-formedness check failures are
   /// reported via DATA_INVARIANT violations or exceptions.
-  void validate(const namespacet &, validation_modet) const;
+  void validate(const namespacet &ns, const validation_modet vm) const
+  {
+    for(const auto &entry : function_map)
+    {
+      const goto_functiont &goto_function = entry.second;
+      const auto &function_name = entry.first;
+
+      DATA_CHECK(
+        vm,
+        goto_function.type == ns.lookup(function_name).type,
+        id2string(function_name) + " type inconsistency\ngoto program type: " +
+          goto_function.type.id_string() +
+          "\nsymbol table type: " + ns.lookup(function_name).type.id_string());
+
+      goto_function.validate(ns, vm);
+    }
+  }
 };
 
 #define Forall_goto_functions(it, functions) \

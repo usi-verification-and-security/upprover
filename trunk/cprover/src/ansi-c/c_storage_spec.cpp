@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "c_storage_spec.h"
 
 #include <util/expr.h>
-#include <util/string_constant.h>
 
 void c_storage_spect::read(const typet &type)
 {
@@ -51,18 +50,18 @@ void c_storage_spect::read(const typet &type)
           type.has_subtype() &&
           type.subtype().id()==ID_string_constant)
   {
-    alias = to_string_constant(type.subtype()).get_value();
+    alias=type.subtype().get(ID_value);
   }
   else if(type.id()==ID_asm &&
           type.has_subtype() &&
           type.subtype().id()==ID_string_constant)
   {
-    asm_label = to_string_constant(type.subtype()).get_value();
+    asm_label=type.subtype().get(ID_value);
   }
   else if(type.id()==ID_section &&
           type.has_subtype() &&
           type.subtype().id()==ID_string_constant)
   {
-    section = to_string_constant(type.subtype()).get_value();
+    section=type.subtype().get(ID_value);
   }
 }

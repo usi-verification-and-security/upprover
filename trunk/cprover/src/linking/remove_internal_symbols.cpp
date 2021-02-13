@@ -71,17 +71,11 @@ static void get_symbols(
 ///          http://gcc.gnu.org/ml/gcc/2006-11/msg00006.html
 ///          on "extern inline"
 /// \param symbol_table: symbol table to clean up
-/// \param mh: log handler
-/// \param keep_file_local: keep file-local functions with bodies even if we
-///                         would otherwise remove them
 void remove_internal_symbols(
-  symbol_tablet &symbol_table,
-  message_handlert &mh,
-  const bool keep_file_local)
+  symbol_tablet &symbol_table)
 {
   namespacet ns(symbol_table);
   find_symbols_sett exported;
-  messaget log(mh);
 
   // we retain certain special ones
   find_symbols_sett special;
@@ -95,12 +89,6 @@ void remove_internal_symbols(
   special.insert(CPROVER_PREFIX "deallocated");
   special.insert(CPROVER_PREFIX "dead_object");
   special.insert(CPROVER_PREFIX "rounding_mode");
-  special.insert("__new");
-  special.insert("__new_array");
-  special.insert("__placement_new");
-  special.insert("__placement_new_array");
-  special.insert("__delete");
-  special.insert("__delete_array");
 
   for(symbol_tablet::symbolst::const_iterator
       it=symbol_table.symbols.begin();
@@ -144,17 +132,9 @@ void remove_internal_symbols(
     else if(is_function)
     {
       // body? not local (i.e., "static")?
-      if(
-        has_body &&
-        (!is_file_local ||
-         (config.main.has_value() && symbol.base_name == config.main.value())))
-      {
+      if(has_body &&
+         (!is_file_local || (config.main==symbol.name.c_str())))
         get_symbols(ns, symbol, exported);
-      }
-      else if(has_body && is_file_local && keep_file_local)
-      {
-        get_symbols(ns, symbol, exported);
-      }
     }
     else
     {

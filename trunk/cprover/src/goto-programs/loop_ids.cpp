@@ -13,8 +13,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/json_irep.h>
-#include <util/xml_irep.h>
+#include <util/xml.h>
+#include <util/xml_expr.h>
+#include <util/json.h>
+#include <util/json_expr.h>
 
 void show_loop_ids(
   ui_message_handlert::uit ui,
@@ -25,7 +27,7 @@ void show_loop_ids(
 
 void show_loop_ids(
   ui_message_handlert::uit ui,
-  const irep_idt &function_id,
+  const irep_idt &function_identifier,
   const goto_programt &goto_program)
 {
   switch(ui)
@@ -36,8 +38,9 @@ void show_loop_ids(
       {
         if(it->is_backwards_goto())
         {
-          std::cout << "Loop " << goto_programt::loop_id(function_id, *it)
-                    << ":"
+          unsigned loop_id=it->loop_number;
+
+          std::cout << "Loop " << function_identifier << "." << loop_id << ":"
                     << "\n";
 
           std::cout << "  " << it->source_location << "\n";
@@ -52,9 +55,12 @@ void show_loop_ids(
       {
         if(it->is_backwards_goto())
         {
-          std::string id = id2string(goto_programt::loop_id(function_id, *it));
+          unsigned loop_id=it->loop_number;
+          std::string id =
+            id2string(function_identifier) + "." + std::to_string(loop_id);
 
-          xmlt xml_loop("loop", {{"name", id}}, {});
+          xmlt xml_loop("loop");
+          xml_loop.set_attribute("name", id);
           xml_loop.new_element("loop-id").data=id;
           xml_loop.new_element()=xml(it->source_location);
           std::cout << xml_loop << "\n";
@@ -69,7 +75,7 @@ void show_loop_ids(
 
 void show_loop_ids_json(
   ui_message_handlert::uit ui,
-  const irep_idt &function_id,
+  const irep_idt &function_identifier,
   const goto_programt &goto_program,
   json_arrayt &loops)
 {
@@ -79,11 +85,13 @@ void show_loop_ids_json(
   {
     if(it->is_backwards_goto())
     {
-      std::string id = id2string(goto_programt::loop_id(function_id, *it));
+      unsigned loop_id=it->loop_number;
+      std::string id =
+        id2string(function_identifier) + "." + std::to_string(loop_id);
 
-      loops.push_back(
-        json_objectt({{"name", json_stringt(id)},
-                      {"sourceLocation", json(it->source_location)}}));
+      json_objectt &loop=loops.push_back().make_object();
+      loop["name"]=json_stringt(id);
+      loop["sourceLocation"]=json(it->source_location);
     }
   }
 }

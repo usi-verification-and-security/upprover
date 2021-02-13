@@ -23,8 +23,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifdef _MSC_VER
 #pragma warning(disable:4668)
   // using #if/#elif on undefined macro
-#pragma warning(disable : 5039)
-// pointer or reference to potentially throwing function passed to extern C
 #endif
 #include <windows.h>
 #include <psapi.h>
@@ -47,15 +45,21 @@ void memory_info(std::ostream &out)
   out << "  space available in freed fastbin blocks: " << m.fsmblks << "\n";
   out << "  total allocated space: " << m.uordblks << "\n";
   out << "  total free space: " << m.fordblks << "\n";
-#elif defined(_WIN32)
+#endif
+
+#ifdef _WIN32
+  (void)out; // unused parameter
+#if 0
   PROCESS_MEMORY_COUNTERS pmc;
   if(GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
   {
-    out << "  peak working set size [bytes]: " << pmc.PeakWorkingSetSize
-        << "\n";
-    out << "  current working set size [bytes]: " << pmc.WorkingSetSize << "\n";
+    out << "  PeakWorkingSetSize: " << pmc.PeakWorkingSetSize << "\n";
+    out << "  WorkingSetSize: " << pmc.WorkingSetSize << "\n";
   }
-#elif defined(__APPLE__)
+#endif
+#endif
+
+#ifdef __APPLE__
   // NOLINTNEXTLINE(readability/identifiers)
   struct task_basic_info t_info;
   mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;

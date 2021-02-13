@@ -23,7 +23,7 @@ std::string as_vcd_binary(
   const exprt &expr,
   const namespacet &ns)
 {
-  const typet &type = expr.type();
+  const typet &type=ns.follow(expr.type());
 
   if(expr.id()==ID_constant)
   {
@@ -113,40 +113,44 @@ void output_vcd(
 
   for(const auto &step : goto_trace.steps)
   {
-    if(step.is_assignment())
+    switch(step.type)
     {
-      auto lhs_object = step.get_lhs_object();
-      if(lhs_object.has_value())
+    case goto_trace_stept::typet::ASSIGNMENT:
       {
-        irep_idt identifier = lhs_object->get_identifier();
-        const typet &type = lhs_object->type();
-
-        out << '#' << timestamp << "\n";
-        timestamp++;
-
-        const auto number = n.number(identifier);
-
-        // booleans are special in VCD
-        if(type.id() == ID_bool)
+        auto lhs_object=step.get_lhs_object();
+        if(lhs_object.has_value())
         {
-          if(step.full_lhs_value.is_true())
-            out << "1"
-                << "V" << number << "\n";
-          else if(step.full_lhs_value.is_false())
-            out << "0"
-                << "V" << number << "\n";
+          irep_idt identifier=lhs_object->get_identifier();
+          const typet &type=lhs_object->type();
+
+          out << '#' << timestamp << "\n";
+          timestamp++;
+
+          const auto number=n.number(identifier);
+
+          // booleans are special in VCD
+          if(type.id()==ID_bool)
+          {
+            if(step.full_lhs_value.is_true())
+              out << "1" << "V" << number << "\n";
+            else if(step.full_lhs_value.is_false())
+              out << "0" << "V" << number << "\n";
+            else
+              out << "x" << "V" << number << "\n";
+          }
           else
-            out << "x"
-                << "V" << number << "\n";
-        }
-        else
-        {
-          std::string binary = as_vcd_binary(step.full_lhs_value, ns);
+          {
+            std::string binary=as_vcd_binary(step.full_lhs_value, ns);
 
-          if(!binary.empty())
-            out << "b" << binary << " V" << number << " "
-                << "\n";
+            if(binary!="")
+              out << "b" << binary << " V" << number << " " << "\n";
+          }
         }
+      }
+      break;
+
+    default:
+      {
       }
     }
   }

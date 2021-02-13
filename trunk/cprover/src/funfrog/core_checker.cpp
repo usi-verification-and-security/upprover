@@ -492,18 +492,18 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
 #endif
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
-//    auto exploration_strategy = options.get_option("exploration-strategy");
-    auto exploration_strategy = "fifo";
-    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
-    guard_managert guard_manager;
+    std::unique_ptr<path_storaget> worklist;
+    //auto exploration_strategy = options.get_option("exploration-strategy");
+//    auto exploration_strategy = "fifo";
+//    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
+    //guard_managert guard_manager;
     
     symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
                                                       message_handler, get_main_function(), last_assertion_loc,
                                                       single_assertion_check, !no_ce_option,
                                                       unwind_bound,
-                                                      options.get_bool_option("partial-loops"),
-                                                      guard_manager
+                                                      options.get_bool_option("partial-loops")
                                 };
     symex.set_assertion_info_to_verify(&assertion);
 
@@ -968,7 +968,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     omega.set_initial_precision(assertion, has_summary);
     std::unique_ptr<path_storaget> worklist;
     partitioning_target_equationt equation {ns, summary_store, false, message_handler};
-    guard_managert guard_manager;
+    //guard_managert guard_manager;
 
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
@@ -981,8 +981,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                omega.is_single_assertion_check(),
                                !options.get_bool_option("no-error-trace"),
                                options.get_unsigned_int_option("unwind"),
-                               options.get_bool_option("partial-loops"),
-                               guard_manager
+                               options.get_bool_option("partial-loops")
     };
     symex.set_assertion_info_to_verify(&assertion);
 

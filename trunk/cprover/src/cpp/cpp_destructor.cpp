@@ -20,6 +20,9 @@ optionalt<codet> cpp_typecheckt::cpp_destructor(
   const source_locationt &source_location,
   const exprt &object)
 {
+  codet new_code;
+  new_code.add_source_location()=source_location;
+
   elaborate_class_template(object.type());
 
   typet tmp_type(follow(object.type()));
@@ -42,16 +45,17 @@ optionalt<codet> cpp_typecheckt::cpp_destructor(
     make_constant_index(tmp_size);
 
     mp_integer s;
-    if(to_integer(to_constant_expr(tmp_size), s))
+    if(to_integer(tmp_size, s))
     {
       error().source_location=source_location;
-      error() << "array size '" << to_string(size_expr) << "' is not a constant"
-              << eom;
+      error() << "array size `" << to_string(size_expr)
+              << "' is not a constant" << eom;
       throw 0;
     }
 
-    code_blockt new_code;
+    new_code.type().id(ID_code);
     new_code.add_source_location()=source_location;
+    new_code.set_statement(ID_block);
 
     // for each element of the array, call the destructor
     for(mp_integer i=0; i < s; ++i)
@@ -64,10 +68,8 @@ optionalt<codet> cpp_typecheckt::cpp_destructor(
 
       auto i_code = cpp_destructor(source_location, index);
       if(i_code.has_value())
-        new_code.add_to_operands(std::move(i_code.value()));
+        new_code.move_to_operands(i_code.value());
     }
-
-    return std::move(new_code);
   }
   else
   {
@@ -97,7 +99,8 @@ optionalt<codet> cpp_typecheckt::cpp_destructor(
       }
     }
 
-    INVARIANT(!dtor_name.empty(), "non-PODs should have a destructor");
+    // there is always a destructor for non-PODs
+    assert(dtor_name!="");
 
     cpp_namet cpp_name(dtor_name, source_location);
 
@@ -105,15 +108,16 @@ optionalt<codet> cpp_typecheckt::cpp_destructor(
     member.add(ID_component_cpp_name) = cpp_name;
     member.copy_to_operands(object);
 
-    side_effect_expr_function_callt function_call(
-      std::move(member), {}, uninitialized_typet{}, source_location);
+    side_effect_expr_function_callt function_call;
+    function_call.add_source_location()=source_location;
+    function_call.function().swap(member);
 
     typecheck_side_effect_function_call(function_call);
-    already_typechecked_exprt::make_already_typechecked(function_call);
+    already_typechecked(function_call);
 
-    code_expressiont new_code(function_call);
+    new_code = code_expressiont(function_call);
     new_code.add_source_location() = source_location;
-
-    return std::move(new_code);
   }
+
+  return new_code;
 }

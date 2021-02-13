@@ -105,7 +105,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
           type_id==ID_verilog_unsignedbv)
   {
     // we encode with two bits
-    std::size_t size = to_bitvector_type(type).get_width();
+    std::size_t size = type.get_size_t(ID_width);
     DATA_INVARIANT(
       size > 0, "verilog bitvector width shall be greater than zero");
     entry.total_width = size * 2;
@@ -141,10 +141,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
       if(total>(1<<30)) // realistic limit
         throw analysis_exceptiont("array too large for flattening");
 
-      if(total < 0)
-        entry.total_width = 0;
-      else
-        entry.total_width = numeric_cast_v<std::size_t>(total);
+      entry.total_width = numeric_cast_v<std::size_t>(total);
     }
   }
   else if(type_id==ID_vector)
@@ -178,11 +175,17 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   else if(type_id==ID_c_enum)
   {
     // these have a subtype
-    entry.total_width = to_bitvector_type(type.subtype()).get_width();
+    entry.total_width = type.subtype().get_size_t(ID_width);
     CHECK_RETURN(entry.total_width > 0);
+  }
+  else if(type_id==ID_incomplete_c_enum)
+  {
+    // no width
   }
   else if(type_id==ID_pointer)
     entry.total_width = type_checked_cast<pointer_typet>(type).get_width();
+  else if(type_id == ID_symbol_type)
+    entry=get_entry(ns.follow(type));
   else if(type_id==ID_struct_tag)
     entry=get_entry(ns.follow_tag(to_struct_tag_type(type)));
   else if(type_id==ID_union_tag)

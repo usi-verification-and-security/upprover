@@ -21,7 +21,6 @@ Date: June 2006
 #include <goto-programs/goto_model.h>
 
 class language_filest;
-class languaget;
 
 class compilet : public messaget
 {
@@ -34,7 +33,6 @@ public:
   bool echo_file_name;
   std::string working_directory;
   std::string override_language;
-  bool validate_goto_model = false;
 
   enum { PREPROCESS_ONLY, // gcc -E
          COMPILE_ONLY, // gcc -c
@@ -66,12 +64,14 @@ public:
   bool add_files_from_archive(const std::string &file_name, bool thin_archive);
 
   bool parse(const std::string &filename, language_filest &);
-  bool parse_stdin(languaget &);
+  bool parse_stdin();
   bool doit();
   bool compile();
   bool link();
 
   bool parse_source(const std::string &);
+
+  bool write_object_file(const std::string &, const goto_modelt &);
 
   bool write_bin_object_file(const std::string &, const goto_modelt &);
 
@@ -81,8 +81,8 @@ public:
   /// \brief `__CPROVER_...` macros written to object files and their arities
   ///
   /// \return A mapping from every `__CPROVER` macro that this compiler
-  ///   wrote to one or more object files, to how many parameters that
-  ///   `__CPROVER` macro has.
+  /// wrote to one or more object files, to how many parameters that
+  /// `__CPROVER` macro has.
   void cprover_macro_arities(std::map<irep_idt,
                                       std::size_t> &cprover_macros) const
   {
@@ -96,15 +96,9 @@ protected:
   cmdlinet &cmdline;
   bool warning_is_fatal;
 
-  /// \brief Whether to keep implementations of file-local symbols
-  const bool keep_file_local;
-
-  /// \brief String to include in all mangled names
-  const std::string file_local_mangle_suffix;
-
   std::size_t function_body_count(const goto_functionst &) const;
 
-  void add_compiler_specific_defines() const;
+  void add_compiler_specific_defines(class configt &config) const;
 
   void convert_symbols(goto_functionst &dest);
 

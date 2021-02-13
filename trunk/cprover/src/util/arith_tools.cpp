@@ -103,6 +103,23 @@ bool to_integer(const constant_exprt &expr, mp_integer &int_value)
   return true;
 }
 
+/// convert a positive integer expression to an unsigned int
+/// \par parameters: a constant expression and a reference to an unsigned int
+/// \return an error flag
+bool to_unsigned_integer(const constant_exprt &expr, unsigned &uint_value)
+{
+  mp_integer i;
+  if(to_integer(expr, i))
+    return true;
+  if(i<0)
+    return true;
+  else
+  {
+    uint_value = numeric_cast_v<unsigned>(i);
+    return false;
+  }
+}
+
 constant_exprt from_integer(
   const mp_integer &int_value,
   const typet &type)
@@ -136,7 +153,7 @@ constant_exprt from_integer(
   else if(type_id==ID_c_enum)
   {
     const std::size_t width =
-      to_bitvector_type(to_c_enum_type(type).subtype()).get_width();
+      to_c_enum_type(type).subtype().get_size_t(ID_width);
     return constant_exprt(integer2bvrep(int_value, width), type);
   }
   else if(type_id==ID_c_bool)
@@ -214,7 +231,7 @@ mp_integer power(const mp_integer &base,
     case 2:
       {
         mp_integer result;
-        result.setPower2(numeric_cast_v<unsigned>(exponent));
+        result.setPower2(exponent.to_ulong());
         return result;
       }
     case 1: return 1;
@@ -307,7 +324,7 @@ static char nibble2hex(unsigned char nibble)
 /// construct a bit-vector representation from a functor
 /// \param width: the width of the bit-vector
 /// \param f: the functor -- the parameter is the bit index
-/// \return new bitvector representation
+/// \returns new bitvector representation
 irep_idt
 make_bvrep(const std::size_t width, const std::function<bool(std::size_t)> f)
 {
@@ -352,7 +369,7 @@ make_bvrep(const std::size_t width, const std::function<bool(std::size_t)> f)
 /// \param b: the representation of the second bit vector
 /// \param width: the width of the bit-vector
 /// \param f: the functor
-/// \return new bitvector representation
+/// \returns new bitvector representation
 irep_idt bvrep_bitwise_op(
   const irep_idt &a,
   const irep_idt &b,
@@ -369,7 +386,7 @@ irep_idt bvrep_bitwise_op(
 /// \param a: the bit-vector representation
 /// \param width: the width of the bit-vector
 /// \param f: the functor
-/// \return new bitvector representation
+/// \returns new bitvector representation
 irep_idt bvrep_bitwise_op(
   const irep_idt &a,
   const std::size_t width,

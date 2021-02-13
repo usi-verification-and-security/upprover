@@ -28,13 +28,12 @@ public:
   smt2_solvert(std::istream &_in, decision_proceduret &_solver)
     : smt2_parsert(_in), solver(_solver), status(NOT_SOLVED)
   {
-    setup_commands();
   }
 
 protected:
   decision_proceduret &solver;
 
-  void setup_commands();
+  void command(const std::string &) override;
   void define_constants();
   void expand_function_applications(exprt &);
 
@@ -82,56 +81,57 @@ void smt2_solvert::expand_function_applications(exprt &expr)
   {
     auto &app=to_function_application_expr(expr);
 
-    if(app.function().id() == ID_symbol)
+    // look it up
+    irep_idt identifier=app.function().get_identifier();
+    auto f_it=id_map.find(identifier);
+
+    if(f_it!=id_map.end())
     {
-      // look up the symbol
-      auto identifier = to_symbol_expr(app.function()).get_identifier();
-      auto f_it = id_map.find(identifier);
+      const auto &f=f_it->second;
 
-      if(f_it != id_map.end())
+      DATA_INVARIANT(f.type.id()==ID_mathematical_function,
+        "type of function symbol must be mathematical_function_type");
+
+      const auto f_type=
+        to_mathematical_function_type(f.type);
+
+      const auto &domain = f_type.domain();
+
+      DATA_INVARIANT(
+        domain.size() == app.arguments().size(),
+        "number of function parameters");
+
+      replace_symbolt replace_symbol;
+
+      std::map<irep_idt, exprt> parameter_map;
+      for(std::size_t i = 0; i < domain.size(); i++)
       {
-        const auto &f = f_it->second;
-
-        DATA_INVARIANT(
-          f.type.id() == ID_mathematical_function,
-          "type of function symbol must be mathematical_function_type");
-
-        const auto &domain = to_mathematical_function_type(f.type).domain();
-
-        DATA_INVARIANT(
-          domain.size() == app.arguments().size(),
-          "number of parameters must match number of arguments");
-
-        replace_symbolt replace_symbol;
-
-        for(std::size_t i = 0; i < domain.size(); i++)
-        {
-          replace_symbol.insert(
-            symbol_exprt(f.parameters[i], domain[i]), app.arguments()[i]);
-        }
-
-        exprt body = f.definition;
-        replace_symbol(body);
-        expand_function_applications(body);
-        expr = body;
+        const symbol_exprt s(f.parameters[i], domain[i]);
+        replace_symbol.insert(s, app.arguments()[i]);
       }
+
+      exprt body=f.definition;
+      replace_symbol(body);
+      expand_function_applications(body);
+      expr=body;
     }
   }
 }
 
-void smt2_solvert::setup_commands()
+void smt2_solvert::command(const std::string &c)
 {
   {
-    commands["assert"] = [this]() {
+    if(c == "assert")
+    {
       exprt e = expression();
       if(e.is_not_nil())
       {
         expand_function_applications(e);
         solver.set_to_true(e);
       }
-    };
-
-    commands["check-sat"] = [this]() {
+    }
+    else if(c == "check-sat")
+    {
       // add constant definitions as constraints
       define_constants();
 
@@ -151,32 +151,29 @@ void smt2_solvert::setup_commands()
         std::cout << "error\n";
         status = NOT_SOLVED;
       }
-    };
-
-    commands["check-sat-assuming"] = [this]() {
+    }
+    else if(c == "check-sat-assuming")
+    {
       throw error("not yet implemented");
-    };
-
-    commands["display"] = [this]() {
+    }
+    else if(c == "display")
+    {
       // this is a command that Z3 appears to implement
       exprt e = expression();
       if(e.is_not_nil())
         std::cout << smt2_format(e) << '\n';
-    };
-
-    commands["get-value"] = [this]() {
+    }
+    else if(c == "get-value")
+    {
       std::vector<exprt> ops;
 
-      if(next_token() != smt2_tokenizert::OPEN)
+      if(next_token() != OPEN)
         throw error("get-value expects list as argument");
 
-      while(smt2_tokenizer.peek() != smt2_tokenizert::CLOSE &&
-            smt2_tokenizer.peek() != smt2_tokenizert::END_OF_FILE)
-      {
+      while(peek() != CLOSE && peek() != END_OF_FILE)
         ops.push_back(expression()); // any term
-      }
 
-      if(next_token() != smt2_tokenizert::CLOSE)
+      if(next_token() != CLOSE)
         throw error("get-value expects ')' at end of list");
 
       if(status != SAT)
@@ -195,12 +192,12 @@ void smt2_solvert::setup_commands()
         const auto id_map_it = id_map.find(identifier);
 
         if(id_map_it == id_map.end())
-          throw error() << "unexpected symbol '" << identifier << '\'';
+          throw error() << "unexpected symbol `" << identifier << '\'';
 
         const exprt value = solver.get(op);
 
         if(value.is_nil())
-          throw error() << "no value for '" << identifier << '\'';
+          throw error() << "no value for `" << identifier << '\'';
 
         values.push_back(value);
       }
@@ -217,18 +214,16 @@ void smt2_solvert::setup_commands()
       }
 
       std::cout << ")\n";
-    };
-
-    commands["echo"] = [this]() {
-      if(next_token() != smt2_tokenizert::STRING_LITERAL)
+    }
+    else if(c == "echo")
+    {
+      if(next_token() != STRING_LITERAL)
         throw error("expected string literal");
 
-      std::cout << smt2_format(constant_exprt(
-                     smt2_tokenizer.get_buffer(), string_typet()))
-                << '\n';
-    };
-
-    commands["get-assignment"] = [this]() {
+      std::cout << smt2_format(constant_exprt(buffer, string_typet())) << '\n';
+    }
+    else if(c == "get-assignment")
+    {
       // print satisfying assignment for all named expressions
 
       if(status != SAT)
@@ -256,9 +251,9 @@ void smt2_solvert::setup_commands()
         }
       }
       std::cout << ')' << '\n';
-    };
-
-    commands["get-model"] = [this]() {
+    }
+    else if(c == "get-model")
+    {
       // print a model for all identifiers
 
       if(status != SAT)
@@ -293,9 +288,9 @@ void smt2_solvert::setup_commands()
         }
       }
       std::cout << ')' << '\n';
-    };
-
-    commands["simplify"] = [this]() {
+    }
+    else if(c == "simplify")
+    {
       // this is a command that Z3 appears to implement
       exprt e = expression();
       if(e.is_not_nil())
@@ -305,9 +300,7 @@ void smt2_solvert::setup_commands()
         exprt e_simplified = simplify_expr(e, ns);
         std::cout << smt2_format(e) << '\n';
       }
-    };
-  }
-
+    }
 #if 0
     // TODO:
     | ( declare-const hsymboli hsorti )
@@ -332,6 +325,9 @@ void smt2_solvert::setup_commands()
     | ( set-info hattributei )
     | ( set-option hoptioni )
 #endif
+    else
+      smt2_parsert::command(c);
+  }
 }
 
 class smt2_message_handlert : public message_handlert
@@ -347,11 +343,11 @@ public:
       std::cout << "; " << message << '\n';
   }
 
-  void print(unsigned, const xmlt &) override
+  void print(unsigned level, const xmlt &xml) override
   {
   }
 
-  void print(unsigned, const jsont &) override
+  void print(unsigned level, const jsont &json) override
   {
   }
 
@@ -372,10 +368,13 @@ int solver(std::istream &in)
   // this is our default verbosity
   message_handler.set_verbosity(messaget::M_STATISTICS);
 
-  satcheckt satcheck{message_handler};
-  boolbvt boolbv{ns, satcheck, message_handler};
+  satcheckt satcheck;
+  boolbvt boolbv(ns, satcheck);
+  satcheck.set_message_handler(message_handler);
+  boolbv.set_message_handler(message_handler);
 
-  smt2_solvert smt2_solver{in, boolbv};
+  smt2_solvert smt2_solver(in, boolbv);
+  smt2_solver.set_message_handler(message_handler);
   bool error_found = false;
 
   while(!smt2_solver.exit)
@@ -384,10 +383,11 @@ int solver(std::istream &in)
     {
       smt2_solver.parse();
     }
-    catch(const smt2_tokenizert::smt2_errort &error)
+    catch(const smt2_solvert::smt2_errort &error)
     {
       smt2_solver.skip_to_end_of_list();
       error_found = true;
+      messaget message(message_handler);
       message.error().source_location.set_line(error.get_line_no());
       message.error() << error.what() << messaget::eom;
     }
@@ -395,6 +395,7 @@ int solver(std::istream &in)
     {
       smt2_solver.skip_to_end_of_list();
       error_found = true;
+      messaget message(message_handler);
       message.error() << error.what() << messaget::eom;
     }
   }

@@ -13,6 +13,8 @@ Author: Peter Schrammel
 
 #include <util/xml.h>
 #include <util/json.h>
+#include <util/json_expr.h>
+#include <util/xml_expr.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 
@@ -25,12 +27,12 @@ Author: Peter Schrammel
 
 void show_goto_functions(
   const namespacet &ns,
-  ui_message_handlert &ui_message_handler,
+  message_handlert &message_handler,
+  ui_message_handlert::uit ui,
   const goto_functionst &goto_functions,
   bool list_only)
 {
-  ui_message_handlert::uit ui = ui_message_handler.get_ui();
-  messaget msg(ui_message_handler);
+  messaget msg(message_handler);
   switch(ui)
   {
   case ui_message_handlert::uit::XML_UI:
@@ -82,10 +84,11 @@ void show_goto_functions(
 
 void show_goto_functions(
   const goto_modelt &goto_model,
-  ui_message_handlert &ui_message_handler,
+  message_handlert &message_handler,
+  ui_message_handlert::uit ui,
   bool list_only)
 {
   const namespacet ns(goto_model.symbol_table);
   show_goto_functions(
-    ns, ui_message_handler, goto_model.goto_functions, list_only);
+    ns, message_handler, ui, goto_model.goto_functions, list_only);
 }

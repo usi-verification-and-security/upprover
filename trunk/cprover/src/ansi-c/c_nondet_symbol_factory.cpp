@@ -13,7 +13,6 @@ Author: Diffblue Ltd.
 
 #include <ansi-c/c_object_factory_parameters.h>
 
-#include <util/allocate_objects.h>
 #include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/fresh_symbol.h>
@@ -25,6 +24,98 @@ Author: Diffblue Ltd.
 
 #include <goto-programs/goto_functions.h>
 
+class symbol_factoryt
+{
+  std::vector<const symbolt *> &symbols_created;
+  symbol_tablet &symbol_table;
+  const source_locationt &loc;
+  namespacet ns;
+  const c_object_factory_parameterst &object_factory_params;
+
+  typedef std::set<irep_idt> recursion_sett;
+
+public:
+  symbol_factoryt(
+    std::vector<const symbolt *> &_symbols_created,
+    symbol_tablet &_symbol_table,
+    const source_locationt &loc,
+    const c_object_factory_parameterst &object_factory_params)
+    : symbols_created(_symbols_created),
+      symbol_table(_symbol_table),
+      loc(loc),
+      ns(_symbol_table),
+      object_factory_params(object_factory_params)
+  {}
+
+  exprt allocate_object(
+    code_blockt &assignments,
+    const exprt &target_expr,
+    const typet &allocate_type,
+    const bool static_lifetime);
+
+  void gen_nondet_init(
+    code_blockt &assignments,
+    const exprt &expr,
+    const std::size_t depth = 0,
+    recursion_sett recursion_set = recursion_sett());
+
+private:
+  /// Generate initialisation code for each array element
+  /// \param assignments: The code block to add code to
+  /// \param expr: An expression of array type
+  /// \param depth: The struct recursion depth
+  /// \param recursion_set: The struct recursion set
+  /// \see gen_nondet_init For the meaning of the last 2 parameters
+  void gen_nondet_array_init(
+    code_blockt &assignments,
+    const exprt &expr,
+    std::size_t depth,
+    const recursion_sett &recursion_set);
+};
+
+/// Create a symbol for a pointer to point to
+/// \param assignments: The code block to add code to
+/// \param target_expr: The expression which we are allocating a symbol for
+/// \param allocate_type: The type to use for the symbol. If this doesn't match
+///   target_expr then a cast will be used for the assignment
+/// \param static_lifetime: Whether the symbol created should have static
+///   lifetime
+/// \return Returns the address of the allocated symbol
+exprt symbol_factoryt::allocate_object(
+  code_blockt &assignments,
+  const exprt &target_expr,
+  const typet &allocate_type,
+  const bool static_lifetime)
+{
+  symbolt &aux_symbol = get_fresh_aux_symbol(
+    allocate_type,
+    id2string(loc.get_function()),
+    "tmp",
+    loc,
+    ID_C,
+    symbol_table);
+  aux_symbol.is_static_lifetime = static_lifetime;
+  symbols_created.push_back(&aux_symbol);
+
+  const typet &allocate_type_resolved=ns.follow(allocate_type);
+  const typet &target_type=ns.follow(target_expr.type().subtype());
+  bool cast_needed=allocate_type_resolved!=target_type;
+
+  exprt aoe=address_of_exprt(aux_symbol.symbol_expr());
+  if(cast_needed)
+  {
+    aoe=typecast_exprt(aoe, target_expr.type());
+  }
+
+  // Add the following code to assignments:
+  //   <target_expr> = &tmp$<temporary_counter>
+  code_assignt assign(target_expr, aoe);
+  assign.add_source_location()=loc;
+  assignments.add(std::move(assign));
+
+  return aoe;
+}
+
 /// Creates a nondet for expr, including calling itself recursively to make
 /// appropriate symbols to point to if expr is a pointer.
 /// \param assignments: The code block to add code to
@@ -32,48 +123,31 @@ Author: Diffblue Ltd.
 ///   for
 /// \param depth number of pointers followed so far during initialisation
 /// \param recursion_set names of structs seen so far on current pointer chain
-/// \param assign_const Indicates whether const objects should be nondet
-///   initialized
 void symbol_factoryt::gen_nondet_init(
   code_blockt &assignments,
   const exprt &expr,
   const std::size_t depth,
-  recursion_sett recursion_set,
-  const bool assign_const)
+  recursion_sett recursion_set)
 {
-  const typet &type = expr.type();
-
-  if(!assign_const && expr.type().get_bool(ID_C_constant))
-  {
-    return;
-  }
+  const typet &type=ns.follow(expr.type());
 
   if(type.id()==ID_pointer)
   {
     // dereferenced type
     const pointer_typet &pointer_type=to_pointer_type(type);
-    const typet &subtype = pointer_type.subtype();
+    const typet &subtype=ns.follow(pointer_type.subtype());
 
-    if(subtype.id() == ID_code)
+    if(subtype.id() == ID_struct)
     {
-      // Handle the pointer-to-code case separately:
-      // leave as nondet_ptr to allow `remove_function_pointers`
-      // to replace the pointer.
-      assignments.add(
-        code_assignt{expr, side_effect_expr_nondett{pointer_type, loc}});
-      return;
-    }
-
-    if(subtype.id() == ID_struct_tag)
-    {
-      const irep_idt struct_tag = to_struct_tag_type(subtype).get_identifier();
+      const struct_typet &struct_type = to_struct_type(subtype);
+      const irep_idt struct_tag = struct_type.get_tag();
 
       if(
         recursion_set.find(struct_tag) != recursion_set.end() &&
         depth >= object_factory_params.max_nondet_tree_depth)
       {
-        assignments.add(
-          code_assignt{expr, null_pointer_exprt{pointer_type}, loc});
+        code_assignt c(expr, null_pointer_exprt(pointer_type));
+        assignments.add(std::move(c));
 
         return;
       }
@@ -81,14 +155,18 @@ void symbol_factoryt::gen_nondet_init(
 
     code_blockt non_null_inst;
 
-    typet object_type = subtype;
-    if(object_type.id() == ID_empty)
-      object_type = char_type();
+    exprt allocated=allocate_object(non_null_inst, expr, subtype, false);
 
-    exprt init_expr = allocate_objects.allocate_object(
-      non_null_inst, expr, object_type, lifetime);
-
-    gen_nondet_init(non_null_inst, init_expr, depth + 1, recursion_set, true);
+    exprt init_expr;
+    if(allocated.id()==ID_address_of)
+    {
+      init_expr=allocated.op0();
+    }
+    else
+    {
+      init_expr=dereference_exprt(allocated, allocated.type().subtype());
+    }
+    gen_nondet_init(non_null_inst, init_expr, depth + 1, recursion_set);
 
     if(depth < object_factory_params.min_null_tree_depth)
     {
@@ -106,8 +184,8 @@ void symbol_factoryt::gen_nondet_init(
       //           <code from recursive call to gen_nondet_init() with
       //             tmp$<temporary_counter>>
       // And the next line is labelled label2
-      const code_assignt set_null_inst{
-        expr, null_pointer_exprt{pointer_type}, loc};
+      auto set_null_inst=code_assignt(expr, null_pointer_exprt(pointer_type));
+      set_null_inst.add_source_location()=loc;
 
       code_ifthenelset null_check(
         side_effect_expr_nondett(bool_typet(), loc),
@@ -117,31 +195,23 @@ void symbol_factoryt::gen_nondet_init(
       assignments.add(std::move(null_check));
     }
   }
-  else if(type.id() == ID_struct_tag)
+  else if(type.id() == ID_struct)
   {
-    const auto &struct_tag_type = to_struct_tag_type(type);
+    const struct_typet &struct_type = to_struct_type(type);
 
-    const irep_idt struct_tag = struct_tag_type.get_identifier();
+    const irep_idt struct_tag = struct_type.get_tag();
 
     recursion_set.insert(struct_tag);
-
-    const auto &struct_type = to_struct_type(ns.follow_tag(struct_tag_type));
 
     for(const auto &component : struct_type.components())
     {
       const typet &component_type = component.type();
-
-      if(!assign_const && component_type.get_bool(ID_C_constant))
-      {
-        continue;
-      }
-
       const irep_idt name = component.get_name();
 
       member_exprt me(expr, name, component_type);
       me.add_source_location() = loc;
 
-      gen_nondet_init(assignments, me, depth, recursion_set, assign_const);
+      gen_nondet_init(assignments, me, depth, recursion_set);
     }
   }
   else if(type.id() == ID_array)
@@ -170,9 +240,7 @@ void symbol_factoryt::gen_nondet_array_init(
   const recursion_sett &recursion_set)
 {
   auto const &array_type = to_array_type(expr.type());
-  const auto &size = array_type.size();
-  PRECONDITION(size.id() == ID_constant);
-  auto const array_size = numeric_cast_v<size_t>(to_constant_expr(size));
+  auto const array_size = numeric_cast_v<size_t>(array_type.size());
   DATA_INVARIANT(array_size > 0, "Arrays should have positive size");
   for(size_t index = 0; index < array_size; ++index)
   {
@@ -192,10 +260,8 @@ void symbol_factoryt::gen_nondet_array_init(
 /// \param base_name: The name to use for the symbol created
 /// \param type: The type for the symbol created
 /// \param loc: The location to assign to generated code
-/// \param object_factory_parameters: configuration parameters for the object
+/// \param object_factory_parameters configuration parameters for the object
 ///   factory
-/// \param lifetime: Lifetime of the allocated object (AUTOMATIC_LOCAL,
-///   STATIC_GLOBAL, or DYNAMIC)
 /// \return Returns the symbol_exprt for the symbol created
 symbol_exprt c_nondet_symbol_factory(
   code_blockt &init_code,
@@ -203,8 +269,7 @@ symbol_exprt c_nondet_symbol_factory(
   const irep_idt base_name,
   const typet &type,
   const source_locationt &loc,
-  const c_object_factory_parameterst &object_factory_parameters,
-  const lifetimet lifetime)
+  const c_object_factory_parameterst &object_factory_parameters)
 {
   irep_idt identifier=id2string(goto_functionst::entry_point())+
     "::"+id2string(base_name);
@@ -223,22 +288,39 @@ symbol_exprt c_nondet_symbol_factory(
   bool moving_symbol_failed=symbol_table.move(main_symbol, main_symbol_ptr);
   CHECK_RETURN(!moving_symbol_failed);
 
-  symbol_factoryt state(
-    symbol_table,
-    loc,
-    goto_functionst::entry_point(),
-    object_factory_parameters,
-    lifetime);
+  std::vector<const symbolt *> symbols_created;
+  symbols_created.push_back(main_symbol_ptr);
 
+  symbol_factoryt state(
+    symbols_created, symbol_table, loc, object_factory_parameters);
   code_blockt assignments;
   state.gen_nondet_init(assignments, main_symbol_expr);
 
-  state.add_created_symbol(main_symbol_ptr);
-  state.declare_created_symbols(init_code);
+  // Add the following code to init_code for each symbol that's been created:
+  //   <type> <identifier>;
+  for(const symbolt * const symbol_ptr : symbols_created)
+  {
+    code_declt decl(symbol_ptr->symbol_expr());
+    decl.add_source_location()=loc;
+    init_code.add(std::move(decl));
+  }
 
   init_code.append(assignments);
 
-  state.mark_created_symbols_as_input(init_code);
+  // Add the following code to init_code for each symbol that's been created:
+  //   INPUT("<identifier>", <identifier>);
+  for(symbolt const *symbol_ptr : symbols_created)
+  {
+    codet input_code(ID_input);
+    input_code.operands().resize(2);
+    input_code.op0()=
+      address_of_exprt(index_exprt(
+        string_constantt(symbol_ptr->base_name),
+        from_integer(0, index_type())));
+    input_code.op1()=symbol_ptr->symbol_expr();
+    input_code.add_source_location()=loc;
+    init_code.add(std::move(input_code));
+  }
 
   return main_symbol_expr;
 }

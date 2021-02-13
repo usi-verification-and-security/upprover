@@ -46,7 +46,10 @@ std::string cpp_typecheckt::template_suffix(
     if(expr.id()==ID_type)
     {
       const typet &type=expr.type();
-      if(type.id() == ID_struct_tag || type.id() == ID_union_tag)
+      if(type.id() == ID_symbol_type)
+        result += id2string(to_symbol_type(type).get_identifier());
+      else if(type.id() == ID_struct_tag ||
+              type.id() == ID_union_tag)
         result += id2string(to_tag_type(type).get_identifier());
       else
         result+=cpp_type2name(type);
@@ -54,16 +57,6 @@ std::string cpp_typecheckt::template_suffix(
     else // expression
     {
       exprt e=expr;
-
-      if(e.id() == ID_symbol)
-      {
-        const symbol_exprt &s = to_symbol_expr(e);
-        const symbolt &symbol = lookup(s.get_identifier());
-
-        if(cpp_is_pod(symbol.type) && symbol.type.get_bool(ID_C_constant))
-          e = symbol.value;
-      }
-
       make_constant(e);
 
       // this must be a constant, which includes true/false
@@ -73,11 +66,12 @@ std::string cpp_typecheckt::template_suffix(
         i=1;
       else if(e.is_false())
         i=0;
-      else if(to_integer(to_constant_expr(e), i))
+      else if(to_integer(e, i))
       {
         error().source_location = expr.find_source_location();
         error() << "template argument expression expected to be "
-                << "scalar constant, but got '" << to_string(e) << "'" << eom;
+                << "scalar constant, but got `"
+                << to_string(e) << "'" << eom;
         throw 0;
       }
 
@@ -95,7 +89,7 @@ void cpp_typecheckt::show_instantiation_stack(std::ostream &out)
   for(const auto &e : instantiation_stack)
   {
     const symbolt &symbol = lookup(e.identifier);
-    out << "instantiating '" << symbol.pretty_name << "' with <";
+    out << "instantiating `" << symbol.pretty_name << "' with <";
 
     forall_expr(a_it, e.full_template_args.arguments())
     {
@@ -112,40 +106,6 @@ void cpp_typecheckt::show_instantiation_stack(std::ostream &out)
   }
 }
 
-/// Set up a scope as subscope of the template scope
-cpp_scopet &cpp_typecheckt::sub_scope_for_instantiation(
-  cpp_scopet &template_scope,
-  const std::string &suffix)
-{
-  cpp_scopet::id_sett id_set =
-    template_scope.lookup(suffix, cpp_scopet::SCOPE_ONLY);
-
-  CHECK_RETURN(id_set.size() <= 1);
-
-  if(id_set.size() == 1)
-  {
-    cpp_idt &cpp_id = **id_set.begin();
-    CHECK_RETURN(cpp_id.is_template_scope());
-
-    return static_cast<cpp_scopet &>(cpp_id);
-  }
-  else
-  {
-    cpp_scopet &sub_scope = template_scope.new_scope(suffix);
-    sub_scope.id_class = cpp_idt::id_classt::TEMPLATE_SCOPE;
-    sub_scope.prefix = template_scope.get_parent().prefix;
-    sub_scope.suffix = suffix;
-    sub_scope.add_using_scope(template_scope.get_parent());
-
-    const std::string subscope_name =
-      id2string(template_scope.identifier) + suffix;
-    cpp_scopes.id_map.insert(
-      cpp_scopest::id_mapt::value_type(subscope_name, &sub_scope));
-
-    return sub_scope;
-  }
-}
-
 const symbolt &cpp_typecheckt::class_template_symbol(
   const source_locationt &source_location,
   const symbolt &template_symbol,
@@ -159,8 +119,9 @@ const symbolt &cpp_typecheckt::class_template_symbol(
   if(full_template_args.arguments().empty())
   {
     error().source_location=source_location;
-    error() << "'" << template_symbol.base_name
-            << "' is a template; thus, expected template arguments" << eom;
+    error() << "`" << template_symbol.base_name
+            << "' is a template; thus, expected template arguments"
+            << eom;
     throw 0;
   }
 
@@ -173,9 +134,10 @@ const symbolt &cpp_typecheckt::class_template_symbol(
   INVARIANT_STRUCTURED(
     template_scope!=nullptr, nullptr_exceptiont, "template_scope is null");
 
-  irep_idt identifier = id2string(template_scope->get_parent().prefix) +
-                        "tag-" + id2string(template_symbol.base_name) +
-                        id2string(suffix);
+  irep_idt identifier=
+    id2string(template_scope->prefix)+
+    "tag-"+id2string(template_symbol.base_name)+
+    id2string(suffix);
 
   // already there?
   symbol_tablet::symbolst::const_iterator s_it=
@@ -183,14 +145,13 @@ const symbolt &cpp_typecheckt::class_template_symbol(
   if(s_it!=symbol_table.symbols.end())
     return s_it->second;
 
-  // Create as incomplete struct, but mark as
+  // Create as incomplete_struct, but mark as
   // "template_class_instance", to be elaborated later.
   symbolt new_symbol;
   new_symbol.name=identifier;
   new_symbol.pretty_name=template_symbol.pretty_name;
   new_symbol.location=template_symbol.location;
-  new_symbol.type = struct_typet();
-  to_struct_type(new_symbol.type).make_incomplete();
+  new_symbol.type=typet(ID_incomplete_struct);
   new_symbol.type.set(ID_tag, template_symbol.type.find(ID_tag));
   if(template_symbol.type.get_bool(ID_C_class))
     new_symbol.type.set(ID_C_class, true);
@@ -212,8 +173,9 @@ const symbolt &cpp_typecheckt::class_template_symbol(
 
   id.id_class=cpp_idt::id_classt::CLASS;
   id.is_scope=true;
-  id.prefix = template_scope->get_parent().prefix +
-              id2string(s_ptr->base_name) + id2string(suffix) + "::";
+  id.prefix=template_scope->prefix+
+            id2string(s_ptr->base_name)+
+            id2string(suffix)+"::";
   id.class_identifier=s_ptr->name;
   id.id_class=cpp_idt::id_classt::CLASS;
 
@@ -224,15 +186,16 @@ const symbolt &cpp_typecheckt::class_template_symbol(
 void cpp_typecheckt::elaborate_class_template(
   const typet &type)
 {
-  if(type.id() != ID_struct_tag)
+  if(type.id() != ID_symbol_type)
     return;
 
-  const symbolt &symbol = lookup(to_struct_tag_type(type));
+  const symbolt &symbol = lookup(to_symbol_type(type));
 
   // Make a copy, as instantiate will destroy the symbol type!
   const typet t_type=symbol.type;
 
-  if(t_type.id() == ID_struct && t_type.get_bool(ID_template_class_instance))
+  if(t_type.id()==ID_incomplete_struct &&
+     t_type.get_bool(ID_template_class_instance))
   {
     instantiate_template(
       type.source_location(),
@@ -305,8 +268,9 @@ const symbolt &cpp_typecheckt::instantiate_template(
   if(full_template_args.arguments().empty())
   {
     error().source_location=source_location;
-    error() << "'" << template_symbol.base_name
-            << "' is a template; thus, expected template arguments" << eom;
+    error() << "`" << template_symbol.base_name
+            << "' is a template; thus, expected template arguments"
+            << eom;
     throw 0;
   }
 
@@ -357,12 +321,18 @@ const symbolt &cpp_typecheckt::instantiate_template(
     class_name=cpp_scopes.current_scope().get_parent().identifier;
 
   // sub-scope for fixing the prefix
-  cpp_scopet &sub_scope = sub_scope_for_instantiation(*template_scope, suffix);
+  std::string subscope_name=id2string(template_scope->identifier)+suffix;
 
   // let's see if we have the instance already
+  cpp_scopest::id_mapt::iterator scope_it=
+    cpp_scopes.id_map.find(subscope_name);
+
+  if(scope_it!=cpp_scopes.id_map.end())
   {
-    cpp_scopet::id_sett id_set =
-      sub_scope.lookup(template_symbol.base_name, cpp_scopet::SCOPE_ONLY);
+    cpp_scopet &scope=cpp_scopes.get_scope(subscope_name);
+
+    const auto id_set =
+      scope.lookup(template_symbol.base_name, cpp_scopet::SCOPE_ONLY);
 
     if(id_set.size()==1)
     {
@@ -382,14 +352,27 @@ const symbolt &cpp_typecheckt::instantiate_template(
         return symb;
     }
 
+    cpp_scopes.go_to(scope);
+  }
+  else
+  {
+    // set up a scope as subscope of the template scope
+    cpp_scopet &sub_scope=
+      cpp_scopes.current_scope().new_scope(subscope_name);
+    sub_scope.id_class=cpp_idt::id_classt::TEMPLATE_SCOPE;
+    sub_scope.prefix=template_scope->get_parent().prefix;
+    sub_scope.suffix=suffix;
+    sub_scope.add_using_scope(template_scope->get_parent());
     cpp_scopes.go_to(sub_scope);
+    cpp_scopes.id_map.insert(
+      cpp_scopest::id_mapt::value_type(subscope_name, &sub_scope));
   }
 
   // store the information that the template has
   // been instantiated using these arguments
   {
     // need non-const handle on template symbol
-    symbolt &s = symbol_table.get_writeable_ref(template_symbol.name);
+    symbolt &s=*symbol_table.get_writeable(template_symbol.name);
     irept &instantiated_with = s.value.add(ID_instantiated_with);
     instantiated_with.get_sub().push_back(specialization_template_args);
   }
@@ -481,7 +464,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
 
   if(is_template_method)
   {
-    symbolt &symb = symbol_table.get_writeable_ref(class_name);
+    symbolt &symb=*symbol_table.get_writeable(class_name);
 
     assert(new_decl.declarators().size() == 1);
 

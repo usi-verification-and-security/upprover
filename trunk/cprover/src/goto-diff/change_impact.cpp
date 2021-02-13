@@ -66,26 +66,27 @@ void full_slicert::operator()(
   // declarations or dead instructions may be necessary as well
   decl_deadt decl_dead;
 
-  for(const auto &entry : cfg.entries())
+  for(cfgt::entry_mapt::iterator
+      e_it=cfg.entry_map.begin();
+      e_it!=cfg.entry_map.end();
+      e_it++)
   {
-    const auto &instruction = instruction_and_index.first;
-    const auto instruction_node_index = instruction_and_index.second;
-    if(criterion(instruction))
-      add_to_queue(queue, instruction_node_index, instruction);
-    else if(implicit(instruction))
-      add_to_queue(queue, instruction_node_index, instruction);
-    else if((instruction->is_goto() && instruction->guard.is_true()) ||
-            instruction->is_throw())
-      jumps.push_back(instruction_node_index);
-    else if(instruction->is_decl())
+    if(criterion(e_it->first))
+      add_to_queue(queue, e_it->second, e_it->first);
+    else if(implicit(e_it->first))
+      add_to_queue(queue, e_it->second, e_it->first);
+    else if((e_it->first->is_goto() && e_it->first->guard.is_true()) ||
+            e_it->first->is_throw())
+      jumps.push_back(e_it->second);
+    else if(e_it->first->is_decl())
     {
-      const auto &s=to_code_decl(instruction->code).symbol();
-      decl_dead[s.get_identifier()].push(instruction_node_index);
+      const auto &s=to_code_decl(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
-    else if(instruction->is_dead())
+    else if(e_it->first->is_dead())
     {
-      const auto &s=to_code_dead(instruction->code).symbol();
-      decl_dead[s.get_identifier()].push(instruction_node_index);
+      const auto &s=to_code_dead(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
   }
 
@@ -104,9 +105,9 @@ void full_slicert::operator()(
     {
       Forall_goto_program_instructions(i_it, f_it->second.body)
       {
-        const auto &node = cfg.get_node(i_it);
+        const cfgt::entryt &e=cfg.entry_map[i_it];
         if(!i_it->is_end_function() && // always retained
-           !node.node_required)
+           !cfg[e].node_required)
           i_it->make_skip();
 #ifdef DEBUG_FULL_SLICERT
         else
@@ -114,11 +115,11 @@ void full_slicert::operator()(
           std::string c="ins:"+std::to_string(i_it->location_number);
           c+=" req by:";
           for(std::set<unsigned>::const_iterator
-              req_it=node.required_by.begin();
-              req_it!=node.required_by.end();
+              req_it=cfg[e].required_by.begin();
+              req_it!=cfg[e].required_by.end();
               ++req_it)
           {
-            if(req_it!=node.required_by.begin())
+            if(req_it!=cfg[e].required_by.begin())
               c+=",";
             c+=std::to_string(*req_it);
           }
@@ -143,10 +144,13 @@ void full_slicert::fixedpoint(
 {
   std::vector<cfgt::entryt> dep_node_to_cfg;
   dep_node_to_cfg.reserve(dep_graph.size());
-
   for(unsigned i=0; i<dep_graph.size(); ++i)
   {
-    dep_node_to_cfg.push_back(cfg.get_node_index(dep_graph[i].PC));
+    cfgt::entry_mapt::const_iterator entry=
+      cfg.entry_map.find(dep_graph[i].PC);
+    assert(entry!=cfg.entry_map.end());
+
+    dep_node_to_cfg.push_back(entry->second);
   }
 
   // process queue until empty
@@ -241,10 +245,9 @@ protected:
 
   goto_functions_change_impactt old_change_impact, new_change_impact;
 
-  void change_impact(const irep_idt &function_id);
+  void change_impact(const irep_idt &function);
 
   void change_impact(
-    const irep_idt &function_id,
     const goto_programt &old_goto_program,
     const goto_programt &new_goto_program,
     const unified_difft::goto_program_difft &diff,
@@ -252,25 +255,23 @@ protected:
     goto_program_change_impactt &new_impact);
 
   void propogate_dep_back(
-    const irep_idt &function_id,
     const dependence_grapht::nodet &d_node,
     const dependence_grapht &dep_graph,
     goto_functions_change_impactt &change_impact,
     bool del);
   void propogate_dep_forward(
-    const irep_idt &function_id,
     const dependence_grapht::nodet &d_node,
     const dependence_grapht &dep_graph,
     goto_functions_change_impactt &change_impact,
     bool del);
 
   void output_change_impact(
-    const irep_idt &function_id,
+    const irep_idt &function,
     const goto_program_change_impactt &c_i,
     const goto_functionst &goto_functions,
     const namespacet &ns) const;
   void output_change_impact(
-    const irep_idt &function_id,
+    const irep_idt &function,
     const goto_program_change_impactt &o_c_i,
     const goto_functionst &o_goto_functions,
     const namespacet &o_ns,
@@ -278,12 +279,11 @@ protected:
     const goto_functionst &n_goto_functions,
     const namespacet &n_ns) const;
 
-  void output_instruction(
-    char prefix,
-    const goto_programt &goto_program,
-    const namespacet &ns,
-    const irep_idt &function_id,
-    goto_programt::const_targett &target) const;
+  void output_instruction(char prefix,
+      const goto_programt &goto_program,
+      const namespacet &ns,
+      const irep_idt &function,
+      goto_programt::const_targett &target) const;
 };
 
 change_impactt::change_impactt(
@@ -312,17 +312,17 @@ change_impactt::change_impactt(
   new_dep_graph(new_goto_functions, ns_new);
 }
 
-void change_impactt::change_impact(const irep_idt &function_id)
+void change_impactt::change_impact(const irep_idt &function)
 {
-  unified_difft::goto_program_difft diff = unified_diff.get_diff(function_id);
+  unified_difft::goto_program_difft diff = unified_diff.get_diff(function);
 
   if(diff.empty())
     return;
 
-  goto_functionst::function_mapt::const_iterator old_fit =
-    old_goto_functions.function_map.find(function_id);
-  goto_functionst::function_mapt::const_iterator new_fit =
-    new_goto_functions.function_map.find(function_id);
+  goto_functionst::function_mapt::const_iterator old_fit=
+    old_goto_functions.function_map.find(function);
+  goto_functionst::function_mapt::const_iterator new_fit=
+    new_goto_functions.function_map.find(function);
 
   goto_programt empty;
 
@@ -336,16 +336,14 @@ void change_impactt::change_impact(const irep_idt &function_id)
     new_fit->second.body;
 
   change_impact(
-    function_id,
     old_goto_program,
     new_goto_program,
     diff,
-    old_change_impact[function_id],
-    new_change_impact[function_id]);
+    old_change_impact[function],
+    new_change_impact[function]);
 }
 
 void change_impactt::change_impact(
-  const irep_idt &function_id,
   const goto_programt &old_goto_program,
   const goto_programt &new_goto_program,
   const unified_difft::goto_program_difft &diff,
@@ -380,11 +378,17 @@ void change_impactt::change_impact(
           if(impact_mode==impact_modet::BACKWARD ||
              impact_mode==impact_modet::BOTH)
             propogate_dep_back(
-              function_id, d_node, old_dep_graph, old_change_impact, true);
+              d_node,
+              old_dep_graph,
+              old_change_impact,
+              true);
           if(impact_mode==impact_modet::FORWARD ||
              impact_mode==impact_modet::BOTH)
             propogate_dep_forward(
-              function_id, d_node, old_dep_graph, old_change_impact, true);
+              d_node,
+              old_dep_graph,
+              old_change_impact,
+              true);
         }
         old_impact[o_it]|=DELETED;
         ++o_it;
@@ -398,16 +402,18 @@ void change_impactt::change_impact(
 
           if(impact_mode==impact_modet::BACKWARD ||
              impact_mode==impact_modet::BOTH)
-          {
             propogate_dep_back(
-              function_id, d_node, new_dep_graph, new_change_impact, false);
-          }
+              d_node,
+              new_dep_graph,
+              new_change_impact,
+              false);
           if(impact_mode==impact_modet::FORWARD ||
              impact_mode==impact_modet::BOTH)
-          {
             propogate_dep_forward(
-              function_id, d_node, new_dep_graph, new_change_impact, false);
-          }
+              d_node,
+              new_dep_graph,
+              new_change_impact,
+              false);
         }
         new_impact[n_it]|=NEW;
         ++n_it;
@@ -416,8 +422,8 @@ void change_impactt::change_impact(
   }
 }
 
+
 void change_impactt::propogate_dep_forward(
-  const irep_idt &function_id,
   const dependence_grapht::nodet &d_node,
   const dependence_grapht &dep_graph,
   goto_functions_change_impactt &change_impact,
@@ -431,26 +437,20 @@ void change_impactt::propogate_dep_forward(
     mod_flagt data_flag = del ? DEL_DATA_DEP : NEW_DATA_DEP;
     mod_flagt ctrl_flag = del ? DEL_CTRL_DEP : NEW_CTRL_DEP;
 
-    if(
-      (change_impact[function_id][src] & data_flag) ||
-      (change_impact[function_id][src] & ctrl_flag))
+    if((change_impact[src->function][src] &data_flag)
+        || (change_impact[src->function][src] &ctrl_flag))
       continue;
     if(it->second.get() == dep_edget::kindt::DATA
         || it->second.get() == dep_edget::kindt::BOTH)
-      change_impact[function_id][src] |= data_flag;
+      change_impact[src->function][src] |= data_flag;
     else
-      change_impact[function_id][src] |= ctrl_flag;
-    propogate_dep_forward(
-      function_id,
-      dep_graph[dep_graph[src].get_node_id()],
-      dep_graph,
-      change_impact,
-      del);
+      change_impact[src->function][src] |= ctrl_flag;
+    propogate_dep_forward(dep_graph[dep_graph[src].get_node_id()], dep_graph,
+        change_impact, del);
   }
 }
 
 void change_impactt::propogate_dep_back(
-  const irep_idt &function_id,
   const dependence_grapht::nodet &d_node,
   const dependence_grapht &dep_graph,
   goto_functions_change_impactt &change_impact,
@@ -464,24 +464,19 @@ void change_impactt::propogate_dep_back(
     mod_flagt data_flag = del ? DEL_DATA_DEP : NEW_DATA_DEP;
     mod_flagt ctrl_flag = del ? DEL_CTRL_DEP : NEW_CTRL_DEP;
 
-    if(
-      (change_impact[function_id][src] & data_flag) ||
-      (change_impact[function_id][src] & ctrl_flag))
+    if((change_impact[src->function][src] &data_flag)
+        || (change_impact[src->function][src] &ctrl_flag))
     {
       continue;
     }
     if(it->second.get() == dep_edget::kindt::DATA
         || it->second.get() == dep_edget::kindt::BOTH)
-      change_impact[function_id][src] |= data_flag;
+      change_impact[src->function][src] |= data_flag;
     else
-      change_impact[function_id][src] |= ctrl_flag;
+      change_impact[src->function][src] |= ctrl_flag;
 
-    propogate_dep_back(
-      function_id,
-      dep_graph[dep_graph[src].get_node_id()],
-      dep_graph,
-      change_impact,
-      del);
+    propogate_dep_back(dep_graph[dep_graph[src].get_node_id()], dep_graph,
+        change_impact, del);
   }
 }
 
@@ -556,18 +551,18 @@ void change_impactt::operator()()
 }
 
 void change_impactt::output_change_impact(
-  const irep_idt &function_id,
+  const irep_idt &function,
   const goto_program_change_impactt &c_i,
   const goto_functionst &goto_functions,
   const namespacet &ns) const
 {
-  goto_functionst::function_mapt::const_iterator f_it =
-    goto_functions.function_map.find(function_id);
+  goto_functionst::function_mapt::const_iterator f_it=
+    goto_functions.function_map.find(function);
   assert(f_it!=goto_functions.function_map.end());
   const goto_programt &goto_program=f_it->second.body;
 
   if(!compact_output)
-    std::cout << "/** " << function_id << " **/\n";
+    std::cout << "/** " << function << " **/\n";
 
   forall_goto_program_instructions(target, goto_program)
   {
@@ -596,12 +591,12 @@ void change_impactt::output_change_impact(
     else
       UNREACHABLE;
 
-    output_instruction(prefix, goto_program, ns, function_id, target);
+    output_instruction(prefix, goto_program, ns, function, target);
   }
 }
 
 void change_impactt::output_change_impact(
-  const irep_idt &function_id,
+  const irep_idt &function,
   const goto_program_change_impactt &o_c_i,
   const goto_functionst &o_goto_functions,
   const namespacet &o_ns,
@@ -609,18 +604,18 @@ void change_impactt::output_change_impact(
   const goto_functionst &n_goto_functions,
   const namespacet &n_ns) const
 {
-  goto_functionst::function_mapt::const_iterator o_f_it =
-    o_goto_functions.function_map.find(function_id);
+  goto_functionst::function_mapt::const_iterator o_f_it=
+    o_goto_functions.function_map.find(function);
   assert(o_f_it!=o_goto_functions.function_map.end());
   const goto_programt &old_goto_program=o_f_it->second.body;
 
-  goto_functionst::function_mapt::const_iterator f_it =
-    n_goto_functions.function_map.find(function_id);
+  goto_functionst::function_mapt::const_iterator f_it=
+    n_goto_functions.function_map.find(function);
   assert(f_it!=n_goto_functions.function_map.end());
   const goto_programt &goto_program=f_it->second.body;
 
   if(!compact_output)
-    std::cout << "/** " << function_id << " **/\n";
+    std::cout << "/** " << function << " **/\n";
 
   goto_programt::const_targett o_target=
     old_goto_program.instructions.begin();
@@ -634,7 +629,7 @@ void change_impactt::output_change_impact(
 
     if(old_mod_flags&DELETED)
     {
-      output_instruction('-', goto_program, o_ns, function_id, o_target);
+      output_instruction('-', goto_program, o_ns, function, o_target);
       ++o_target;
       --target;
       continue;
@@ -686,7 +681,7 @@ void change_impactt::output_change_impact(
     else
       UNREACHABLE;
 
-    output_instruction(prefix, goto_program, n_ns, function_id, target);
+    output_instruction(prefix, goto_program, n_ns, function, target);
   }
   for( ;
       o_target!=old_goto_program.instructions.end();
@@ -714,16 +709,15 @@ void change_impactt::output_change_impact(
     else
       UNREACHABLE;
 
-    output_instruction(prefix, goto_program, o_ns, function_id, o_target);
+    output_instruction(prefix, goto_program, o_ns, function, o_target);
   }
 }
 
-void change_impactt::output_instruction(
-  char prefix,
-  const goto_programt &goto_program,
-  const namespacet &ns,
-  const irep_idt &function_id,
-  goto_programt::const_targett &target) const
+void change_impactt::output_instruction(char prefix,
+    const goto_programt &goto_program,
+    const namespacet &ns,
+    const irep_idt &function,
+    goto_programt::const_targett &target) const
 {
   if(compact_output)
   {
@@ -738,7 +732,7 @@ void change_impactt::output_instruction(
   else
   {
     std::cout << prefix;
-    goto_program.output_instruction(ns, function_id, std::cout, *target);
+    goto_program.output_instruction(ns, function, std::cout, *target);
   }
 }
 

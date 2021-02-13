@@ -24,9 +24,9 @@ static exprt complex_member(const exprt &expr, irep_idt id)
   if(expr.id()==ID_struct && expr.operands().size()==2)
   {
     if(id==ID_real)
-      return to_binary_expr(expr).op0();
+      return expr.op0();
     else if(id==ID_imag)
-      return to_binary_expr(expr).op1();
+      return expr.op1();
     else
       UNREACHABLE;
   }
@@ -136,18 +136,19 @@ static void remove_complex(exprt &expr)
       PRECONDITION(expr.operands().size() == 2);
       // do component-wise:
       // x+y -> complex(x.r+y.r,x.i+y.i)
-      struct_exprt struct_expr(
-        {binary_exprt(
-           complex_member(to_binary_expr(expr).op0(), ID_real),
-           expr.id(),
-           complex_member(to_binary_expr(expr).op1(), ID_real)),
-         binary_exprt(
-           complex_member(to_binary_expr(expr).op0(), ID_imag),
-           expr.id(),
-           complex_member(to_binary_expr(expr).op1(), ID_imag))},
-        expr.type());
+      struct_exprt struct_expr(expr.type());
+      struct_expr.operands().resize(2);
 
-      struct_expr.op0().add_source_location() = expr.source_location();
+      struct_expr.op0()=
+        binary_exprt(complex_member(expr.op0(), ID_real), expr.id(),
+                     complex_member(expr.op1(), ID_real));
+
+      struct_expr.op0().add_source_location()=expr.source_location();
+
+      struct_expr.op1()=
+        binary_exprt(complex_member(expr.op0(), ID_imag), expr.id(),
+                     complex_member(expr.op1(), ID_imag));
+
       struct_expr.op1().add_source_location()=expr.source_location();
 
       expr=struct_expr;
@@ -157,13 +158,17 @@ static void remove_complex(exprt &expr)
       auto const &unary_minus_expr = to_unary_minus_expr(expr);
       // do component-wise:
       // -x -> complex(-x.r,-x.i)
-      struct_exprt struct_expr(
-        {unary_minus_exprt(complex_member(unary_minus_expr.op(), ID_real)),
-         unary_minus_exprt(complex_member(unary_minus_expr.op(), ID_imag))},
-        unary_minus_expr.type());
+      struct_exprt struct_expr(unary_minus_expr.type());
+      struct_expr.operands().resize(2);
+
+      struct_expr.op0() =
+        unary_minus_exprt(complex_member(unary_minus_expr.op(), ID_real));
 
       struct_expr.op0().add_source_location() =
         unary_minus_expr.source_location();
+
+      struct_expr.op1() =
+        unary_minus_exprt(complex_member(unary_minus_expr.op(), ID_imag));
 
       struct_expr.op1().add_source_location() =
         unary_minus_expr.source_location();
@@ -173,9 +178,9 @@ static void remove_complex(exprt &expr)
     else if(expr.id()==ID_complex)
     {
       auto const &complex_expr = to_complex_expr(expr);
-      auto struct_expr = struct_exprt(
-        {complex_expr.real(), complex_expr.imag()}, complex_expr.type());
+      auto struct_expr = struct_exprt(complex_expr.type());
       struct_expr.add_source_location() = complex_expr.source_location();
+      struct_expr.copy_to_operands(complex_expr.real(), complex_expr.imag());
       expr.swap(struct_expr);
     }
     else if(expr.id()==ID_typecast)
@@ -187,14 +192,17 @@ static void remove_complex(exprt &expr)
       {
         // complex to complex -- do typecast per component
 
-        struct_exprt struct_expr(
-          {typecast_exprt(complex_member(typecast_expr.op(), ID_real), subtype),
-           typecast_exprt(
-             complex_member(typecast_expr.op(), ID_imag), subtype)},
-          typecast_expr.type());
+        struct_exprt struct_expr(typecast_expr.type());
+        struct_expr.operands().resize(2);
+
+        struct_expr.op0() =
+          typecast_exprt(complex_member(typecast_expr.op(), ID_real), subtype);
 
         struct_expr.op0().add_source_location() =
           typecast_expr.source_location();
+
+        struct_expr.op1() =
+          typecast_exprt(complex_member(typecast_expr.op(), ID_imag), subtype);
 
         struct_expr.op1().add_source_location() =
           typecast_expr.source_location();
@@ -204,10 +212,11 @@ static void remove_complex(exprt &expr)
       else
       {
         // non-complex to complex
-        struct_exprt struct_expr(
-          {typecast_exprt(typecast_expr.op(), subtype),
-           from_integer(0, subtype)},
-          typecast_expr.type());
+        struct_exprt struct_expr(typecast_expr.type());
+        struct_expr.operands().resize(2);
+
+        struct_expr.op0() = typecast_exprt(typecast_expr.op(), subtype);
+        struct_expr.op1()=from_integer(0, subtype);
         struct_expr.add_source_location() = typecast_expr.source_location();
 
         expr=struct_expr;
@@ -217,11 +226,11 @@ static void remove_complex(exprt &expr)
 
   if(expr.id()==ID_complex_real)
   {
-    expr = complex_member(to_complex_real_expr(expr).op(), ID_real);
+    expr = complex_member(to_complex_real_expr(expr).op0(), ID_real);
   }
   else if(expr.id()==ID_complex_imag)
   {
-    expr = complex_member(to_complex_imag_expr(expr).op(), ID_imag);
+    expr = complex_member(to_complex_imag_expr(expr).op0(), ID_imag);
   }
 
   remove_complex(expr.type());
@@ -257,11 +266,15 @@ static void remove_complex(typet &type)
 
     // Replace by a struct with two members.
     // The real part goes first.
-    struct_typet struct_type(
-      {{ID_real, type.subtype()}, {ID_imag, type.subtype()}});
+    struct_typet struct_type;
     struct_type.add_source_location()=type.source_location();
+    struct_type.components().resize(2);
+    struct_type.components()[0].type()=type.subtype();
+    struct_type.components()[0].set_name(ID_real);
+    struct_type.components()[1].type()=type.subtype();
+    struct_type.components()[1].set_name(ID_imag);
 
-    type = std::move(struct_type);
+    type=struct_type;
   }
 }
 
@@ -276,7 +289,7 @@ static void remove_complex(symbolt &symbol)
 void remove_complex(symbol_tablet &symbol_table)
 {
   for(const auto &named_symbol : symbol_table.symbols)
-    remove_complex(symbol_table.get_writeable_ref(named_symbol.first));
+    remove_complex(*symbol_table.get_writeable(named_symbol.first));
 }
 
 /// removes complex data type
@@ -285,16 +298,11 @@ static void remove_complex(
 {
   remove_complex(goto_function.type);
 
-  for(auto &i : goto_function.body.instructions)
-    i.transform([](exprt e) -> optionalt<exprt> {
-      if(have_to_remove_complex(e))
-      {
-        remove_complex(e);
-        return e;
-      }
-      else
-        return {};
-    });
+  Forall_goto_program_instructions(it, goto_function.body)
+  {
+    remove_complex(it->code);
+    remove_complex(it->guard);
+  }
 }
 
 /// removes complex data type

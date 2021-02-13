@@ -10,9 +10,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_SOLVERS_PROP_LITERAL_H
 #define CPROVER_SOLVERS_PROP_LITERAL_H
 
-#include <iosfwd>
-#include <util/narrow.h>
 #include <vector>
+#include <iosfwd>
 
 // a pair of a variable number and a sign, encoded as follows:
 //
@@ -116,7 +115,7 @@ public:
   //
   int dimacs() const
   {
-    int result = narrow_cast<int>(var_no());
+    int result=var_no();
 
     if(sign())
       result=-result;
@@ -129,7 +128,7 @@ public:
     bool sign=d<0;
     if(sign)
       d=-d;
-    set(narrow_cast<unsigned>(d), sign);
+    set(d, sign);
   }
 
   void clear()

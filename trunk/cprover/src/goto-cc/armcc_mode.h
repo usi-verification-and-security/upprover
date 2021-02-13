@@ -14,9 +14,10 @@ Date: June 2006
 #ifndef CPROVER_GOTO_CC_ARMCC_MODE_H
 #define CPROVER_GOTO_CC_ARMCC_MODE_H
 
-#include "armcc_cmdline.h"
-#include "gcc_message_handler.h"
+#include <util/cout_message.h>
+
 #include "goto_cc_mode.h"
+#include "armcc_cmdline.h"
 
 class armcc_modet:public goto_cc_modet
 {

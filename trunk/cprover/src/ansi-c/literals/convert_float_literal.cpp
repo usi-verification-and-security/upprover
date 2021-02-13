@@ -25,7 +25,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "parse_float.h"
 
 /// build an expression from a floating-point literal
-/// \return either a constant_exprt or a complex_exprt
+/// \returns either a constant_exprt or a complex_exprt
 exprt convert_float_literal(const std::string &src)
 {
   parse_floatt parsed_float(src);

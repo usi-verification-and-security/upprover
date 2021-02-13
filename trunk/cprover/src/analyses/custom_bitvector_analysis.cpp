@@ -13,8 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/expr_util.h>
 #include <util/simplify_expr.h>
-#include <util/string_constant.h>
-#include <util/xml_irep.h>
+#include <util/xml_expr.h>
 
 #include <langapi/language_util.h>
 
@@ -183,7 +182,10 @@ unsigned custom_bitvector_analysist::get_bit_nr(
   else if(string_expr.id()==ID_index)
     return get_bit_nr(to_index_expr(string_expr).array());
   else if(string_expr.id()==ID_string_constant)
-    return bits.number(to_string_constant(string_expr).get_value());
+  {
+    irep_idt value=string_expr.get(ID_value);
+    return bits.number(value);
+  }
   else
     return bits.number("(unknown)");
 }
@@ -230,7 +232,7 @@ void custom_bitvector_domaint::assign_struct_rec(
   custom_bitvector_analysist &cba,
   const namespacet &ns)
 {
-  if(lhs.type().id() == ID_struct || lhs.type().id() == ID_struct_tag)
+  if(ns.follow(lhs.type()).id()==ID_struct)
   {
     const struct_typet &struct_type=
       to_struct_type(ns.follow(lhs.type()));
@@ -447,33 +449,33 @@ void custom_bitvector_domaint::transform(
 
   case OTHER:
     {
-      const auto &code = instruction.get_other();
-      const irep_idt &statement = code.get_statement();
+      const irep_idt &statement=instruction.code.get_statement();
 
-      if(
-        statement == ID_set_may || statement == ID_set_must ||
-        statement == ID_clear_may || statement == ID_clear_must)
+      if(statement=="set_may" ||
+         statement=="set_must" ||
+         statement=="clear_may" ||
+         statement=="clear_must")
       {
-        DATA_INVARIANT(
-          code.operands().size() == 2, "set/clear_may/must has two operands");
+        assert(instruction.code.operands().size()==2);
 
-        unsigned bit_nr = cba.get_bit_nr(code.op1());
+        unsigned bit_nr=
+          cba.get_bit_nr(instruction.code.op1());
 
         // initialize to make Visual Studio happy
         modet mode = modet::SET_MUST;
 
-        if(statement == ID_set_must)
+        if(statement=="set_must")
           mode=modet::SET_MUST;
-        else if(statement == ID_clear_must)
+        else if(statement=="clear_must")
           mode=modet::CLEAR_MUST;
-        else if(statement == ID_set_may)
+        else if(statement=="set_may")
           mode=modet::SET_MAY;
-        else if(statement == ID_clear_may)
+        else if(statement=="clear_may")
           mode=modet::CLEAR_MAY;
         else
           UNREACHABLE;
 
-        exprt lhs = code.op0();
+        exprt lhs=instruction.code.op0();
 
         if(lhs.type().id()==ID_pointer)
         {
@@ -519,43 +521,26 @@ void custom_bitvector_domaint::transform(
     break;
 
   case GOTO:
-    if(has_get_must_or_may(instruction.get_condition()))
+    if(has_get_must_or_may(instruction.guard))
     {
-      exprt guard = instruction.get_condition();
+      exprt guard=instruction.guard;
 
       // Comparing iterators is safe as the target must be within the same list
       // of instructions because this is a GOTO.
       if(to!=from->get_target())
         guard = boolean_negate(guard);
 
-      const exprt result2 = simplify_expr(eval(guard, cba), ns);
+      exprt result=eval(guard, cba);
+      exprt result2=simplify_expr(result, ns);
 
       if(result2.is_false())
         make_bottom();
     }
     break;
 
-  case CATCH:
-  case THROW:
-    DATA_INVARIANT(false, "Exceptions must be removed before analysis");
-    break;
-  case RETURN:
-    DATA_INVARIANT(false, "Returns must be removed before analysis");
-    break;
-  case ATOMIC_BEGIN: // Ignoring is a valid over-approximation
-  case ATOMIC_END:   // Ignoring is a valid over-approximation
-  case END_FUNCTION: // No action required
-  case LOCATION:     // No action required
-  case START_THREAD: // Require a concurrent analysis at higher level
-  case END_THREAD:   // Require a concurrent analysis at higher level
-  case SKIP:         // No action required
-  case ASSERT:       // No action required
-  case ASSUME:       // Ignoring is a valid over-approximation
-    break;
-  case INCOMPLETE_GOTO:
-  case NO_INSTRUCTION_TYPE:
-    DATA_INVARIANT(false, "Only complete instructions can be analyzed");
-    break;
+  default:
+    {
+    }
   }
 }
 
@@ -686,7 +671,8 @@ void custom_bitvector_domaint::erase_blank_vectors(bitst &bits)
 
 bool custom_bitvector_domaint::has_get_must_or_may(const exprt &src)
 {
-  if(src.id() == ID_get_must || src.id() == ID_get_may)
+  if(src.id()=="get_must" ||
+     src.id()=="get_may")
     return true;
 
   forall_operands(it, src)
@@ -700,14 +686,14 @@ exprt custom_bitvector_domaint::eval(
   const exprt &src,
   custom_bitvector_analysist &custom_bitvector_analysis) const
 {
-  if(src.id() == ID_get_must || src.id() == ID_get_may)
+  if(src.id()=="get_must" || src.id()=="get_may")
   {
     if(src.operands().size()==2)
     {
-      unsigned bit_nr =
-        custom_bitvector_analysis.get_bit_nr(to_binary_expr(src).op1());
+      unsigned bit_nr=
+        custom_bitvector_analysis.get_bit_nr(src.op1());
 
-      exprt pointer = to_binary_expr(src).op0();
+      exprt pointer=src.op0();
 
       if(pointer.type().id()!=ID_pointer)
         return src;
@@ -715,7 +701,7 @@ exprt custom_bitvector_domaint::eval(
       if(pointer.is_constant() &&
          to_constant_expr(pointer).get_value()==ID_NULL) // NULL means all
       {
-        if(src.id() == ID_get_may)
+        if(src.id()=="get_may")
         {
           for(const auto &bit : may_bits)
             if(get_bit(bit.second, bit_nr))
@@ -723,7 +709,7 @@ exprt custom_bitvector_domaint::eval(
 
           return false_exprt();
         }
-        else if(src.id() == ID_get_must)
+        else if(src.id()=="get_must")
         {
           return false_exprt();
         }
@@ -737,9 +723,9 @@ exprt custom_bitvector_domaint::eval(
 
         bool value=false;
 
-        if(src.id() == ID_get_must)
+        if(src.id()=="get_must")
           value=get_bit(v.must_bits, bit_nr);
-        else if(src.id() == ID_get_may)
+        else if(src.id()=="get_may")
           value=get_bit(v.may_bits, bit_nr);
 
         if(value)
@@ -791,18 +777,15 @@ void custom_bitvector_analysist::check(
 
       if(i_it->is_assert())
       {
-        if(!custom_bitvector_domaint::has_get_must_or_may(
-             i_it->get_condition()))
-        {
+        if(!custom_bitvector_domaint::has_get_must_or_may(i_it->guard))
           continue;
-        }
 
         if(operator[](i_it).has_values.is_false())
           continue;
 
-        exprt tmp = eval(i_it->get_condition(), i_it);
+        exprt tmp=eval(i_it->guard, i_it);
         const namespacet ns(goto_model.symbol_table);
-        result = simplify_expr(std::move(tmp), ns);
+        result=simplify_expr(tmp, ns);
 
         description=i_it->source_location.get_comment();
       }

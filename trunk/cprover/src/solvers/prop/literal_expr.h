@@ -36,11 +36,16 @@ public:
   }
 };
 
-/// Cast a generic exprt to a \ref literal_exprt. This is an unchecked
-/// conversion. \a expr must be known to be \ref literal_exprt.
-/// \param expr: Source expression
-/// \return Object of type \ref literal_exprt
-/// \ingroup gr_std_expr
+/*! \brief Cast a generic exprt to a \ref literal_exprt
+ *
+ * This is an unchecked conversion. \a expr must be known to be \ref
+ * literal_exprt.
+ *
+ * \param expr Source expression
+ * \return Object of type \ref literal_exprt
+ *
+ * \ingroup gr_std_expr
+*/
 inline const literal_exprt &to_literal_expr(const exprt &expr)
 {
   PRECONDITION(expr.id() == ID_literal);
@@ -49,8 +54,9 @@ inline const literal_exprt &to_literal_expr(const exprt &expr)
   return static_cast<const literal_exprt &>(expr);
 }
 
-/// \copydoc to_literal_expr(const exprt &)
-/// \ingroup gr_std_expr
+/*! \copydoc to_literal_expr(const exprt &)
+ * \ingroup gr_std_expr
+*/
 inline literal_exprt &to_literal_expr(exprt &expr)
 {
   PRECONDITION(expr.id() == ID_literal);

@@ -54,11 +54,10 @@ void compute_address_taken_functions(
   const goto_programt &goto_program,
   std::unordered_set<irep_idt> &address_taken)
 {
-  for(const auto &i : goto_program.instructions)
+  forall_goto_program_instructions(it, goto_program)
   {
-    i.apply([&address_taken](const exprt &expr) {
-      compute_address_taken_functions(expr, address_taken);
-    });
+    compute_address_taken_functions(it->guard, address_taken);
+    compute_address_taken_functions(it->code, address_taken);
   }
 }
 

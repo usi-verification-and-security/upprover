@@ -14,7 +14,8 @@ Date: June 2006
 #ifndef CPROVER_GOTO_CC_MS_CL_MODE_H
 #define CPROVER_GOTO_CC_MS_CL_MODE_H
 
-#include "cl_message_handler.h"
+#include <util/cout_message.h>
+
 #include "goto_cc_mode.h"
 #include "ms_cl_cmdline.h"
 
@@ -34,7 +35,7 @@ public:
 
 protected:
   ms_cl_cmdlinet &cmdline;
-  cl_message_handlert message_handler;
+  console_message_handlert message_handler;
 };
 
 #endif // CPROVER_GOTO_CC_MS_CL_MODE_H

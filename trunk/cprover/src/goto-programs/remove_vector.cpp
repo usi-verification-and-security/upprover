@@ -92,12 +92,12 @@ static void remove_vector(exprt &expr)
       array_typet array_type=to_array_type(expr.type());
 
       const mp_integer dimension =
-        numeric_cast_v<mp_integer>(to_constant_expr(array_type.size()));
+        numeric_cast_v<mp_integer>(array_type.size());
 
       const typet subtype=array_type.subtype();
       // do component-wise:
       // x+y -> vector(x[0]+y[0],x[1]+y[1],...)
-      array_exprt array_expr({}, array_type);
+      array_exprt array_expr(array_type);
       array_expr.operands().resize(numeric_cast_v<std::size_t>(dimension));
 
       for(std::size_t i=0; i<array_expr.operands().size(); i++)
@@ -119,12 +119,12 @@ static void remove_vector(exprt &expr)
       array_typet array_type=to_array_type(expr.type());
 
       const mp_integer dimension =
-        numeric_cast_v<mp_integer>(to_constant_expr(array_type.size()));
+        numeric_cast_v<mp_integer>(array_type.size());
 
       const typet subtype=array_type.subtype();
       // do component-wise:
       // -x -> vector(-x[0],-x[1],...)
-      array_exprt array_expr({}, array_type);
+      array_exprt array_expr(array_type);
       array_expr.operands().resize(numeric_cast_v<std::size_t>(dimension));
 
       for(std::size_t i=0; i<array_expr.operands().size(); i++)
@@ -132,7 +132,7 @@ static void remove_vector(exprt &expr)
         exprt index=from_integer(i, array_type.size().type());
 
         array_expr.operands()[i] = unary_exprt(
-          unary_expr.id(), index_exprt(unary_expr.op(), index, subtype));
+          unary_expr.id(), index_exprt(unary_expr.op0(), index, subtype));
       }
 
       expr=array_expr;
@@ -150,11 +150,12 @@ static void remove_vector(exprt &expr)
         // (vector-type) x ==> { x, x, ..., x }
         remove_vector(expr.type());
         array_typet array_type = to_array_type(expr.type());
-        const auto dimension =
-          numeric_cast_v<std::size_t>(to_constant_expr(array_type.size()));
+        const auto dimension = numeric_cast_v<std::size_t>(array_type.size());
         exprt casted_op =
           typecast_exprt::conditional_cast(op, array_type.subtype());
-        expr = array_exprt(exprt::operandst(dimension, casted_op), array_type);
+        array_exprt array_expr(array_type);
+        array_expr.operands().resize(dimension, op);
+        expr = array_expr;
       }
     }
   }
@@ -211,7 +212,7 @@ static void remove_vector(symbolt &symbol)
 static void remove_vector(symbol_tablet &symbol_table)
 {
   for(const auto &named_symbol : symbol_table.symbols)
-    remove_vector(symbol_table.get_writeable_ref(named_symbol.first));
+    remove_vector(*symbol_table.get_writeable(named_symbol.first));
 }
 
 /// removes vector data type
@@ -219,16 +220,11 @@ void remove_vector(goto_functionst::goto_functiont &goto_function)
 {
   remove_vector(goto_function.type);
 
-  for(auto &i : goto_function.body.instructions)
-    i.transform([](exprt e) -> optionalt<exprt> {
-      if(have_to_remove_vector(e))
-      {
-        remove_vector(e);
-        return e;
-      }
-      else
-        return {};
-    });
+  Forall_goto_program_instructions(it, goto_function.body)
+  {
+    remove_vector(it->code);
+    remove_vector(it->guard);
+  }
 }
 
 /// removes vector data type

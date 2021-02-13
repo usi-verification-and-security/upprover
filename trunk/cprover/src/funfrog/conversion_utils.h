@@ -26,9 +26,9 @@ template<typename Iter>
 void convert_guards(convertort & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         auto & ssa_step = *it;
-//        ssa_step.guard_literal = flaref_to_literal(ssa_step.ignore ? const_formula(false)
-//                                                 : convert_expr(decider, ssa_step.guard));
-        ssa_step.guard_handle = ssa_step.ignore ? false_exprt() :  ssa_step.guard;
+        ssa_step.guard_literal = flaref_to_literal(ssa_step.ignore ? const_formula(false)
+                                                 : convert_expr(decider, ssa_step.guard));
+       // ssa_step.guard_handle = ssa_step.ignore ? false_exprt() :  ssa_step.guard;
 
     }
 }

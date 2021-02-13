@@ -11,11 +11,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "c_typecheck_base.h"
 
-#include <util/c_types.h>
-#include <util/config.h>
 #include <util/invariant.h>
-#include <util/prefix.h>
 #include <util/std_types.h>
+#include <util/prefix.h>
+#include <util/config.h>
 
 #include "expr2c.h"
 #include "type2name.h"
@@ -39,8 +38,8 @@ void c_typecheck_baset::move_symbol(symbolt &symbol, symbolt *&new_symbol)
   if(symbol_table.move(symbol, new_symbol))
   {
     error().source_location=symbol.location;
-    error() << "failed to move symbol '" << symbol.name << "' into symbol table"
-            << eom;
+    error() << "failed to move symbol `" << symbol.name
+            << "' into symbol table" << eom;
     throw 0;
   }
 }
@@ -86,15 +85,21 @@ void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
   }
 
   // set the pretty name
-  if(symbol.is_type && final_type.id() == ID_struct)
+  if(symbol.is_type &&
+     (final_type.id()==ID_struct ||
+      final_type.id()==ID_incomplete_struct))
   {
     symbol.pretty_name="struct "+id2string(symbol.base_name);
   }
-  else if(symbol.is_type && final_type.id() == ID_union)
+  else if(symbol.is_type &&
+          (final_type.id()==ID_union ||
+           final_type.id()==ID_incomplete_union))
   {
     symbol.pretty_name="union "+id2string(symbol.base_name);
   }
-  else if(symbol.is_type && final_type.id() == ID_c_enum)
+  else if(symbol.is_type &&
+          (final_type.id()==ID_c_enum ||
+           final_type.id()==ID_incomplete_c_enum))
   {
     symbol.pretty_name="enum "+id2string(symbol.base_name);
   }
@@ -120,12 +125,12 @@ void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
     if(old_it->second.is_type!=symbol.is_type)
     {
       error().source_location=symbol.location;
-      error() << "redeclaration of '" << symbol.display_name()
+      error() << "redeclaration of `" << symbol.display_name()
               << "' as a different kind of symbol" << eom;
       throw 0;
     }
 
-    symbolt &existing_symbol = symbol_table.get_writeable_ref(symbol.name);
+    symbolt & existing_symbol=*symbol_table.get_writeable(symbol.name);
     if(symbol.is_type)
       typecheck_redefinition_type(existing_symbol, symbol);
     else
@@ -144,14 +149,16 @@ void c_typecheck_baset::typecheck_new_symbol(symbolt &symbol)
   {
     if(symbol.value.is_not_nil() &&
        !symbol.is_macro)
-    {
       typecheck_function_body(symbol);
-    }
     else
     {
       // we don't need the identifiers
-      for(auto &parameter : to_code_type(symbol.type).parameters())
-        parameter.set_identifier(irep_idt());
+      code_typet &code_type=to_code_type(symbol.type);
+      for(code_typet::parameterst::iterator
+          it=code_type.parameters().begin();
+          it!=code_type.parameters().end();
+          it++)
+        it->set_identifier(irep_idt());
     }
   }
   else if(!symbol.is_macro)
@@ -169,21 +176,12 @@ void c_typecheck_baset::typecheck_redefinition_type(
   const typet &final_new=follow(new_symbol.type);
 
   // see if we had something incomplete before
-  if(
-    (final_old.id() == ID_struct &&
-     to_struct_type(final_old).is_incomplete()) ||
-    (final_old.id() == ID_union && to_union_type(final_old).is_incomplete()) ||
-    (final_old.id() == ID_c_enum && to_c_enum_type(final_old).is_incomplete()))
+  if(final_old.id()==ID_incomplete_struct ||
+     final_old.id()==ID_incomplete_union ||
+     final_old.id()==ID_incomplete_c_enum)
   {
-    // is the new one complete?
-    if(
-      final_new.id() == final_old.id() &&
-      ((final_new.id() == ID_struct &&
-        !to_struct_type(final_new).is_incomplete()) ||
-       (final_new.id() == ID_union &&
-        !to_union_type(final_new).is_incomplete()) ||
-       (final_new.id() == ID_c_enum &&
-        !to_c_enum_type(final_new).is_incomplete())))
+    // new one complete?
+    if("incomplete_"+final_new.id_string()==final_old.id_string())
     {
       // overwrite location
       old_symbol.location=new_symbol.location;
@@ -192,27 +190,24 @@ void c_typecheck_baset::typecheck_redefinition_type(
       old_symbol.type.swap(new_symbol.type);
     }
     else if(new_symbol.type.id()==old_symbol.type.id())
-      return; // ignore
+      return;
     else
     {
       error().source_location=new_symbol.location;
-      error() << "conflicting definition of type symbol '"
-              << new_symbol.display_name() << '\'' << eom;
+      error() << "conflicting definition of type symbol `"
+              << new_symbol.display_name()
+              << '\'' << eom;
       throw 0;
     }
   }
   else
   {
     // see if new one is just a tag
-    if(
-      (final_new.id() == ID_struct &&
-       to_struct_type(final_new).is_incomplete()) ||
-      (final_new.id() == ID_union &&
-       to_union_type(final_new).is_incomplete()) ||
-      (final_new.id() == ID_c_enum &&
-       to_c_enum_type(final_new).is_incomplete()))
+    if(final_new.id()==ID_incomplete_struct ||
+       final_new.id()==ID_incomplete_union ||
+       final_new.id()==ID_incomplete_c_enum)
     {
-      if(final_old.id() == final_new.id())
+      if("incomplete_"+final_old.id_string()==final_new.id_string())
       {
         // just ignore silently
       }
@@ -220,8 +215,9 @@ void c_typecheck_baset::typecheck_redefinition_type(
       {
         // arg! new tag type
         error().source_location=new_symbol.location;
-        error() << "conflicting definition of tag symbol '"
-                << new_symbol.display_name() << '\'' << eom;
+        error() << "conflicting definition of tag symbol `"
+                << new_symbol.display_name()
+                << '\'' << eom;
         throw 0;
       }
     }
@@ -245,8 +241,8 @@ void c_typecheck_baset::typecheck_redefinition_type(
       if(follow(new_symbol.type)!=follow(old_symbol.type))
       {
         error().source_location=new_symbol.location;
-        error() << "type symbol '" << new_symbol.display_name()
-                << "' defined twice:\n"
+        error() << "type symbol `"
+                << new_symbol.display_name() << "' defined twice:\n"
                 << "Original: " << to_string(old_symbol.type) << "\n"
                 << "     New: " << to_string(new_symbol.type) << eom;
         throw 0;
@@ -283,7 +279,8 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
   }
 
   // do initializer, this may change the type
-  if(new_symbol.type.id() != ID_code && !new_symbol.is_macro)
+  if(follow(new_symbol.type).id()!=ID_code &&
+     !new_symbol.is_macro)
     do_initializer(new_symbol);
 
   const typet &final_new=follow(new_symbol.type);
@@ -307,10 +304,15 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
 
   if(final_new.id()==ID_code)
   {
+    bool inlined=
+       (new_symbol.type.get_bool(ID_C_inlined) ||
+        old_symbol.type.get_bool(ID_C_inlined));
+
     if(final_old.id()!=ID_code)
     {
       error().source_location=new_symbol.location;
-      error() << "error: function symbol '" << new_symbol.display_name()
+      error() << "error: function symbol `"
+              << new_symbol.display_name()
               << "' redefined with a different type:\n"
               << "Original: " << to_string(old_symbol.type) << "\n"
               << "     New: " << to_string(new_symbol.type) << eom;
@@ -320,8 +322,6 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
     code_typet &old_ct=to_code_type(old_symbol.type);
     code_typet &new_ct=to_code_type(new_symbol.type);
 
-    const bool inlined = old_ct.get_inlined() || new_ct.get_inlined();
-
     if(old_ct.has_ellipsis() && !new_ct.has_ellipsis())
       old_ct=new_ct;
     else if(!old_ct.has_ellipsis() && new_ct.has_ellipsis())
@@ -329,8 +329,8 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
 
     if(inlined)
     {
-      old_ct.set_inlined(true);
-      new_ct.set_inlined(true);
+      old_symbol.type.set(ID_C_inlined, true);
+      new_symbol.type.set(ID_C_inlined, true);
     }
 
     // do body
@@ -343,7 +343,7 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
         // definition is marked as "extern inline"
 
         if(
-          old_ct.get_inlined() &&
+          old_symbol.type.get_bool(ID_C_inlined) &&
           (config.ansi_c.mode == configt::ansi_ct::flavourt::GCC ||
            config.ansi_c.mode == configt::ansi_ct::flavourt::CLANG ||
            config.ansi_c.mode == configt::ansi_ct::flavourt::ARM ||
@@ -354,9 +354,13 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
           old_symbol.is_file_local=new_symbol.is_file_local;
 
           // remove parameter declarations to avoid conflicts
-          for(const auto &old_parameter : old_ct.parameters())
+          const code_typet::parameterst &old_p=old_ct.parameters();
+          for(code_typet::parameterst::const_iterator
+              p_it=old_p.begin();
+              p_it!=old_p.end();
+              p_it++)
           {
-            const irep_idt &identifier = old_parameter.get_identifier();
+            const irep_idt &identifier=p_it->get_identifier();
 
             symbol_tablet::symbolst::const_iterator p_s_it=
               symbol_table.symbols.find(identifier);
@@ -367,7 +371,7 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
         else
         {
           error().source_location=new_symbol.location;
-          error() << "function body '" << new_symbol.display_name()
+          error() << "function body `" << new_symbol.display_name()
                   << "' defined twice" << eom;
           throw 0;
         }
@@ -410,22 +414,33 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
        to_array_type(final_new).size().is_not_nil() &&
        final_old.subtype()==final_new.subtype())
     {
+      // we don't do symbol types for arrays anymore
+      PRECONDITION(old_symbol.type.id() != ID_symbol_type);
       old_symbol.type=new_symbol.type;
     }
-    else if(
-      final_old.id() == ID_pointer && final_old.subtype().id() == ID_code &&
-      to_code_type(final_old.subtype()).has_ellipsis() &&
-      final_new.id() == ID_pointer && final_new.subtype().id() == ID_code)
+    else if((final_old.id()==ID_incomplete_c_enum ||
+             final_old.id()==ID_c_enum) &&
+            (final_new.id()==ID_incomplete_c_enum ||
+             final_new.id()==ID_c_enum))
+    {
+      // this is ok for now
+    }
+    else if(final_old.id()==ID_pointer &&
+            follow(final_old).subtype().id()==ID_code &&
+            to_code_type(follow(final_old).subtype()).has_ellipsis() &&
+            final_new.id()==ID_pointer &&
+            follow(final_new).subtype().id()==ID_code)
     {
       // to allow
       // int (*f) ();
       // int (*f) (int)=0;
       old_symbol.type=new_symbol.type;
     }
-    else if(
-      final_old.id() == ID_pointer && final_old.subtype().id() == ID_code &&
-      final_new.id() == ID_pointer && final_new.subtype().id() == ID_code &&
-      to_code_type(final_new.subtype()).has_ellipsis())
+    else if(final_old.id()==ID_pointer &&
+            follow(final_old).subtype().id()==ID_code &&
+            final_new.id()==ID_pointer &&
+            follow(final_new).subtype().id()==ID_code &&
+            to_code_type(follow(final_new).subtype()).has_ellipsis())
     {
       // to allow
       // int (*f) (int)=0;
@@ -434,7 +449,7 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
     else
     {
       error().source_location=new_symbol.location;
-      error() << "symbol '" << new_symbol.display_name()
+      error() << "symbol `" << new_symbol.display_name()
               << "' redefined with a different type:\n"
               << "Original: " << to_string(old_symbol.type) << "\n"
               << "     New: " << to_string(new_symbol.type) << eom;
@@ -462,17 +477,19 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
       }
       else
       {
-        if(
-          new_symbol.is_macro && final_new.id() == ID_c_enum &&
-          old_symbol.value.is_constant() && new_symbol.value.is_constant() &&
-          old_symbol.value.get(ID_value) == new_symbol.value.get(ID_value))
+        if(new_symbol.is_macro &&
+           (final_new.id()==ID_incomplete_c_enum ||
+            final_new.id()==ID_c_enum) &&
+            old_symbol.value.is_constant() &&
+            new_symbol.value.is_constant() &&
+            old_symbol.value.get(ID_value)==new_symbol.value.get(ID_value))
         {
           // ignore
         }
         else
         {
           warning().source_location=new_symbol.value.find_source_location();
-          warning() << "symbol '" << new_symbol.display_name()
+          warning() << "symbol `" << new_symbol.display_name()
                     << "' already has an initial value" << eom;
         }
       }
@@ -515,27 +532,31 @@ void c_typecheck_baset::typecheck_function_body(symbolt &symbol)
   unsigned anon_counter=0;
 
   // Add the parameter declarations into the symbol table.
-  for(auto &p : code_type.parameters())
+  code_typet::parameterst &parameters=code_type.parameters();
+  for(code_typet::parameterst::iterator
+      p_it=parameters.begin();
+      p_it!=parameters.end();
+      p_it++)
   {
     // may be anonymous
-    if(p.get_base_name().empty())
+    if(p_it->get_base_name().empty())
     {
       irep_idt base_name="#anon"+std::to_string(anon_counter++);
-      p.set_base_name(base_name);
+      p_it->set_base_name(base_name);
     }
 
     // produce identifier
-    irep_idt base_name = p.get_base_name();
+    irep_idt base_name=p_it->get_base_name();
     irep_idt identifier=id2string(symbol.name)+"::"+id2string(base_name);
 
-    p.set_identifier(identifier);
+    p_it->set_identifier(identifier);
 
     parameter_symbolt p_symbol;
 
-    p_symbol.type = p.type();
+    p_symbol.type=p_it->type();
     p_symbol.name=identifier;
     p_symbol.base_name=base_name;
-    p_symbol.location = p.source_location();
+    p_symbol.location=p_it->source_location();
 
     symbolt *new_p_symbol;
     move_symbol(p_symbol, new_p_symbol);
@@ -544,13 +565,18 @@ void c_typecheck_baset::typecheck_function_body(symbolt &symbol)
   // typecheck the body code
   typecheck_code(to_code(symbol.value));
 
+  // special case for main()
+  if(symbol.name==ID_main)
+    add_argc_argv(symbol);
+
   // check the labels
-  for(const auto &label : labels_used)
+  for(std::map<irep_idt, source_locationt>::const_iterator
+      it=labels_used.begin(); it!=labels_used.end(); it++)
   {
-    if(labels_defined.find(label.first) == labels_defined.end())
+    if(labels_defined.find(it->first)==labels_defined.end())
     {
-      error().source_location = label.second;
-      error() << "branching label '" << label.first
+      error().source_location=it->second;
+      error() << "branching label `" << it->first
               << "' is not defined in function" << eom;
       throw 0;
     }
@@ -606,9 +632,12 @@ void c_typecheck_baset::apply_asm_label(
   {
     const code_typet &code_type=to_code_type(symbol.type);
 
-    for(const auto &p : code_type.parameters())
+    for(code_typet::parameterst::const_iterator
+        p_it=code_type.parameters().begin();
+        p_it!=code_type.parameters().end();
+        ++p_it)
     {
-      const irep_idt &p_bn = p.get_base_name();
+      const irep_idt &p_bn=p_it->get_base_name();
       if(p_bn.empty())
         continue;
 
@@ -627,9 +656,9 @@ void c_typecheck_baset::typecheck_declaration(
 {
   if(declaration.get_is_static_assert())
   {
-    auto &static_assert_expr = to_binary_expr(declaration);
-    typecheck_expr(static_assert_expr.op0());
-    typecheck_expr(static_assert_expr.op1());
+    assert(declaration.operands().size()==2);
+    typecheck_expr(declaration.op0());
+    typecheck_expr(declaration.op1());
   }
   else
   {
@@ -640,9 +669,9 @@ void c_typecheck_baset::typecheck_declaration(
     typecheck_type(declaration.type());
 
     // mark as 'already typechecked'
-    already_typechecked_typet::make_already_typechecked(declaration.type());
+    make_already_typechecked(declaration.type());
 
-    irept contract;
+    codet contract;
 
     {
       exprt spec_requires=
@@ -655,9 +684,12 @@ void c_typecheck_baset::typecheck_declaration(
     }
 
     // Now do declarators, if any.
-    for(auto &declarator : declaration.declarators())
+    for(ansi_c_declarationt::declaratorst::iterator
+        d_it=declaration.declarators().begin();
+        d_it!=declaration.declarators().end();
+        d_it++)
     {
-      c_storage_spect full_spec(declaration.full_type(declarator));
+      c_storage_spect full_spec(declaration.full_type(*d_it));
       full_spec|=c_storage_spec;
 
       declaration.set_is_inline(full_spec.is_inline);
@@ -670,7 +702,7 @@ void c_typecheck_baset::typecheck_declaration(
       declaration.set_is_used(full_spec.is_used);
 
       symbolt symbol;
-      declaration.to_symbol(declarator, symbol);
+      declaration.to_symbol(*d_it, symbol);
       current_symbol=symbol;
 
       // now check other half of type
@@ -691,9 +723,9 @@ void c_typecheck_baset::typecheck_declaration(
         // also cater for renaming/placement in sections
         const auto &renaming_entry = asm_label_map.find(full_spec.alias);
         if(renaming_entry == asm_label_map.end())
-          symbol.value = symbol_exprt::typeless(full_spec.alias);
+          symbol.value = symbol_exprt(full_spec.alias);
         else
-          symbol.value = symbol_exprt::typeless(renaming_entry->second);
+          symbol.value = symbol_exprt(renaming_entry->second);
         symbol.is_macro=true;
       }
 
@@ -723,24 +755,24 @@ void c_typecheck_baset::typecheck_declaration(
       }
 
       irep_idt identifier=symbol.name;
-      declarator.set_name(identifier);
+      d_it->set_name(identifier);
 
       typecheck_symbol(symbol);
 
       // add code contract (if any); we typecheck this after the
       // function body done above, so as to have parameter symbols
       // available
-      symbolt &new_symbol = symbol_table.get_writeable_ref(identifier);
+      symbolt &new_symbol=*symbol_table.get_writeable(identifier);
 
-      typecheck_spec_expr(static_cast<codet &>(contract), ID_C_spec_requires);
+      typecheck_spec_expr(contract, ID_C_spec_requires);
 
-      typet ret_type = void_type();
+      typet ret_type=empty_typet();
       if(new_symbol.type.id()==ID_code)
         ret_type=to_code_type(new_symbol.type).return_type();
       assert(parameter_map.empty());
       if(ret_type.id()!=ID_empty)
         parameter_map[CPROVER_PREFIX "return_value"] = ret_type;
-      typecheck_spec_expr(static_cast<codet &>(contract), ID_C_spec_ensures);
+      typecheck_spec_expr(contract, ID_C_spec_ensures);
       parameter_map.clear();
 
       if(contract.find(ID_C_spec_requires).is_not_nil())

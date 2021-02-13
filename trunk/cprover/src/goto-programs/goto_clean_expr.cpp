@@ -34,7 +34,7 @@ symbol_exprt goto_convertt::make_compound_literal(
     source_location,
     mode,
     symbol_table);
-  new_symbol.is_static_lifetime = lifetime != lifetimet::AUTOMATIC_LOCAL;
+  new_symbol.is_static_lifetime=source_location.get_function().empty();
   new_symbol.value=expr;
 
   // The value might depend on a variable, thus
@@ -45,8 +45,7 @@ symbol_exprt goto_convertt::make_compound_literal(
 
   // The lifetime of compound literals is really that of
   // the block they are in.
-  if(!new_symbol.is_static_lifetime)
-    copy(code_declt(result), DECL, dest);
+  copy(code_declt(result), DECL, dest);
 
   code_assignt code_assign(result, expr);
   code_assign.add_source_location()=source_location;
@@ -56,7 +55,7 @@ symbol_exprt goto_convertt::make_compound_literal(
   if(!new_symbol.is_static_lifetime)
   {
     code_deadt code_dead(result);
-    targets.destructor_stack.add(std::move(code_dead));
+    targets.destructor_stack.push_back(code_dead);
   }
 
   return result;
@@ -363,20 +362,16 @@ void goto_convertt::clean_expr(
         expr.operands().size() == 2,
         "side-effect assignment expressions must have two operands");
 
-      auto &side_effect_assign = to_side_effect_expr_assign(expr);
-
-      if(
-        side_effect_assign.rhs().id() == ID_side_effect &&
-        to_side_effect_expr(side_effect_assign.rhs()).get_statement() ==
-          ID_function_call)
+      if(expr.op1().id()==ID_side_effect &&
+         to_side_effect_expr(expr.op1()).get_statement()==ID_function_call)
       {
-        clean_expr(side_effect_assign.lhs(), dest, mode);
-        exprt lhs = side_effect_assign.lhs();
+        clean_expr(expr.op0(), dest, mode);
+        exprt lhs=expr.op0();
 
         // turn into code
         code_assignt assignment;
         assignment.lhs()=lhs;
-        assignment.rhs() = side_effect_assign.rhs();
+        assignment.rhs()=expr.op1();
         assignment.add_source_location()=expr.source_location();
         convert_assign(assignment, dest, mode);
 
@@ -427,7 +422,7 @@ void goto_convertt::clean_expr(
     // This is simply replaced by the literal
     DATA_INVARIANT(
       expr.operands().size() == 1, "ID_compound_literal has a single operand");
-    expr = to_unary_expr(expr).op();
+    expr=expr.op0();
   }
 }
 
@@ -443,8 +438,8 @@ void goto_convertt::clean_expr_address_of(
   {
     DATA_INVARIANT(
       expr.operands().size() == 1, "ID_compound_literal has a single operand");
-    clean_expr(to_unary_expr(expr).op(), dest, mode);
-    expr = make_compound_literal(to_unary_expr(expr).op(), dest, mode);
+    clean_expr(expr.op0(), dest, mode);
+    expr = make_compound_literal(expr.op0(), dest, mode);
   }
   else if(expr.id()==ID_string_constant)
   {
@@ -491,10 +486,6 @@ void goto_convertt::clean_expr_address_of(
     // do again
     clean_expr_address_of(expr, dest, mode);
   }
-  else if(expr.id() == ID_side_effect)
-  {
-    remove_side_effect(to_side_effect_expr(expr), dest, mode, true);
-  }
   else
     Forall_operands(it, expr)
       clean_expr_address_of(*it, dest, mode);
@@ -505,22 +496,26 @@ void goto_convertt::remove_gcc_conditional_expression(
   goto_programt &dest,
   const irep_idt &mode)
 {
-  {
-    auto &binary_expr = to_binary_expr(expr);
+  DATA_INVARIANT(
+    expr.operands().size() == 2,
+    "gcc conditional expressions must have two operands");
 
-    // first remove side-effects from condition
-    clean_expr(to_binary_expr(expr).op0(), dest, mode);
+  // first remove side-effects from condition
+  clean_expr(expr.op0(), dest, mode);
 
-    // now we can copy op0 safely
-    if_exprt if_expr(
-      typecast_exprt::conditional_cast(binary_expr.op0(), bool_typet()),
-      binary_expr.op0(),
-      binary_expr.op1(),
-      expr.type());
-    if_expr.add_source_location() = expr.source_location();
+  // now we can copy op0 safely
+  if_exprt if_expr;
 
-    expr.swap(if_expr);
-  }
+  if_expr.cond()=expr.op0();
+  if_expr.true_case()=expr.op0();
+  if_expr.false_case()=expr.op1();
+  if_expr.type()=expr.type();
+  if_expr.add_source_location()=expr.source_location();
+
+  if(if_expr.cond().type()!=bool_typet())
+    if_expr.cond().make_typecast(bool_typet());
+
+  expr.swap(if_expr);
 
   // there might still be junk in expr.op2()
   clean_expr(expr, dest, mode);

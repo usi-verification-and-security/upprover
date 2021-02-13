@@ -12,9 +12,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_PROGRAMS_CFG_H
 #define CPROVER_GOTO_PROGRAMS_CFG_H
 
-#include <util/dense_integer_map.h>
-#include <util/graph.h>
 #include <util/std_expr.h>
+#include <util/graph.h>
 
 #include "goto_functions.h"
 
@@ -30,29 +29,6 @@ struct cfg_base_nodet:public graph_nodet<empty_edget>, public T
   typedef typename graph_nodet<empty_edget>::edgest edgest;
 
   I PC;
-};
-
-/// Functor to convert cfg nodes into dense integers, used by \ref cfg_baset.
-/// Default implementation: the identity function.
-template <class T>
-class cfg_instruction_to_dense_integert
-{
-public:
-  std::size_t operator()(T &&t) const
-  {
-    return std::forward<T>(identity_functort{}(t));
-  }
-};
-
-/// GOTO-instruction to location number functor.
-template <>
-class cfg_instruction_to_dense_integert<goto_programt::const_targett>
-{
-public:
-  std::size_t operator()(const goto_programt::const_targett &t) const
-  {
-    return t->location_number;
-  }
 };
 
 /// A multi-procedural control flow graph (CFG) whose nodes store references to
@@ -85,28 +61,21 @@ template<class T,
          typename I=goto_programt::const_targett>
 class cfg_baset:public grapht< cfg_base_nodet<T, I> >
 {
-  typedef grapht<cfg_base_nodet<T, I>> base_grapht;
-
 public:
-  typedef typename base_grapht::node_indext entryt;
-  typedef typename base_grapht::nodet nodet;
+  typedef std::size_t entryt;
 
   class entry_mapt final
   {
-    typedef dense_integer_mapt<
-      goto_programt::const_targett,
-      entryt,
-      cfg_instruction_to_dense_integert<goto_programt::const_targett>>
-      data_typet;
+    typedef std::map<goto_programt::const_targett, entryt> data_typet;
     data_typet data;
 
   public:
     grapht< cfg_base_nodet<T, I> > &container;
 
     // NOLINTNEXTLINE(readability/identifiers)
-    typedef typename data_typet::iterator iterator;
+    typedef data_typet::iterator iterator;
     // NOLINTNEXTLINE(readability/identifiers)
-    typedef typename data_typet::const_iterator const_iterator;
+    typedef data_typet::const_iterator const_iterator;
 
     template <typename U>
     const_iterator find(U &&u) const { return data.find(std::forward<U>(u)); }
@@ -132,21 +101,6 @@ public:
         e.first->second=container.add_node();
 
       return e.first->second;
-    }
-
-    entryt &at(const goto_programt::const_targett &t)
-    {
-      return data.at(t);
-    }
-    const entryt &at(const goto_programt::const_targett &t) const
-    {
-      return data.at(t);
-    }
-
-    template <class Iter>
-    void setup_for_keys(Iter begin, Iter end)
-    {
-      data.setup_for_keys(begin, end);
     }
   };
   entry_mapt entry_map;
@@ -207,72 +161,18 @@ public:
   void operator()(
     const goto_functionst &goto_functions)
   {
-    std::vector<goto_programt::const_targett> possible_keys;
-    for(const auto &id_and_function : goto_functions.function_map)
-    {
-      const auto &instructions = id_and_function.second.body.instructions;
-      possible_keys.reserve(possible_keys.size() + instructions.size());
-      for(auto it = instructions.begin(); it != instructions.end(); ++it)
-        possible_keys.push_back(it);
-    }
-    entry_map.setup_for_keys(possible_keys.begin(), possible_keys.end());
     compute_edges(goto_functions);
   }
 
   void operator()(P &goto_program)
   {
     goto_functionst goto_functions;
-    std::vector<goto_programt::const_targett> possible_keys;
-    const auto &instructions = goto_program.instructions;
-    possible_keys.reserve(instructions.size());
-    for(auto it = instructions.begin(); it != instructions.end(); ++it)
-      possible_keys.push_back(it);
-    entry_map.setup_for_keys(possible_keys.begin(), possible_keys.end());
     compute_edges(goto_functions, goto_program);
   }
 
-  /// Get the graph node index for \p program_point. Use this with operator[]
-  /// to get the related graph node (e.g. `cfg[cfg.get_node_index(i)]`, though
-  /// in that particular case you should just use `cfg.get_node(i)`). Storing
-  /// node indices saves a map lookup, so it can be worthwhile when you expect
-  /// to repeatedly look up the same program point.
-  entryt get_node_index(const goto_programt::const_targett &program_point) const
-  {
-    return entry_map.at(program_point);
-  }
-
-  /// Get the CFG graph node relating to \p program_point.
-  nodet &get_node(const goto_programt::const_targett &program_point)
-  {
-    return (*this)[get_node_index(program_point)];
-  }
-
-  /// Get the CFG graph node relating to \p program_point.
-  const nodet &get_node(const goto_programt::const_targett &program_point) const
-  {
-    return (*this)[get_node_index(program_point)];
-  }
-
-  /// Get a map from program points to their corresponding node indices. Use
-  /// the indices with `operator[]` similar to those returned by
-  /// \ref get_node_index.
-  const entry_mapt &entries() const
-  {
-    return entry_map;
-  }
-
-  static I get_first_node(P &program)
-  {
-    return program.instructions.begin();
-  }
-  static I get_last_node(P &program)
-  {
-    return --program.instructions.end();
-  }
-  static bool nodes_empty(P &program)
-  {
-    return program.instructions.empty();
-  }
+  I get_first_node(P &program) const { return program.instructions.begin(); }
+  I get_last_node(P &program) const { return --program.instructions.end(); }
+  bool nodes_empty(P &program) const { return program.instructions.empty(); }
 };
 
 template<class T,
@@ -318,12 +218,9 @@ void cfg_baset<T, P, I>::compute_edges_goto(
   goto_programt::const_targett next_PC,
   entryt &entry)
 {
-  if(
-    next_PC != goto_program.instructions.end() &&
-    !instruction.get_condition().is_true())
-  {
+  if(next_PC!=goto_program.instructions.end() &&
+     !instruction.guard.is_true())
     this->add_edge(entry, entry_map[next_PC]);
-  }
 
   this->add_edge(entry, entry_map[instruction.get_target()]);
 }
@@ -391,7 +288,8 @@ void cfg_baset<T, P, I>::compute_edges_function_call(
   goto_programt::const_targett next_PC,
   entryt &entry)
 {
-  const exprt &function = instruction.get_function_call().function();
+  const exprt &function=
+    to_code_function_call(instruction.code).function();
 
   if(function.id()!=ID_symbol)
     return;
@@ -441,7 +339,8 @@ void procedure_local_cfg_baset<T, P, I>::compute_edges_function_call(
   goto_programt::const_targett next_PC,
   typename cfg_baset<T, P, I>::entryt &entry)
 {
-  const exprt &function = instruction.get_function_call().function();
+  const exprt &function=
+    to_code_function_call(instruction.code).function();
 
   if(function.id()!=ID_symbol)
     return;
@@ -501,7 +400,7 @@ void cfg_baset<T, P, I>::compute_edges(
 
   case ASSUME:
     // false guard -> no successor
-    if(instruction.get_condition().is_false())
+    if(instruction.guard.is_false())
       break;
 
   case ASSIGN:

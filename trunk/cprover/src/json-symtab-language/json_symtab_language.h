@@ -36,15 +36,6 @@ public:
     UNIMPLEMENTED;
   }
 
-  std::string id() const override
-  {
-    return "json_symtab";
-  }
-  std::string description() const override
-  {
-    return "JSON symbol table";
-  }
-
   std::set<std::string> extensions() const override
   {
     return {"json_symtab"};

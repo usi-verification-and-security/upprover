@@ -66,7 +66,7 @@ void cpp_namet::convert(
     identifier+=name_component;
 
     if(id=="::")
-      base_name.clear();
+      base_name="";
     else
       base_name+=name_component;
   }

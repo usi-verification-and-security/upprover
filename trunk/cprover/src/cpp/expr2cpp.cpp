@@ -21,8 +21,6 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <ansi-c/c_qualifiers.h>
 #include <ansi-c/expr2c_class.h>
 
-#include "cpp_name.h"
-
 class expr2cppt:public expr2ct
 {
 public:
@@ -31,12 +29,11 @@ public:
 protected:
   std::string convert_with_precedence(
     const exprt &src, unsigned &precedence) override;
-  std::string convert_cpp_this();
-  std::string convert_cpp_new(const exprt &src);
-  std::string convert_extractbit(const exprt &src);
-  std::string convert_extractbits(const exprt &src);
-  std::string convert_code_cpp_delete(const exprt &src, unsigned indent);
-  std::string convert_code_cpp_new(const exprt &src, unsigned indent);
+  std::string convert_cpp_this(const exprt &src, unsigned precedence);
+  std::string convert_cpp_new(const exprt &src, unsigned precedence);
+  std::string convert_extractbit(const exprt &src, unsigned precedence);
+  std::string convert_extractbits(const exprt &src, unsigned precedence);
+  std::string convert_code_cpp_delete(const exprt &src, unsigned precedence);
   std::string convert_struct(const exprt &src, unsigned &precedence) override;
   std::string convert_code(const codet &src, unsigned indent) override;
   // NOLINTNEXTLINE(whitespace/line_length)
@@ -134,7 +131,8 @@ std::string expr2cppt::convert_rec(
   qualifierst &new_qualifiers = *clone;
   new_qualifiers.read(src);
 
-  const std::string d = declarator.empty() ? declarator : (" " + declarator);
+  const std::string d=
+    declarator==""?declarator:(" "+declarator);
 
   const std::string q=
     new_qualifiers.as_string();
@@ -156,7 +154,50 @@ std::string expr2cppt::convert_rec(
     else
       return expr2ct::convert_rec(src, qualifiers, declarator);
   }
-  else if(src.id() == ID_struct)
+  else if(src.id() == ID_symbol_type)
+  {
+    const irep_idt &identifier=
+      to_symbol_type(src).get_identifier();
+
+    const symbolt &symbol=ns.lookup(identifier);
+
+    if(symbol.type.id()==ID_struct ||
+       symbol.type.id()==ID_incomplete_struct)
+    {
+      std::string dest=q;
+
+      if(symbol.type.get_bool(ID_C_class))
+        dest+="class";
+      else if(symbol.type.get_bool(ID_C_interface))
+        dest+="__interface"; // MS-specific
+      else
+        dest+="struct";
+
+      if(!symbol.pretty_name.empty())
+        dest+=" "+id2string(symbol.pretty_name);
+
+      dest+=d;
+
+      return dest;
+    }
+    else if(symbol.type.id()==ID_c_enum)
+    {
+      std::string dest=q;
+
+      dest+="enum";
+
+      if(!symbol.pretty_name.empty())
+        dest+=" "+id2string(symbol.pretty_name);
+
+      dest+=d;
+
+      return dest;
+    }
+    else
+      return expr2ct::convert_rec(src, qualifiers, declarator);
+  }
+  else if(src.id()==ID_struct ||
+          src.id()==ID_incomplete_struct)
   {
     std::string dest=q;
 
@@ -168,51 +209,6 @@ std::string expr2cppt::convert_rec(
       dest+="struct";
 
     dest+=d;
-
-    return dest;
-  }
-  else if(src.id() == ID_struct_tag)
-  {
-    const struct_typet &struct_type = ns.follow_tag(to_struct_tag_type(src));
-
-    std::string dest = q;
-
-    if(src.get_bool(ID_C_class))
-      dest += "class";
-    else if(src.get_bool(ID_C_interface))
-      dest += "__interface"; // MS-specific
-    else
-      dest += "struct";
-
-    const irept &tag = struct_type.find(ID_tag);
-    if(!tag.id().empty())
-    {
-      if(tag.id() == ID_cpp_name)
-        dest += " " + to_cpp_name(tag).to_string();
-      else
-        dest += " " + id2string(tag.id());
-    }
-
-    dest += d;
-
-    return dest;
-  }
-  else if(src.id() == ID_union_tag)
-  {
-    const union_typet &union_type = ns.follow_tag(to_union_tag_type(src));
-
-    std::string dest = q + "union";
-
-    const irept &tag = union_type.find(ID_tag);
-    if(!tag.id().empty())
-    {
-      if(tag.id() == ID_cpp_name)
-        dest += " " + to_cpp_name(tag).to_string();
-      else
-        dest += " " + id2string(tag.id());
-    }
-
-    dest += d;
 
     return dest;
   }
@@ -263,11 +259,12 @@ std::string expr2cppt::convert_rec(
   {
     return "std::nullptr_t";
   }
-  else if(src.id() == ID_pointer && src.find(ID_to_member).is_not_nil())
+  else if(src.id()==ID_pointer &&
+          src.find("to-member").is_not_nil())
   {
     typet tmp=src;
     typet member;
-    member.swap(tmp.add(ID_to_member));
+    member.swap(tmp.add("to-member"));
 
     std::string dest="("+convert_rec(member, c_qualifierst(), "")+":: *)";
 
@@ -299,8 +296,7 @@ std::string expr2cppt::convert_rec(
   }
   else if(src.id()==ID_verilog_signedbv ||
           src.id()==ID_verilog_unsignedbv)
-    return "sc_lv[" + std::to_string(to_bitvector_type(src).get_width()) + "]" +
-           d;
+    return "sc_lv["+id2string(src.get(ID_width))+"]"+d;
   else if(src.id()==ID_unassigned)
     return "?";
   else if(src.id()==ID_code)
@@ -359,12 +355,16 @@ std::string expr2cppt::convert_rec(
     return expr2ct::convert_rec(src, qualifiers, declarator);
 }
 
-std::string expr2cppt::convert_cpp_this()
+std::string expr2cppt::convert_cpp_this(
+  const exprt &src,
+  unsigned precedence)
 {
-  return id2string(ID_this);
+  return "this";
 }
 
-std::string expr2cppt::convert_cpp_new(const exprt &src)
+std::string expr2cppt::convert_cpp_new(
+  const exprt &src,
+  unsigned precedence)
 {
   std::string dest;
 
@@ -387,11 +387,6 @@ std::string expr2cppt::convert_cpp_new(const exprt &src)
   return dest;
 }
 
-std::string expr2cppt::convert_code_cpp_new(const exprt &src, unsigned indent)
-{
-  return indent_str(indent) + convert_cpp_new(src) + ";\n";
-}
-
 std::string expr2cppt::convert_code_cpp_delete(
   const exprt &src,
   unsigned indent)
@@ -404,7 +399,7 @@ std::string expr2cppt::convert_code_cpp_delete(
     return convert_norep(src, precedence);
   }
 
-  std::string tmp = convert(to_unary_expr(src).op());
+  std::string tmp=convert(src.op0());
 
   dest+=tmp+";\n";
 
@@ -416,33 +411,18 @@ std::string expr2cppt::convert_with_precedence(
   unsigned &precedence)
 {
   if(src.id()=="cpp-this")
-  {
-    precedence = 15;
-    return convert_cpp_this();
-  }
+    return convert_cpp_this(src, precedence=15);
   if(src.id()==ID_extractbit)
-  {
-    precedence = 15;
-    return convert_extractbit(src);
-  }
+    return convert_extractbit(src, precedence=15);
   else if(src.id()==ID_extractbits)
-  {
-    precedence = 15;
-    return convert_extractbits(src);
-  }
+    return convert_extractbits(src, precedence=15);
   else if(src.id()==ID_side_effect &&
           (src.get(ID_statement)==ID_cpp_new ||
            src.get(ID_statement)==ID_cpp_new_array))
-  {
-    precedence = 15;
-    return convert_cpp_new(src);
-  }
+    return convert_cpp_new(src, precedence=15);
   else if(src.id()==ID_side_effect &&
           src.get(ID_statement)==ID_throw)
-  {
-    precedence = 16;
-    return convert_function(src, "throw");
-  }
+    return convert_function(src, "throw", precedence=16);
   else if(src.is_constant() && src.type().id()==ID_verilog_signedbv)
     return "'"+id2string(src.get(ID_value))+"'";
   else if(src.is_constant() && src.type().id()==ID_verilog_unsignedbv)
@@ -469,24 +449,27 @@ std::string expr2cppt::convert_code(
 
   if(statement==ID_cpp_new ||
      statement==ID_cpp_new_array)
-    return convert_code_cpp_new(src, indent);
+    return convert_cpp_new(src, indent);
 
   return expr2ct::convert_code(src, indent);
 }
 
-std::string expr2cppt::convert_extractbit(const exprt &src)
+std::string expr2cppt::convert_extractbit(
+  const exprt &src,
+  unsigned precedence)
 {
-  const auto &extractbit_expr = to_extractbit_expr(src);
-  return convert(extractbit_expr.op0()) + "[" + convert(extractbit_expr.op1()) +
-         "]";
+  assert(src.operands().size()==2);
+  return convert(src.op0())+"["+convert(src.op1())+"]";
 }
 
-std::string expr2cppt::convert_extractbits(const exprt &src)
+std::string expr2cppt::convert_extractbits(
+  const exprt &src,
+  unsigned precedence)
 {
-  const auto &extractbits_expr = to_extractbits_expr(src);
-  return convert(extractbits_expr.src()) + ".range(" +
-         convert(extractbits_expr.upper()) + "," +
-         convert(extractbits_expr.lower()) + ")";
+  assert(src.operands().size()==3);
+  return
+    convert(src.op0())+".range("+convert(src.op1())+ ","+
+    convert(src.op2())+")";
 }
 
 std::string expr2cpp(const exprt &expr, const namespacet &ns)
