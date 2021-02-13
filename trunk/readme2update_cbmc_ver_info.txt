@@ -18,11 +18,30 @@ File Changed in CProver's code:
  
 2- goto-symex/goto_symex.h make phi_function virtual to allow our code to be executed, not cbmc's
 
-3- goto-symex/goto_symex_state.cpp  remove static keyword and move the method to public to expose it for HiFrog/UpProver: void goto_symex_statet::get_l1_name(exprt &expr) const;
+3- goto-symex/goto_symex_state.cpp  remove static keyword from get_l1_name as follows:
+//static void get_l1_name(exprt &expr){...}
+void goto_symex_statet::get_l1_name(exprt &expr) const
+{...}
+goto-symex/goto_symex_state.h move the method to public to expose it for HiFrog/UpProver: 
+void goto_symex_statet::get_l1_name(exprt &expr) const;
 
-4- goto_symex directory  following previous hacks add goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
-  
-5- Make a private method as public symex_assignt::assign_symbol
+4- goto-symex/symex_main.cpp  following previous hacks add :
+
+goto_symext::get_goto_functiont goto_symext::construct_get_goto_function( //hkd!
+        const goto_functionst &goto_functions)
+{
+    return [&goto_functions](
+            const irep_idt &key) -> const goto_functionst::goto_functiont & {
+        return goto_functions.function_map.at(key);
+    };
+}
+
+ and in goto-symex/goto_symex.h declare construct_get_goto_function method
+ //Non-static method for HiFrog/UpProver
+ goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
+
+
+5- symex_assign.h Make a private method as public   void symex_assign_symbol(...);
 
 6- goto-symex/goto_symex.h  Removed const keyword : symex_configt symex_config;  
 
@@ -36,6 +55,10 @@ File Changed in CProver's code:
   cprover/src/goto-symex/symex_main.cpp 
 
 9- src/util/arith_tools.h/cpp  Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
+
+10 - cprover 5.11
+renaming_lvel.h make sure being static in the following method is not problematic for HiFrog
+ static void increase_counter(const current_namest::iterator &it)
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0
@@ -69,6 +92,11 @@ in symect_assertion_sum.cpp
   to_ssa_expr(res);
 
 ---------------------------------------------------------------------
+cprover 5.30
+prop_conv_solver.h   propt &prop; moved to public
+
+
+
 =====================================================================
 ---------------------------------------------------------------------
 CBMC Version 5.10 from Git dev - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
@@ -81,7 +109,7 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name() + try to remove dirty class, unless till stable!)
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations) + KE: remove dirty analysis
 
-- trunk/cprover/src/goto-symex/syme_main.cpp // goto_symext::get_goto_functiont goto_symext::constuct_get_goto_function // to allow out symex to work //modified version of goto_symext::get_goto_functiont get_function_from_goto_functions.
+- trunk/cprover/src/goto-symex/symex_main.cpp // goto_symext::get_goto_functiont goto_symext::constuct_get_goto_function // to allow out symex to work //modified version of goto_symext::get_goto_functiont get_function_from_goto_functions.
 
 - trunk/cprover/src/goto-symex/symex_function_call.cpp // Add assert(0) - bool goto_symext::get_unwind_recursion, as long as the return is false.
 
