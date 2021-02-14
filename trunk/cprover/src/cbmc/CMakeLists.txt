@@ -23,7 +23,6 @@ target_link_libraries(cbmc-lib
     linking
     pointer-analysis
     solvers
-    statement-list
     util
     xml
 )

@@ -57,8 +57,8 @@ endmacro(generic_flex)
 macro(generic_includes name)
     target_include_directories(${name}
         PUBLIC
-#         ${CBMC_BINARY_DIR}
-#         ${CBMC_SOURCE_DIR}
+        #${CBMC_BINARY_DIR}
+        #${CBMC_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -93,7 +93,6 @@ add_subdirectory(ansi-c)
 add_subdirectory(assembler)
 add_subdirectory(big-int)
 add_subdirectory(cpp)
-add_subdirectory(xmllang)
 add_subdirectory(goto-checker)
 add_subdirectory(goto-programs)
 add_subdirectory(goto-symex)
@@ -104,19 +103,26 @@ add_subdirectory(langapi)
 add_subdirectory(linking)
 add_subdirectory(pointer-analysis)
 add_subdirectory(solvers)
-add_subdirectory(statement-list)
 add_subdirectory(util)
+add_subdirectory(xmllang)
 
 add_subdirectory(cbmc)
 add_subdirectory(goto-cc)
 add_subdirectory(goto-instrument)
 add_subdirectory(goto-analyzer)
 #add_subdirectory(goto-diff)
-add_subdirectory(goto-harness)
-add_subdirectory(symtab2gb)
 
-if(UNIX OR WITH_MEMORY_ANALYZER)
-add_subdirectory(memory-analyzer)
 
 add_subdirectory(funfrog)
-endif()
+
+
+
+
+
+
+
+
+
+
+
+
