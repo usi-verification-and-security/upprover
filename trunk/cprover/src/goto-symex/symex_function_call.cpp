@@ -408,7 +408,8 @@ void goto_symext::locality(
     const irep_idt l0_name=ssa.get_identifier();
 
     // save old L1 name for popping the frame
-    auto c_it = state.level1.current_names.find(l0_name);
+    //auto c_it = state.level1.current_names.find(l0_name);
+    const auto c_it = state.level1.current_names.find(l0_name);
 
     if(c_it != state.level1.current_names.end())
     {
@@ -417,9 +418,11 @@ void goto_symext::locality(
     }
     else
     {
-      c_it = state.level1.current_names
-               .emplace(l0_name, std::make_pair(ssa, frame_nr))
-               .first;
+//      c_it = state.level1.current_names
+//               .emplace(l0_name, std::make_pair(ssa, frame_nr))
+//               .first;
+      state.level1.current_names.emplace(
+          l0_name, std::make_pair(ssa, frame_nr));
     }
 
     // do L1 renaming -- these need not be unique, as
@@ -433,7 +436,8 @@ void goto_symext::locality(
 
     while(state.l1_history.find(l1_name)!=state.l1_history.end())
     {
-      symex_renaming_levelt::increase_counter(c_it);
+      //symex_renaming_levelt::increase_counter(c_it);
+      state.level1.increase_counter(l0_name);
       ++offset;
       ssa.set_level_1(frame_nr+offset);
       l1_name=ssa.get_identifier();

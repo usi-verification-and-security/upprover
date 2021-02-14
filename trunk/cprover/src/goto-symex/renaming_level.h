@@ -37,19 +37,20 @@ struct symex_renaming_levelt
     return it == current_names.end() ? 0 : it->second.second;
   }
 
-  /// Increase the counter corresponding to an identifier
-  // For HiFrog usage removed static
-  static void increase_counter(const current_namest::iterator &it)
-  {
-    ++it->second.second;
-  }
-
-//  // For HiFrog usage
-//  void increase_counter(const irep_idt &identifier)
+  // For HiFrog usage removed static method and undo the changes in
+  //https://github.com/diffblue/cbmc/commit/e71ca91c9eeaaa8dda70f18ffb7d2bcea574035d
+//  static void increase_counter(const current_namest::iterator &it)
 //  {
-//      PRECONDITION(current_names.find(identifier) != current_names.end());
-//      ++current_names[identifier].second;
+//    ++it->second.second;
 //  }
+
+  // Increase the counter corresponding to an identifier
+  //added becaue of HiFrog usage
+  void increase_counter(const irep_idt &identifier)
+  {
+      PRECONDITION(current_names.find(identifier) != current_names.end());
+      ++current_names[identifier].second;
+  }
 
   /// Add the \c ssa_exprt of current_names to vars
   void get_variables(std::unordered_set<ssa_exprt, irep_hash> &vars) const
