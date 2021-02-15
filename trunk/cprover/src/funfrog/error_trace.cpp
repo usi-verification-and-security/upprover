@@ -30,7 +30,7 @@ void error_tracet::build_goto_trace(
         const SSA_steps_orderingt &SSA_steps,
         ssa_solvert &decider)
 {
-  auto convertor = decider.get_convertor();
+  //auto convertor = decider.get_convertor();
   solvert* solver = decider.get_solver();
   unsigned step_nr=0;
 
@@ -143,7 +143,7 @@ Function: error_trace::show_trace_vars_value
 error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(ssa_solvert &decider, const SSA_steps_orderingt &SSA_steps)
 {
     solvert* solver = decider.get_solver();
-    convertort* convertor = decider.get_convertor();
+    //convertort* convertor = decider.get_convertor();
     if (solver->is_overapprox_encoding())
     {
         // Check the error trace symbols,

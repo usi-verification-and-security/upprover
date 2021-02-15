@@ -56,12 +56,14 @@ protected:
 private:
     // to be able to start with a fresh statePrt
     void reset_state(){
-      auto* storage = &this->path_storage;
-      // Clear the statePrt
-      auto state = std::unique_ptr<statet>(new statet());
+//      auto* storage = &this->path_storage;
+//      assert(storage);
+      // Clear the state
+      statePtr.reset(new goto_symext::statet());
 //          symex_targett::sourcet(goto_functionst::entry_point(), goto_program),
 //          [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
-//      ns = namespacet{outer_symbol_table, state->symbol_table};
+      ns = namespacet{outer_symbol_table, statePtr->symbol_table};
+
       // since not supporting multiple threads, we do not need to record events;
       turn_off_recording_events();
     }

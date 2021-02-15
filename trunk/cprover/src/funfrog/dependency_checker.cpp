@@ -540,9 +540,10 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
 
 void dependency_checkert::print_SSA_steps()
 {
-    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
-    {
-      it->output(std::cout);
+//    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+//    {
+    for (const auto & ssa_stp : SSA_steps) {
+      ssa_stp.output(std::cout);
     }
 }
 #endif

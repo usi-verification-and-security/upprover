@@ -20,7 +20,7 @@
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/string_instrumentation.h>
 
-#include <goto-programs/rewrite_union.h>
+//#include <goto-symex/rewrite_union.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
@@ -42,27 +42,49 @@
 #include "UserDefinedSummary.h" // TODO: doesn't work yet, only contains original code
 #include <funfrog/utils/naming_helpers.h>
 #include <goto-instrument/unwind.h>
-#include <goto-instrument/nondet_static.h>
-#include <ansi-c/c_object_factory_parameters.h>
-
+#include <goto-programs/loop_ids.h>
+#include <goto-programs/show_symbol_table.h>
 #include "check_claims.h"
-//since Cprover5.12
-#include <util/exit_codes.h>
-//#include <ansi-c/gcc_version.h>
-#include <ansi-c/c_preprocess.h>
-#include <langapi/language.h>
-#include <langapi/mode.h>
+
+//#include <cstdlib>
+//#include <util/options.h>
+//#include <goto-programs/goto_trace.h>
+//#include <util/ui_message.h>
+//#include <goto-programs/goto_model.h>
+//#include <util/config.h>
+//#include <sys/time.h>
+//#include <sys/stat.h>
+//#include <util/std_expr.h>
+//#include <util/arith_tools.h>
+//#include <util/prefix.h>
+//#include <langapi/mode.h>
+//#include <langapi/language_ui.h>
+
+//#ifndef _WIN32
+//#include <sys/resource.h>
+//#else
+//#include <io.h>
+//#endif
+
+//#include <limits>
+
+//#include <goto-programs/read_goto_binary.h>
+//#include <goto-programs/remove_asm.h>
+//#include <goto-programs/remove_unused_functions.h>
+//#include <goto-instrument/full_slicer.h>
+#include <goto-instrument/nondet_static.h>
 
 
 
 class parser_baset : public parse_options_baset, public xml_interfacet, public messaget
-    {
+{
 public:
-    parser_baset(const std::string &_optstring, const std::string &program, int argc, const char **argv ):
-            parse_options_baset(_optstring, argc, argv),
-            xml_interfacet(cmdline),
-            messaget(ui_message_handler),
-            ui_message_handler(cmdline, program)
+    parser_baset(const std::string &extra_options, int argc, const char **argv )
+    :
+        parse_options_baset(extra_options, argc, argv),
+        xml_interfacet(cmdline),
+        messaget(ui_message_handler),
+        ui_message_handler(cmdline, std::string(""))
     {
     }
 
@@ -77,33 +99,31 @@ protected:
     claim_numberst claim_numbers;
     claim_checkmapt claim_checkmap;
     
-    void set_default_options(optionst &);
-    
     void register_languages();
     void get_command_line_options(optionst &);
-    void preprocessing(const optionst &);
-    bool set_properties(goto_modelt &);
+    void set_default_options(optionst &);
     
     unsigned count(const goto_functionst &goto_functions) const;
     unsigned count(const goto_programt &goto_program) const;
 
 //move it outside of this class to be a standalone function for processing several goto-model in a single run
 //bool process_goto_program(const optionst &);
-    int get_goto_program(goto_modelt &,
-                          const optionst &,
-                          const cmdlinet &,
-                          ui_message_handlert &);
     
-    //void calculate_show_claims(goto_modelt &);
-    void set_options(const cmdlinet &cmdline);
+    int get_goto_program(goto_modelt &, cmdlinet &);
+    void calculate_show_claims(goto_modelt &);
+    void set_options_All(const cmdlinet &cmdline);
+    void eval_verbosity();
     
     optionst options;
     std::ofstream statfile;
+    
+    void error_interface(std::string error_msg) { error() << error_msg << eom; }
+    void status_interface(std::string msg) { status() << msg << eom; }
 };
 
 //Declaration:
 // A standalone function; originally it was a member function of above class
-bool process_goto_program(const cmdlinet &cmdline, const optionst &, goto_modelt &goto_model,
+bool process_goto_program(goto_modelt &goto_model, const cmdlinet &cmdline, const optionst &,
                           messaget &message);
 
 

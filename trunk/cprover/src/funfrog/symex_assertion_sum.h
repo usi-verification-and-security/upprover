@@ -3,7 +3,7 @@
  using and generating function summaries. Based on CPROVER goto_symex
  Author: Ondrej Sery, Karine Mendoza, Martin Blicha, Sepideh Asadi
 This takes a goto-program and translates it to an equation system by traversing the program.
-The output of symbolic execution is a system of equations, asserations and assumptions;
+The output of symbolic execution is a system of equations, assertions and assumptions;
  \*******************************************************************/
 
 #ifndef CPROVER_SYMEX_ASSERTION_SUM_H
@@ -30,10 +30,8 @@ using partition_iface_ptrst = std::list<partition_ifacet*>;
 class symex_assertion_sumt : public goto_symext
 {
 public:
-/*******************************************************************
-Function: symex_assertion_sumt::symex_assertion_sumt
 
-Constructor
+///Constructor
 /// Construct a goto_symext to execute a particular program
 /// \param mh: The message handler to use for log messages
 /// \param outer_symbol_table: The symbol table for the program to be
@@ -42,11 +40,9 @@ Constructor
 /// \param options: The options to use to configure this execution
 /// \param path_storage: Place to storage symbolic execution paths that have
 /// been halted and can be resumed later
-/// \param guard_manager: Manager for creating guards
 
 ///The state that symbolic execution maintains is not a member anymore.
 ///Symbolic execution state for current instruction will be pass around
-\*******************************************************************/
   symex_assertion_sumt(
     const goto_functionst & _goto_functions,
     call_tree_nodet & _call_info,
@@ -68,7 +64,7 @@ Constructor
   const goto_programt&, unsigned int,
   bool, bool, bool, bool) = delete;
           
-  virtual ~symex_assertion_sumt() override;
+  ~symex_assertion_sumt() override;
 
   // Generate SSA statements for the program starting from the root
   // stored in goto_program.
@@ -89,8 +85,7 @@ Constructor
   /// \param get_goto_function: The delegate to retrieve function bodies (see
   ///   \ref get_goto_functiont)
   /// \param state: Symbolic execution state for current instruction
-  virtual void
-  symex_step(const get_goto_functiont &get_goto_function, statet &state) override;
+  void symex_step(const get_goto_functiont &get_goto_function, statet &state) override;
 
   const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
     auto it = partition_iface_map.find(call_tree_node);
@@ -190,8 +185,7 @@ protected:
     return deferred_functions.front();
   }
 
-  // Processes a function call based on the corresponding
-  // summary type
+  // Processes a function call based on the corresponding summary type
   void handle_function_call(statet &state,
     code_function_callt &function_call);
 
@@ -200,11 +194,6 @@ protected:
         deferred_functiont& deferred_function,
         statet& state,
         const irep_idt& function_id);
-    
-  // Prepares a partition with an inverted summary. This is used
-  // to verify that a function still implies its summary (in upgrade check).
-//  void fill_inverted_summary(call_tree_nodet& summary_info,
-//                             statet& state, partition_ifacet& inlined_iface);
 
   // Inlines the given function call
   void inline_function_call(
@@ -281,7 +270,7 @@ protected:
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
 
-    void raw_assignment(
+  void raw_assignment(
             statet &state,
             const ssa_exprt &lhs,
             const symbol_exprt &rhs,
@@ -311,14 +300,6 @@ protected:
     }
   }
 
-  // Dead identifiers do not need to be considered in Phi function generation
-//  bool is_dead_identifier(const irep_idt& identifier) { //no usage anymore
-//    if (identifier == guard_identifier)
-//      return true;
-//
-//    return dead_identifiers.find(identifier) != dead_identifiers.end();
-//  }
-
   // Allocate new partition_interface
   partition_ifacet& new_partition_iface(call_tree_nodet& call_tree_node,
           partition_idt parent_id, unsigned call_loc);
@@ -338,23 +319,22 @@ protected:
       return accessed_globals[function_name];
   }
    
-protected:
-  // KE: override from goto_symex.h
+  // override from goto_symex.h
   void vcc(
     const exprt &expr,
     const std::string &msg,
     statet &state) override;
 
-  // for loop unwinding //SA: check for usage 5.11
-//  virtual bool get_unwind(
-//    const symex_targett::sourcet &source,
-//    const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
-//    unsigned unwind)
-//  {
-//    // returns true if we should not continue unwinding
-//    // for support of different bounds in different loops, see how it's done in symex_bmct
-//    return unwind >= max_unwind;
-//  }
+ //for loop unwinding //SA: check for usage 5.11
+  virtual bool get_unwind(
+    const symex_targett::sourcet &source,
+    const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
+    unsigned unwind)
+  {
+    // returns true if we should not continue unwinding
+    // for support of different bounds in different loops, see how it's done in symex_bmct
+    return unwind >= max_unwind;
+  }
 
   // unwind option
   unsigned int max_unwind;
@@ -371,11 +351,11 @@ protected:
   #endif
 
 /// The symbol table associated with the goto-program that we're
-  /// executing. This symbol table will not additionally contain objects
-  /// that are dynamically created as part of symbolic execution; the
-  /// names of those object are stored in the symbol table passed as the
-  /// `symex_symbol_table` argument to the `symex_*` methods.
-  // const symbol_tablet &outer_symbol_table; <--- this is a const method in goto_symex.h
+/// executing. This symbol table will not additionally contain objects
+/// that are dynamically created as part of symbolic execution; the
+/// names of those object are stored in the symbol table passed as the
+/// `symex_symbol_table` argument to the `symex_*` methods.
+// const symbol_tablet &outer_symbol_table; <--- this is a const method in goto_symex.h
 //  symbol_tablet* symex_symbol_table;  // We use this to all our dynamic allocations! (as done in bmc.h
 
     symbol_tablet& get_symbol_table() { return state->symbol_table; }
@@ -418,23 +398,9 @@ private:
 
   // NOTE: use only when versions for interface symbols are needed!
   ssa_exprt get_current_version(const symbolt & symbol);
-    
-// Note from CPROVER 5.12 about const propagation:
-// We cannot remove the object from the L1 renaming map, because L1 renaming
-// information is not local to a path, but removing it from the propagation
-// map and value-set is safe as 1) it is local to a path and 2) this
-// instance can no longer appear.
-// Remove from the local L2 renaming map; this means any reads from the dead
-// identifier will use generation 0 (e.g. x!N@M#0, where N and M are
-// positive integers), which is never defined by any write, and will be
-// dropped by `goto_symext::merge_goto` on merging with branches where the
-// identifier is still live.
-  void  stop_constant_propagation_for(const irep_idt & id) {
-    state->propagation.erase(id); //5.11
-    //state->propagation.erase_if_exists(id); //5.12
-  }
 
-  // this works only for identifiers of artificial symbols
+  // NOTE: use only for identifiers of artificial symbols
+  // gives next L2 version
   ssa_exprt get_next_version(const irep_idt& id) {
     assert(knows_artificial_symbol(id));
     return get_next_version(get_artificial_symbol(id));
@@ -461,30 +427,49 @@ private:
 
   // to be able to start with a fresh state
   void reset_state(){
-    auto* storage = &this->path_storage;
-    assert(storage);
-
-    // Clear the state
-    state = std::unique_ptr<statet> (new statet()); //5.11
-
-//    state = std::unique_ptr<statet>(new statet(   //5.12
-//	  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
-//	  symex_config.max_field_sensitivity_array_size,
-//	  guard_manager,
-//	  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
-
-	ns = namespacet{outer_symbol_table, state->symbol_table};
-	// since not supporting multiple threads, we do not need to record events;
-	turn_off_recording_events();
+  // Clear the state
+  state.reset(new goto_symext::statet());
+  ns = namespacet{outer_symbol_table, state->symbol_table};
+// since not supporting multiple threads, we do not need to record events;
+  turn_off_recording_events();
+//  state = std::unique_ptr<statet>(new statet(   //5.12
+//  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
+//  symex_config.max_field_sensitivity_array_size,
+//  guard_manager,
+//  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
   }
 
   void turn_off_recording_events() {
   	// turns off doing some book-keeping related to handling multiple threads by CProver
 	state->record_events = false;
   }
-    /// Assuming the program counter of \p state is currently pointing to a return
-    /// instruction, assign the value in that return to the top frame's
-    /// \p return_value field.
-    void return_assignment(statet &);
+  /// Assuming the program counter of \p state is currently pointing to a return
+  /// instruction, assign the value in that return to the top frame's
+  /// \p return_value field.
+  //this method is deprecated in cprover from v.5.12 on
+  void return_assignment(statet &);
+  
+// Note from CPROVER 5.12 about const propagation:
+// We cannot remove the object from the L1 renaming map, because L1 renaming
+// information is not local to a path, but removing it from the propagation
+// map and value-set is safe as 1) it is local to a path and 2) this
+// instance can no longer appear.
+// Remove from the local L2 renaming map; this means any reads from the dead
+// identifier will use generation 0 (e.g. x!N@M#0, where N and M are
+// positive integers), which is never defined by any write, and will be
+// dropped by `goto_symext::merge_goto` on merging with branches where the
+// identifier is still live.
+  void  stop_constant_propagation_for(const irep_idt & id) {
+    state->propagation.erase(id); //5.11
+    //state->propagation.erase_if_exists(id); //5.12
+  }
 };
 #endif
+
+// Dead identifiers do not need to be considered in Phi function generation
+//  bool is_dead_identifier(const irep_idt& identifier) { //no usage anymore
+//    if (identifier == guard_identifier)
+//      return true;
+//
+//    return dead_identifiers.find(identifier) != dead_identifiers.end();
+//  }
