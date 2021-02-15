@@ -427,13 +427,13 @@ static void merge_names(
 
   // shared variables are renamed on every access anyway, we don't need to
   // merge anything
-  const symbolt &symbol = ns.lookup(obj_identifier);
+  //const symbolt &symbol = ns.lookup(obj_identifier);
 
-  // shared?
-  if(
-    dest_state.atomic_section_id == 0 && dest_state.threads.size() >= 2 &&
-    (symbol.is_shared() || (dest_state.dirty)(symbol.name)))
-    return; // no phi nodes for shared stuff
+  // shared?      //SA: remove dirty
+//  if(
+//    dest_state.atomic_section_id == 0 && dest_state.threads.size() >= 2 &&
+//    (symbol.is_shared() || (dest_state.dirty)(symbol.name)))
+//    return; // no phi nodes for shared stuff
 
   // don't merge (thread-)locals across different threads, which
   // may have been introduced by symex_start_thread (and will

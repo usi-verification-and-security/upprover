@@ -168,7 +168,7 @@ void goto_symext::initialize_entry_point(
     if(emplace_safe_pointers_result.second)
         emplace_safe_pointers_result.first->second(entry_point_function.body);
 
-    state.dirty.populate_dirty_for_function(pc->function, entry_point_function);
+    //state.dirty.populate_dirty_for_function(pc->function, entry_point_function); // SA:remove dirty
 
     symex_transition(state, state.source.pc, false);
 }
