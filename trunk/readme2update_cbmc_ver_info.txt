@@ -16,8 +16,6 @@ File Changed in CProver's code:
 =============
 1- src/solvers/prop/prop_conv_solver.h  move to public: propt &prop; 
  
-2- goto-symex/goto_symex.h make phi_function virtual to allow our code to be executed, not cbmc's
-
 3- goto-symex/goto_symex_state.cpp  remove static keyword from get_l1_name as follows:
 //static void get_l1_name(exprt &expr){...}
 void goto_symex_statet::get_l1_name(exprt &expr) const
@@ -57,8 +55,10 @@ goto_symext::get_goto_functiont goto_symext::construct_get_goto_function( //hkd!
 9- src/util/arith_tools.h/cpp  Bring back the method 'bool to_integer(const exprt &expr, mp_integer &int_value)' since UpProver's diff-checker needs that.
 
 10 - cprover 5.11
-renaming_lvel.h make sure being static in the following method is not problematic for HiFrog
- static void increase_counter(const current_namest::iterator &it)
+goto-symex/renaming_level.h
+removed static method increase_counter and undo the changes in
+  //https://github.com/diffblue/cbmc/commit/e71ca91c9eeaaa8dda70f18ffb7d2bcea574035d
+  This undong has been pushed as SHA 34bfa974 in upprover
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0
