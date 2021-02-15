@@ -910,6 +910,7 @@ void symex_assertion_sumt::store_modified_globals(
     rhs.remove_level_2();
     assert(ns.follow(out_symbol.type()) == ns.follow(rhs.type()));
     // Emit the assignment
+    stop_constant_propagation_for(to_ssa_expr(rhs).get_identifier());
     raw_assignment(state, iface_symbol_version, rhs, ns);
   }
 //  symex_config.constant_propagation = old_cp;
