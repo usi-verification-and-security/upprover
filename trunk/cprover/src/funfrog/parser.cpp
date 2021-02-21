@@ -602,15 +602,15 @@ bool process_goto_program(goto_modelt &goto_model,const cmdlinet &cmdline,
     msg.status() << "Generic Property Instrumentation" << msg.eom;
     goto_check(options, goto_model);
     
-    // HIFROG: We remove built-ins from smt logics //SA why only prop?
-//    if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
-//    {
-//      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
-//      {
-        // checks don't know about adjusted float expressions
+    //HIFROG: We remove built-ins (e.g., CPROVER_rounding_mode) from smt logics
+    //For handling floats symbol CPROVER_rounding_mode should be added only in bv
+    if (cmdline.isset(HiFrogOptions::LOGIC.c_str()))
+    {
+      if (cmdline.get_value(HiFrogOptions::LOGIC.c_str()) == "prop")
+      {
         adjust_float_expressions(goto_model);
-//      }
-//    }
+      }
+    }
     
     if (cmdline.isset("string-abstraction"))
     {
