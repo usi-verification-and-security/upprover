@@ -10,6 +10,7 @@ import os
 import sys
 import argparse
 from datetime import datetime
+import re
 
 RED   = "\033[1;31m"
 BLUE  = "\033[0;34m"
@@ -46,7 +47,7 @@ def run_bootstrap(args, shouldSuccess, folderpath, testname):
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
     # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
-    collect_data(stdoutput , testname , command)
+    collect_data(stdoutput , testname , command,stderror)
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:#if resultline is empty nothing return
@@ -154,22 +155,29 @@ def should_success(expected):
     assert False, 'Unknown expect status'
 #-------------------------------------------------------
 #collects and dumps the verification results into a collected*.txt file
-def collect_data(flog , testname , strarg):  #flog is string!
+def collect_data(flog , testname , strarg,errLog):  #flog is string!
     fi = open(mypath+"/collected_" +datestring + ".txt", 'a')
     fi.write( testname + '.c')
     fi.write("   |  ")
     time=''
     res=''
+    isTimeout=False
 
-    for line in flog.split('\n'):
-        if "TOTAL TIME FOR CHECKING THIS CLAIM" in line:
-            time=line.split(":")[1:][0]
-        if line.find("real")!=-1:
-            time=line[5:]
-        if  "VERIFICATION SUCCESSFUL" in line:
-            res='UNSAT'
-        if  "VERIFICATION FAILED" in line:
-            res='SAT'
+    #for line in errLog.split('\n'):
+    if errLog.find("Command terminated abnormally")!=-1:
+        print("Command terminated abnormally")
+        isTimeout=True
+        matchedTimeoutStr=re.search("real\ *[0-9]+.[0-9]*", errLog)
+        timeout=re.findall(r"[-+]?\d*\.\d+|\d+", matchedTimeoutStr.group())
+        print("Time Spent: ", timeout[0])
+    if not isTimeout:
+        for line in flog.split('\n'):
+            if "TOTAL TIME FOR CHECKING THIS CLAIM" in line:
+                    time=line.split(":")[1:][0]
+            if  "VERIFICATION SUCCESSFUL" in line:
+                res='UNSAT'
+            if  "VERIFICATION FAILED" in line:
+                res='SAT'
 
     if res!='':
         fi.write(res.rstrip())
