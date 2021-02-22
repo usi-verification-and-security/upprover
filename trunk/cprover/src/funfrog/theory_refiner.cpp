@@ -79,7 +79,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   smt_summary_storet dummy(nullptr);
   partitioning_target_equationt equation(ns, dummy,
-      store_summaries_with_assertion, message_handler);
+      store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -90,7 +90,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   call_tree_nodet& call_info = omega.get_call_tree_root();
   std::unique_ptr<path_storaget> worklist;
-  //guard_managert guard_manager;
   
   symex_assertion_sumt symex{
           omega.get_goto_functions(), call_info, options, *worklist, ns.get_symbol_table(),

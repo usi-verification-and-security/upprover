@@ -36,7 +36,7 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summary_storet & summary_store,
-                                bool _store_summaries_with_assertion, message_handlert & message_handler);
+                                bool _store_summaries_with_assertion);
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {

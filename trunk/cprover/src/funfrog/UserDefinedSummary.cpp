@@ -56,7 +56,7 @@ void UserDefinedSummaryt::dump_list_templates(
     assertion_infot ass_info;
     omega.set_initial_precision(ass_info, has_summary);
     
-    partitioning_target_equationt equation (ns, summary_store, true, ui_message_handler);
+    partitioning_target_equationt equation (ns, summary_store, true);
 
     std::unique_ptr<path_storaget> worklist;
     ui_message_handler.set_verbosity(messaget::M_STATISTICS);

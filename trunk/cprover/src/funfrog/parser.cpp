@@ -45,6 +45,7 @@ bool parser_baset::validate_input_options()
           !cmdline.isset("claims-order") &&
           !cmdline.isset("claim"))
   {
+    //fixme in upprover we don't set any claim. if no VCC found (unreachable assertion) report safe
     error_interface("A specific claim is not set, nor any other claim specification is set.");
     status_interface("Warrning: --claim is set to 1.");
     claim_user_nr = 1; // Set as defualt

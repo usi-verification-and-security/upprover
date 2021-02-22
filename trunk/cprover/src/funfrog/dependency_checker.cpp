@@ -813,7 +813,7 @@ dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dep
     try{
         // TODO: create solver according to current settings?
         solver_optionst solver_options; // Set defaults inside
-        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns, *message_handler);
+        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns);
         decider->new_partition();
 
         convert_delta_SSA(*decider, c1, c2);

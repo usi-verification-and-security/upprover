@@ -28,8 +28,7 @@ class boolbv_mapt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-    satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns,
-                       message_handlert & message_handler);
+    satcheck_opensmt2t(const solver_optionst solver_options, const char* name, const namespacet & ns);
 
     virtual ~satcheck_opensmt2t() {
     }
