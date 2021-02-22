@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #define HOUDINI_REF
+#define DEBUG_HOUDINI
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -261,7 +262,10 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                 }
                 else if (_logic == "qflra" || _logic == "qfuf") { //if summary is con/dis-junctive, logic could n't be prop.
                     itpt_summaryt &itpFull = summary_store->find_summary(sumID_full);
-                    //itpFull.serialize(std::cout);
+# ifdef DEBUG_HOUDINI
+                    std::cout << ";; summary orig is :\n";
+                    itpFull.serialize(std::cout);
+#endif
                     smt_itpt_summaryt *sumFull = dynamic_cast<smt_itpt_summaryt *>(&itpFull);
                     PTRef sumFull_pref = sumFull->getInterpolant();
                     // auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
@@ -278,12 +282,14 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     if (solver->isConjunctive(sumFull_pref)) {
                         status() << "\n" << "------ " << function_name << "'s summary is  conjunctive!" << eom;
                         //store passed conjuncts and conjoin them later
-                        std::vector<PTRef> validConjs;
+                        std::vector<PTRef> validConjs{};
                         //Iterate over conjuncts of the full-summary
                         for (int i = 0; i < solver->getLogic()->getPterm(sumFull_pref).size(); i++) {
                             status() << "\n" << "-- checking conjunct: " <<  i+1 << eom;
                             const PTRef subConj_pref = solver->getLogic()->getPterm(sumFull_pref)[i];
-                            //std::cout <<";sub summary is: \n" << solver->getLogic()->pp(subConj_pref) <<"\n";
+#ifdef DEBUG_HOUDINI
+                            std::cout <<";; Sub summary is: \n" << solver->getLogic()->pp(subConj_pref) <<"\n";
+#endif
                             //Form args of sub_summary based on the full summary
                             smt_itpt_summaryt *sub_sum = solver->create_partial_summary(sumArgs_copy,
                                                                                         node.get_function_id().c_str(),
@@ -306,7 +312,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                 //break; //if you find one good summary keep continuing to find more conjuncts and mkAnd them
                             }
                         }
-                        if (validConjs.size()) {
+                        if (!validConjs.empty()) {
                             const PTRef weakened_sum_ptref = solver->getLogic()->mkAnd(validConjs);
                             smt_itpt_summaryt *weakened_sum = solver->create_partial_summary(sumArgs_copy,
                                                                                         node.get_function_id().c_str(),
@@ -317,11 +323,13 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             node.set_precision(SUMMARY);
                             //increase repaired summary count
                             repaired_nodes.insert(node.get_function_id());
-                            status() << "\n" << "--weakened summary was good enough to capture the change of "
+                            status() << "\n" << " weakened summary  composed of " << validConjs.size() << " conjuncts was good enough to capture the change of "
                                      << node.get_function_id().c_str() << eom;
                             validated = true;
                         }
                         else { //none of conjuncts was good enough
+                            status() << "\n" << "--none of conjuncts was good enough for  "
+                                   << node.get_function_id().c_str() << eom;
                             node.set_inline();
                             //ID of original full-summary already was deleted
                         }
@@ -339,15 +347,19 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                 size_t number_of_conjuncts = solver->getLogic()->getPterm(one_disjunct).size();
                                 for (size_t conj = 0; conj < number_of_conjuncts - 1; conj++) {
                                     const PTRef one_conj = solver->getLogic()->getPterm(one_disjunct)[conj];
-                                    //std::cout << ";orig disjunctive fla: \n" << solver->getLogic()->pp(sumFull_pref) << "\n\n";
-                                    //std::cout <<";its sub-conj to be deleted: \n" << solver->getLogic()->pp(one_conj) <<"\n\n";
+#ifdef DEBUG_HOUDINI
+                                    std::cout << ";; orig disjunctive sum fla: \n" << solver->getLogic()->pp(sumFull_pref) << "\n\n";
+                                    std::cout <<";; a sub-conj to be deleted: \n" << solver->getLogic()->pp(one_conj) <<"\n\n";
+#endif
                                     //get rid of one_conj by setting it true
                                     subst.insert(one_conj, PtAsgn{solver->getLogic()->getTerm_true(), l_True});
                                     PTRef res_subst = PTRef_Undef;
                                     solver->getLogic()->varsubstitute(sumFull_pref, subst,
                                                                       res_subst); //sumFull_pref as entire disj fla is kept
                                     // original disjunctive is untouched here
-                                    //std::cout << ";res_subst is: \n" << solver->getLogic()->pp(res_subst) << "\n";
+#ifdef DEBUG_HOUDINI
+                                    std::cout << ";; res_subst is (got rid of one_conj by setting it true): \n" << solver->getLogic()->pp(res_subst) << "\n";
+#endif
                                     //summary args are taken from the full summary
                                     smt_itpt_summaryt *sub_fla_sum = solver->create_partial_summary(sumArgs_copy,
                                                                                                     node.get_function_id().c_str(),
@@ -407,9 +419,8 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     //each time we need a cleaned solver; this resets mainSolver but logic and config stay the same.
     decider->get_solver()->reset_solver();
     
-    partitioning_target_equationt equation(ns, *summary_store, true, message_handler);
+    partitioning_target_equationt equation(ns, *summary_store, true);
     std::unique_ptr<path_storaget> worklist;
-    //guard_managert guard_manager;
     symex_assertion_sumt symex{get_goto_functions(),
                                node,
                                options, *worklist,
@@ -619,11 +630,9 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
         auto interpolator1 = decider->get_interpolating_solver();
         auto convertor1 = decider->get_convertor();
         
-        partitioning_target_equationt equation(ns, *summary_store, true,
-                                               message_handler);//true:all-claims
+        partitioning_target_equationt equation(ns, *summary_store, true);//true:all-claims
     
         std::unique_ptr<path_storaget> worklist;
-
         symex_assertion_sumt symex{get_goto_functions(),
                                    *current_parent,
                                    options, *worklist,
