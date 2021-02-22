@@ -104,10 +104,10 @@ public:
   void set_assertion_info_to_verify(const assertion_infot* assertion_info){
       current_assertion = assertion_info;
   }
-
+  
 protected:
   std::unique_ptr<statet> state; //HiFrog specific.
-
+  
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
@@ -300,6 +300,14 @@ protected:
     }
   }
 
+    // Dead identifiers do not need to be considered in Phi function generation
+  bool is_dead_identifier(const irep_idt& identifier) {
+    if (identifier == guard_identifier)
+      return true;
+
+    return dead_identifiers.find(identifier) != dead_identifiers.end();
+  }
+
   // Allocate new partition_interface
   partition_ifacet& new_partition_iface(call_tree_nodet& call_tree_node,
           partition_idt parent_id, unsigned call_loc);
@@ -318,7 +326,13 @@ protected:
 //      return accessed_globals.at(function_name);
       return accessed_globals[function_name];
   }
-   
+
+   protected:
+  // override from goto_symex.h
+  void phi_function(
+    const statet::goto_statet &goto_state,
+    statet &state) override;
+
   // override from goto_symex.h
   void vcc(
     const exprt &expr,

@@ -302,9 +302,10 @@ void symex_assertion_sumt::symex_step(
       break;
   
     case GOTO:
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
       symex_goto(state);  //same as cbmc 5.11
       break;
-//      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
+
 //      if (state.reachable) { //code from cprover 5.12
 //        symex_goto(state);
 //      } else {
@@ -618,6 +619,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
             partition_iface, true);
   } else {
     partition_iface.retval_symbol = symbol_exprt(goto_function.type);
+    //partition_iface.retval_symbol = symbol_exprt();
   }
   // Add also new assignments to all modified global variables
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
@@ -672,7 +674,8 @@ void symex_assertion_sumt::assign_function_arguments(
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
             partition_iface, skip_assignment);
   } else {
-    partition_iface.retval_symbol = symbol_exprt(goto_function.type);
+    //partition_iface.retval_symbol = symbol_exprt(goto_function.type);
+    partition_iface.retval_symbol = symbol_exprt();
   }
   // Add also new assignments to all modified global variables
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
@@ -1162,62 +1165,166 @@ void symex_assertion_sumt::produce_callend_assumption(
     state.guard.guard_expr(tmp);
     target.assumption(state.guard.as_expr(), tmp, state.source);
 }
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::raw_assignment
 
  Purpose: Makes an assignment without increasing the version of the
- lhs symbol. Make sure that lhs symbol is not assigned elsewhere!
+ lhs symbol (make sure that lhs symbol is not assigned elsewhere)
  
 \*******************************************************************/
 void symex_assertion_sumt::raw_assignment(
-        statet &state,
-        const ssa_exprt &lhs,
-        const symbol_exprt &rhs,
-        const namespacet &ns)
+    statet &state,
+    const ssa_exprt &lhs,
+    const symbol_exprt &rhs,
+    const namespacet &ns)
 {
-  // inspired by goto_symext::symex_assign_symbol (in cbmc12 symex_assignt::assign_symbol),
-  // but we do not want to increment counter on LHS
+  // inspired by goto_symext::symex_assign_symbol, but we do not want to increment counter on LHS
   // so we do not want the full call to state.assignment
   // also there is no guard here (MB: TODO: what if the function call is in if block?
-
+  
   // LHS should already be L2 ssa
   assert(!lhs.get_level_2().empty());
-
-  exprt ssa_rhs = rhs;
-  //ssa_rhs = state.rename(ssa_rhs, ns).get();
+  
+  exprt ssa_rhs=rhs;
   state.rename(ssa_rhs, ns);
-  do_simplify(ssa_rhs); //SA: make sure not to mess with preserving locality in partitions
-
+  do_simplify(ssa_rhs);
+  
   // the following block is what we want from state.assign
   // update value sets
   value_sett::expr_sett rhs_value_set;
   exprt l1_rhs(rhs);
   state.get_l1_name(l1_rhs);
   
-
   ssa_exprt l1_lhs(lhs);
   state.get_l1_name(l1_lhs);
-  //l1_lhs.remove_level_2(); //cbmc5.12 does this https://github.com/diffblue/cbmc/commit/7efc7b8fde6d370a2b571ab4d2ff655e577ca1da
-
-  state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
   
+  state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
   // do the assignment
-
   target.assignment(
-    guardt().as_expr(),
-    lhs,
-    lhs, l1_lhs,
-    ssa_rhs,
-    state.source,
-    symex_targett::assignment_typet::STATE);
-#ifdef DISABLE_OPTIMIZATIONS
-  expr_pretty_print(std::cout << "\n**raw_assignment\n** Lhs: ", lhs); std::cout << std::endl;
-  expr_pretty_print(std::cout << "** Rhs: ", ssa_rhs); std::cout << std::endl;
-#endif
+      guardt().as_expr(),
+      lhs,
+      lhs, l1_lhs,
+      ssa_rhs,
+      state.source,
+      symex_targett::assignment_typet::STATE);
 }
 
+/*******************************************************************\
+
+Function: symex_assertion_sumt::phi_function
+
+ Purpose: Modification of the goto_symext version. In contrast, we
+ do not generate Phi functions for dead identifiers.
+ SA: don't use cprover default phi-function! causes issue in upprover-houdini
+ see 008.493977f.43_1a.cil_safe.i, 009.64f9477.43_1a.cil_safe.i.
+\*******************************************************************/
+void symex_assertion_sumt::phi_function(
+    const statet::goto_statet &goto_state,
+    statet &dest_state)
+{
+  // go over all variables to see what changed
+  std::unordered_set<ssa_exprt, irep_hash> variables;
+  
+  goto_state.level2_get_variables(variables);
+  dest_state.level2.get_variables(variables);
+  
+  guardt diff_guard;
+  
+  if(!variables.empty())
+  {
+    diff_guard=goto_state.guard;
+    
+    // this gets the diff between the guards
+    diff_guard-=dest_state.guard;
+  }
+  
+  for(const auto & variable : variables)
+  {
+    const irep_idt l1_identifier = variable.get_identifier();
+    const irep_idt &obj_identifier = variable.get_object_name();
+    
+    if(obj_identifier==guard_identifier)
+      continue; // just a guard, don't bother
+    
+    if(goto_state.level2_current_count(l1_identifier)==
+       dest_state.level2.current_count(l1_identifier))
+      continue; // not at all changed
+    
+    if (is_dead_identifier(obj_identifier))
+      continue;
+    
+    // changed!
+    
+    // shared variables are renamed on every access anyway, we don't need to
+    // merge anything
+    const symbolt &symbol=ns.lookup(obj_identifier);
+    
+    // shared?
+    if(dest_state.atomic_section_id==0 &&
+       dest_state.threads.size()>=2 &&
+       (symbol.is_shared()))
+      continue; // no phi nodes for shared stuff
+    
+    // don't merge (thread-)locals across different threads, which
+    // may have been introduced by symex_start_thread (and will
+    // only later be removed from level2.current_names by pop_frame
+    // once the thread is executed)
+    if(!variable.get_level_0().empty() &&
+       variable.get_level_0()!=std::to_string(dest_state.source.thread_nr))
+      continue;
+    
+    exprt goto_state_rhs = variable;
+    exprt dest_state_rhs = variable;
+    
+    {
+      auto p_it= goto_state.propagation.find(l1_identifier);
+      
+      if(p_it!=goto_state.propagation.end())
+        goto_state_rhs=p_it->second;
+      else
+        to_ssa_expr(goto_state_rhs).set_level_2(
+            goto_state.level2_current_count(l1_identifier));
+    }
+    
+    {
+      auto p_it=
+          dest_state.propagation.find(l1_identifier);
+      
+      if(p_it!=dest_state.propagation.end())
+        dest_state_rhs=p_it->second;
+      else
+        to_ssa_expr(dest_state_rhs).set_level_2(
+            dest_state.level2.current_count(l1_identifier));
+      //dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
+    }
+    
+    exprt rhs;
+    
+    if(dest_state.guard.is_false())
+      rhs=goto_state_rhs;
+    else if(goto_state.guard.is_false())
+      rhs=dest_state_rhs;
+    else
+    {
+      rhs=if_exprt(diff_guard.as_expr(), goto_state_rhs, dest_state_rhs);
+      do_simplify(rhs);
+    }
+    
+    ssa_exprt new_lhs = variable;
+    const bool record_events=dest_state.record_events;
+    dest_state.record_events=false;
+    dest_state.assignment(new_lhs, rhs, ns, true, true); // ++counter l2
+    dest_state.record_events=record_events;
+    
+    target.assignment(
+        true_exprt(),
+        new_lhs, new_lhs, new_lhs.get_original_expr(),
+        rhs,
+        dest_state.source,
+        symex_targett::assignment_typet::PHI);
+  }
+}
 /*******************************************************************\
  
  Purpose: symex of verification condition (claim)
@@ -1642,14 +1749,14 @@ void symex_assertion_sumt::return_assignment(statet &state)
   const goto_programt::instructiont &instruction = *state.source.pc;
   PRECONDITION(instruction.is_return());
   const code_returnt &code = to_code_return(instruction.code);
-  
+
   target.location(state.guard.as_expr(), state.source);
-  
+
   if(code.operands().size() == 1)
   {
-    //exprt value=code.op0(); //SA: not public anymore
-    exprt value = code.return_value();
-    
+    exprt value=code.op0(); //SA: in cprover5.12 not public anymore
+    //exprt value = code.return_value();
+
     if(frame.return_value.is_not_nil())
     {
       code_assignt assignment(frame.return_value, value);
@@ -1658,7 +1765,7 @@ void symex_assertion_sumt::return_assignment(statet &state)
       expr_pretty_print(std::cout << "\n**return_assignment\n** Lhs: ", assignment.lhs()); std::cout << std::endl;
       expr_pretty_print(std::cout << "** Rhs: ", assignment.rhs()); std::cout << std::endl;
 #endif
-      
+
       if(!base_type_eq(assignment.lhs().type(),
                        assignment.rhs().type(), ns))
         throw
@@ -1666,7 +1773,7 @@ void symex_assertion_sumt::return_assignment(statet &state)
             instruction.source_location.as_string()+":\n"+
             "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
             "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
-      
+
       //Fabricate the assignment itself by L2-rename
       symex_assign(state, assignment);
     }
