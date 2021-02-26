@@ -496,7 +496,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     //auto exploration_strategy = options.get_option("exploration-strategy");
 //    auto exploration_strategy = "fifo";
 //    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
-    //guard_managert guard_manager;
     
     symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
@@ -523,7 +522,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
     }
-
 
     // the checker main loop:
     unsigned summaries_used = 0;

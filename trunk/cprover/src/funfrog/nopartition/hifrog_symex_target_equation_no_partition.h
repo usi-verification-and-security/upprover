@@ -7,8 +7,6 @@
 #define HIFROG_SYMEX_TARGET_EQUATIONT_NO_PARTITION_H
 
 #include <goto-symex/symex_target_equation.h>
-//#include <goto-symex/ssa_step.h>
-//#include <util/ui_message.h>
 
 class convertort;
 

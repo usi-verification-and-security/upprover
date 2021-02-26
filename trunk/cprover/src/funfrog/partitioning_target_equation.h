@@ -20,7 +20,6 @@ different deferred functions.
 #endif
 
 #include <goto-symex/symex_target_equation.h>
-//#include <goto-symex/ssa_step.h>
 #include <funfrog/interface/convertor.h>
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"

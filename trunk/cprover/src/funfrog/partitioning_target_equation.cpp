@@ -447,7 +447,7 @@ void partitioning_target_equationt::convert_partition_assertions(
                 const partition_ifacet& target_partition_iface =
                         target_partition->get_iface();
     
-              FlaRef tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
+                FlaRef tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
                 //FlaRef tmp = convertor.land(convertor.convert_bool_expr(assumption_expr), convertor.convert_bool_expr(it->guard_handle));
                 convertor.set_equal(tmp, target_partition_iface.callstart_literal);
 
@@ -483,7 +483,6 @@ void partitioning_target_equationt::convert_partition_assertions(
             // Collect this assumption as:
             //assumption_literal = \land_{ass \in assumptions(f)} ass
             //Commented since CProver5.12: Instead of converting to Literalt, use CProver methods operating from exprt to exprt
-            assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
             //assumption_expr = and_exprt(assumption_expr, it->cond_handle); //5.12
             assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
             number_of_assumptions++;
@@ -569,7 +568,6 @@ void partitioning_target_equationt::convert_partition_assumptions(
             //it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
             //it->cond_handle = it->ignore ? true_exprt() : (it->cond_expr);
             it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
-
         }
     }
 }

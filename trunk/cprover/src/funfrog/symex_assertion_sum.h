@@ -15,7 +15,6 @@ The output of symbolic execution is a system of equations, assertions and assump
 #include "partition_fwd.h"
 #include <queue>
 #include <funfrog/summary_store.h>
-#include <iostream>
 
 class goto_programt;
 class goto_functionst;

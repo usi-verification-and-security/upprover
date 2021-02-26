@@ -7,7 +7,6 @@
 
 #include <ostream>
 #include <util/namespace.h>
-#include "goto-symex/ssa_step.h"
 
 template<typename C>
 void print_SSA_steps(const C & iterable, const namespacet & ns, std::ostream& out)

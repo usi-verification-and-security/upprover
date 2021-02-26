@@ -4,7 +4,6 @@
 #include <util/symbol.h>
 #include <util/ui_message.h>
 #include <goto-symex/symex_target_equation.h>
-//#include <goto-symex/ssa_step.h>
 #include <goto-symex/slice.h>
 
 #include <funfrog/utils/UnionFind.h>
