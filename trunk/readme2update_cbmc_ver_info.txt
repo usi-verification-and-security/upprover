@@ -59,6 +59,8 @@ goto-symex/renaming_level.h
 removed static method increase_counter and undo the changes in
   //https://github.com/diffblue/cbmc/commit/e71ca91c9eeaaa8dda70f18ffb7d2bcea574035d
   This undong has been pushed as SHA 34bfa974 in upprover
+
+11- Remove deprecated exprt::make_true(). As suggested use true_exprt() instead. 
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0

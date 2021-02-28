@@ -532,8 +532,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Prepare (and empty) the current state
   //state.guard.add(true_exprt()); //SA// behaves like assume(1); is that what we need?
-  guardt guard;
-  //state.guard = guardt(true_exprt(), guard_manager); 5.12
+  state.guard = true_exprt();
   //state.reachable = true; 5.12
     
   // Set pc to function entry point
@@ -572,8 +571,6 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
        !lhs.has_operands());
 
     guardt guard;
-    //guardt guard{true_exprt{}, guard_manager};
-    // state.guard.add(true_exprt()); //SA: behaves like assume(1); is that what we need?
     // without multithreading, no need to record events
     //state.record_events=false;
     
