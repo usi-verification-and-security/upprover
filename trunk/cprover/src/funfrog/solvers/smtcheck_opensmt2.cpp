@@ -716,7 +716,8 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
                     smtcheck_opensmt2t::get_value_from_solver(ptref);
 
             // Create the expr with it
-            constant_exprt tmp(value, expr.type());
+            //constant_exprt tmp(value, expr.type());
+            constant_exprt tmp;
             tmp.set_value(value);
 
             return tmp;
@@ -728,7 +729,8 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
                     smtcheck_opensmt2t::get_value_from_solver(ptref);
 
             // Create the expr with it
-            constant_exprt tmp(value, expr.type());
+            //constant_exprt tmp(value, expr.type());
+            constant_exprt tmp;
             tmp.set_value(value);
 
             return tmp;

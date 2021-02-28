@@ -20,7 +20,7 @@
 #include <unordered_set>
 
 #define HOUDINI_REF
-#define DEBUG_HOUDINI
+//#define DEBUG_HOUDINI
 /*******************************************************************\
 
 Standalone Function: check_initial

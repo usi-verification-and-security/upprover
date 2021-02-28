@@ -48,7 +48,7 @@ public:
       throw std::logic_error("Unreachable");
     }
 
-    //bool is_overapproximating() const override {return false;}
+    bool is_overapproximating() const override {return false;}
 
     virtual tvt l_get(literalt a) const override;
 

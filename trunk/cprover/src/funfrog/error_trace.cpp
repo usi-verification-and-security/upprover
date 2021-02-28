@@ -183,7 +183,7 @@ Note: Copied from goto_trace.cpp
 
 \*******************************************************************/
 void error_tracet::show_goto_trace(
-    messaget::mstreamt &out,
+    std::ostream &out,
     const namespacet &ns,
     std::map<irep_idt, std::string> &guard_expln)
 {
@@ -367,7 +367,7 @@ Function: error_tracet::show_var_value
 
 \*******************************************************************/
 void error_tracet::show_var_value(
-  messaget::mstreamt &out,
+  std::ostream &out,
   const namespacet &ns,
   const optionalt<symbol_exprt> &lhs_object,
   const exprt &full_lhs,
@@ -392,7 +392,7 @@ Function: error_tracet::show_expr
 
 \*******************************************************************/
 void error_tracet::show_expr(
-    messaget::mstreamt &out,
+    std::ostream &out,
     const namespacet &ns,
     const optionalt<symbol_exprt> &lhs_object,
     const exprt &full_lhs,

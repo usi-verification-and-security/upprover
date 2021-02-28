@@ -753,8 +753,8 @@ void dependency_checkert::convert_io(
                 (*it).converted_io_args.push_back(tmp);
             else
             {
-                symbol_exprt symbol(tmp.type());
-                //symbol.type()=tmp.type();
+                symbol_exprt symbol;
+                symbol.type()=tmp.type();
                 symbol.set_identifier(CProverStringConstants::IO_CONST + std::to_string(io_count++));
                 convertor.set_to_true(equal_exprt(tmp, symbol));
                 (*it).converted_io_args.push_back(symbol);

@@ -30,7 +30,7 @@ public:
 			ssa_solvert &decider);
         
 	void show_goto_trace(
-      messaget::mstreamt &out,
+    std::ostream &out,
 	  const namespacet &ns,
 	  std::map<irep_idt, std::string> &guard_expln); // MAIN: from prepare_smt_formula
 
@@ -63,14 +63,14 @@ private:
 	  const exprt &value);
 
 	void show_var_value(
-        messaget::mstreamt &out,
+        std::ostream &out,
         const namespacet &ns,
         const optionalt<symbol_exprt> &lhs_object,
         const exprt &full_lhs,
         const exprt &value);
 
 	void show_expr(
-        messaget::mstreamt &out,
+        std::ostream &out,
         const namespacet &ns,
         const optionalt<symbol_exprt> &lhs_object,
         const exprt &full_lhs,

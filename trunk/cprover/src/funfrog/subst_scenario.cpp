@@ -99,8 +99,8 @@ void subst_scenariot::initialize_call_info(
       }
     }
     else if (inst->type == END_FUNCTION){
-      const irep_idt &target_function = call_info.get_function_id();
-      //const irep_idt &target_function = (inst->code).get("identifier");
+      const irep_idt &target_function = (inst->code).get("identifier");
+      //const irep_idt &target_function = call_info.get_function_id();
       decrement_unwinding_counter(target_function);
     }
     else if (inst->type == RETURN){

@@ -1284,7 +1284,8 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         irep_idt value(v1.val);
 
         // Create the expr with it
-        constant_exprt tmp(value, expr.type());
+        // constant_exprt tmp(value, expr.type());
+        constant_exprt tmp;
         tmp.set_value(value);
         return tmp;
     }

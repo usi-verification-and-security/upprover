@@ -59,10 +59,10 @@ goto_programt::const_targett claim_statst::find_assertion(
     }
     else if(it->type==END_FUNCTION)
     {
-//    const irep_idt &name = it->function; //goto_programt::instructiont::function member has been removed in CPROVER 5.12
-//    decrement_unwinding_counter(name);
-      const irep_idt &target_function = (it->code).get("identifier");
-      decrement_unwinding_counter(target_function);
+      const irep_idt &name = it->function; //goto_programt::instructiont::function member has been removed in CPROVER 5.12
+      decrement_unwinding_counter(name);
+//      const irep_idt &target_function = (it->code).get("identifier");
+//      decrement_unwinding_counter(target_function);
       if(stack.empty())
       {
         // this must be the end. 

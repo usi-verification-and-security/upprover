@@ -23,8 +23,6 @@
 #include "utils/expressions_utils.h"
 #include "format_type.h"
 #include "goto-symex/goto_symex_state.h"
-//#include "goto-symex/symex_assign.h"
-//#include "goto-symex/expr_skeleton.h"
 #include "goto-symex/renaming_level.h"
 #include <memory>
 #include <algorithm>
@@ -53,8 +51,11 @@ symex_assertion_sumt::symex_assertion_sumt(
 	const symbol_tablet & outer_symbol_table,
 	partitioning_target_equationt & _target,
 	message_handlert & _message_handler,
-	const goto_programt & _goto_program, unsigned int _last_assertion_loc,
-	bool _single_assertion_check, bool _do_guard_expl, unsigned int _max_unwind,
+	const goto_programt & _goto_program, 
+  unsigned _last_assertion_loc,
+	bool _single_assertion_check,
+  bool _do_guard_expl,
+  unsigned int _max_unwind,
 	bool partial_loops)
 	: goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
 	  goto_functions(_goto_functions),
@@ -271,10 +272,9 @@ void symex_assertion_sumt::symex_step(
   }
 #endif
 
-  const goto_programt::instructiont &instruction=*state.source.pc;
+  const goto_programt::instructiont &instruction = *state.source.pc;
   loc++;
-  if(!symex_config.doing_path_exploration)
-    merge_gotos(state);
+  merge_gotos(state);
     
   // actually do instruction
   //the "reachable" flag is set false whenever an unwind/depth
@@ -305,6 +305,35 @@ void symex_assertion_sumt::symex_step(
       prev_unwind_counter = state.top().loop_iterations[loop_id].count;
       symex_goto(state);  //same as cbmc 5.11
       break;
+//    if (do_guard_expl) //version 10
+//    {
+//        bool store_expln;
+//        std::string str;
+//
+//        store_expln = state.source.pc->guard.has_operands();
+//        if (store_expln) {
+//            try { str = from_expr(state.source.pc->guard.op0()); }
+//            catch (const std::string &s) {
+//                // TODO: MB: investigate why this happens, I encountered this in s3.c
+//                // assert(false);
+//                str = "";
+//            }
+//        }
+//
+//        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+//        symex_goto(state); // Original code from Cprover follow with break
+//
+//        if (do_guard_expl &&store_expln && !str.empty())
+//        {
+//            guard_expln[state.guard.as_expr().get("identifier")] = str;
+//        }
+//    } else {
+//        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+//        symex_goto(state); // Original code from Cprover follow with break
+//    }
+//
+//    break;
+
 
 //      if (state.reachable) { //code from cprover 5.12
 //        symex_goto(state);
@@ -333,12 +362,13 @@ void symex_assertion_sumt::symex_step(
           // Skip asserts that are not currently being checked
           if (current_assertion->assertion_matches(state.depth, state.source.pc))
           {
-            exprt tmp(instruction.guard);
-            clean_expr(tmp, state, false);
             std::string msg = id2string(state.source.pc->source_location.get_comment());
             if(msg.empty()) {
               msg = "assertion";
             }
+            exprt tmp(instruction.guard);
+            clean_expr(tmp, state, false);
+           
             vcc(tmp, msg, state);
           
             // Checks which assert it is, and if we end the loop here
@@ -451,12 +481,6 @@ void symex_assertion_sumt::symex_step(
     default:
       assert(false);
   }
-  
-// CBMC feature, you can comment it!
-//  complexity_violationt complexity_result =
-//          complexity_module.check_complexity(state);
-//  if(complexity_result != complexity_violationt::NONE)
-//      complexity_module.run_transformations(complexity_result, state);
 }
 
 /*******************************************************************
@@ -573,11 +597,10 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     guardt guard;
     // without multithreading, no need to record events
     //state.record_events=false;
-    
+    assert(state.record_events == false);
     assignment_typet assignment_type;
     assignment_type = symex_targett::assignment_typet::HIDDEN;
     symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, assignment_type);
-    //symex_assignt{state, assignment_type, ns, symex_config, target}.assign_symbol(lhs, expr_skeletont{}, *it1, {}); //5.12
   }
 }
 
@@ -615,8 +638,8 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
     return_assignment_and_mark(goto_function.type, state, nullptr,
             partition_iface, true);
   } else {
-    partition_iface.retval_symbol = symbol_exprt(goto_function.type);
-    //partition_iface.retval_symbol = symbol_exprt();
+    //partition_iface.retval_symbol = symbol_exprt(goto_function.type);
+    partition_iface.retval_symbol = symbol_exprt();
   }
   // Add also new assignments to all modified global variables
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
@@ -1024,6 +1047,7 @@ void symex_assertion_sumt::handle_function_call(
       break;
     default:
       assert(false);
+      break;
     }
   }
 }
@@ -1469,7 +1493,7 @@ ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
   // get the current L1 version of the symbol; identifier should be l0 or l1, make sure it's l1
-  ssa_exprt ssa_l1 = get_l1_ssa(symbol);
+  //ssa_exprt ssa_l1 = get_l1_ssa(symbol);
   irep_idt ssa_l1_identifier = get_l1_identifier(symbol); //e.g: "hifrog::fun_start!0"
 //  //safety
   assert(state->level2.current_names.find(ssa_l1_identifier) != state->level2.current_names.end());
@@ -1532,8 +1556,9 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   symbol.type = type;
   symbol.is_thread_local = true;
 
-  bool error = get_symbol_table().add(symbol);
-  assert(!error); (void)error;
+  //get_symbol_table().add(symbol);
+   bool error = get_symbol_table().add(symbol);
+   assert(!error); (void)error;
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version
@@ -1740,44 +1765,44 @@ Note:
  Taken from the removed code in
  https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034
 \*******************************************************************/
-void symex_assertion_sumt::return_assignment(statet &state)
-{
-  const statet::framet &frame = state.top();
-  const goto_programt::instructiont &instruction = *state.source.pc;
-  PRECONDITION(instruction.is_return());
-  const code_returnt &code = to_code_return(instruction.code);
-
-  target.location(state.guard.as_expr(), state.source);
-
-  if(code.operands().size() == 1)
-  {
-    exprt value=code.op0(); //SA: in cprover5.12 not public anymore
-    //exprt value = code.return_value();
-
-    if(frame.return_value.is_not_nil())
-    {
-      code_assignt assignment(frame.return_value, value);
-
-#ifdef DISABLE_OPTIMIZATIONS
-      expr_pretty_print(std::cout << "\n**return_assignment\n** Lhs: ", assignment.lhs()); std::cout << std::endl;
-      expr_pretty_print(std::cout << "** Rhs: ", assignment.rhs()); std::cout << std::endl;
-#endif
-
-      if(!base_type_eq(assignment.lhs().type(),
-                       assignment.rhs().type(), ns))
-        throw
-            "goto_symext::return_assignment type mismatch at "+
-            instruction.source_location.as_string()+":\n"+
-            "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
-            "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
-
-      //Fabricate the assignment itself by L2-rename
-      symex_assign(state, assignment);
-    }
-  }
-  else
-  {
-    if(frame.return_value.is_not_nil())
-      throw "return with unexpected value";
-  }
-}
+//void symex_assertion_sumt::return_assignment(statet &state)
+//{
+//  const statet::framet &frame = state.top();
+//  const goto_programt::instructiont &instruction = *state.source.pc;
+//  PRECONDITION(instruction.is_return());
+//  const code_returnt &code = to_code_return(instruction.code);
+//
+//  target.location(state.guard.as_expr(), state.source);
+//
+//  if(code.operands().size() == 1)
+//  {
+//    exprt value=code.op0(); //SA: in cprover5.12 not public anymore
+//    //exprt value = code.return_value();
+//
+//    if(frame.return_value.is_not_nil())
+//    {
+//      code_assignt assignment(frame.return_value, value);
+//
+//#ifdef DISABLE_OPTIMIZATIONS
+//      expr_pretty_print(std::cout << "\n**return_assignment\n** Lhs: ", assignment.lhs()); std::cout << std::endl;
+//      expr_pretty_print(std::cout << "** Rhs: ", assignment.rhs()); std::cout << std::endl;
+//#endif
+//
+//      if(!base_type_eq(assignment.lhs().type(),
+//                       assignment.rhs().type(), ns))
+//        throw
+//            "goto_symext::return_assignment type mismatch at "+
+//            instruction.source_location.as_string()+":\n"+
+//            "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
+//            "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
+//
+//      //Fabricate the assignment itself by L2-rename
+//      symex_assign(state, assignment);
+//    }
+//  }
+//  else
+//  {
+//    if(frame.return_value.is_not_nil())
+//      throw "return with unexpected value";
+//  }
+//}

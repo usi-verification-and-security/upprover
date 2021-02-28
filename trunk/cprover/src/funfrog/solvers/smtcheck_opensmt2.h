@@ -77,7 +77,7 @@ public:
 
     bool solve() override;
 
-    //bool is_overapproximating() const override {return true;}
+    bool is_overapproximating() const override {return true;}
 
     bool is_assignment_true(FlaRef fr) const override; // Common to all
 

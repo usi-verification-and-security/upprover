@@ -9,8 +9,8 @@
 partition_ifacet::partition_ifacet(call_tree_nodet & _call_info, partition_idt _parent_id, unsigned _call_loc) :
         function_id(_call_info.get_function_id()),
         call_tree_node(_call_info),
-        retval_symbol(ID_nil, typet(ID_bool)),
-        retval_tmp(ID_nil, typet(ID_bool)),
+        //retval_symbol(ID_nil, typet(ID_bool)),
+        //retval_tmp(ID_nil, typet(ID_bool)),
         callstart_symbol(ID_nil, typet(ID_bool)),
         callend_symbol(ID_nil, typet(ID_bool)),
         error_symbol(ID_nil, typet(ID_bool)),

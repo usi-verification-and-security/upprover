@@ -460,7 +460,7 @@ private:
   /// instruction, assign the value in that return to the top frame's
   /// \p return_value field.
   //this method is deprecated in cprover from v.5.12 on
-  void return_assignment(statet &);
+  //void return_assignment(statet &);
   
 // Note from CPROVER 5.12 about const propagation:
 // We cannot remove the object from the L1 renaming map, because L1 renaming

@@ -127,7 +127,7 @@ exprt smtcheck_z3t::get_value(const exprt &expr)
 
             // Create the expr with it
             constant_exprt tmp(value, expr.type());
-            tmp.set_value(value);
+            //tmp.set_value(value);
 
             return tmp;
         }
