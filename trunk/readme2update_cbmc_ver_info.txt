@@ -61,6 +61,12 @@ removed static method increase_counter and undo the changes in
   This undong has been pushed as SHA 34bfa974 in upprover
 
 11- Remove deprecated exprt::make_true(). As suggested use true_exprt() instead. 
+
+12 src/goto-symex/goto_symex_state.cpp:  fix an unitialized variable reported by valgrind(commit:835509cc) 
+changed the c'tor goto_symex_statet() and added the following:
+  +  run_validation_checks = false;
+  +  has_saved_jump_target = false;
+  +  has_saved_next_instruction = false;
 ----------------------------------
 Some important git diff from CBMC code
 guard_manager was introduced and passed around: https://github.com/diffblue/cbmc/commit/9727c5e7e8a1c955eab3d223072c640f3999e406#diff-07477ab2043ca50e9519eddde596c81003af7793419ef75d280ac22ce4d4bfc0

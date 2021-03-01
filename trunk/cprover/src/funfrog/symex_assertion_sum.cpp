@@ -216,6 +216,7 @@ bool symex_assertion_sumt::process_planned(statet & state)
   {
     state.has_saved_jump_target = false; // Will crush in goto_symex else
     state.has_saved_next_instruction = false; // Will crush in goto_symex else
+    state.run_validation_checks = false;
     symex_step(get_goto_function, state);
     //if(should_pause_symex) // not sure if we need this
     //  return;

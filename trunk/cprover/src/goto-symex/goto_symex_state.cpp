@@ -26,18 +26,21 @@ Author: Daniel Kroening, kroening@kroening.com
 //#include <analyses/dirty.h> Remove dirty check
 #include <pointer-analysis/add_failed_symbols.h>
 
-
 goto_symex_statet::goto_symex_statet()
   : depth(0),
     symex_target(nullptr),
     atomic_section_id(0),
     total_vccs(0),
     remaining_vccs(0),
-    record_events(true),
+    record_events(false),
     dirty()
 {
   threads.resize(1);
   new_frame();
+  // upprover hack to avoid uninitialized vars when doing state.reset() in symex_assertion_sum.h
+  run_validation_checks = false;
+  has_saved_jump_target = false;
+  has_saved_next_instruction = false;
 }
 
 goto_symex_statet::~goto_symex_statet()=default;

@@ -439,18 +439,19 @@ private:
   symbolt get_tmp_ret_val_symbol(const partition_ifacet& iface);
 
   // to be able to start with a fresh state
-  void reset_state(){
-  // Clear the state
-  state.reset(new goto_symext::statet());
-  ns = namespacet{outer_symbol_table, state->symbol_table};
-// since not supporting multiple threads, we do not need to record events;
-  turn_off_recording_events();
-//  state = std::unique_ptr<statet>(new statet(   //5.12
+  void reset_state() {
+    // Clear the state
+    state.reset(new statet());
+    ns = namespacet{outer_symbol_table, state->symbol_table};
+    // since not supporting multiple threads, we do not need to record events;
+    turn_off_recording_events();
+  }
+//  state = std::unique_ptr<statet>(new statet(   //ctor in 5.12
 //  symex_targett::sourcet(goto_functions.entry_point(), goto_program),
 //  symex_config.max_field_sensitivity_array_size,
 //  guard_manager,
 //  [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
-  }
+
 
   void turn_off_recording_events() {
   	// turns off doing some book-keeping related to handling multiple threads by CProver
