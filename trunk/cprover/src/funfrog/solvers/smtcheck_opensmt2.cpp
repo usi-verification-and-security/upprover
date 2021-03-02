@@ -991,7 +991,7 @@ void simple_interpretert::defineFun(ASTNode & node) {
     }
 
     sstat status;
-    vec<LetFrame> let_branch;
+    std::vector<LetFrame> let_branch;
     PTRef tr = parseTerm(term_node, let_branch);
     if (tr == PTRef_Undef) {
         throw std::logic_error("Error in parsing summary file");
@@ -1052,7 +1052,7 @@ void simple_interpretert::declareFun(ASTNode & node) {
     }
 }
 
-PTRef simple_interpretert::parseTerm(const ASTNode & term, vec<LetFrame> & let_branch) {
+PTRef simple_interpretert::parseTerm(const ASTNode & term, std::vector<LetFrame> & let_branch) {
     ASTType t = term.getType();
     if (t == TERM_T) {
         const char* name = (**(term.children->begin())).getValue();
@@ -1107,7 +1107,7 @@ PTRef simple_interpretert::parseTerm(const ASTNode & term, vec<LetFrame> & let_b
     else if (t == LET_T) {
         auto ch = term.children->begin();
         auto vbl = (**ch).children->begin();
-        let_branch.push(); // The next scope, where my vars will be defined
+        let_branch.emplace_back(); // The next scope, where my vars will be defined
         vec<PTRef> tmp_args;
         vec<char*> names;
         // First read the term declarations in the let statement
@@ -1134,7 +1134,7 @@ PTRef simple_interpretert::parseTerm(const ASTNode & term, vec<LetFrame> & let_b
             for (int i = 0; i < names.size(); i++) free(names[i]);
             throw std::logic_error("Error in parsing summary file");
         }
-        let_branch.pop(); // Now the scope is unavailable for us
+        let_branch.pop_back(); // Now the scope is unavailable for us
         for (int i = 0; i < names.size(); i++)
             free(names[i]);
         return tr;
@@ -1156,7 +1156,7 @@ bool simple_interpretert::addLetName(const char * s, const PTRef tr, LetFrame & 
     return true;
 }
 
-PTRef simple_interpretert::letNameResolve(const char * s, const vec<LetFrame> & frame) const {
+PTRef simple_interpretert::letNameResolve(const char * s, const std::vector<LetFrame> & frame) const {
     for (int i = frame.size()-1; i >= 0; i--) {
         if (frame[i].contains(s)) {
             PTRef tref = frame[i][s];
