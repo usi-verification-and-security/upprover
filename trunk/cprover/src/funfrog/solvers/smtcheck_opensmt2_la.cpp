@@ -346,6 +346,8 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
             ptref = unsupported_to_var(expr);
             // TODO
 #endif
+        } else if (_id == ID_struct) {
+            ptref = unsupported_to_var(expr);
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             std::cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << std::endl;
@@ -354,7 +356,6 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
             assert(false);
 #else
             ptref = unsupported_to_var(expr);
-
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))

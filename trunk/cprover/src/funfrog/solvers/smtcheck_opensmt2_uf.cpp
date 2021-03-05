@@ -339,21 +339,20 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #endif
 
     PTRef ptref = get_from_cache(expr);
-    if(ptref != PTRef_Undef) { return ptref;}
+    if(ptref != PTRef_Undef) { return ptref; }
+    const irep_idt & _id = expr.id(); // KE: gets the id once for performance
 
-    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
-    
     /* Check which case it is */
     if (_id==ID_code || expr.type().id()==ID_code) { //Init structs, arrays etc.
-        
+
         ptref = unsupported_to_var(expr);
-        // No support this data type
-     
+        // No support to this data type
+
     } else if (_id==ID_address_of) {
-        
+
         ptref = unsupported_to_var(expr);
         // NO support to this type
-             
+
     } else if(_id==ID_symbol || _id==ID_nondet_symbol){
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
@@ -376,7 +375,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s); s=nullptr;
-#endif  
+#endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;
@@ -391,7 +390,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR " << _id.c_str() << endl;
 #endif
-        
+
         // Convert first the arguments
         vec<PTRef> args;
         get_function_args(expr, args);
@@ -402,12 +401,12 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             ptref = logic->mkEq(args);
         } else if (_id==ID_if) {
             assert(args.size() >= 2); // KE: check the case if so and add the needed code!
-            
+
             // If a then b, (without else) is a => b
             if (args.size() == 2)
-            { 
+            {
                 ptref = logic->mkImpl(args);
-            } else {            
+            } else {
                 ptref = logic->mkIte(args);
             }
         } else if(_id == ID_ifthenelse) {
@@ -448,7 +447,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             //ptref = logic->mkRealPlus(args);
             ptref = this->mkURealPlus(args);
         } else if(_id == ID_mult) {
-            //ptref = logic->mkRealTimes(args);
+            //int x; int y; x = y; assert(x*2  ==  y*2 ); uf solver: UNSAT
             ptref = this->mkURealMult(args);
         } else if(_id == ID_div) {
             //ptref = logic->mkRealDiv(args);
@@ -477,7 +476,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR:member operator has no support yet in the UF version (token: "
                 << _id << ")" << endl;
-            assert(false); // No support yet for arrays
+            assert(false);
 #else
             ptref = unsupported_to_var(expr);
             // TODO
@@ -489,48 +488,61 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             assert(false); // No support yet for arrays
 #else
             ptref = unsupported_to_var(expr);
-            
+
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_unsupported_uf_call(expr);
-            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+            //PTRef var_eq = create_unsupported_uf_call(expr);
+            //set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
-        } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
+        } else if ((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the QF/UF version (token: "
                             << _id << ")" << endl;
-            assert(false); // No support yet for arrays
+            assert(false); // No support yet for address and pointers
 #else
             ptref = unsupported_to_var(expr);
                       
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_unsupported_uf_call(expr);
-            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+//            PTRef var_eq = create_unsupported_uf_call(expr);
+//            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
 #endif
-        } else if ((_id == ID_pointer_object) || (_id==ID_array)) {
+        } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the QF/UF version (token: "
+                            << _id << ")" << endl;
+            ptref = unsupported_to_var(expr);
+            assert(false); // No support yet for arrays
+#else
+            ptref = unsupported_to_var(expr);
+            // TODO add UF equation to describe the inner part
+#endif            
+        } else if (_id==ID_array) {
+#ifdef SMT_DEBUG
+            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the  version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptref = unsupported_to_var(expr);
-            // TODO
-#endif            
+            // TODO: add UF equation to describe the inner part
+            // todo: ADD HERE SUPPORT FOR ARRAYS.
+#endif
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the QF/UF version (token: "
-            		<< _id << ")" << endl;
-            assert(false);
+          cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+          cout << "EXIT WITH ERROR: operator does not yet supported in the QF/UF version (token: "
+              << _id << ")" << endl;
+          assert(false);
 #else
-            ptref = unsupported_to_var(expr);
-            
-            // Add new equation of an unknown function (acording to name)
+          ptref = unsupported_to_var(expr);
+  
+          // Add new equation of an unknown function such as mode (according to name)
+          //e.g., int x; int y; x = y; assert( x % 2 == y % 2);  //must be UNSAT in EUF
+          //if there are no argument (e.g, string constant) don't  create var_eq
+          if (args.size() >= 2){
             PTRef var_eq = create_unsupported_uf_call(expr);
             assert(var_eq != PTRef_Undef);
-            set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+            set_to_true(logic->mkEq(ptref, var_eq)); // (= |unsupported_op2var#0| (mode_op operand_x operand_2))
+          }
 #endif
-            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
-            // Do we need them now?
         }
     }
 
