@@ -10,7 +10,6 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 #include <util/mathematical_types.h>
 
 // Debug flags of this class:
-//#define SMT_DEBUG
 //#define DEBUG_SMT_BB
 //#define SMT_DEBUG_VARS_BOUNDS
 
@@ -482,8 +481,8 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
                     ); 
     
 #ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    char* s = getPTermString(ptl);
+    std::cout << "; (ABS) For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
 
@@ -1166,7 +1165,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << std::endl;
+    std::cout << "; For '" << _id << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
     
@@ -1409,27 +1408,27 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
-        std::cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << std::endl;
+        std::cout << "; IT IS A TYPECAST (with operand) of " << (is_const? "CONST " : "") << expr.type().id() << std::endl;
 #endif
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         ptref = type_cast(expr);
 #ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    std::cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    char* s = getPTermString(ptref);
+    std::cout << "; (TYPE_CAST) For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
-        std::cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << std::endl;
-        assert(false); // Need to take care of - typecast no operands
-#else
+        std::cout << "ERROR: typecast (without operands) does not yet supported in the QF_UF version "
+                     "(token: " << expr.id() << ")" << std::endl;
+#endif
         ptref = unsupported_to_var(expr);
         // TODO: write a better support to this data type
-#endif
+
     } else {
 #ifdef SMT_DEBUG
-        std::cout << "; IT IS AN OPERATOR" << std::endl;
+        std::cout << "; IT IS AN OPERATOR '" << _id.c_str() << "'" << std::endl;
 #endif
         // Convert first the arguments
         vec<PTRef> args;
@@ -1664,14 +1663,14 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else {
-            std::cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
+            std::cout << "ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << std::endl;
-            assert(false); // KE: tell me if you get here!
+            // KE: tell me if you get here!
         }
     }
 #ifdef SMT_DEBUG
     char *s = logic->printTerm(ptref);
-    std::cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    std::cout << "; For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s);
 #endif
     assert(ptref != PTRef_Undef);

@@ -170,7 +170,7 @@ z3::expr smtcheck_z3_uft::convert(const exprt &expr)
     } else {
         
 #ifdef SMT_DEBUG
-        cout << "; IT IS AN OPERATOR" << endl;
+        cout << "; IT IS AN OPERATOR '" << _id.c_str() << "'" << endl;
 #endif
  
         // Convert Arguments:

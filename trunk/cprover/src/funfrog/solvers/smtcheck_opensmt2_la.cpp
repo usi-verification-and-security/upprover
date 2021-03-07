@@ -10,7 +10,6 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
 
 // Debug flags of this class:
-//#define SMT_DEBUG
 //#define SMT_DEBUG_VARS_BOUNDS // For debugging the option: type_constraints_level
 
 /*******************************************************************\
@@ -45,7 +44,7 @@ PTRef smtcheck_opensmt2t_la::mult_numbers(const exprt &expr, vec<PTRef> &args)
     bool is_lin_op = isLinearOp(expr,args);
     #ifdef SMT_DEBUG
         assert(is_lin_op);
-        ptl = lalogic->mkNumTimes(args);
+        PTRef ptl = lalogic->mkNumTimes(args);
     #else
         if (!is_lin_op)
         {
@@ -97,11 +96,11 @@ Function: smtcheck_opensmt2t_la::div_numbers
 PTRef smtcheck_opensmt2t_la::div_numbers(const exprt &expr, vec<PTRef> &args) 
 {
     bool is_lin_op = isLinearOp(expr,args);
-    bool is_of_legal_form2solver = lalogic->isNumTerm(args[0]) &&  logic->isConstant(args[1]);
     #ifdef SMT_DEBUG
         assert(is_lin_op);
-        ptl = lalogic->mkNumDiv(args);
+        PTRef ptl = lalogic->mkNumDiv(args);
     #else
+        bool is_of_legal_form2solver = lalogic->isNumTerm(args[0]) &&  logic->isConstant(args[1]);
         if ((!is_lin_op) || (!is_of_legal_form2solver))
         {
             PTRef ptl_uns = unsupported_to_var(expr);
@@ -181,15 +180,14 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
         ptref = type_cast(expr);
     #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
-        cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
-        char* s = getPTermString(l);
-        cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+        cout << "; IT IS A TYPECAST (with operand) of " << (is_const? "CONST " : "") << expr.type().id() << endl;
+        char* s = getPTermString(ptref);
+        cout << "; (TYPE_CAST) For '" << expr.id() << "' Created OpenSMT2 formula " << s << endl;
         free(s);
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
-        std::cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")\n";
-        assert(false); // Need to take care of - typecast no operands
+        std::cout << "ERROR: typecast (without operands) does not yet supported in the LRA version (token: " << _id << ")\n";
 #else
         ptref =unsupported_to_var(expr);
         // TODO: write a better supoort here
@@ -291,9 +289,9 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
             ptref = mult_numbers(expr,args);
         } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
-            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LA version (token: "
+            std::cout << "ERROR:  Arrays and index of an array operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
-            assert(false); // No support yet for arrays
+            // No support yet for arrays
 #else
             ptref = unsupported_to_var(expr);
 
@@ -304,9 +302,9 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
-            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LA version (token: "
+            std::cout << "ERROR:  Address and references of, operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
-            assert(false); // No support yet for address and pointers
+            // No support yet for address and pointers
 #else
             ptref = unsupported_to_var(expr);
 
@@ -317,18 +315,18 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
-            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LA version (token: "
+            std::cout << "ERROR: Address and references of, operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
-            assert(false); // No support yet for pointers
+            // No support yet for pointers
 #else
             ptref = unsupported_to_var(expr);
             // TODO: add UF equation to describe the inner part
 #endif
         } else if (_id==ID_array) {
 #ifdef SMT_DEBUG
-            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LA version (token: "
+            std::cout << "ERROR: Arrays and index of an array operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
-            assert(false); // No support yet for arrays
+            // No support yet for arrays
 #else
             ptref = unsupported_to_var(expr);
             // TODO: add UF equation to describe the inner part
@@ -339,9 +337,9 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                   (_id == ID_with) ||
                   (_id == ID_member_name)) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR:member operator has no support yet in the UF version (token: "
+            cout << "ERROR: member operator has no support yet in the UF version (token: "
                 << _id << ")" << endl;
-            assert(false); // No support yet for arrays
+            // No support yet for arrays
 #else
             ptref = unsupported_to_var(expr);
             // TODO
@@ -349,11 +347,10 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
         } else if (_id == ID_struct) {
             ptref = unsupported_to_var(expr);
         } else {
-#ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            std::cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << std::endl;
-            std::cout << "EXIT WITH ERROR: operator does not yet supported in the LA version (token: "
-            		<< _id << ")" << endl;
-            assert(false);
+#ifdef SMT_DEBUG
+          std::cout << "ERROR: operator does not yet supported in the LA version (token: "
+                    << _id << ")" << endl;
+          cout << "'"<< _id << "' --> unsupported operation:\n" << expr.pretty() << std::endl;
 #else
             ptref = unsupported_to_var(expr);
             // Add new equation of an unknown function (acording to name)
@@ -365,7 +362,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
     }
 #ifdef SMT_DEBUG
     char *s = logic->printTerm(ptref);
-    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
+    std::cout << "; For '" << _id << "' Created OpenSMT2 formula " << s << endl;
     free(s);
 #endif
     assert(ptref != PTRef_Undef);
@@ -441,7 +438,7 @@ void smtcheck_opensmt2t_la::push_assumes2type(
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    std::cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; For 'Assume' Constraints Created OpenSMT2 formula " << s << endl;
     std::cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
     free(s); s=nullptr;
 #endif
@@ -471,7 +468,7 @@ void smtcheck_opensmt2t_la::push_asserts2type(
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    std::cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; For 'Assert' Constraints Created OpenSMT2 formula " << s << endl;
     std::cout << "; Pushed Formula For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
     free(s); s=nullptr;
 #endif
@@ -695,7 +692,7 @@ bool smtcheck_opensmt2t_la::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	}
 	if (count_var > 1) {
 #ifdef SMT_DEBUG
-	    cout << "EXIT WITH ERROR: Using Unbounded mul/div operator" << endl;
+	    cout << "ERROR: Using Unbounded mul/div operator" << endl;
 #endif
 	    return false; // e.g. when a*b is the instruction
 	}
