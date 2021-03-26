@@ -108,7 +108,8 @@ std::string graphml_witnesst::convert_assign_rec(
          has_prefix(id2string(comp.get_name()), "$pad"))
         continue;
 
-      assert(it!=assign.rhs().operands().end());
+      INVARIANT(
+        it != assign.rhs().operands().end(), "expression must have operands");
 
       member_exprt member(
         assign.lhs(),
@@ -278,34 +279,26 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
         }
 
         if(it->type==goto_trace_stept::typet::ASSIGNMENT &&
-           it->lhs_object_value.is_not_nil() &&
+           it->full_lhs_value.is_not_nil() &&
            it->full_lhs.is_not_nil())
         {
-          if(!it->lhs_object_value.is_constant() ||
-             !it->lhs_object_value.has_operands() ||
-             !has_prefix(id2string(it->lhs_object_value.op0().get(ID_value)),
-                         "INVALID-"))
-          {
-            xmlt &val=edge.new_element("data");
-            val.set_attribute("key", "assumption");
-            code_assignt assign(it->lhs_object, it->lhs_object_value);
-            irep_idt identifier=it->lhs_object.get_identifier();
-            val.data=convert_assign_rec(identifier, assign);
+          xmlt &val=edge.new_element("data");
+          val.set_attribute("key", "assumption");
+          val.data = from_expr(ns, it->function, it->full_lhs) + " = " +
+                     from_expr(ns, it->function, it->full_lhs_value) + ";";
 
-            xmlt &val_s=edge.new_element("data");
-            val_s.set_attribute("key", "assumption.scope");
-            val_s.data=id2string(it->pc->source_location.get_function());
-          }
+          xmlt &val_s=edge.new_element("data");
+          val_s.set_attribute("key", "assumption.scope");
+          val_s.data=id2string(it->pc->source_location.get_function());
         }
         else if(it->type==goto_trace_stept::typet::GOTO &&
                 it->pc->is_goto())
         {
           xmlt &val=edge.new_element("data");
           val.set_attribute("key", "sourcecode");
-          const std::string cond =
-            from_expr(ns, it->pc->function, it->cond_expr);
-          const std::string neg_cond=
-            from_expr(ns, it->pc->function, not_exprt(it->cond_expr));
+          const std::string cond = from_expr(ns, it->function, it->cond_expr);
+          const std::string neg_cond =
+            from_expr(ns, it->function, not_exprt(it->cond_expr));
           val.data="["+(it->cond_value ? cond : neg_cond)+"]";
 
           #if 0
@@ -487,7 +480,7 @@ void graphml_witnesst::operator()(const symex_target_equationt &equation)
           xmlt &val=edge.new_element("data");
           val.set_attribute("key", "sourcecode");
           const std::string cond =
-            from_expr(ns, it->source.pc->function, it->cond_expr);
+            from_expr(ns, it->source.function, it->cond_expr);
           val.data="["+cond+"]";
         }
 

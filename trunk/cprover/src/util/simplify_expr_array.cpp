@@ -116,40 +116,41 @@ bool simplify_exprt::simplify_index(exprt &expr)
   else if(array.id()==ID_constant ||
           array.id()==ID_array)
   {
-    mp_integer i;
+    const auto i = numeric_cast<mp_integer>(expr.op1());
 
-    if(to_integer(expr.op1(), i))
+    if(!i.has_value())
     {
     }
-    else if(i<0 || i>=array.operands().size())
+    else if(*i < 0 || *i >= array.operands().size())
     {
       // out of bounds
     }
     else
     {
       // ok
-      exprt tmp=array.operands()[integer2size_t(i)];
+      exprt tmp = array.operands()[numeric_cast_v<std::size_t>(*i)];
       expr.swap(tmp);
       return false;
     }
   }
   else if(array.id()==ID_string_constant)
   {
-    mp_integer i;
+    const auto i = numeric_cast<mp_integer>(expr.op1());
 
     const irep_idt &value=array.get(ID_value);
 
-    if(to_integer(expr.op1(), i))
+    if(!i.has_value())
     {
     }
-    else if(i<0 || i>value.size())
+    else if(*i < 0 || *i > value.size())
     {
       // out of bounds
     }
     else
     {
       // terminating zero?
-      char v=(i==value.size())?0:value[integer2size_t(i)];
+      const char v =
+        (*i == value.size()) ? 0 : value[numeric_cast_v<std::size_t>(*i)];
       exprt tmp=from_integer(v, expr.type());
       expr.swap(tmp);
       return false;
@@ -183,25 +184,25 @@ bool simplify_exprt::simplify_index(exprt &expr)
   else if(array.id()==ID_byte_extract_little_endian ||
           array.id()==ID_byte_extract_big_endian)
   {
-    const typet &array_type=ns.follow(array.type());
-
-    if(array_type.id()==ID_array)
+    if(array.type().id() == ID_array)
     {
+      const auto &array_type = to_array_type(array.type());
+
       // This rewrites byte_extract(s, o, array_type)[i]
       // to byte_extract(s, o+offset, sub_type)
 
-      mp_integer sub_size=pointer_offset_size(array_type.subtype(), ns);
-      if(sub_size==-1)
+      auto sub_size = pointer_offset_size(array_type.subtype(), ns);
+      if(!sub_size.has_value())
         return true;
 
       // add offset to index
-      mult_exprt offset(from_integer(sub_size, array.op1().type()), index);
+      mult_exprt offset(from_integer(*sub_size, array.op1().type()), index);
       plus_exprt final_offset(array.op1(), offset);
       simplify_node(final_offset);
 
-      exprt result(array.id(), expr.type());
-      result.copy_to_operands(array.op0(), final_offset);
-      expr.swap(result);
+      exprt result_expr(array.id(), expr.type());
+      result_expr.add_to_operands(array.op0(), final_offset);
+      expr.swap(result_expr);
 
       simplify_rec(expr);
 

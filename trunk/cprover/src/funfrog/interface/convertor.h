@@ -7,6 +7,10 @@
 
 #include <vector>
 
+/*
+ FlaRef is a handle to a boolean term of the underlying solver,
+ without the explicit need to know which solver is being used.
+ */
 class convertort {
 public:
 

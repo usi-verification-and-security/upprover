@@ -43,11 +43,11 @@ void class_hierarchy_grapht::populate(const symbol_tablet &symbol_table)
   {
     if(symbol_pair.second.is_type && symbol_pair.second.type.id() == ID_struct)
     {
-      const class_typet &class_type = to_class_type(symbol_pair.second.type);
+      const struct_typet &struct_type = to_struct_type(symbol_pair.second.type);
 
-      for(const auto &base : class_type.bases())
+      for(const auto &base : struct_type.bases())
       {
-        const irep_idt &parent = to_symbol_type(base.type()).get_identifier();
+        const irep_idt &parent = base.type().get_identifier();
         if(!parent.empty())
         {
           const auto parent_node_it = nodes_by_name.find(parent);
@@ -157,11 +157,9 @@ void class_hierarchyt::operator()(const symbol_tablet &symbol_table)
       class_map[symbol_pair.first].is_abstract =
         struct_type.get_bool(ID_abstract);
 
-      const irept::subt &bases = struct_type.find(ID_bases).get_sub();
-
-      for(const auto &base : bases)
+      for(const auto &base : struct_type.bases())
       {
-        irep_idt parent = base.find(ID_type).get(ID_identifier);
+        const irep_idt &parent = base.type().get_identifier();
         if(parent.empty())
           continue;
 
@@ -262,19 +260,20 @@ void class_hierarchyt::output(
 
 void show_class_hierarchy(
   const class_hierarchyt &hierarchy,
-  message_handlert &message_handler,
-  ui_message_handlert::uit ui,
+  ui_message_handlert &message_handler,
   bool children_only)
 {
   messaget msg(message_handler);
-  switch(ui)
+  switch(message_handler.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     hierarchy.output(msg.result(), children_only);
     msg.result() << messaget::eom;
     break;
   case ui_message_handlert::uit::JSON_UI:
-    hierarchy.output(msg.result().json_stream(), children_only);
+    if(msg.result().tellp() > 0)
+      msg.result() << messaget::eom; // force end of previous message
+    hierarchy.output(message_handler.get_json_stream(), children_only);
     break;
   case ui_message_handlert::uit::XML_UI:
     UNIMPLEMENTED;

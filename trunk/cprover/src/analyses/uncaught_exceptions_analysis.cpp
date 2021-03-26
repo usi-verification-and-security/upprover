@@ -19,8 +19,8 @@ irep_idt uncaught_exceptions_domaint::get_exception_type(const typet &type)
 {
   PRECONDITION(type.id()==ID_pointer);
 
-  if(type.subtype().id() == ID_symbol_type)
-    return to_symbol_type(type.subtype()).get_identifier();
+  if(type.subtype().id() == ID_struct_tag)
+    return to_struct_tag_type(type.subtype()).get_identifier();
   else
     return ID_empty;
 }
@@ -182,6 +182,7 @@ void uncaught_exceptions_analysist::collect_uncaught_exceptions(
 void uncaught_exceptions_analysist::output(
   const goto_functionst &goto_functions) const
 {
+  (void)goto_functions; // unused parameter
 #ifdef DEBUG
   forall_goto_functions(it, goto_functions)
   {

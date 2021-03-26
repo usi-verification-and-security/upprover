@@ -16,21 +16,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "value_sets.h"
 
-class guardt;
 class exprt;
 class symbolt;
 
-/*! \brief TO_BE_DOCUMENTED
-*/
+/// Base class for pointer value set analysis.
+/// Implemented by goto_program_dereferencet.
+/// This exists so that `value_set_dereferencet` can contain a reference to
+/// `goto_program_derefencet` which cannot be done directly because
+/// `goto_program_derefencet` contains a `value_set_dereferencet`.
 class dereference_callbackt
 {
 public:
-  virtual ~dereference_callbackt();
-
-  virtual void dereference_failure(
-    const std::string &property,
-    const std::string &msg,
-    const guardt &guard)=0;
+  virtual ~dereference_callbackt() = default;
 
   virtual void get_value_set(
     const exprt &expr,

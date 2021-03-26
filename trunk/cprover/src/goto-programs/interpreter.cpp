@@ -482,7 +482,7 @@ exprt interpretert::get_value(
       result.copy_to_operands(operand);
     }
 
-    return result;
+    return std::move(result);
   }
   else if(real_type.id()==ID_array)
   {
@@ -497,11 +497,11 @@ exprt interpretert::get_value(
     }
     else
     {
-      to_integer(size_expr, count);
+      count = numeric_cast_v<mp_integer>(size_expr);
     }
 
     // Retrieve the value for each member in the array
-    result.reserve_operands(integer2size_t(count));
+    result.reserve_operands(numeric_cast_v<std::size_t>(count));
     for(mp_integer i=0; i<count; ++i)
     {
       const exprt operand=get_value(
@@ -509,7 +509,7 @@ exprt interpretert::get_value(
         offset+i*subtype_size);
       result.copy_to_operands(operand);
     }
-    return result;
+    return std::move(result);
   }
   if(use_non_det &&
      memory[integer2ulong(offset)].initialized!=
@@ -547,11 +547,11 @@ exprt interpretert::get_value(
       tmp_offset+=size;
       result.copy_to_operands(operand);
     }
-    return result;
+    return std::move(result);
   }
   else if(real_type.id()==ID_array)
   {
-    constant_exprt result(type);
+    array_exprt result(to_array_type(real_type));
     const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
 
     // Get size of array
@@ -564,56 +564,52 @@ exprt interpretert::get_value(
     }
     else
     {
-      to_integer(size_expr, count);
+      count = numeric_cast_v<mp_integer>(size_expr);
     }
 
     // Retrieve the value for each member in the array
-    result.reserve_operands(integer2size_t(count));
+    result.reserve_operands(numeric_cast_v<std::size_t>(count));
     for(mp_integer i=0; i<count; ++i)
     {
       const exprt operand=get_value(type.subtype(), rhs,
           offset+i*subtype_size);
       result.copy_to_operands(operand);
     }
-    return result;
+    return std::move(result);
   }
   else if(real_type.id()==ID_floatbv)
   {
     ieee_floatt f(to_floatbv_type(type));
-    f.unpack(rhs[integer2size_t(offset)]);
+    f.unpack(rhs[numeric_cast_v<std::size_t>(offset)]);
     return f.to_expr();
   }
   else if(real_type.id()==ID_fixedbv)
   {
     fixedbvt f;
-    f.from_integer(rhs[integer2size_t(offset)]);
+    f.from_integer(rhs[numeric_cast_v<std::size_t>(offset)]);
     return f.to_expr();
   }
   else if(real_type.id()==ID_bool)
   {
-    if(rhs[integer2size_t(offset)]!=0)
+    if(rhs[numeric_cast_v<std::size_t>(offset)] != 0)
       return true_exprt();
     else
       false_exprt();
   }
   else if(real_type.id()==ID_c_bool)
   {
-    return from_integer(rhs[integer2size_t(offset)]!=0?1:0, type);
+    return from_integer(
+      rhs[numeric_cast_v<std::size_t>(offset)] != 0 ? 1 : 0, type);
   }
-  else if((real_type.id()==ID_pointer) || (real_type.id()==ID_address_of))
+  else if(real_type.id() == ID_pointer)
   {
-    if(rhs[integer2size_t(offset)]==0)
-    {
-      // NULL pointer
-      constant_exprt result(type);
-      result.set_value(ID_NULL);
-      return result;
-    }
+    if(rhs[numeric_cast_v<std::size_t>(offset)] == 0)
+      return null_pointer_exprt(to_pointer_type(real_type)); // NULL pointer
 
-    if(rhs[integer2size_t(offset)]<memory.size())
+    if(rhs[numeric_cast_v<std::size_t>(offset)] < memory.size())
     {
       // We want the symbol pointed to
-      mp_integer address=rhs[integer2size_t(offset)];
+      mp_integer address = rhs[numeric_cast_v<std::size_t>(offset)];
       irep_idt identifier=address_to_identifier(address);
       mp_integer offset=address_to_offset(address);
       const typet type=get_type(identifier);
@@ -633,11 +629,12 @@ exprt interpretert::get_value(
         symbol_expr,
         from_integer(offset, integer_typet()));
 
-      return index_expr;
+      return std::move(index_expr);
     }
 
-    error() << "interpreter: invalid pointer " << rhs[integer2size_t(offset)]
-            << " > object count " << memory.size() << eom;
+    error() << "interpreter: invalid pointer "
+            << rhs[numeric_cast_v<std::size_t>(offset)] << " > object count "
+            << memory.size() << eom;
 
     throw "interpreter: reading from invalid pointer";
   }
@@ -645,7 +642,8 @@ exprt interpretert::get_value(
   {
     // Strings are currently encoded by their irep_idt ID.
     return constant_exprt(
-      get_string_container().get_string(rhs[integer2size_t(offset)].to_long()),
+      get_string_container().get_string(
+        numeric_cast_v<std::size_t>(rhs[numeric_cast_v<std::size_t>(offset)])),
       type);
   }
 
@@ -677,15 +675,7 @@ void interpretert::execute_assign()
       goto_trace_stept &trace_step=steps.get_last_step();
       assign(address, rhs);
       trace_step.full_lhs=code_assign.lhs();
-
-      // TODO: need to look at other cases on ssa_exprt
-      // (dereference should be handled on ssa)
-      if(ssa_exprt::can_build_identifier(trace_step.full_lhs))
-      {
-        trace_step.lhs_object=ssa_exprt(trace_step.full_lhs);
-      }
       trace_step.full_lhs_value=get_value(trace_step.full_lhs.type(), rhs);
-      trace_step.lhs_object_value=trace_step.full_lhs_value;
     }
   }
   else if(code_assign.rhs().id()==ID_side_effect)
@@ -693,8 +683,8 @@ void interpretert::execute_assign()
     side_effect_exprt side_effect=to_side_effect_expr(code_assign.rhs());
     if(side_effect.get_statement()==ID_nondet)
     {
-      mp_integer address=
-        integer2size_t(evaluate_address(code_assign.lhs()));
+      mp_integer address =
+        numeric_cast_v<std::size_t>(evaluate_address(code_assign.lhs()));
 
       mp_integer size=
         get_size(code_assign.lhs().type());
@@ -723,11 +713,11 @@ void interpretert::assign(
       {
         status() << total_steps << " ** assigning "
                  << address_to_identifier(address_val) << "["
-                 << address_to_offset(address_val) << "]:="
-                 << rhs[integer2size_t(i)]
-                 << "\n" << eom;
+                 << address_to_offset(address_val)
+                 << "]:=" << rhs[numeric_cast_v<std::size_t>(i)] << "\n"
+                 << eom;
       }
-      cell.value=rhs[integer2size_t(i)];
+      cell.value = rhs[numeric_cast_v<std::size_t>(i)];
       if(cell.initialized==memory_cellt::initializedt::UNKNOWN)
         cell.initialized=memory_cellt::initializedt::WRITTEN_BEFORE_READ;
     }
@@ -772,7 +762,7 @@ void interpretert::execute_function_call()
   const memory_cellt &cell=memory[address];
 #endif
   const irep_idt &identifier = address_to_identifier(address);
-  trace_step.function_identifier = identifier;
+  trace_step.called_function = identifier;
 
   const goto_functionst::function_mapt::const_iterator f_it=
     goto_functions.function_map.find(identifier);
@@ -1036,14 +1026,12 @@ mp_integer interpretert::get_size(const typet &type)
       // Go via the binary representation to reproduce any
       // overflow behaviour.
       exprt size_const=from_integer(i[0], size_expr.type());
-      mp_integer size_mp;
-      bool ret=to_integer(size_const, size_mp);
-      CHECK_RETURN(!ret);
+      const mp_integer size_mp = numeric_cast_v<mp_integer>(size_const);
       return subtype_size*size_mp;
     }
     return subtype_size;
   }
-  else if(type.id() == ID_symbol_type)
+  else if(type.id() == ID_symbol_type || type.id() == ID_struct_tag)
   {
     return get_size(ns.follow(type));
   }
@@ -1098,4 +1086,3 @@ void interpreter(
     message_handler);
   interpreter();
 }
-

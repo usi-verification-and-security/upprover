@@ -8,7 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "mp_arith.h"
 
-#include <cassert>
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <limits>
@@ -208,44 +208,68 @@ unsigned integer2unsigned(const mp_integer &n)
   return (unsigned)ull;
 }
 
-/// bitwise or bitwise operations only make sense on native objects, hence the
-/// largest object size should be the largest available c++ integer size
-/// (currently long long)
+/// bitwise binary operation over two integers, given as a functor
+/// \param a: the first integer
+/// \param b: the second integer
+/// \param f: the function over two bits
+mp_integer bitwise(
+  const mp_integer &a,
+  const mp_integer &b,
+  std::function<bool(bool, bool)> f)
+{
+  const auto digits = std::max(a.digits(2), b.digits(2));
+
+  mp_integer result = 0;
+  mp_integer tmp_a = a, tmp_b = b;
+
+  for(std::size_t i = 0; i < digits; i++)
+  {
+    const bool bit_a = tmp_a.is_odd();
+    const bool bit_b = tmp_b.is_odd();
+    const bool bit_result = f(bit_a, bit_b);
+    if(bit_result)
+      result += power(2, i);
+    tmp_a /= 2;
+    tmp_b /= 2;
+  }
+
+  return result;
+}
+
+/// bitwise 'or' of two nonnegative integers
 mp_integer bitwise_or(const mp_integer &a, const mp_integer &b)
 {
-  PRECONDITION(a.is_ulong() && b.is_ulong());
-  ullong_t result=a.to_ulong()|b.to_ulong();
-  return result;
+  PRECONDITION(!a.is_negative() && !b.is_negative());
+
+  // fast path for small numbers
+  if(a.is_ulong() && b.is_ulong())
+    return a.to_ulong() | b.to_ulong();
+
+  return bitwise(a, b, [](bool a, bool b) { return a || b; });
 }
 
-/// bitwise and bitwise operations only make sense on native objects, hence the
-/// largest object size should be the largest available c++ integer size
-/// (currently long long)
+/// bitwise 'and' of two nonnegative integers
 mp_integer bitwise_and(const mp_integer &a, const mp_integer &b)
 {
-  PRECONDITION(a.is_ulong() && b.is_ulong());
-  ullong_t result=a.to_ulong()&b.to_ulong();
-  return result;
+  PRECONDITION(!a.is_negative() && !b.is_negative());
+
+  // fast path for small numbers
+  if(a.is_ulong() && b.is_ulong())
+    return a.to_ulong() & b.to_ulong();
+
+  return bitwise(a, b, [](bool a, bool b) { return a && b; });
 }
 
-/// bitwise xor bitwise operations only make sense on native objects, hence the
-/// largest object size should be the largest available c++ integer size
-/// (currently long long)
+/// bitwise 'xor' of two nonnegative integers
 mp_integer bitwise_xor(const mp_integer &a, const mp_integer &b)
 {
-  PRECONDITION(a.is_ulong() && b.is_ulong());
-  ullong_t result=a.to_ulong()^b.to_ulong();
-  return result;
-}
+  PRECONDITION(!a.is_negative() && !b.is_negative());
 
-/// bitwise negation bitwise operations only make sense on native objects, hence
-/// the largest object size should be the largest available c++ integer size
-/// (currently long long)
-mp_integer bitwise_neg(const mp_integer &a)
-{
-  PRECONDITION(a.is_ulong());
-  ullong_t result=~a.to_ulong();
-  return result;
+  // fast path for small numbers
+  if(a.is_ulong() && b.is_ulong())
+    return a.to_ulong() ^ b.to_ulong();
+
+  return bitwise(a, b, [](bool a, bool b) { return a != b; });
 }
 
 /// arithmetic left shift bitwise operations only make sense on native objects,
@@ -257,9 +281,9 @@ mp_integer arith_left_shift(
   std::size_t true_size)
 {
   PRECONDITION(a.is_long() && b.is_ulong());
+  PRECONDITION(b <= true_size || a == 0);
+
   ullong_t shift=b.to_ulong();
-  if(shift>true_size && a!=mp_integer(0))
-    throw "shift value out of range";
 
   llong_t result=a.to_long()<<shift;
   llong_t mask=
@@ -280,8 +304,7 @@ mp_integer arith_right_shift(
   PRECONDITION(a.is_long() && b.is_ulong());
   llong_t number=a.to_long();
   ullong_t shift=b.to_ulong();
-  if(shift>true_size)
-    throw "shift value out of range";
+  PRECONDITION(shift <= true_size);
 
   const llong_t sign = (1LL << (true_size - 1)) & number;
   const llong_t pad = (sign == 0) ? 0 : ~((1LL << (true_size - shift)) - 1);
@@ -298,9 +321,9 @@ mp_integer logic_left_shift(
   std::size_t true_size)
 {
   PRECONDITION(a.is_long() && b.is_ulong());
+  PRECONDITION(b <= true_size || a == 0);
+
   ullong_t shift=b.to_ulong();
-  if(shift>true_size && a!=mp_integer(0))
-    throw "shift value out of range";
   llong_t result=a.to_long()<<shift;
   if(true_size<(sizeof(llong_t)*8))
   {
@@ -324,10 +347,9 @@ mp_integer logic_right_shift(
   std::size_t true_size)
 {
   PRECONDITION(a.is_long() && b.is_ulong());
-  ullong_t shift=b.to_ulong();
-  if(shift>true_size)
-    throw "shift value out of range";
+  PRECONDITION(b <= true_size);
 
+  ullong_t shift = b.to_ulong();
   ullong_t result=((ullong_t)a.to_long()) >> shift;
   return result;
 }
@@ -341,10 +363,10 @@ mp_integer rotate_right(
   std::size_t true_size)
 {
   PRECONDITION(a.is_ulong() && b.is_ulong());
+  PRECONDITION(b <= true_size);
+
   ullong_t number=a.to_ulong();
   ullong_t shift=b.to_ulong();
-  if(shift>true_size)
-    throw "shift value out of range";
 
   ullong_t revShift=true_size-shift;
   const ullong_t filter = 1ULL << (true_size - 1);
@@ -361,10 +383,10 @@ mp_integer rotate_left(
   std::size_t true_size)
 {
   PRECONDITION(a.is_ulong() && b.is_ulong());
+  PRECONDITION(b <= true_size);
+
   ullong_t number=a.to_ulong();
   ullong_t shift=b.to_ulong();
-  if(shift>true_size)
-    throw "shift value out of range";
 
   ullong_t revShift=true_size-shift;
   const ullong_t filter = 1ULL << (true_size - 1);

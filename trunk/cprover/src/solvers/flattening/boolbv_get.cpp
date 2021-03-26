@@ -71,7 +71,7 @@ exprt boolbvt::bv_get_rec(
   std::size_t offset,
   const typet &type) const
 {
-  if(type.id()==ID_symbol)
+  if(type.id() == ID_symbol_type)
     return bv_get_rec(bv, unknown, offset, ns.follow(type));
 
   std::size_t width=boolbv_width(type);
@@ -141,12 +141,9 @@ exprt boolbvt::bv_get_rec(
       exprt::operandst op;
       op.reserve(components.size());
 
-      for(struct_typet::componentst::const_iterator
-          it=components.begin();
-          it!=components.end();
-          it++)
+      for(const auto &c : components)
       {
-        const typet &subtype=ns.follow(it->type());
+        const typet &subtype = ns.follow(c.type());
         op.push_back(nil_exprt());
 
         std::size_t sub_width=boolbv_width(subtype);
@@ -160,7 +157,7 @@ exprt boolbvt::bv_get_rec(
 
       struct_exprt dest(type);
       dest.operands().swap(op);
-      return dest;
+      return std::move(dest);
     }
     else if(type.id()==ID_union)
     {
@@ -181,7 +178,7 @@ exprt boolbvt::bv_get_rec(
 
       value.op()=bv_get_rec(bv, unknown, offset, subtype);
 
-      return value;
+      return std::move(value);
     }
     else if(type.id()==ID_vector)
     {
@@ -198,7 +195,7 @@ exprt boolbvt::bv_get_rec(
           value.operands().push_back(
             bv_get_rec(bv, unknown, i*sub_width, subtype));
 
-        return value;
+        return std::move(value);
       }
     }
     else if(type.id()==ID_complex)
@@ -218,6 +215,7 @@ exprt boolbvt::bv_get_rec(
     }
   }
 
+  // most significant bit first
   std::string value;
 
   for(std::size_t bit_nr=offset; bit_nr<offset+width; bit_nr++)
@@ -258,17 +256,17 @@ exprt boolbvt::bv_get_rec(
       mp_integer int_value=binary2integer(value, false);
       mp_integer from=string2integer(type.get_string(ID_from));
 
-      constant_exprt value_expr(type);
-      value_expr.set_value(integer2string(int_value+from));
-      return value_expr;
+      return constant_exprt(integer2string(int_value + from), type);
     }
     break;
 
   default:
   case bvtypet::IS_C_ENUM:
-    constant_exprt value_expr(type);
-    value_expr.set_value(value);
-    return value_expr;
+  {
+    const irep_idt bvrep = make_bvrep(
+      width, [&value](size_t i) { return value[value.size() - i - 1] == '1'; });
+    return constant_exprt(bvrep, type);
+  }
   }
 
   return nil_exprt();
@@ -392,7 +390,7 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
     result=exprt(ID_array, type);
     result.type().set(ID_size, size);
 
-    std::size_t size_int=integer2size_t(size_mpint);
+    std::size_t size_int = numeric_cast_v<std::size_t>(size_mpint);
 
     // allocate operands
     result.operands().resize(size_int);
@@ -406,7 +404,8 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
         it!=values.end();
         it++)
       if(it->first>=0 && it->first<size_mpint)
-        result.operands()[integer2size_t(it->first)].swap(it->second);
+        result.operands()[numeric_cast_v<std::size_t>(it->first)].swap(
+          it->second);
   }
 
   return result;

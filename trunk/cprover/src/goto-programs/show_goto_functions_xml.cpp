@@ -33,20 +33,25 @@ show_goto_functions_xmlt::show_goto_functions_xmlt(
 {}
 
 /// Walks through all of the functions in the program and returns an xml object
-/// representing all their functions. Produces output like this: <functions>
+/// representing all their functions. Produces output like this: \code{.xml}
+/// <functions>
 /// <function name=main, is_body_available=true, is_internal=false>
 /// <instructions> <instruction_id=ASSIGN> <location file="main.c" line="14"/>
 /// <instruction_value> // 34 file main.c line 1 s = { 'a', 'b', 'c', 0 };
-/// </instruction_value> </instruction> </instructions> </function> </functions>
+/// </instruction_value> </instruction> </instructions> </function>
+/// </functions> \endcode
 /// \param goto_functions: the goto functions that make up the program
 xmlt show_goto_functions_xmlt::convert(
   const goto_functionst &goto_functions)
 {
   xmlt xml_functions=xmlt("functions");
-  for(const auto &function_entry : goto_functions.function_map)
+
+  const auto sorted = goto_functions.sorted();
+
+  for(const auto &function_entry : sorted)
   {
-    const irep_idt &function_name=function_entry.first;
-    const goto_functionst::goto_functiont &function=function_entry.second;
+    const irep_idt &function_name = function_entry->first;
+    const goto_functionst::goto_functiont &function = function_entry->second;
 
     xmlt &xml_function=xml_functions.new_element("function");
     xml_function.set_attribute("name", id2string(function_name));

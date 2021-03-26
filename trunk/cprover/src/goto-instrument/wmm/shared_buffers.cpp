@@ -243,9 +243,8 @@ void shared_bufferst::flush_read(
   const source_locationt &source_location,
   const irep_idt &write_object)
 {
-/* option 1 */
-
 #if 0
+  // option 1
   const varst &vars=(*this)(write_object);
 
   const symbol_exprt fresh_var_expr=symbol_exprt(vars.read_new_var, vars.type);
@@ -266,10 +265,15 @@ void shared_bufferst::flush_read(
 
   assignment(goto_program, target, source_location, vars.read_delayed,
              false_exprt());
+#else
+  // option 2: do nothing
+  // unused parameters
+  (void)goto_program;
+  (void)target;
+  (void)target;
+  (void)source_location;
+  (void)write_object;
 #endif
-
-/* option 2 */
-/* do nothing */
 }
 
 /// instruments write
@@ -1017,7 +1021,6 @@ bool shared_bufferst::is_buffered_in_general(
 /// variables (non necessarily shared themselves) whose value could be changed
 /// as effect of a read delay
 void shared_bufferst::affected_by_delay(
-  symbol_tablet &symbol_table,
   value_setst &value_sets,
   goto_functionst &goto_functions)
 {

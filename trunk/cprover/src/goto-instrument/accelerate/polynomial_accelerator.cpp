@@ -251,7 +251,7 @@ bool polynomial_acceleratort::accelerate(
 
   // Add in any array assignments we can do now.
   if(!utils.do_nonrecursive(
-      assigns, polynomials, loop_counter, stashed, nonrecursive, program))
+       assigns, polynomials, stashed, nonrecursive, program))
   {
     // We couldn't model some of the array assignments with polynomials...
     // Unfortunately that means we just have to bail out.
@@ -450,6 +450,10 @@ bool polynomial_acceleratort::fit_const(
   exprt &target,
   polynomialt &poly)
 {
+  // unused parameters
+  (void)body;
+  (void)target;
+  (void)poly;
   return false;
 
 #if 0

@@ -13,8 +13,10 @@
 #include "../utils/time_utils.h"
 #include "../assertion_info.h"
 #include "hifrog_symex_target_equation_no_partition.h"
+#include <funfrog/interface/ssa_solvert.h>
 
 class solvert;
+class ssa_solvert;
 
 class prepare_formula_no_partitiont:public messaget
 {
@@ -38,7 +40,7 @@ public:
    
     bool is_satisfiable(solvert &solver);
 
-    void error_trace(solvert &solver, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
+    void error_trace(ssa_solvert &decider, const namespacet &ns, std::map<irep_idt, std::string> &guard_expln);
     
     const SSA_steps_orderingt get_steps_exec_order() {
         SSA_steps_orderingt ret; ret.reserve(equation.SSA_steps.size());

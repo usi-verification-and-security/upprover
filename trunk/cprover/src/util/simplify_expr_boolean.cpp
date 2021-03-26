@@ -8,10 +8,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "simplify_expr_class.h"
 
-#include <cassert>
 #include <unordered_set>
 
 #include "expr.h"
+#include "expr_util.h"
+#include "invariant.h"
 #include "namespace.h"
 #include "std_expr.h"
 
@@ -35,42 +36,10 @@ bool simplify_exprt::simplify_boolean(exprt &expr)
     // turn a => b into !a || b
 
     expr.id(ID_or);
-    expr.op0().make_not();
+    expr.op0() = boolean_negate(expr.op0());
     simplify_node(expr.op0());
     simplify_node(expr);
     return false;
-  }
-  else if(expr.id()==ID_iff)
-  {
-    if(operands.size()!=2 ||
-       operands.front().type().id()!=ID_bool ||
-       operands.back().type().id()!=ID_bool)
-      return true;
-
-    if(operands.front().is_false())
-    {
-      expr.id(ID_not);
-      operands.erase(operands.begin());
-      return false;
-    }
-    else if(operands.front().is_true())
-    {
-      exprt tmp(operands.back());
-      expr.swap(tmp);
-      return false;
-    }
-    else if(operands.back().is_false())
-    {
-      expr.id(ID_not);
-      operands.erase(++operands.begin());
-      return false;
-    }
-    else if(operands.back().is_true())
-    {
-      exprt tmp(operands.front());
-      expr.swap(tmp);
-      return false;
-    }
   }
   else if(expr.id()==ID_xor)
   {
@@ -112,7 +81,7 @@ bool simplify_exprt::simplify_boolean(exprt &expr)
     {
       exprt tmp(operands.front());
       if(negate)
-        tmp.make_not();
+        tmp = boolean_negate(operands.front());
       expr.swap(tmp);
       return false;
     }
@@ -227,7 +196,7 @@ bool simplify_exprt::simplify_not(exprt &expr)
 
     Forall_operands(it, expr)
     {
-      it->make_not();
+      *it = boolean_negate(*it);
       simplify_node(*it);
     }
 
@@ -245,13 +214,11 @@ bool simplify_exprt::simplify_not(exprt &expr)
   }
   else if(op.id()==ID_exists) // !(exists: a) <-> forall: not a
   {
-    assert(op.operands().size()==2);
-    exprt tmp;
-    tmp.swap(op);
-    expr.swap(tmp);
-    expr.id(ID_forall);
-    expr.op1().make_not();
-    simplify_node(expr.op1());
+    auto const &op_as_exists = to_exists_expr(op);
+    forall_exprt rewritten_op(
+      op_as_exists.symbol(), not_exprt(op_as_exists.where()));
+    simplify_node(rewritten_op.where());
+    expr = rewritten_op;
     return false;
   }
 

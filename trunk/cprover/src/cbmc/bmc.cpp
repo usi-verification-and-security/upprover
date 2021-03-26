@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <chrono>
 #include <iostream>
 
+#include <util/exception_utils.h>
 #include <util/exit_codes.h>
 
 #include <langapi/language_util.h>
@@ -24,12 +25,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <goto-symex/build_goto_trace.h>
 #include <goto-symex/memory_model_pso.h>
+#include <goto-symex/show_program.h>
+#include <goto-symex/show_vcc.h>
 #include <goto-symex/slice.h>
 #include <goto-symex/slice_by_trace.h>
 
 #include <linking/static_lifetime_init.h>
 
-#include "cbmc_solvers.h"
+#include <goto-checker/solver_factory.h>
+
 #include "counterexample_beautification.h"
 #include "fault_localization.h"
 
@@ -51,7 +55,7 @@ void bmct::error_trace()
   goto_tracet &goto_trace=safety_checkert::error_trace;
   build_goto_trace(equation, prop_conv, ns, goto_trace);
 
-  switch(ui)
+  switch(ui_message_handler.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     result() << "Counterexample:" << eom;
@@ -69,8 +73,10 @@ void bmct::error_trace()
 
   case ui_message_handlert::uit::JSON_UI:
     {
+      if(status().tellp() > 0)
+        status() << eom; // force end of previous message
       json_stream_objectt &json_result =
-        status().json_stream().push_back_stream_object();
+        ui_message_handler.get_json_stream().push_back_stream_object();
       const goto_trace_stept &step=goto_trace.steps.back();
       json_result["property"] =
         json_stringt(step.pc->source_location.get_property_id());
@@ -148,9 +154,14 @@ bmct::run_decision_procedure(prop_convt &prop_conv)
 
 void bmct::report_success()
 {
-  result() << "VERIFICATION SUCCESSFUL" << eom;
+  report_success(*this, ui_message_handler);
+}
 
-  switch(ui)
+void bmct::report_success(messaget &log, ui_message_handlert &handler)
+{
+  log.result() << log.bold << "VERIFICATION SUCCESSFUL" << log.reset << log.eom;
+
+  switch(handler.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     break;
@@ -159,7 +170,7 @@ void bmct::report_success()
     {
       xmlt xml("cprover-status");
       xml.data="SUCCESS";
-      result() << xml;
+      log.result() << xml;
     }
     break;
 
@@ -167,7 +178,7 @@ void bmct::report_success()
     {
       json_objectt json_result;
       json_result["cProverStatus"]=json_stringt("success");
-      result() << json_result;
+      log.result() << json_result;
     }
     break;
   }
@@ -175,9 +186,14 @@ void bmct::report_success()
 
 void bmct::report_failure()
 {
-  result() << "VERIFICATION FAILED" << eom;
+  report_failure(*this, ui_message_handler);
+}
 
-  switch(ui)
+void bmct::report_failure(messaget &log, ui_message_handlert &handler)
+{
+  log.result() << log.bold << "VERIFICATION FAILED" << log.reset << log.eom;
+
+  switch(handler.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     break;
@@ -186,7 +202,7 @@ void bmct::report_failure()
     {
       xmlt xml("cprover-status");
       xml.data="FAILURE";
-      result() << xml;
+      log.result() << xml;
     }
     break;
 
@@ -194,95 +210,11 @@ void bmct::report_failure()
     {
       json_objectt json_result;
       json_result["cProverStatus"]=json_stringt("failure");
-      result() << json_result;
+      log.result() << json_result;
     }
     break;
   }
 }
-
-void bmct::show_program()
-{
-  unsigned count=1;
-
-  std::cout << "\n" << "Program constraints:" << "\n";
-
-  for(const auto &step : equation.SSA_steps)
-  {
-    std::cout << "// " << step.source.pc->location_number << " ";
-    std::cout << step.source.pc->source_location.as_string() << "\n";
-    const irep_idt &function = step.source.pc->function;
-
-    if(step.is_assignment())
-    {
-      std::string string_value = from_expr(ns, function, step.cond_expr);
-      std::cout << "(" << count << ") " << string_value << "\n";
-
-      if(!step.guard.is_true())
-      {
-        std::string string_value = from_expr(ns, function, step.guard);
-        std::cout << std::string(std::to_string(count).size()+3, ' ');
-        std::cout << "guard: " << string_value << "\n";
-      }
-
-      count++;
-    }
-    else if(step.is_assert())
-    {
-      std::string string_value = from_expr(ns, function, step.cond_expr);
-      std::cout << "(" << count << ") ASSERT("
-                << string_value <<") " << "\n";
-
-      if(!step.guard.is_true())
-      {
-        std::string string_value = from_expr(ns, function, step.guard);
-        std::cout << std::string(std::to_string(count).size()+3, ' ');
-        std::cout << "guard: " << string_value << "\n";
-      }
-
-      count++;
-    }
-    else if(step.is_assume())
-    {
-      std::string string_value = from_expr(ns, function, step.cond_expr);
-      std::cout << "(" << count << ") ASSUME("
-                << string_value <<") " << "\n";
-
-      if(!step.guard.is_true())
-      {
-        std::string string_value = from_expr(ns, function, step.guard);
-        std::cout << std::string(std::to_string(count).size()+3, ' ');
-        std::cout << "guard: " << string_value << "\n";
-      }
-
-      count++;
-    }
-    else if(step.is_constraint())
-    {
-      std::string string_value = from_expr(ns, function, step.cond_expr);
-      std::cout << "(" << count << ") CONSTRAINT("
-                << string_value <<") " << "\n";
-
-      count++;
-    }
-    else if(step.is_shared_read() || step.is_shared_write())
-    {
-      std::string string_value = from_expr(ns, function, step.ssa_lhs);
-      std::cout << "(" << count << ") SHARED_"
-                << (step.is_shared_write()?"WRITE":"READ")
-                << "(" << string_value <<")\n";
-
-      if(!step.guard.is_true())
-      {
-        std::string string_value = from_expr(ns, function, step.guard);
-        std::cout << std::string(std::to_string(count).size()+3, ' ');
-        std::cout << "guard: " << string_value << "\n";
-      }
-
-      count++;
-    }
-  }
-}
-
 
 void bmct::get_memory_model()
 {
@@ -296,9 +228,8 @@ void bmct::get_memory_model()
     memory_model=util_make_unique<memory_model_psot>(ns);
   else
   {
-    error() << "Invalid memory model " << mm
-            << " -- use one of sc, tso, pso" << eom;
-    throw "invalid memory model";
+    throw invalid_command_line_argument_exceptiont(
+      "invalid parameter " + mm, "--mm", "try values of sc, tso, pso");
   }
 }
 
@@ -340,9 +271,6 @@ safety_checkert::resultt bmct::execute(
     const goto_functionst &goto_functions =
       goto_model.get_goto_functions();
 
-    if(symex.should_pause_symex)
-      return safety_checkert::resultt::PAUSED;
-
     // This provides the driver program the opportunity to do things like a
     // symbol-table or goto-functions dump instead of actually running the
     // checker, like show-vcc except driver-program specific.
@@ -352,9 +280,14 @@ safety_checkert::resultt bmct::execute(
     if(driver_callback_after_symex && driver_callback_after_symex())
       return safety_checkert::resultt::SAFE; // to indicate non-error
 
-    // add a partial ordering, if required
     if(equation.has_threads())
     {
+      // When doing path exploration in a concurrent setting, we should avoid
+      // model-checking the program until we reach the end of a path.
+      if(symex.should_pause_symex)
+        return safety_checkert::resultt::PAUSED;
+
+      // add a partial ordering, if required
       memory_model->set_message_handler(get_message_handler());
       (*memory_model)(equation);
     }
@@ -376,7 +309,7 @@ safety_checkert::resultt bmct::execute(
 
     if(options.get_bool_option("show-vcc"))
     {
-      show_vcc();
+      show_vcc(options, ui_message_handler, equation);
       return safety_checkert::resultt::SAFE; // to indicate non-error
     }
 
@@ -394,9 +327,12 @@ safety_checkert::resultt bmct::execute(
     }
 
     // any properties to check at all?
-    if(!options.get_bool_option("program-only") &&
-       symex.remaining_vccs==0)
+    if(
+      !options.get_bool_option("program-only") &&
+      symex.get_remaining_vccs() == 0)
     {
+      if(options.is_set("paths"))
+        return safety_checkert::resultt::PAUSED;
       report_success();
       output_graphml(resultt::SAFE);
       return safety_checkert::resultt::SAFE;
@@ -404,11 +340,14 @@ safety_checkert::resultt bmct::execute(
 
     if(options.get_bool_option("program-only"))
     {
-      show_program();
+      show_program(ns, equation);
       return safety_checkert::resultt::SAFE;
     }
 
-    return decide(goto_functions, prop_conv);
+    if(!options.is_set("paths") || symex.path_segment_vccs > 0)
+      return decide(goto_functions, prop_conv);
+
+    return safety_checkert::resultt::PAUSED;
   }
 
   catch(const std::string &error_str)
@@ -472,10 +411,13 @@ void bmct::slice()
       }
     }
   }
-  statistics() << "Generated "
-               << symex.total_vccs<<" VCC(s), "
-               << symex.remaining_vccs
+  statistics() << "Generated " << symex.get_total_vccs() << " VCC(s), "
+               << symex.get_remaining_vccs()
                << " remaining after simplification" << eom;
+
+  if(options.is_set("paths"))
+    statistics() << "Generated " << symex.path_segment_vccs
+                 << " new VCC(s) along current path segment" << eom;
 }
 
 safety_checkert::resultt bmct::run(
@@ -502,12 +444,12 @@ void bmct::show()
 {
   if(options.get_bool_option("show-vcc"))
   {
-    show_vcc();
+    show_vcc(options, ui_message_handler, equation);
   }
 
   if(options.get_bool_option("program-only"))
   {
-    show_program();
+    show_program(ns, equation);
   }
 }
 
@@ -525,7 +467,7 @@ safety_checkert::resultt bmct::stop_on_fail(prop_convt &prop_conv)
     {
       if(options.get_bool_option("beautify"))
         counterexample_beautificationt()(
-          dynamic_cast<bv_cbmct &>(prop_conv), equation);
+          dynamic_cast<boolbvt &>(prop_conv), equation);
 
       error_trace();
       output_graphml(resultt::UNSAFE);
@@ -547,11 +489,12 @@ safety_checkert::resultt bmct::stop_on_fail(prop_convt &prop_conv)
 
 /// Perform core BMC, using an abstract model to supply GOTO function bodies
 /// (perhaps created on demand).
+/// \param path_strategy_chooser: controls whether symex generates a single
+///   large equation for the whole program or an equation per path
 /// \param opts: command-line options affecting BMC
 /// \param model: provides goto function bodies and the symbol table, perhaps
 //    creating those function bodies on demand.
 /// \param ui: user-interface mode (plain text, XML output, JSON output, ...)
-/// \param message: used for logging
 /// \param driver_configure_bmc: function provided by the driver program,
 ///   which applies driver-specific configuration to a bmct before running.
 /// \param callback_after_symex: optional callback to be run after symex.
@@ -560,15 +503,14 @@ int bmct::do_language_agnostic_bmc(
   const path_strategy_choosert &path_strategy_chooser,
   const optionst &opts,
   abstract_goto_modelt &model,
-  const ui_message_handlert::uit &ui,
-  messaget &message,
+  ui_message_handlert &ui,
   std::function<void(bmct &, const symbol_tablet &)> driver_configure_bmc,
   std::function<bool(void)> callback_after_symex)
 {
-  safety_checkert::resultt final_result = safety_checkert::resultt::UNKNOWN;
-  safety_checkert::resultt tmp_result = safety_checkert::resultt::UNKNOWN;
+  safety_checkert::resultt final_result = safety_checkert::resultt::SAFE;
+  safety_checkert::resultt tmp_result = safety_checkert::resultt::SAFE;
   const symbol_tablet &symbol_table = model.get_symbol_table();
-  message_handlert &mh = message.get_message_handler();
+  messaget message(ui);
   std::unique_ptr<path_storaget> worklist;
   std::string strategy = opts.get_option("exploration-strategy");
   INVARIANT(
@@ -578,13 +520,15 @@ int bmct::do_language_agnostic_bmc(
   try
   {
     {
-      cbmc_solverst solvers(opts, symbol_table, message.get_message_handler());
-      solvers.set_ui(ui);
-      std::unique_ptr<cbmc_solverst::solvert> cbmc_solver;
-      cbmc_solver = solvers.get_solver();
+      solver_factoryt solvers(
+        opts,
+        symbol_table,
+        ui,
+        ui.get_ui() == ui_message_handlert::uit::XML_UI);
+      std::unique_ptr<solver_factoryt::solvert> cbmc_solver =
+        solvers.get_solver();
       prop_convt &pc = cbmc_solver->prop_conv();
-      bmct bmc(opts, symbol_table, mh, pc, *worklist, callback_after_symex);
-      bmc.set_ui(ui);
+      bmct bmc(opts, symbol_table, ui, pc, *worklist, callback_after_symex);
       if(driver_configure_bmc)
         driver_configure_bmc(bmc, symbol_table);
       tmp_result = bmc.run(model);
@@ -623,21 +567,19 @@ int bmct::do_language_agnostic_bmc(
 
     while(!worklist->empty())
     {
-      if(tmp_result != safety_checkert::resultt::PAUSED)
-        message.status() << "___________________________\n"
-                         << "Starting new path (" << worklist->size()
-                         << " to go)\n"
-                         << message.eom;
-      cbmc_solverst solvers(opts, symbol_table, message.get_message_handler());
-      solvers.set_ui(ui);
-      std::unique_ptr<cbmc_solverst::solvert> cbmc_solver;
-      cbmc_solver = solvers.get_solver();
+      solver_factoryt solvers(
+        opts,
+        symbol_table,
+        ui,
+        ui.get_ui() == ui_message_handlert::uit::XML_UI);
+      std::unique_ptr<solver_factoryt::solvert> cbmc_solver =
+        solvers.get_solver();
       prop_convt &pc = cbmc_solver->prop_conv();
       path_storaget::patht &resume = worklist->peek();
       path_explorert pe(
         opts,
         symbol_table,
-        mh,
+        ui,
         pc,
         resume.equation,
         resume.state,
@@ -679,12 +621,14 @@ int bmct::do_language_agnostic_bmc(
   switch(final_result)
   {
   case safety_checkert::resultt::SAFE:
+    if(opts.is_set("paths"))
+      report_success(message, ui);
     return CPROVER_EXIT_VERIFICATION_SAFE;
   case safety_checkert::resultt::UNSAFE:
+    if(opts.is_set("paths"))
+      report_failure(message, ui);
     return CPROVER_EXIT_VERIFICATION_UNSAFE;
   case safety_checkert::resultt::ERROR:
-    return CPROVER_EXIT_INTERNAL_ERROR;
-  case safety_checkert::resultt::UNKNOWN:
     return CPROVER_EXIT_INTERNAL_ERROR;
   case safety_checkert::resultt::PAUSED:
     UNREACHABLE;
@@ -696,6 +640,12 @@ void bmct::perform_symbolic_execution(
   goto_symext::get_goto_functiont get_goto_function)
 {
   symex.symex_from_entry_point_of(get_goto_function, symex_symbol_table);
+
+  if(options.get_bool_option("validate-ssa-equation"))
+  {
+    symex.validate(ns, validation_modet::INVARIANT);
+  }
+
   INVARIANT(
     options.get_bool_option("paths") || path_storage.empty(),
     "Branch points were saved even though we should have been "

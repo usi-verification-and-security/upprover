@@ -15,27 +15,32 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 
 #include <util/config.h>
+#include <util/message.h>
+#include <util/object_factory_parameters.h>
+#include <util/options.h>
 #include <util/unicode.h>
 
 #include <langapi/mode.h>
-#include <langapi/language_ui.h>
 #include <langapi/language.h>
 
 #include <goto-programs/rebuild_goto_start_function.h>
+#include <util/exception_utils.h>
 
 #include "goto_convert_functions.h"
 #include "read_goto_binary.h"
 
 goto_modelt initialize_goto_model(
-  const cmdlinet &cmdline,
-  message_handlert &message_handler)
+  const std::vector<std::string> &files,
+  message_handlert &message_handler,
+  const optionst &options)
 {
   messaget msg(message_handler);
-  const std::vector<std::string> &files=cmdline.args;
   if(files.empty())
   {
-    msg.error() << "Please provide a program" << messaget::eom;
-    throw 0;
+    throw invalid_command_line_argument_exceptiont(
+      "missing program argument",
+      "filename",
+      "one or more paths to program files");
   }
 
   std::vector<std::string> binaries, sources;
@@ -67,9 +72,8 @@ goto_modelt initialize_goto_model(
 
       if(!infile)
       {
-        msg.error() << "failed to open input file `" << filename
-          << '\'' << messaget::eom;
-        throw 0;
+        throw system_exceptiont(
+          "Failed to open input file `" + filename + '\'');
       }
 
       language_filet &lf=language_files.add_file(filename);
@@ -77,23 +81,19 @@ goto_modelt initialize_goto_model(
 
       if(lf.language==nullptr)
       {
-        source_locationt location;
-        location.set_file(filename);
-        msg.error().source_location=location;
-        msg.error() << "failed to figure out type of file" << messaget::eom;
-        throw 0;
+        throw invalid_source_file_exceptiont(
+          "Failed to figure out type of file `" + filename + '\'');
       }
 
       languaget &language=*lf.language;
       language.set_message_handler(message_handler);
-      language.get_language_options(cmdline);
+      language.set_language_options(options);
 
       msg.status() << "Parsing " << filename << messaget::eom;
 
       if(language.parse(infile, filename))
       {
-        msg.error() << "PARSING ERROR" << messaget::eom;
-        throw 0;
+        throw invalid_source_file_exceptiont("PARSING ERROR");
       }
 
       lf.get_modules();
@@ -103,8 +103,7 @@ goto_modelt initialize_goto_model(
 
     if(language_files.typecheck(goto_model.symbol_table))
     {
-      msg.error() << "CONVERSION ERROR" << messaget::eom;
-      throw 0;
+      throw invalid_source_file_exceptiont("CONVERSION ERROR");
     }
   }
 
@@ -113,7 +112,10 @@ goto_modelt initialize_goto_model(
     msg.status() << "Reading GOTO program from file" << messaget::eom;
 
     if(read_object_and_link(file, goto_model, message_handler))
-      throw 0;
+    {
+      throw invalid_source_file_exceptiont(
+        "failed to read object or link in file `" + file + '\'');
+    }
   }
 
   bool binaries_provided_start=
@@ -121,27 +123,16 @@ goto_modelt initialize_goto_model(
 
   bool entry_point_generation_failed=false;
 
-  if(binaries_provided_start && cmdline.isset("function"))
+  if(binaries_provided_start && options.is_set("function"))
   {
     // Rebuild the entry-point, using the language annotation of the
     // existing __CPROVER_start function:
     rebuild_goto_start_functiont rebuild_existing_start(
-      cmdline,
-      goto_model,
-      msg.get_message_handler());
+      options, goto_model, msg.get_message_handler());
     entry_point_generation_failed=rebuild_existing_start();
   }
   else if(!binaries_provided_start)
   {
-    // Unsure of the rationale for only generating stubs when there are no
-    // GOTO binaries in play; simply mirroring old code in language_uit here.
-    if(binaries.empty())
-    {
-      // Enable/disable stub generation for opaque methods
-      bool stubs_enabled=cmdline.isset("generate-opaque-stubs");
-      language_files.set_should_generate_opaque_method_stubs(stubs_enabled);
-    }
-
     // Allow all language front-ends to try to provide the user-specified
     // (--function) entry-point, or some language-specific default:
     entry_point_generation_failed=
@@ -150,14 +141,12 @@ goto_modelt initialize_goto_model(
 
   if(entry_point_generation_failed)
   {
-    msg.error() << "SUPPORT FUNCTION GENERATION ERROR" << messaget::eom;
-    throw 0;
+    throw invalid_source_file_exceptiont("SUPPORT FUNCTION GENERATION ERROR");
   }
 
   if(language_files.final(goto_model.symbol_table))
   {
-    msg.error() << "FINAL STAGE CONVERSION ERROR" << messaget::eom;
-    throw 0;
+    throw invalid_source_file_exceptiont("FINAL STAGE CONVERSION ERROR");
   }
 
   msg.status() << "Generating GOTO Program" << messaget::eom;
@@ -166,6 +155,11 @@ goto_modelt initialize_goto_model(
     goto_model.symbol_table,
     goto_model.goto_functions,
     message_handler);
+
+  if(options.is_set("validate-goto-model"))
+  {
+    goto_model.validate(validation_modet::EXCEPTION);
+  }
 
   // stupid hack
   config.set_object_bits_from_symbol_table(

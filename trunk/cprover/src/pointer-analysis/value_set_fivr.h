@@ -242,11 +242,6 @@ public:
     const idt &identifier,
     const std::string &suffix);
 
-  void make_any()
-  {
-    values.clear();
-  }
-
   void clear()
   {
     values.clear();
@@ -382,10 +377,6 @@ protected:
     const namespacet &ns,
     assign_recursion_sett &recursion_set,
     bool add_to_sets);
-
-  void do_free(
-    const exprt &op,
-    const namespacet &ns);
 
   void flatten(
     const entryt &e,

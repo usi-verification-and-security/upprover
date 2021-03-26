@@ -9,9 +9,10 @@
 
 #include <langapi/mode.h>
 
-#include <util/cmdline.h>
 #include <util/config.h>
+#include <util/exception_utils.h>
 #include <util/journalling_symbol_table.h>
+#include <util/options.h>
 #include <util/unicode.h>
 
 #include <langapi/language.h>
@@ -87,15 +88,38 @@ lazy_goto_modelt::lazy_goto_modelt(lazy_goto_modelt &&other)
 }
 //! @endcond
 
-void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
+/// Performs initial symbol table and `language_filest` initialization from
+/// a given commandline and parsed options. This is much the same as the
+/// initial parsing phase of `initialize_goto_model`, except that all function
+/// bodies may be left blank until `get_goto_function` is called for the first
+/// time. This *must* be called before `get_goto_function` is called.
+///
+/// Whether they are in fact left blank depends on the language front-end
+/// responsible for a particular function: it may be fully eager, in which case
+/// only the `goto_convert` phase is performed lazily, or fully lazy, in which
+/// case no function has a body until `get_goto_function` is called, or anything
+/// in between. At the time of writing only Java-specific frontend programs use
+/// `lazy_goto_modelt`, so only `java_bytecode_languaget` is relevant, and that
+/// front-end supplies practically all methods lazily, apart from
+/// `__CPROVER__start` and `__CPROVER_initialize`. In general check whether a
+/// language implements `languaget::convert_lazy_method`; any method not handled
+/// there must be populated eagerly. See `lazy_goto_modelt::get_goto_function`
+/// for more detail.
+/// \param files: source files and GOTO binaries to load
+/// \param options: options to pass on to the language front-ends
+void lazy_goto_modelt::initialize(
+  const std::vector<std::string> &files,
+  const optionst &options)
 {
   messaget msg(message_handler);
 
-  const std::vector<std::string> &files=cmdline.args;
   if(files.empty())
   {
-    msg.error() << "Please provide a program" << messaget::eom;
-    throw 0;
+    throw invalid_command_line_argument_exceptiont(
+      "no program provided",
+      "source file names",
+      "one or more paths to a goto binary or a source file in a supported "
+      "language");
   }
 
   std::vector<std::string> binaries, sources;
@@ -122,9 +146,8 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
 
       if(!infile)
       {
-        msg.error() << "failed to open input file `" << filename
-                    << '\'' << messaget::eom;
-        throw 0;
+        throw system_exceptiont(
+          "failed to open input file `" + filename + '\'');
       }
 
       language_filet &lf=add_language_file(filename);
@@ -132,23 +155,19 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
 
       if(lf.language==nullptr)
       {
-        source_locationt location;
-        location.set_file(filename);
-        msg.error().source_location=location;
-        msg.error() << "failed to figure out type of file" << messaget::eom;
-        throw 0;
+        throw invalid_source_file_exceptiont(
+          "failed to figure out type of file `" + filename + '\'');
       }
 
       languaget &language=*lf.language;
       language.set_message_handler(message_handler);
-      language.get_language_options(cmdline);
+      language.set_language_options(options);
 
       msg.status() << "Parsing " << filename << messaget::eom;
 
       if(language.parse(infile, filename))
       {
-        msg.error() << "PARSING ERROR" << messaget::eom;
-        throw 0;
+        throw invalid_source_file_exceptiont("PARSING ERROR");
       }
 
       lf.get_modules();
@@ -158,8 +177,7 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
 
     if(language_files.typecheck(symbol_table))
     {
-      msg.error() << "CONVERSION ERROR" << messaget::eom;
-      throw 0;
+      throw invalid_source_file_exceptiont("CONVERSION ERROR");
     }
   }
 
@@ -168,7 +186,12 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
     msg.status() << "Reading GOTO program from file" << messaget::eom;
 
     if(read_object_and_link(file, *goto_model, message_handler))
-      throw 0;
+    {
+      source_locationt source_location;
+      source_location.set_file(file);
+      throw incorrect_goto_program_exceptiont(
+        "failed to read/link goto model", source_location);
+    }
   }
 
   bool binaries_provided_start =
@@ -176,25 +199,16 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
 
   bool entry_point_generation_failed=false;
 
-  if(binaries_provided_start && cmdline.isset("function"))
+  if(binaries_provided_start && options.is_set("function"))
   {
     // Rebuild the entry-point, using the language annotation of the
     // existing __CPROVER_start function:
     rebuild_lazy_goto_start_functiont rebuild_existing_start(
-      cmdline, *this, message_handler);
+      options, *this, message_handler);
     entry_point_generation_failed=rebuild_existing_start();
   }
   else if(!binaries_provided_start)
   {
-    // Unsure of the rationale for only generating stubs when there are no
-    // GOTO binaries in play; simply mirroring old code in language_uit here.
-    if(binaries.empty())
-    {
-      // Enable/disable stub generation for opaque methods
-      bool stubs_enabled=cmdline.isset("generate-opaque-stubs");
-      language_files.set_should_generate_opaque_method_stubs(stubs_enabled);
-    }
-
     // Allow all language front-ends to try to provide the user-specified
     // (--function) entry-point, or some language-specific default:
     entry_point_generation_failed=
@@ -203,8 +217,7 @@ void lazy_goto_modelt::initialize(const cmdlinet &cmdline)
 
   if(entry_point_generation_failed)
   {
-    msg.error() << "SUPPORT FUNCTION GENERATION ERROR" << messaget::eom;
-    throw 0;
+    throw invalid_source_file_exceptiont("SUPPORT FUNCTION GENERATION ERROR");
   }
 
   // stupid hack
@@ -243,16 +256,16 @@ void lazy_goto_modelt::load_all_functions() const
 bool lazy_goto_modelt::finalize()
 {
   messaget msg(message_handler);
-  journalling_symbol_tablet symbol_table=
-    journalling_symbol_tablet::wrap(this->symbol_table);
-  if(language_files.final(symbol_table))
+  journalling_symbol_tablet j_symbol_table =
+    journalling_symbol_tablet::wrap(symbol_table);
+  if(language_files.final(j_symbol_table))
   {
     msg.error() << "CONVERSION ERROR" << messaget::eom;
     return true;
   }
-  for(const irep_idt &updated_symbol_id : symbol_table.get_updated())
+  for(const irep_idt &updated_symbol_id : j_symbol_table.get_updated())
   {
-    if(symbol_table.lookup_ref(updated_symbol_id).is_function())
+    if(j_symbol_table.lookup_ref(updated_symbol_id).is_function())
     {
       // Re-convert any that already exist
       goto_functions.unload(updated_symbol_id);

@@ -306,16 +306,19 @@ public:
     const idt &identifier,
     const std::string &suffix);
 
-  /// Clears value set (not used in the CBMC repository)
-  void make_any()
-  {
-    values.clear();
-  }
-
   void clear()
   {
     values.clear();
   }
+
+  /// Finds an entry in this value-set. The interface differs from get_entry
+  /// because get_value_set_rec wants to check for a struct's first component
+  /// before stripping the suffix as is done in get_entry.
+  /// \param id: identifier to find.
+  /// \return a constant pointer to an entry if found, or null otherwise.
+  ///   Note the pointer may be invalidated by insert operations, including
+  ///   get_entry.
+  const entryt *find_entry(const idt &id) const;
 
   /// Gets or inserts an entry in this value-set.
   /// \param e: entry to find. Its `id` and `suffix` fields will be used
@@ -484,13 +487,6 @@ protected:
     const exprt &src,
     exprt &dest) const;
 
-  /// Marks objects that may be pointed to by `op` as maybe-invalid
-  /// \param op: pointer to invalidate
-  /// \param ns: global namespace
-  void do_free(
-    const exprt &op,
-    const namespacet &ns);
-
   /// Extracts a member from a struct- or union-typed expression.
   /// Usually that means making a `member_exprt`, but this can shortcut
   /// extracting members from constants or with-expressions.
@@ -536,6 +532,9 @@ protected:
     const namespacet &,
     object_mapt &rhs_values) const
   {
+    // unused parameters
+    (void)rhs;
+    (void)rhs_values;
   }
 
   /// Subclass customisation point to apply global side-effects to this domain,
@@ -547,6 +546,9 @@ protected:
     const exprt &rhs,
     const namespacet &)
   {
+    // unused parameters
+    (void)lhs;
+    (void)rhs;
   }
 };
 

@@ -30,7 +30,7 @@ void UserDefinedSummaryt::dump_list_templates(
     const optionst & options,
     unsigned int unwind,     
     std::string logic,    
-    const std::string& summary_file)
+    const std::string& summary_file, ui_message_handlert & ui_message_handler)
 {
 
     // Created decider - basic only
@@ -55,16 +55,15 @@ void UserDefinedSummaryt::dump_list_templates(
     };
     assertion_infot ass_info;
     omega.set_initial_precision(ass_info, has_summary);
-
+    
     partitioning_target_equationt equation (ns, summary_store, true);
 
     std::unique_ptr<path_storaget> worklist;
-    ui_message_handlert message_handler;
-    message_handler.set_verbosity(messaget::M_STATISTICS);
-
+    ui_message_handler.set_verbosity(messaget::M_STATISTICS);
+    //guard_managert guard_manager; //since CBMC5.12
     symex_assertion_sumt symex(
             goto_functions, omega.get_call_tree_root(), options, *worklist, ns.get_symbol_table(),
-            equation, message_handler, goto_program, INT_MAX,
+            equation, ui_message_handler, goto_program, INT_MAX,
             true, true, unwind,
             options.get_bool_option("partial-loops"));
 

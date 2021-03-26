@@ -3,6 +3,7 @@ SRC = goto_analyzer_main.cpp \
       taint_analysis.cpp \
       taint_parser.cpp \
       unreachable_instructions.cpp \
+      show_on_source.cpp \
       static_show_domain.cpp \
       static_simplifier.cpp \
       static_verifier.cpp \
@@ -12,12 +13,14 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../cpp/cpp$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
+      ../goto-checker/goto-checker$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
       ../analyses/analyses$(LIBEXT) \
       ../pointer-analysis/pointer-analysis$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
       ../json/json$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
+      ../solvers/solvers$(LIBEXT) \
       ../util/util$(LIBEXT) \
       # Empty last line
 

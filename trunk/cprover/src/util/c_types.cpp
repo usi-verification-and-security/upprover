@@ -122,13 +122,13 @@ bitvector_typet char_type()
   {
     unsignedbv_typet result(config.ansi_c.char_width);
     result.set(ID_C_c_type, ID_char);
-    return result;
+    return std::move(result);
   }
   else
   {
     signedbv_typet result(config.ansi_c.char_width);
     result.set(ID_C_c_type, ID_char);
-    return result;
+    return std::move(result);
   }
 }
 
@@ -152,13 +152,13 @@ bitvector_typet wchar_t_type()
   {
     unsignedbv_typet result(config.ansi_c.wchar_t_width);
     result.set(ID_C_c_type, ID_wchar_t);
-    return result;
+    return std::move(result);
   }
   else
   {
     signedbv_typet result(config.ansi_c.wchar_t_width);
     result.set(ID_C_c_type, ID_wchar_t);
-    return result;
+    return std::move(result);
   }
 }
 
@@ -182,7 +182,7 @@ unsignedbv_typet char32_t_type()
   return result;
 }
 
-bitvector_typet float_type()
+floatbv_typet float_type()
 {
   floatbv_typet result=
     ieee_float_spect::single_precision().to_type();
@@ -190,7 +190,7 @@ bitvector_typet float_type()
   return result;
 }
 
-bitvector_typet double_type()
+floatbv_typet double_type()
 {
   floatbv_typet result=
     ieee_float_spect::double_precision().to_type();
@@ -198,7 +198,7 @@ bitvector_typet double_type()
   return result;
 }
 
-bitvector_typet long_double_type()
+floatbv_typet long_double_type()
 {
   floatbv_typet result;
   if(config.ansi_c.long_double_width==128)

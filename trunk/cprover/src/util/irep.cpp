@@ -13,7 +13,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <ostream>
 
-#include "invariant.h"
 #include "string2int.h"
 #include "string_hash.h"
 #include "irep_hash.h"
@@ -689,4 +688,9 @@ std::string irept::pretty(unsigned indent, unsigned max_indent) const
   }
 
   return result;
+}
+
+irep_pretty_diagnosticst::irep_pretty_diagnosticst(const irept &irep)
+  : irep(irep)
+{
 }

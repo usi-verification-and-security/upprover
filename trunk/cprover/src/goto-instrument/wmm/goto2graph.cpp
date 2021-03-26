@@ -145,14 +145,11 @@ unsigned instrumentert::goto2graph_cfg(
 }
 
 void instrumentert::cfg_visitort::visit_cfg_function(
-    /* value_sets and options */
     value_setst &value_sets,
     memory_modelt model,
     bool no_dependencies,
     loop_strategyt replicate_body,
-    /* function to analyse */
     const irep_idt &function,
-    /* outcoming edges */
     std::set<instrumentert::cfg_visitort::nodet> &ending_vertex)
 {
   /* flow: egraph */
@@ -210,9 +207,13 @@ void instrumentert::cfg_visitort::visit_cfg_function(
     /* a:=b -o-> Rb -po-> Wa */
     else if(instruction.is_assign())
     {
-      visit_cfg_assign(value_sets, ns, i_it, no_dependencies
+      visit_cfg_assign(
+        value_sets,
+        i_it,
+        no_dependencies
 #ifdef LOCAL_MAY
-        , local_may
+        ,
+        local_may
 #endif
       ); // NOLINT(whitespace/parens)
     }
@@ -783,7 +784,6 @@ void instrumentert::cfg_visitort::visit_cfg_asm_fence(
 
 void instrumentert::cfg_visitort::visit_cfg_assign(
   value_setst &value_sets,
-  namespacet &ns,
   goto_programt::instructionst::iterator &i_it,
   bool no_dependencies
 #ifdef LOCAL_MAY
@@ -1517,7 +1517,7 @@ void instrumentert::print_outputs(memory_modelt model, bool hide_internals)
   table.close();
 }
 
-/// Note: can be distributed (#define DISTRIBUTED)
+/// Note: can be distributed (\#define DISTRIBUTED)
 #if 1
 // #ifdef _WIN32
 void instrumentert::collect_cycles_by_SCCs(memory_modelt model)

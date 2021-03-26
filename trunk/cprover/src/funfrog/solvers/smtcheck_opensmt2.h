@@ -16,6 +16,7 @@ Module: Wrapper for OpenSMT2
 #include <solvers/prop/literal.h>
 
 #include <map>
+#include <memory>
 #include <funfrog/summary_store_fwd.h>
 
 class smt_itpt;
@@ -28,14 +29,14 @@ class simple_interpretert{
 
     class LetFrame {
     private:
-        Map<const char*, PTRef, StringHash, Equal<const char*> > *frameMap;
+        std::unique_ptr<Map<const char*, PTRef, StringHash, Equal<const char*> >> frameMap;
     public:
         LetFrame() : frameMap(new Map<const char*, PTRef, StringHash, Equal<const char*>>()) {}
-        ~LetFrame() { delete frameMap; }
+        ~LetFrame() = default;
         LetFrame(const LetFrame & other) = delete;
         LetFrame& operator=(const LetFrame & other) = delete;
-        LetFrame(LetFrame && other) = delete;
-        LetFrame& operator=(LetFrame && other) = delete;
+        LetFrame(LetFrame && other) = default;
+        LetFrame& operator=(LetFrame && other) = default;
         bool        contains(const char* s) const { return frameMap->has(s); }
         void        insert  (const char* key, PTRef value) { frameMap->insert(key, value); }
         PTRef       operator[] (const char* s) { return (*frameMap)[s]; }
@@ -55,9 +56,9 @@ public:
 
     std::vector<SummaryTemplate>& getTemplates() { return templates; }
 private:
-    PTRef parseTerm(const ASTNode& term, vec<LetFrame>& let_branch);
+    PTRef parseTerm(const ASTNode& term, std::vector<LetFrame>& let_branch);
     bool  addLetName(const char* s, const PTRef tr, LetFrame& frame);
-    PTRef letNameResolve(const char* s, const vec<LetFrame>& frame) const;
+    PTRef letNameResolve(const char* s, const std::vector<LetFrame>& frame) const;
     char* buildSortName(ASTNode& n);
 
 };

@@ -82,19 +82,23 @@ macro(add_if_library target name)
     endif()
 endmacro(add_if_library)
 
+#HiFrog TEST
 if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
+
 
 add_subdirectory(analyses)
 add_subdirectory(ansi-c)
 add_subdirectory(assembler)
 add_subdirectory(big-int)
 add_subdirectory(cpp)
+add_subdirectory(goto-checker)
 add_subdirectory(goto-programs)
 add_subdirectory(goto-symex)
 add_subdirectory(jsil)
 add_subdirectory(json)
+add_subdirectory(json-symtab-language)
 add_subdirectory(langapi)
 add_subdirectory(linking)
 add_subdirectory(pointer-analysis)
@@ -108,4 +112,17 @@ add_subdirectory(goto-instrument)
 add_subdirectory(goto-analyzer)
 #add_subdirectory(goto-diff)
 
+
 add_subdirectory(funfrog)
+
+
+
+
+
+
+
+
+
+
+
+

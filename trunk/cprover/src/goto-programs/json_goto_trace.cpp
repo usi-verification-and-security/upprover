@@ -77,7 +77,10 @@ void convert_decl(
   const jsont &json_location = conversion_dependencies.location;
   const namespacet &ns = conversion_dependencies.ns;
 
-  irep_idt identifier = step.lhs_object.get_identifier();
+  auto lhs_object=step.get_lhs_object();
+
+  irep_idt identifier =
+    lhs_object.has_value()?lhs_object->get_identifier():irep_idt();
 
   json_assignment["stepType"] = json_stringt("assignment");
 
@@ -274,10 +277,14 @@ void convert_return(
   json_call_return["internal"] = jsont::json_boolean(step.internal);
   json_call_return["thread"] = json_numbert(std::to_string(step.thread_nr));
 
-  const symbolt &symbol = ns.lookup(step.function_identifier);
+  const irep_idt &function_identifier =
+    (step.type == goto_trace_stept::typet::FUNCTION_CALL) ? step.called_function
+                                                          : step.function;
+
+  const symbolt &symbol = ns.lookup(function_identifier);
   json_objectt &json_function = json_call_return["function"].make_object();
   json_function["displayName"] = json_stringt(symbol.display_name());
-  json_function["identifier"] = json_stringt(step.function_identifier);
+  json_function["identifier"] = json_stringt(function_identifier);
   json_function["sourceLocation"] = json(symbol.location);
 
   if(!location.is_null())

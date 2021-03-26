@@ -29,8 +29,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <langapi/language_util.h>
 
-#include "bv_cbmc.h"
-
 class bmc_covert:
   public cover_goalst::observert,
   public messaget
@@ -221,7 +219,7 @@ bool bmc_covert::operator()()
   {
     if(it->is_assert())
     {
-      assert(it->source.pc->is_assert());
+      PRECONDITION(it->source.pc->is_assert());
       const and_exprt c(
         literal_exprt(it->guard_literal), literal_exprt(!it->cond_literal));
       literalt l_c=solver.convert(c);
@@ -241,7 +239,9 @@ bool bmc_covert::operator()()
     cover_goals.add(l);
   }
 
-  assert(cover_goals.size()==goal_map.size());
+  INVARIANT(cover_goals.size() == goal_map.size(),
+    "we add coverage for each goal");
+
 
   status() << "Running " << solver.decision_procedure_text() << eom;
 
@@ -261,7 +261,7 @@ bool bmc_covert::operator()()
     if(g.second.satisfied)
       goals_covered++;
 
-  switch(bmc.ui)
+  switch(bmc.ui_message_handler.get_ui())
   {
     case ui_message_handlert::uit::PLAIN:
     {
@@ -341,8 +341,10 @@ bool bmc_covert::operator()()
 
     case ui_message_handlert::uit::JSON_UI:
     {
+      if(status().tellp() > 0)
+        status() << eom; // force end of previous message
       json_stream_objectt &json_result =
-        status().json_stream().push_back_stream_object();
+        bmc.ui_message_handler.get_json_stream().push_back_stream_object();
       for(const auto &goal_pair : goal_map)
       {
         const goalt &goal=goal_pair.second;
@@ -406,7 +408,7 @@ bool bmc_covert::operator()()
                << (cover_goals.iterations()==1?"":"s")
                << eom;
 
-  if(bmc.ui==ui_message_handlert::uit::PLAIN)
+  if(bmc.ui_message_handler.get_ui() == ui_message_handlert::uit::PLAIN)
   {
     result() << "Test suite:" << '\n';
 

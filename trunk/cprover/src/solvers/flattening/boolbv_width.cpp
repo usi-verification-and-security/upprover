@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <algorithm>
 
 #include <util/arith_tools.h>
+#include <util/exception_utils.h>
 #include <util/invariant.h>
 #include <util/std_types.h>
 
@@ -79,39 +80,35 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   else if(type_id==ID_c_bool)
   {
     entry.total_width=to_c_bool_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_signedbv)
   {
     entry.total_width=to_signedbv_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_unsignedbv)
   {
     entry.total_width=to_unsignedbv_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_floatbv)
   {
     entry.total_width=to_floatbv_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_fixedbv)
   {
     entry.total_width=to_fixedbv_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_bv)
   {
     entry.total_width=to_bv_type(type).get_width();
-    assert(entry.total_width!=0);
   }
   else if(type_id==ID_verilog_signedbv ||
           type_id==ID_verilog_unsignedbv)
   {
     // we encode with two bits
-    entry.total_width = type.get_size_t(ID_width) * 2;
-    assert(entry.total_width!=0);
+    std::size_t size = type.get_size_t(ID_width);
+    DATA_INVARIANT(
+      size > 0, "verilog bitvector width shall be greater than zero");
+    entry.total_width = size * 2;
   }
   else if(type_id==ID_range)
   {
@@ -123,7 +120,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
     if(size>=1)
     {
       entry.total_width = address_bits(size);
-      assert(entry.total_width!=0);
+      CHECK_RETURN(entry.total_width > 0);
     }
   }
   else if(type_id==ID_array)
@@ -131,20 +128,20 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
     const array_typet &array_type=to_array_type(type);
     std::size_t sub_width=operator()(array_type.subtype());
 
-    mp_integer array_size;
+    const auto array_size = numeric_cast<mp_integer>(array_type.size());
 
-    if(to_integer(array_type.size(), array_size))
+    if(!array_size.has_value())
     {
       // we can still use the theory of arrays for this
       entry.total_width=0;
     }
     else
     {
-      mp_integer total=array_size*sub_width;
+      mp_integer total = *array_size * sub_width;
       if(total>(1<<30)) // realistic limit
-        throw "array too large for flattening";
+        throw analysis_exceptiont("array too large for flattening");
 
-      entry.total_width=integer2unsigned(total);
+      entry.total_width = numeric_cast_v<std::size_t>(total);
     }
   }
   else if(type_id==ID_vector)
@@ -152,26 +149,18 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
     const vector_typet &vector_type=to_vector_type(type);
     std::size_t sub_width=operator()(vector_type.subtype());
 
-    mp_integer vector_size;
+    const auto vector_size = numeric_cast_v<mp_integer>(vector_type.size());
 
-    if(to_integer(vector_type.size(), vector_size))
-    {
-      // we can still use the theory of arrays for this
-      entry.total_width=0;
-    }
-    else
-    {
-      mp_integer total=vector_size*sub_width;
-      if(total>(1<<30)) // realistic limit
-        throw "vector too large for flattening";
+    mp_integer total = vector_size * sub_width;
+    if(total > (1 << 30)) // realistic limit
+      throw analysis_exceptiont("vector too large for flattening");
 
-      entry.total_width=integer2unsigned(vector_size*sub_width);
-    }
+    entry.total_width = numeric_cast_v<std::size_t>(vector_size * sub_width);
   }
   else if(type_id==ID_complex)
   {
-    std::size_t sub_width=operator()(type.subtype());
-    entry.total_width=integer2unsigned(2*sub_width);
+    const mp_integer sub_width = operator()(type.subtype());
+    entry.total_width = numeric_cast_v<std::size_t>(2 * sub_width);
   }
   else if(type_id==ID_code)
   {
@@ -181,13 +170,13 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
     // get number of necessary bits
     std::size_t size=to_enumeration_type(type).elements().size();
     entry.total_width = address_bits(size);
-    assert(entry.total_width!=0);
+    CHECK_RETURN(entry.total_width > 0);
   }
   else if(type_id==ID_c_enum)
   {
     // these have a subtype
     entry.total_width = type.subtype().get_size_t(ID_width);
-    assert(entry.total_width!=0);
+    CHECK_RETURN(entry.total_width > 0);
   }
   else if(type_id==ID_incomplete_c_enum)
   {

@@ -1,5 +1,8 @@
 SRC = auto_objects.cpp \
       build_goto_trace.cpp \
+      expr_skeleton.cpp \
+      field_sensitivity.cpp \
+      goto_state.cpp \
       goto_symex.cpp \
       goto_symex_state.cpp \
       memory_model.cpp \
@@ -10,9 +13,11 @@ SRC = auto_objects.cpp \
       path_storage.cpp \
       postcondition.cpp \
       precondition.cpp \
-      rewrite_union.cpp \
+      renaming_level.cpp \
+      show_program.cpp \
+      show_vcc.cpp \
       slice.cpp \
-      slice_by_trace.cpp \
+      ssa_step.cpp \
       symex_assign.cpp \
       symex_atomic_section.cpp \
       symex_builtin_functions.cpp \
@@ -30,6 +35,7 @@ SRC = auto_objects.cpp \
       symex_target.cpp \
       symex_target_equation.cpp \
       symex_throw.cpp \
+      complexity_limiter.cpp \
       # Empty last line
 
 INCLUDES= -I ..

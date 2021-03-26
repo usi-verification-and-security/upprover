@@ -176,8 +176,7 @@ void cpp_typecheckt::static_and_dynamic_initialization()
     {
       // This will be a constructor call,
       // which we execute.
-      assert(symbol.value.id()==ID_code);
-      init_block.copy_to_operands(symbol.value);
+      init_block.add(to_code(symbol.value));
 
       // Make it nil to get zero initialization by
       // __CPROVER_initialize
@@ -188,11 +187,10 @@ void cpp_typecheckt::static_and_dynamic_initialization()
       // use default constructor
       exprt::operandst ops;
 
-      codet call=
-        cpp_constructor(symbol.location, symbol_expr, ops);
+      auto call = cpp_constructor(symbol.location, symbol_expr, ops);
 
-      if(call.is_not_nil())
-        init_block.move_to_operands(call);
+      if(call.has_value())
+        init_block.add(call.value());
     }
   }
 
@@ -208,8 +206,7 @@ void cpp_typecheckt::static_and_dynamic_initialization()
   init_symbol.value.swap(init_block);
   init_symbol.mode=ID_cpp;
   init_symbol.module=module;
-  init_symbol.type=code_typet();
-  init_symbol.type.add(ID_return_type)=typet(ID_constructor);
+  init_symbol.type = code_typet({}, typet(ID_constructor));
   init_symbol.is_type=false;
   init_symbol.is_macro=false;
 
@@ -230,11 +227,12 @@ void cpp_typecheckt::do_not_typechecked()
     {
       const symbolt &symbol=named_symbol.second;
 
-      if(symbol.value.id()=="cpp_not_typechecked" &&
-         symbol.value.get_bool("is_used"))
+      if(
+        symbol.value.id() == ID_cpp_not_typechecked &&
+        symbol.value.get_bool(ID_is_used))
       {
         assert(symbol.type.id()==ID_code);
-        symbolt &symbol=*symbol_table.get_writeable(named_symbol.first);
+        exprt value = symbol.value;
 
         if(symbol.base_name=="operator=")
         {
@@ -242,19 +240,21 @@ void cpp_typecheckt::do_not_typechecked()
           declarator.add_source_location() = symbol.location;
           default_assignop_value(
             lookup(symbol.type.get(ID_C_member_name)), declarator);
-          symbol.value.swap(declarator.value());
-          convert_function(symbol);
+          value.swap(declarator.value());
           cont=true;
         }
         else if(symbol.value.operands().size()==1)
         {
-          exprt tmp = symbol.value.op0();
-          symbol.value.swap(tmp);
-          convert_function(symbol);
+          value = symbol.value.op0();
           cont=true;
         }
         else
           UNREACHABLE; // Don't know what to do!
+
+        symbolt &writable_symbol =
+          *symbol_table.get_writeable(named_symbol.first);
+        writable_symbol.value.swap(value);
+        convert_function(writable_symbol);
       }
     }
   }
@@ -262,7 +262,7 @@ void cpp_typecheckt::do_not_typechecked()
 
   for(const auto &named_symbol : symbol_table.symbols)
   {
-    if(named_symbol.second.value.id()=="cpp_not_typechecked")
+    if(named_symbol.second.value.id() == ID_cpp_not_typechecked)
       symbol_table.get_writeable_ref(named_symbol.first).value.make_nil();
   }
 }

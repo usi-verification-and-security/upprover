@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "namespace.h"
 #include "pointer_offset_size.h"
 #include "std_expr.h"
+#include "type_eq.h"
 
 bool simplify_exprt::simplify_member(exprt &expr)
 {
@@ -152,16 +153,20 @@ bool simplify_exprt::simplify_member(exprt &expr)
       const struct_typet::componentt &component=
         struct_type.get_component(component_name);
 
-      if(component.is_nil() || component.type().id()==ID_c_bit_field)
+      if(
+        component.is_nil() || component.type().id() == ID_c_bit_field ||
+        component.type().id() == ID_bool)
+      {
         return true;
+      }
 
       // add member offset to index
-      mp_integer offset_int=member_offset(struct_type, component_name, ns);
-      if(offset_int==-1)
+      auto offset_int = member_offset(struct_type, component_name, ns);
+      if(!offset_int.has_value())
         return true;
 
       const exprt &struct_offset=op.op1();
-      exprt member_offset=from_integer(offset_int, struct_offset.type());
+      exprt member_offset = from_integer(*offset_int, struct_offset.type());
       plus_exprt final_offset(struct_offset, member_offset);
       simplify_node(final_offset);
 
@@ -171,6 +176,25 @@ bool simplify_exprt::simplify_member(exprt &expr)
       simplify_rec(expr);
 
       return false;
+    }
+    else if(op_type.id() == ID_union)
+    {
+      // rewrite byte_extract(X, 0).member to X
+      // if the type of X is that of the member
+      const auto &byte_extract_expr = to_byte_extract_expr(op);
+      if(byte_extract_expr.offset().is_zero())
+      {
+        const union_typet &union_type = to_union_type(op_type);
+        const typet &subtype = union_type.component_type(component_name);
+
+        if(subtype == byte_extract_expr.op().type())
+        {
+          exprt tmp = byte_extract_expr.op();
+          expr.swap(tmp);
+
+          return false;
+        }
+      }
     }
   }
   else if(op.id()==ID_union && op_type.id()==ID_union)
@@ -184,18 +208,18 @@ bool simplify_exprt::simplify_member(exprt &expr)
     }
 
     // need to convert!
-    mp_integer target_size=
-      pointer_offset_size(expr.type(), ns);
+    auto target_size = pointer_offset_size(expr.type(), ns);
 
-    if(target_size!=-1)
+    if(target_size.has_value())
     {
-      mp_integer target_bits=target_size*8;
+      mp_integer target_bits = target_size.value() * 8;
       const auto bits=expr2bits(op, true);
 
       if(bits.has_value() &&
          mp_integer(bits->size())>=target_bits)
       {
-        std::string bits_cut=std::string(*bits, 0, integer2size_t(target_bits));
+        std::string bits_cut =
+          std::string(*bits, 0, numeric_cast_v<std::size_t>(target_bits));
 
         exprt tmp=bits2expr(bits_cut, expr.type(), true);
 
@@ -216,6 +240,37 @@ bool simplify_exprt::simplify_member(exprt &expr)
       expr.op0() = op.op0();
       simplify_member(expr);
       return false;
+    }
+
+    // Try to translate into an equivalent member (perhaps nested) of the type
+    // being cast (for example, this might turn ((struct A)x).field1 into
+    // x.substruct.othersubstruct.field2, if field1 and field2 have the same
+    // type and offset with respect to x.
+    if(op_type.id() == ID_struct)
+    {
+      optionalt<mp_integer> requested_offset =
+        member_offset(to_struct_type(op_type), component_name, ns);
+      if(requested_offset.has_value())
+      {
+        exprt equivalent_member = get_subexpression_at_offset(
+          op.op0(), *requested_offset, expr.type(), ns);
+
+        // Guess: turning this into a byte-extract operation is not really an
+        // optimisation.
+        // The type_eq check is because get_subexpression_at_offset uses
+        // base_type_eq, whereas in the context of a simplifier we should not
+        // change the type of the expression.
+        if(
+          equivalent_member.is_not_nil() &&
+          equivalent_member.id() != ID_byte_extract_little_endian &&
+          equivalent_member.id() != ID_byte_extract_big_endian &&
+          type_eq(equivalent_member.type(), expr.type(), ns))
+        {
+          expr = equivalent_member;
+          simplify_rec(expr);
+          return false;
+        }
+      }
     }
   }
   else if(op.id()==ID_if)

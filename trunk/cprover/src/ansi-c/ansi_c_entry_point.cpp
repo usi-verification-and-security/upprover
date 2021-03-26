@@ -22,7 +22,8 @@ Author: Daniel Kroening, kroening@kroening.com
 exprt::operandst build_function_environment(
   const code_typet::parameterst &parameters,
   code_blockt &init_code,
-  symbol_tablet &symbol_table)
+  symbol_tablet &symbol_table,
+  const c_object_factory_parameterst &object_factory_parameters)
 {
   exprt::operandst main_arguments;
   main_arguments.resize(parameters.size());
@@ -35,14 +36,13 @@ exprt::operandst build_function_environment(
     const irep_idt base_name=p.get_base_name().empty()?
       ("argument#"+std::to_string(param_number)):p.get_base_name();
 
-    main_arguments[param_number]=
-      c_nondet_symbol_factory(
-        init_code,
-        symbol_table,
-        base_name,
-        p.type(),
-        p.source_location(),
-        true);
+    main_arguments[param_number] = c_nondet_symbol_factory(
+      init_code,
+      symbol_table,
+      base_name,
+      p.type(),
+      p.source_location(),
+      object_factory_parameters);
   }
 
   return main_arguments;
@@ -73,7 +73,7 @@ void record_function_outputs(
     output.op1()=return_symbol.symbol_expr();
     output.add_source_location()=function.location;
 
-    init_code.move_to_operands(output);
+    init_code.add(std::move(output));
   }
 
   #if 0
@@ -101,7 +101,7 @@ void record_function_outputs(
       output.op1()=symbol.symbol_expr();
       output.add_source_location()=p.source_location();
 
-      init_code.move_to_operands(output);
+      init_code.add(std::move(output));
     }
 
     i++;
@@ -111,7 +111,8 @@ void record_function_outputs(
 
 bool ansi_c_entry_point(
   symbol_tablet &symbol_table,
-  message_handlert &message_handler)
+  message_handlert &message_handler,
+  const c_object_factory_parameterst &object_factory_parameters)
 {
   // check if entry point is already there
   if(symbol_table.symbols.find(goto_functionst::entry_point())!=
@@ -177,12 +178,11 @@ bool ansi_c_entry_point(
     return false; // give up
   }
 
-  if(static_lifetime_init(symbol_table, symbol.location, message_handler))
-    return true;
+  static_lifetime_init(symbol_table, symbol.location);
 
-  return generate_ansi_c_start_function(symbol, symbol_table, message_handler);
+  return generate_ansi_c_start_function(
+    symbol, symbol_table, message_handler, object_factory_parameters);
 }
-
 
 /// Generate a _start function for a specific function
 /// \param symbol: The symbol for the function that should be
@@ -190,14 +190,20 @@ bool ansi_c_entry_point(
 /// \param symbol_table: The symbol table for the program. The new _start
 ///   function symbol will be added to this table
 /// \param message_handler: The message handler
+/// \param object_factory_parameters configuration parameters for the object
+///   factory
 /// \return Returns false if the _start method was generated correctly
 bool generate_ansi_c_start_function(
   const symbolt &symbol,
   symbol_tablet &symbol_table,
-  message_handlert &message_handler)
+  message_handlert &message_handler,
+  const c_object_factory_parameterst &object_factory_parameters)
 {
   PRECONDITION(!symbol.value.is_nil());
   code_blockt init_code;
+
+  // add 'HIDE' label
+  init_code.add(code_labelt(CPROVER_PREFIX "HIDE", code_skipt()));
 
   // build call to initialization function
 
@@ -213,19 +219,16 @@ bool generate_ansi_c_start_function(
       return true;
     }
 
-    code_function_callt call_init;
-    call_init.lhs().make_nil();
+    code_function_callt call_init(init_it->second.symbol_expr());
     call_init.add_source_location()=symbol.location;
-    call_init.function()=init_it->second.symbol_expr();
 
-    init_code.move_to_operands(call_init);
+    init_code.add(std::move(call_init));
   }
 
   // build call to main function
 
-  code_function_callt call_main;
+  code_function_callt call_main(symbol.symbol_expr());
   call_main.add_source_location()=symbol.location;
-  call_main.function()=symbol.symbol_expr();
   call_main.function().add_source_location()=symbol.location;
 
   if(to_code_type(symbol.type).return_type()!=empty_typet())
@@ -264,7 +267,7 @@ bool generate_ansi_c_start_function(
         const binary_relation_exprt ge(argc_symbol.symbol_expr(), ID_ge, one);
 
         code_assumet assumption(ge);
-        init_code.move_to_operands(assumption);
+        init_code.add(std::move(assumption));
       }
 
       {
@@ -278,7 +281,7 @@ bool generate_ansi_c_start_function(
           argc_symbol.symbol_expr(), ID_le, bound_expr);
 
         code_assumet assumption(le);
-        init_code.move_to_operands(assumption);
+        init_code.add(std::move(assumption));
       }
 
       {
@@ -288,7 +291,7 @@ bool generate_ansi_c_start_function(
         input.op0()=address_of_exprt(
           index_exprt(string_constantt("argc"), from_integer(0, index_type())));
         input.op1()=argc_symbol.symbol_expr();
-        init_code.move_to_operands(input);
+        init_code.add(std::move(input));
       }
 
       if(parameters.size()==3)
@@ -315,7 +318,7 @@ bool generate_ansi_c_start_function(
           envp_size_symbol.symbol_expr(), ID_le, max_minus_one);
 
         code_assumet assumption(le);
-        init_code.move_to_operands(assumption);
+        init_code.add(std::move(assumption));
       }
 
       {
@@ -350,7 +353,7 @@ bool generate_ansi_c_start_function(
         // disable bounds check on that one
         index_expr.set("bounds_check", false);
 
-        init_code.copy_to_operands(code_assignt(index_expr, null));
+        init_code.add(code_assignt(index_expr, null));
       }
 
       if(parameters.size()==3)
@@ -370,7 +373,7 @@ bool generate_ansi_c_start_function(
         const equal_exprt is_null(index_expr, null);
 
         code_assumet assumption2(is_null);
-        init_code.move_to_operands(assumption2);
+        init_code.add(std::move(assumption2));
       }
 
       {
@@ -427,14 +430,11 @@ bool generate_ansi_c_start_function(
   else
   {
     // produce nondet arguments
-    call_main.arguments()=
-      build_function_environment(
-        parameters,
-        init_code,
-        symbol_table);
+    call_main.arguments() = build_function_environment(
+      parameters, init_code, symbol_table, object_factory_parameters);
   }
 
-  init_code.move_to_operands(call_main);
+  init_code.add(std::move(call_main));
 
   // TODO: add read/modified (recursively in call graph) globals as INPUT/OUTPUT
 

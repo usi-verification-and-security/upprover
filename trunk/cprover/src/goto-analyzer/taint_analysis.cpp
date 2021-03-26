@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 #include <fstream>
 
+#include <util/invariant.h>
 #include <util/json.h>
 #include <util/prefix.h>
 #include <util/simplify_expr.h>
@@ -148,7 +149,9 @@ void taint_analysist::instrument(
               case taint_parse_treet::rulet::THIS:
                 if(have_this)
                 {
-                  assert(!function_call.arguments().empty());
+                  DATA_INVARIANT(
+                    !function_call.arguments().empty(),
+                    "`this` implies at least one argument in function call");
                   where=function_call.arguments()[0];
                 }
                 break;
@@ -281,8 +284,7 @@ bool taint_analysist::operator()(
            f_it->first!=goto_functionst::entry_point())
         {
           goto_programt::targett t=calls.add_instruction();
-          code_function_callt call;
-          call.function()=ns.lookup(f_it->first).symbol_expr();
+          const code_function_callt call(ns.lookup(f_it->first).symbol_expr());
           t->make_function_call(call);
           calls.add_instruction()->make_goto(end.instructions.begin());
           goto_programt::targett g=gotos.add_instruction();

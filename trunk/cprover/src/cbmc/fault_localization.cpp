@@ -81,7 +81,7 @@ fault_localizationt::get_failed_property()
 bool fault_localizationt::check(const lpointst &lpoints,
                                 const lpoints_valuet &value)
 {
-  assert(value.size()==lpoints.size());
+  PRECONDITION(value.size() == lpoints.size());
   bvt assumptions;
   lpoints_valuet::const_iterator v_it=value.begin();
   for(const auto &l : lpoints)
@@ -142,7 +142,7 @@ void fault_localizationt::run(irep_idt goal_id)
 {
   // find failed property
   failed=get_failed_property();
-  assert(failed!=bmc.equation.SSA_steps.end());
+  PRECONDITION(failed != bmc.equation.SSA_steps.end());
 
   if(goal_id==ID_nil)
     goal_id=failed->source.pc->source_location.get_property_id();
@@ -280,7 +280,7 @@ safety_checkert::resultt fault_localizationt::stop_on_fail()
     {
       if(options.get_bool_option("beautify"))
         counterexample_beautificationt()(
-          dynamic_cast<bv_cbmct &>(bmc.prop_conv), bmc.equation);
+          dynamic_cast<boolbvt &>(bmc.prop_conv), bmc.equation);
 
       bmc.error_trace();
     }
@@ -288,7 +288,7 @@ safety_checkert::resultt fault_localizationt::stop_on_fail()
     // localize faults
     run(ID_nil);
 
-    switch(bmc.ui)
+    switch(bmc.ui_message_handler.get_ui())
     {
     case ui_message_handlert::uit::PLAIN:
     {
@@ -353,7 +353,7 @@ void fault_localizationt::report(
 {
   bmc_all_propertiest::report(cover_goals);
 
-  switch(bmc.ui)
+  switch(bmc.ui_message_handler.get_ui())
   {
   case ui_message_handlert::uit::PLAIN:
     if(cover_goals.number_covered()>0)

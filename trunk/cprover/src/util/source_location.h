@@ -10,8 +10,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_SOURCE_LOCATION_H
 #define CPROVER_UTIL_SOURCE_LOCATION_H
 
+#include "invariant.h"
 #include "irep.h"
+#include "optional.h"
 #include "prefix.h"
+
+#include <string>
 
 class source_locationt:public irept
 {
@@ -182,10 +186,22 @@ public:
     return static_cast<const source_locationt &>(get_nil_irep());
   }
 
+  optionalt<std::string> full_path() const;
+
 protected:
   std::string as_string(bool print_cwd) const;
 };
 
 std::ostream &operator <<(std::ostream &, const source_locationt &);
+
+template <>
+struct diagnostics_helpert<source_locationt>
+{
+  static std::string
+  diagnostics_as_string(const source_locationt &source_location)
+  {
+    return "source location: " + source_location.as_string();
+  }
+};
 
 #endif // CPROVER_UTIL_SOURCE_LOCATION_H

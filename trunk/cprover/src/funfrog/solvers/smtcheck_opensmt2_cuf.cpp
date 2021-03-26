@@ -7,9 +7,9 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 #include "smtcheck_opensmt2_cuf.h"
 #include <opensmt/BitBlaster.h>
 #include <funfrog/utils/naming_helpers.h>
+#include <util/mathematical_types.h>
 
 // Debug flags of this class:
-//#define SMT_DEBUG
 //#define DEBUG_SMT_BB
 //#define SMT_DEBUG_VARS_BOUNDS
 
@@ -254,7 +254,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     
 #ifdef DEBUG_SMT_BB
     const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert
-    std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
+    std::cout << ";; Extract constant number : " << expr.print_number_2smt(expr) << " Of Type "
             << type_id << std::endl;
 #endif       
     
@@ -265,7 +265,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         return get_bv_const("0");
     // KE: not sure about this code, DO NOT add is_one and is_zero, why? think of a shift op in 64 or 32 bit of 1.
     
-    std::string str = expr.print_number_2smt();
+    std::string str = print_number_2smt(expr);
     int isFirstchSign = (str[0] == '-' || str[0] == '+')? 1 : 0;
     assert("Check support for new data-type in Const converstion." && str.size() != 0);
      
@@ -292,10 +292,10 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         }
         
         // Check if fits - using cprover information
-        if (expr.type().get_unsigned_int("width") > this->bitwidth)
+        if (expr.type().get_size_t("width") > this->bitwidth)
         {
             std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            std::cout << "\n  Data " << str << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
+            std::cout << "\n  Data " << str << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
                     << (-max_num) << " and " << (max_num-1) << std::endl;
                 
             /* Report always, but only exit if must to */
@@ -393,10 +393,10 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         // Check first that we don't need larger reg.
         if (expr.type().id() == ID_floatbv) 
         {
-            if (expr.type().get_unsigned_int("width") > this->bitwidth)
+            if (expr.type().get_size_t("width") > this->bitwidth)
             {
                 std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                std::cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
+                std::cout << "\n  Data " << print_number_2smt(expr) << "(width " << expr.type().get_size_t("width") << ")" << " is not in between "
                         << (-max_num) << " and " << (max_num-1) << std::endl;
                 exit(0);
             }
@@ -425,7 +425,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         
         assert(0); // Not suppose to get here!
 
-    } else if (is_number(expr.type()) && is_number(expr_op0.type()) && 
+    } else if (is_number(expr.type()) && is_number(expr_op0.type()) &&
                                         (expr.id() == ID_floatbv_typecast)) {
         
         return unsupported2var_bv(expr); // stub for now
@@ -481,8 +481,8 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
                     ); 
     
 #ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    char* s = getPTermString(ptl);
+    std::cout << "; (ABS) For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
 
@@ -796,7 +796,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // Check the id is a var
     assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
 
-    int size = var_type.get_unsigned_int("width");
+    int size = var_type.get_size_t("width");
     assert("Data type constraints for Bytes are valid for 8 bit-width or up" 
                 && (size >= 8 || expr.is_boolean()));
     
@@ -1165,7 +1165,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << std::endl;
+    std::cout << "; For '" << _id << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
     
@@ -1283,6 +1283,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         irep_idt value(v1.val);
 
         // Create the expr with it
+        // constant_exprt tmp(value, expr.type());
         constant_exprt tmp;
         tmp.set_value(value);
         return tmp;
@@ -1407,27 +1408,27 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
-        std::cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << std::endl;
+        std::cout << "; IT IS A TYPECAST (with operand) of " << (is_const? "CONST " : "") << expr.type().id() << std::endl;
 #endif
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         ptref = type_cast(expr);
 #ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    std::cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    char* s = getPTermString(ptref);
+    std::cout << "; (TYPE_CAST) For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s); s=nullptr;
 #endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
-        std::cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << std::endl;
-        assert(false); // Need to take care of - typecast no operands
-#else
+        std::cout << "ERROR: typecast (without operands) does not yet supported in the QF_UF version "
+                     "(token: " << expr.id() << ")" << std::endl;
+#endif
         ptref = unsupported_to_var(expr);
         // TODO: write a better support to this data type
-#endif
+
     } else {
 #ifdef SMT_DEBUG
-        std::cout << "; IT IS AN OPERATOR" << std::endl;
+        std::cout << "; IT IS AN OPERATOR '" << _id.c_str() << "'" << std::endl;
 #endif
         // Convert first the arguments
         vec<PTRef> args;
@@ -1662,14 +1663,14 @@ PTRef smtcheck_opensmt2t_cuf::expression_to_ptref(const exprt & expr)
             PTRef var_eq = create_unsupported_uf_call(expr);
             set_to_true(logic->mkEq(ptref,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
         } else {
-            std::cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
+            std::cout << "ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << std::endl;
-            assert(false); // KE: tell me if you get here!
+            // KE: tell me if you get here!
         }
     }
 #ifdef SMT_DEBUG
     char *s = logic->printTerm(ptref);
-    std::cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    std::cout << "; For '" << expr.id() << "' Created OpenSMT2 formula " << s << std::endl;
     free(s);
 #endif
     assert(ptref != PTRef_Undef);

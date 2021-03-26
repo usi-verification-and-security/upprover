@@ -35,9 +35,10 @@ bool core_checkert::assertion_holds_smt_no_partition(
     equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
   }
 #endif
-
+  //guard_managert guard_manager;
   std::unique_ptr<path_storaget> worklist;
-  symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler, get_main_function(),!no_slicing_option};
+  symex_no_partitiont symex {options, *worklist, ns.get_symbol_table(), equation, message_handler,
+                             get_main_function() ,!no_slicing_option};
   symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
@@ -150,9 +151,9 @@ void core_checkert::assertion_violated_no_partition(prepare_formula_no_partition
   if (!options.get_bool_option("no-error-trace")) {
     auto solver = decider->get_solver();
     assert(solver);
-    prop.error_trace(*solver, ns, guard_expln);
+    prop.error_trace(*decider, ns, guard_expln);
     if (solver->is_overapprox_encoding()) {
-      status() << "\nA bug found." << endl;
+      status() << "\nA bug found." << "\n";
       status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
       status() << "A real bug found." << eom;

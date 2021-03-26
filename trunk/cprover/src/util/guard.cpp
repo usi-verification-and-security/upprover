@@ -13,8 +13,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <ostream>
 
-#include "std_expr.h"
+#include "expr_util.h"
+#include "invariant.h"
 #include "simplify_utils.h"
+#include "std_expr.h"
 
 void guardt::guard_expr(exprt &dest) const
 {
@@ -26,8 +28,7 @@ void guardt::guard_expr(exprt &dest) const
   {
     if(dest.is_false())
     {
-      dest=as_expr();
-      dest.make_not();
+      dest = boolean_negate(as_expr());
     }
     else
     {
@@ -39,31 +40,9 @@ void guardt::guard_expr(exprt &dest) const
   }
 }
 
-#if 0
-exprt guardt::as_expr(guard_listt::const_iterator it) const
-{
-  if(it==guard_list.end())
-    return true_exprt();
-  else if(it==--guard_list.end())
-    return guard_list.back();
-
-  exprt dest;
-  dest=exprt(ID_and, typet(ID_bool));
-  dest.reserve_operands(guard_list.size());
-  for(; it!=guard_list.end(); it++)
-  {
-    if(!it->is_boolean())
-      throw "guard is expected to be Boolean";
-    dest.copy_to_operands(*it);
-  }
-
-  return dest;
-}
-#endif
-
 void guardt::add(const exprt &expr)
 {
-  assert(expr.type().id()==ID_bool);
+  PRECONDITION(expr.type().id() == ID_bool);
 
   if(is_false() || expr.is_true())
     return;
@@ -76,7 +55,7 @@ void guardt::add(const exprt &expr)
   else if(id()!=ID_and)
   {
     and_exprt a;
-    a.copy_to_operands(*this);
+    a.add_to_operands(*this);
     *this=a;
   }
 
@@ -131,11 +110,10 @@ guardt &operator |= (guardt &g1, const guardt &g2)
 
   if(g1.id()!=ID_and || g2.id()!=ID_and)
   {
-    exprt tmp(g2);
-    tmp.make_not();
+    exprt tmp(boolean_negate(g2));
 
     if(tmp==g1)
-      g1.make_true();
+      g1 = true_exprt();
     else
       g1=or_exprt(g1, g2);
 
@@ -187,8 +165,7 @@ guardt &operator |= (guardt &g1, const guardt &g2)
 
   g1=conjunction(op1);
 
-  exprt tmp(and_expr2);
-  tmp.make_not();
+  exprt tmp(boolean_negate(and_expr2));
 
   if(tmp!=and_expr1)
   {
@@ -202,32 +179,3 @@ guardt &operator |= (guardt &g1, const guardt &g2)
 
   return g1;
 }
-
-#if 0
-std::ostream &operator << (std::ostream &out, const guardt &g)
-{
-  forall_expr_list(it, g.guard_list)
-    out << "*** " << it->pretty() << '\n';
-  return out;
-}
-
-#define forall_guard(it, guard_list) \
-  for(guardt::guard_listt::const_iterator it=(guard_list).begin(); \
-      it!=(guard_list).end(); ++it)
-
-bool guardt::is_false() const
-{
-  forall_guard(it, guard_list)
-    if(it->is_false())
-      return true;
-
-  return false;
-}
-
-void guardt::make_false()
-{
-  guard_list.clear();
-  guard_list.push_back(exprt());
-  guard_list.back()=false_exprt();
-}
-#endif

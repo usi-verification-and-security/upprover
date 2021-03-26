@@ -6,10 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-
 #include "expr_util.h"
 
+#include <algorithm>
 #include <unordered_set>
+
 #include "expr.h"
 #include "expr_iterator.h"
 #include "fixedbv.h"
@@ -55,8 +56,8 @@ exprt make_binary(const exprt &expr)
     exprt tmp=expr;
     tmp.operands().clear();
     tmp.operands().resize(2);
-    tmp.op0().swap(previous);
-    tmp.op1()=*it;
+    to_binary_expr(tmp).op0().swap(previous);
+    to_binary_expr(tmp).op1() = *it;
     previous.swap(tmp);
   }
 
@@ -120,13 +121,13 @@ exprt is_not_zero(
   binary_exprt comparison(src, id, zero, bool_typet());
   comparison.add_source_location()=src.source_location();
 
-  return comparison;
+  return std::move(comparison);
 }
 
 exprt boolean_negate(const exprt &src)
 {
-  if(src.id()==ID_not && src.operands().size()==1)
-    return src.op0();
+  if(src.id() == ID_not)
+    return to_not_expr(src).op();
   else if(src.is_true())
     return false_exprt();
   else if(src.is_false())
@@ -181,7 +182,7 @@ bool has_subtype(
     }
     else
     {
-      for(const auto &subtype : top.subtypes())
+      for(const auto &subtype : to_type_with_subtypes(top).subtypes())
         push_if_not_visited(subtype);
     }
   }
@@ -221,4 +222,56 @@ const exprt &skip_typecast(const exprt &expr)
     return expr;
 
   return skip_typecast(to_typecast_expr(expr).op());
+}
+
+/// This function determines what expressions are to be propagated as
+/// "constants"
+bool is_constantt::is_constant(const exprt &expr) const
+{
+  if(expr.is_constant())
+    return true;
+
+  if(expr.id() == ID_address_of)
+  {
+    return is_constant_address_of(to_address_of_expr(expr).object());
+  }
+  else if(
+    expr.id() == ID_typecast || expr.id() == ID_array_of ||
+    expr.id() == ID_plus || expr.id() == ID_mult || expr.id() == ID_array ||
+    expr.id() == ID_with || expr.id() == ID_struct || expr.id() == ID_union ||
+    // byte_update works, byte_extract may be out-of-bounds
+    expr.id() == ID_byte_update_big_endian ||
+    expr.id() == ID_byte_update_little_endian)
+  {
+    return std::all_of(
+      expr.operands().begin(), expr.operands().end(), [this](const exprt &e) {
+        return is_constant(e);
+      });
+  }
+
+  return false;
+}
+
+/// this function determines which reference-typed expressions are constant
+bool is_constantt::is_constant_address_of(const exprt &expr) const
+{
+  if(expr.id() == ID_symbol)
+  {
+    return true;
+  }
+  else if(expr.id() == ID_index)
+  {
+    const index_exprt &index_expr = to_index_expr(expr);
+
+    return is_constant_address_of(index_expr.array()) &&
+           is_constant(index_expr.index());
+  }
+  else if(expr.id() == ID_member)
+  {
+    return is_constant_address_of(to_member_expr(expr).compound());
+  }
+  else if(expr.id() == ID_string_constant)
+    return true;
+
+  return false;
 }

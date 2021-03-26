@@ -322,11 +322,12 @@ void dump_ct::convert_compound(
     if(!system_symbols.is_symbol_internal_symbol(symbol, system_headers))
       convert_compound(symbol.type, unresolved, recursive, os);
   }
-  else if(type.id()==ID_c_enum_tag)
+  else if(
+    type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
+    type.id() == ID_union_tag)
   {
-    const symbolt &symbol=
-      ns.lookup(to_c_enum_tag_type(type).get_identifier());
-    DATA_INVARIANT(symbol.is_type, "symbol expected to be type symbol");
+    const symbolt &symbol = ns.lookup(to_tag_type(type));
+    DATA_INVARIANT(symbol.is_type, "tag expected to be type symbol");
 
     if(!system_symbols.is_symbol_internal_symbol(symbol, system_headers))
       convert_compound(symbol.type, unresolved, recursive, os);
@@ -415,12 +416,8 @@ void dump_ct::convert_compound(
 
   std::stringstream struct_body;
 
-  for(struct_union_typet::componentst::const_iterator
-      it=type.components().begin();
-      it!=type.components().end();
-      it++)
+  for(const auto &comp : type.components())
   {
-    const struct_typet::componentt &comp=*it;
     const typet &comp_type=ns.follow(comp.type());
 
     if(comp_type.id()==ID_code ||
@@ -458,7 +455,7 @@ void dump_ct::convert_compound(
       s=type_to_string(comp_type);
     }
 
-    if(s.find("__CPROVER_bitvector")==std::string::npos)
+    if(s.find(CPROVER_PREFIX "bitvector") == std::string::npos)
     {
       struct_body << s;
     }
@@ -624,7 +621,7 @@ void dump_ct::cleanup_decl(
     system_headers);
   p2s();
 
-  POSTCONDITION(b.operands().size()==1);
+  POSTCONDITION(b.statements().size() == 1);
   decl.swap(b.op0());
 }
 
@@ -672,6 +669,13 @@ void dump_ct::collect_typedefs_rec(
   {
     const symbolt &symbol=
       ns.lookup(to_symbol_type(type).get_identifier());
+    collect_typedefs_rec(symbol.type, early, local_deps);
+  }
+  else if(
+    type.id() == ID_c_enum_tag || type.id() == ID_struct_tag ||
+    type.id() == ID_union_tag)
+  {
+    const symbolt &symbol = ns.lookup(to_tag_type(type));
     collect_typedefs_rec(symbol.type, early, local_deps);
   }
 
@@ -890,7 +894,9 @@ void dump_ct::convert_global_variable(
   }
 
   if(!func.empty() && !symbol.is_extern)
-    local_static_decls[symbol.name]=d;
+  {
+    local_static_decls.emplace(symbol.name, d);
+  }
   else if(!symbol.value.is_nil())
   {
     os << "// " << symbol.name << '\n';
@@ -915,7 +921,7 @@ void dump_ct::cleanup_harness(code_blockt &b)
   if(!ns.lookup("argc'", argc_sym))
   {
     symbol_exprt argc("argc", argc_sym->type);
-    replace.insert(argc_sym->name, argc);
+    replace.insert(argc_sym->symbol_expr(), argc);
     code_declt d(argc);
     decls.add(d);
   }
@@ -923,7 +929,10 @@ void dump_ct::cleanup_harness(code_blockt &b)
   if(!ns.lookup("argv'", argv_sym))
   {
     symbol_exprt argv("argv", argv_sym->type);
-    replace.insert(argv_sym->name, argv);
+    // replace argc' by argc in the type of argv['] to maintain type consistency
+    // while replacing
+    replace(argv);
+    replace.insert(symbol_exprt(argv_sym->name, argv.type()), argv);
     code_declt d(argv);
     decls.add(d);
   }
@@ -931,15 +940,13 @@ void dump_ct::cleanup_harness(code_blockt &b)
   if(!ns.lookup("return'", return_sym))
   {
     symbol_exprt return_value("return_value", return_sym->type);
-    replace.insert(return_sym->name, return_value);
+    replace.insert(return_sym->symbol_expr(), return_value);
     code_declt d(return_value);
     decls.add(d);
   }
 
-  Forall_operands(it, b)
+  for(auto &code : b.statements())
   {
-    codet &code=to_code(*it);
-
     if(code.get_statement()==ID_function_call)
     {
       exprt &func=to_code_function_call(code).function();
@@ -1225,18 +1232,15 @@ void dump_ct::cleanup_expr(exprt &expr)
 
     PRECONDITION(old_components.size()==old_ops.size());
     exprt::operandst::iterator o_it=old_ops.begin();
-    for(struct_union_typet::componentst::const_iterator
-        it=old_components.begin();
-        it!=old_components.end();
-        ++it)
+    for(const auto &old_comp : old_components)
     {
-      const bool is_zero_bit_field=
-        it->type().id()==ID_c_bit_field &&
-        to_c_bit_field_type(it->type()).get_width()==0;
+      const bool is_zero_bit_field =
+        old_comp.type().id() == ID_c_bit_field &&
+        to_c_bit_field_type(old_comp.type()).get_width() == 0;
 
-      if(!it->get_is_padding() && !is_zero_bit_field)
+      if(!old_comp.get_is_padding() && !is_zero_bit_field)
       {
-        type.components().push_back(*it);
+        type.components().push_back(old_comp);
         expr.move_to_operands(*o_it);
       }
       ++o_it;

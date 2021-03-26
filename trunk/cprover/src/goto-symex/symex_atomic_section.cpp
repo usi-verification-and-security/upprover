@@ -11,15 +11,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 
+#include <util/exception_utils.h>
+
 void goto_symext::symex_atomic_begin(statet &state)
 {
   if(state.guard.is_false())
     return;
 
-  // we don't allow any nesting of atomic sections
-  if(state.atomic_section_id!=0)
-    throw "nested atomic section detected at "+
-      state.source.pc->source_location.as_string();
+  if(state.atomic_section_id != 0)
+    throw incorrect_goto_program_exceptiont(
+      "we don't support nesting of atomic sections",
+      state.source.pc->source_location);
 
   state.atomic_section_id=++atomic_section_counter;
   state.read_in_atomic_section.clear();
@@ -36,26 +38,23 @@ void goto_symext::symex_atomic_end(statet &state)
   if(state.guard.is_false())
     return;
 
-  if(state.atomic_section_id==0)
-    throw "ATOMIC_END unmatched"; // NOLINT(readability/throw)
+  if(state.atomic_section_id == 0)
+    throw incorrect_goto_program_exceptiont(
+      "ATOMIC_END unmatched", state.source.pc->source_location);
 
   const unsigned atomic_section_id=state.atomic_section_id;
   state.atomic_section_id=0;
 
-  for(goto_symex_statet::read_in_atomic_sectiont::const_iterator
-      r_it=state.read_in_atomic_section.begin();
-      r_it!=state.read_in_atomic_section.end();
-      ++r_it)
+  for(const auto &pair : state.read_in_atomic_section)
   {
-    ssa_exprt r=r_it->first;
-    r.set_level_2(r_it->second.first);
+    ssa_exprt r = pair.first;
+    r.set_level_2(pair.second.first);
 
     // guard is the disjunction over reads
-    assert(!r_it->second.second.empty());
-    guardt read_guard(r_it->second.second.front());
-    for(std::list<guardt>::const_iterator
-        it=++(r_it->second.second.begin());
-        it!=r_it->second.second.end();
+    PRECONDITION(!pair.second.second.empty());
+    guardt read_guard(pair.second.second.front());
+    for(std::list<guardt>::const_iterator it = ++(pair.second.second.begin());
+        it != pair.second.second.end();
         ++it)
       read_guard|=*it;
     exprt read_guard_expr=read_guard.as_expr();
@@ -68,20 +67,16 @@ void goto_symext::symex_atomic_end(statet &state)
       state.source);
   }
 
-  for(goto_symex_statet::written_in_atomic_sectiont::const_iterator
-      w_it=state.written_in_atomic_section.begin();
-      w_it!=state.written_in_atomic_section.end();
-      ++w_it)
+  for(const auto &pair : state.written_in_atomic_section)
   {
-    ssa_exprt w=w_it->first;
+    ssa_exprt w = pair.first;
     w.set_level_2(state.level2.current_count(w.get_identifier()));
 
     // guard is the disjunction over writes
-    assert(!w_it->second.empty());
-    guardt write_guard(w_it->second.front());
-    for(std::list<guardt>::const_iterator
-        it=++(w_it->second.begin());
-        it!=w_it->second.end();
+    PRECONDITION(!pair.second.empty());
+    guardt write_guard(pair.second.front());
+    for(std::list<guardt>::const_iterator it = ++(pair.second.begin());
+        it != pair.second.end();
         ++it)
       write_guard|=*it;
     exprt write_guard_expr=write_guard.as_expr();

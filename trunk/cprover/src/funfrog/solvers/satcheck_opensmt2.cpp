@@ -15,8 +15,10 @@ Author: Grigory Fedyukovich
 #include <iostream>
 #endif
 
-satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options, const char * name, const namespacet & ns)
-        : check_opensmt2t()
+satcheck_opensmt2t::satcheck_opensmt2t(const solver_optionst solver_options,
+                                       const char * name, const namespacet & ns)
+        : cnf_solvert(),
+          check_opensmt2t()
 {
     logic.reset(new Logic());
     initializeSolver(solver_options, name);

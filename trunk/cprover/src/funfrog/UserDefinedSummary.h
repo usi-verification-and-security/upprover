@@ -22,7 +22,7 @@ public:
             const optionst & options,
             unsigned int unwind,
             std::string logic,    
-            const std::string& summary_file);
+            const std::string& summary_file, ui_message_handlert & ui_message_handler);
     
 private:    
     smtcheck_opensmt2t* decider;

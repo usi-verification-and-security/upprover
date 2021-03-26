@@ -25,7 +25,7 @@ symex_bmct::symex_bmct(
   const optionst &options,
   path_storaget &path_storage)
   : goto_symext(mh, outer_symbol_table, _target, options, path_storage),
-    record_coverage(false),
+    record_coverage(!options.get_option("symex-coverage-report").empty()),
     symex_coverage(ns)
 {
 }
@@ -39,8 +39,8 @@ void symex_bmct::symex_step(
 
   if(!source_location.is_nil() && last_source_location!=source_location)
   {
-    //log.debug() << "BMC at " << source_location.as_string()
-    //            << " (depth " << state.depth << ')' << log.eom;
+//    log.debug() << "BMC at " << source_location.as_string()
+//                << " (depth " << state.depth << ')' << log.eom;
 
     last_source_location=source_location;
   }
@@ -65,10 +65,11 @@ void symex_bmct::symex_step(
 
   goto_symext::symex_step(get_goto_function, state);
 
-  if(record_coverage &&
-     // avoid an invalid iterator in state.source.pc
-     (!cur_pc->is_end_function() ||
-      cur_pc->function!=goto_functionst::entry_point()))
+  if(
+    record_coverage &&
+    // avoid an invalid iterator in state.source.pc
+    (!cur_pc->is_end_function() ||
+     state.source.function != goto_functionst::entry_point()))
   {
     // forward goto will effectively be covered via phi function,
     // which does not invoke symex_step; as symex_step is called
@@ -104,7 +105,7 @@ void symex_bmct::merge_goto(
     symex_coverage.covered(prev_pc, state.source.pc);
 }
 
-bool symex_bmct::get_unwind(
+bool symex_bmct::should_stop_unwind(
   const symex_targett::sourcet &source,
   const goto_symex_statet::call_stackt &context,
   unsigned unwind)

@@ -30,7 +30,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "compute_called_functions.h"
 #include "remove_const_function_pointers.h"
 
-class remove_function_pointerst:public messaget
+class remove_function_pointerst
 {
 public:
   remove_function_pointerst(
@@ -44,7 +44,22 @@ public:
 
   bool remove_function_pointers(goto_programt &goto_program);
 
+  // a set of function symbols
+  using functionst = remove_const_function_pointerst::functionst;
+
+  /// Replace a call to a dynamic function at location
+  /// target in the given goto-program by a case-split
+  /// over a given set of functions
+  /// \param goto_program The goto program that contains target
+  /// \param target location with function call with function pointer
+  /// \param functions The set of functions to consider
+  void remove_function_pointer(
+    goto_programt &goto_program,
+    goto_programt::targett target,
+    const functionst &functions);
+
 protected:
+  messaget log;
   const namespacet ns;
   symbol_tablet &symbol_table;
   bool add_safety_assertion;
@@ -57,6 +72,11 @@ protected:
   // --remove-const-function-pointers instead of --remove-function-pointers
   bool only_resolve_const_fps;
 
+  /// Replace a call to a dynamic function at location
+  /// target in the given goto-program by determining
+  /// functions that have a compatible signature
+  /// \param goto_program The goto program that contains target
+  /// \param target location with function call with function pointer
   void remove_function_pointer(
     goto_programt &goto_program,
     goto_programt::targett target);
@@ -79,29 +99,23 @@ protected:
   void fix_return_type(
     code_function_callt &function_call,
     goto_programt &dest);
-
-  void
-  compute_address_taken_in_symbols(std::unordered_set<irep_idt> &address_taken)
-  {
-    const symbol_tablet &symbol_table=ns.get_symbol_table();
-
-    for(const auto &s : symbol_table.symbols)
-      compute_address_taken_functions(s.second.value, address_taken);
-  }
 };
 
 remove_function_pointerst::remove_function_pointerst(
   message_handlert &_message_handler,
   symbol_tablet &_symbol_table,
-  bool _add_safety_assertion, bool only_resolve_const_fps,
-  const goto_functionst &goto_functions):
-  messaget(_message_handler),
-  ns(_symbol_table),
-  symbol_table(_symbol_table),
-  add_safety_assertion(_add_safety_assertion),
-  only_resolve_const_fps(only_resolve_const_fps)
+  bool _add_safety_assertion,
+  bool only_resolve_const_fps,
+  const goto_functionst &goto_functions)
+  : log(_message_handler),
+    ns(_symbol_table),
+    symbol_table(_symbol_table),
+    add_safety_assertion(_add_safety_assertion),
+    only_resolve_const_fps(only_resolve_const_fps)
 {
-  compute_address_taken_in_symbols(address_taken);
+  for(const auto &s : symbol_table.symbols)
+    compute_address_taken_functions(s.second.value, address_taken);
+
   compute_address_taken_functions(goto_functions, address_taken);
 
   // build type map
@@ -262,7 +276,7 @@ void remove_function_pointerst::remove_function_pointer(
   const code_function_callt &code=
     to_code_function_call(target->code);
 
-  const exprt &function=code.function();
+  const auto &function = to_dereference_expr(code.function());
 
   // this better have the right type
   code_typet call_type=to_code_type(function.type());
@@ -277,26 +291,24 @@ void remove_function_pointerst::remove_function_pointer(
         code_typet::parametert(it->type()));
   }
 
-  assert(function.id()==ID_dereference);
-  assert(function.operands().size()==1);
-
   bool found_functions;
 
-  const exprt &pointer=function.op0();
+  const exprt &pointer = function.pointer();
   remove_const_function_pointerst::functionst functions;
   does_remove_constt const_removal_check(goto_program, ns);
   const auto does_remove_const = const_removal_check();
   if(does_remove_const.first)
   {
-    warning().source_location = does_remove_const.second;
-    warning() << "cast from const to non-const pointer found, only worst case"
-              << " function pointer removal will be done." << eom;
+    log.warning().source_location = does_remove_const.second;
+    log.warning() << "cast from const to non-const pointer found, "
+                  << "only worst case function pointer removal will be done."
+                  << messaget::eom;
     found_functions=false;
   }
   else
   {
     remove_const_function_pointerst fpr(
-    get_message_handler(), ns, symbol_table);
+      log.get_message_handler(), ns, symbol_table);
 
     found_functions=fpr(pointer, functions);
 
@@ -347,6 +359,19 @@ void remove_function_pointerst::remove_function_pointer(
       functions.insert(expr);
     }
   }
+
+  remove_function_pointer(goto_program, target, functions);
+}
+
+void remove_function_pointerst::remove_function_pointer(
+  goto_programt &goto_program,
+  goto_programt::targett target,
+  const functionst &functions)
+{
+  const code_function_callt &code = to_code_function_call(target->code);
+
+  const exprt &function = code.function();
+  const exprt &pointer = to_dereference_expr(function).pointer();
 
   // the final target is a skip
   goto_programt final_skip;
@@ -426,14 +451,13 @@ void remove_function_pointerst::remove_function_pointer(
   target->type=OTHER;
 
   // report statistics
-  statistics().source_location=target->source_location;
-  statistics() << "replacing function pointer by "
-               << functions.size() << " possible targets" << eom;
+  log.statistics().source_location = target->source_location;
+  log.statistics() << "replacing function pointer by " << functions.size()
+                   << " possible targets" << messaget::eom;
 
   // list the names of functions when verbosity is at debug level
-  conditional_output(
-    debug(),
-    [&functions](mstreamt &mstream) {
+  log.conditional_output(
+    log.debug(), [&functions](messaget::mstreamt &mstream) {
       mstream << "targets: ";
 
       bool first = true;
@@ -446,7 +470,7 @@ void remove_function_pointerst::remove_function_pointer(
         first = false;
       }
 
-      mstream << eom;
+      mstream << messaget::eom;
     });
 }
 

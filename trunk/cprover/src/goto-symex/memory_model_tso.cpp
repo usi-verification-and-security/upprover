@@ -39,8 +39,8 @@ bool memory_model_tsot::program_order_is_relaxed(
   partial_order_concurrencyt::event_it e1,
   partial_order_concurrencyt::event_it e2) const
 {
-  assert(e1->is_shared_read() || e1->is_shared_write());
-  assert(e2->is_shared_read() || e2->is_shared_write());
+  PRECONDITION(e1->is_shared_read() || e1->is_shared_write());
+  PRECONDITION(e2->is_shared_read() || e2->is_shared_write());
 
   // no po relaxation within atomic sections
   if(e1->atomic_section_id!=0 &&
@@ -81,9 +81,8 @@ void memory_model_tsot::program_order(
       event_listt::const_iterator next=e_it;
       ++next;
 
-      exprt mb_guard_r, mb_guard_w;
-      mb_guard_r.make_false();
-      mb_guard_w.make_false();
+      exprt mb_guard_r = false_exprt();
+      exprt mb_guard_w = false_exprt();
 
       for(event_listt::const_iterator
           e_it2=next;

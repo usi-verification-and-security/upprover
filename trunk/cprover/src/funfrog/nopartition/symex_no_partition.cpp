@@ -25,14 +25,14 @@ bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const go
   }
   
   // Clear the state
-  state = goto_symext::statet();
-
+  reset_state(); //cprover5.12
 
   // Old: ??? state.value_set = value_sets;
-  state.source.pc = goto_program.instructions.begin();
+  //prepare_fresh_arg_symbols(*state, partition_iface);
+  statePtr->source.pc = goto_program.instructions.begin();
   
   loc = 0;
-  return process_planned(state, goto_functions, false); // In it, in the end need to call convert
+  return process_planned(*statePtr, goto_functions, false); // In it, in the end need to call convert
 }
 
 
@@ -52,8 +52,9 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     try
     {
         // perform symbolic execution        
-        //this->operator () (state, goto_functions, goto_program);
-        this->symex_with_state(state, goto_functions, new_symbol_table);
+        //this->operator () (statePrt, goto_functions, goto_program);
+        get_goto_functiont get_goto_function = construct_get_goto_function(goto_functions);
+        this->symex_with_state(state, get_goto_function, new_symbol_table);
 
         // add a partial ordering, if required
         if(equation.has_threads())
@@ -91,7 +92,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
 
     status() << "SYMEX TIME: " << time_gap(after,before) << log.eom;
 
-    if(remaining_vccs!=0 || force_check)
+    if(_remaining_vccs!=0 || force_check)
     {
         if (use_slicing) {
             before=timestamp();
@@ -109,7 +110,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
     return false;
 }
 
-bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const goto_symex_statet::call_stackt &context, unsigned unwind) {
+bool symex_no_partitiont::get_unwind(const symex_targett::sourcet & source, const statet::call_stackt &context, unsigned unwind) {
     // returns true if we should not continue unwinding
     // for support of different bounds in different loops, see how it's done in symex_bmct
     return unwind >= max_unwind;

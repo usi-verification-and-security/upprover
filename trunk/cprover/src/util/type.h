@@ -13,18 +13,17 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_TYPE_H
 #define CPROVER_UTIL_TYPE_H
 
-#include "source_location.h"
-
-#define SUBTYPE_IN_GETSUB
-#define SUBTYPES_IN_GETSUB
-
 class namespacet;
+
+#include "source_location.h"
+#include "validate_types.h"
+#include "validation_mode.h"
 
 /// The type of an expression, extends irept. Types may have subtypes. This is
 /// modeled with two subs named “subtype” (a single type) and “subtypes”
 /// (a vector of types). The class typet only adds specialized methods
 /// for accessing the subtype information to the interface of irept.
-/// For pre-defined types see `std_types.h`.
+/// For pre-defined types see `std_types.h` and `mathematical_types.h`.
 class typet:public irept
 {
 public:
@@ -37,68 +36,28 @@ public:
   }
 
   const typet &subtype() const
-  #ifdef SUBTYPE_IN_GETSUB
   {
     if(get_sub().empty())
       return static_cast<const typet &>(get_nil_irep());
     return static_cast<const typet &>(get_sub().front());
   }
-  #else
-  { return (typet &)find(ID_subtype); }
-  #endif
 
   typet &subtype()
-  #ifdef SUBTYPE_IN_GETSUB
   {
     subt &sub=get_sub();
     if(sub.empty())
       sub.resize(1);
     return static_cast<typet &>(sub.front());
   }
-  #else
-  { return (typet &)add(ID_subtype); }
-  #endif
-
-  typedef std::vector<typet> subtypest;
-
-  subtypest &subtypes()
-  #ifdef SUBTYPES_IN_GETSUB
-  { return (subtypest &)get_sub(); }
-  #else
-  { return (subtypest &)add(ID_subtypes).get_sub(); }
-  #endif
-
-  const subtypest &subtypes() const
-  #ifdef SUBTYPES_IN_GETSUB
-  { return (const subtypest &)get_sub(); }
-  #else
-  { return (const subtypest &)find(ID_subtypes).get_sub(); }
-  #endif
 
   bool has_subtypes() const
-  #ifdef SUBTYPES_IN_GETSUB
   { return !get_sub().empty(); }
-  #else
-  { return !find(ID_subtypes).is_nil(); }
-  #endif
 
   bool has_subtype() const
-  #ifdef SUBTYPE_IN_GETSUB
   { return !get_sub().empty(); }
-  #else
-  { return !find(ID_subtype).is_nil(); }
-  #endif
 
   void remove_subtype()
-  #ifdef SUBTYPE_IN_GETSUB
   { get_sub().clear(); }
-  #else
-  { remove(ID_subtype); }
-  #endif
-
-  void move_to_subtypes(typet &type);
-
-  void copy_to_subtypes(const typet &type);
 
   const source_locationt &source_location() const
   {
@@ -119,15 +78,66 @@ public:
   {
     return static_cast<const typet &>(find(name));
   }
+
+  /// Check that the type is well-formed (shallow checks only, i.e., subtypes
+  /// are not checked)
+  ///
+  /// Subclasses may override this function to provide specific well-formedness
+  /// checks for the corresponding types.
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  static void check(const typet &, const validation_modet)
+  {
+  }
+
+  /// Check that the type is well-formed, assuming that its subtypes have
+  /// already been checked for well-formedness.
+  ///
+  /// Subclasses may override this function to provide specific well-formedness
+  /// checks for the corresponding types.
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  static void validate(
+    const typet &type,
+    const namespacet &,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    check_type(type, vm);
+  }
+
+  /// Check that the type is well-formed (full check, including checks of
+  /// subtypes)
+  ///
+  /// Subclasses may override this function, though in most cases the provided
+  /// implementation should be sufficient.
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  static void validate_full(
+    const typet &type,
+    const namespacet &ns,
+    const validation_modet vm = validation_modet::INVARIANT)
+  {
+    // check subtypes
+    for(const irept &sub : type.get_sub())
+    {
+      const typet &subtype = static_cast<const typet &>(sub);
+      validate_full_type(subtype, ns, vm);
+    }
+
+    validate_type(type, ns, vm);
+  }
 };
 
 /// Type with a single subtype.
 class type_with_subtypet:public typet
 {
 public:
-  type_with_subtypet() { }
-
+  DEPRECATED("use type_with_subtypet(id, subtype) instead")
   explicit type_with_subtypet(const irep_idt &_id):typet(_id) { }
+
   type_with_subtypet(const irep_idt &_id, const typet &_subtype):
     typet(_id)
   {
@@ -143,44 +153,75 @@ public:
   #endif
 };
 
+inline const type_with_subtypet &to_type_with_subtype(const typet &type)
+{
+  PRECONDITION(type.has_subtype());
+  return static_cast<const type_with_subtypet &>(type);
+}
+
+inline type_with_subtypet &to_type_with_subtype(typet &type)
+{
+  PRECONDITION(type.has_subtype());
+  return static_cast<type_with_subtypet &>(type);
+}
+
 /// Type with multiple subtypes.
 class type_with_subtypest:public typet
 {
 public:
-  type_with_subtypest() { }
-
-  explicit type_with_subtypest(const irep_idt &_id):typet(_id) { }
-
-  #if 0
   typedef std::vector<typet> subtypest;
 
+  DEPRECATED("use type_with_subtypest(id, subtypes) instead")
+  type_with_subtypest() { }
+
+  DEPRECATED("use type_with_subtypest(id, subtypes) instead")
+  explicit type_with_subtypest(const irep_idt &_id):typet(_id) { }
+
+  type_with_subtypest(const irep_idt &_id, const subtypest &_subtypes)
+    : typet(_id)
+  {
+    subtypes() = _subtypes;
+  }
+
+  type_with_subtypest(const irep_idt &_id, subtypest &&_subtypes) : typet(_id)
+  {
+    subtypes() = std::move(_subtypes);
+  }
+
   subtypest &subtypes()
-  { return (subtypest &)add(ID_subtypes).get_sub(); }
+  {
+    return (subtypest &)get_sub();
+  }
 
   const subtypest &subtypes() const
-  { return (const subtypest &)find(ID_subtypes).get_sub(); }
+  {
+    return (const subtypest &)get_sub();
+  }
 
-  void move_to_subtypes(typet &type); // destroys expr
+  void move_to_subtypes(typet &type); // destroys type
 
   void copy_to_subtypes(const typet &type);
-  #endif
 };
+
+inline const type_with_subtypest &to_type_with_subtypes(const typet &type)
+{
+  return static_cast<const type_with_subtypest &>(type);
+}
+
+inline type_with_subtypest &to_type_with_subtypes(typet &type)
+{
+  return static_cast<type_with_subtypest &>(type);
+}
 
 #define forall_subtypes(it, type) \
   if((type).has_subtypes()) /* NOLINT(readability/braces) */ \
-    for(typet::subtypest::const_iterator it=(type).subtypes().begin(), \
-        it##_end=(type).subtypes().end(); \
+    for(type_with_subtypest::subtypest::const_iterator it=to_type_with_subtypes(type).subtypes().begin(), \
+        it##_end=to_type_with_subtypes(type).subtypes().end(); \
         it!=it##_end; ++it)
 
 #define Forall_subtypes(it, type) \
   if((type).has_subtypes()) /* NOLINT(readability/braces) */ \
-    for(typet::subtypest::iterator it=(type).subtypes().begin(); \
-        it!=(type).subtypes().end(); ++it)
-
-bool is_number(const typet &type);
-
-bool is_constant_or_has_constant_components(
-    const typet &type,
-    const namespacet &ns);
+    for(type_with_subtypest::subtypest::iterator it=to_type_with_subtypes(type).subtypes().begin(); \
+        it!=to_type_with_subtypes(type).subtypes().end(); ++it)
 
 #endif // CPROVER_UTIL_TYPE_H

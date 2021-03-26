@@ -225,13 +225,13 @@ public:
   small_shared_two_way_pointeet() = default;
 
   // The use count shall be unaffected
-  small_shared_two_way_pointeet(const small_shared_two_way_pointeet &rhs)
+  small_shared_two_way_pointeet(const small_shared_two_way_pointeet &)
   {
   }
 
   // The use count shall be unaffected
   small_shared_two_way_pointeet &
-  operator=(const small_shared_two_way_pointeet &rhs)
+  operator=(const small_shared_two_way_pointeet &)
   {
     return *this;
   }
@@ -272,7 +272,7 @@ public:
 
   bool is_derived_v() const
   {
-    return use_count_ & ~mask;
+    return (use_count_ & ~mask) != 0;
   }
 
   bool is_same_type(const small_shared_two_way_pointeet &other) const

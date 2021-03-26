@@ -14,13 +14,14 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <cassert>
 #include <map>
 
+#include <util/c_types.h>
 #include <util/expr.h>
 #include <util/std_code.h>
 #include <util/std_expr.h>
 #include <util/std_types.h>
 
 #include <ansi-c/ansi_c_y.tab.h>
-#include <util/c_types.h>
+#include <ansi-c/merged_type.h>
 
 #include "cpp_token_buffer.h"
 #include "cpp_member_spec.h"
@@ -401,8 +402,8 @@ protected:
     {
       if(p->id()==ID_merged_type)
       {
-        assert(!p->subtypes().empty());
-        p=&p->subtypes().back();
+        auto &merged_type = to_merged_type(*p);
+        p = &merged_type.last_type();
       }
       else
         p=&p->subtype();
@@ -470,7 +471,7 @@ void Parser::merge_types(const typet &src, typet &dest)
     if(dest.id()!=ID_merged_type)
     {
       source_locationt location=dest.source_location();
-      typet tmp(ID_merged_type);
+      merged_typet tmp;
       tmp.move_to_subtypes(dest);
       tmp.add_source_location()=location;
       dest=tmp;
@@ -479,9 +480,8 @@ void Parser::merge_types(const typet &src, typet &dest)
     // the end of the subtypes container needs to stay the same,
     // since several analysis functions traverse via the end for
     // merged_types
-    typet::subtypest &sub=dest.subtypes();
+    auto &sub = to_type_with_subtypes(dest).subtypes();
     sub.emplace(sub.begin(), src);
-    POSTCONDITION(!dest.subtypes().empty());
   }
 }
 
@@ -1186,15 +1186,11 @@ bool Parser::rTempArgDeclaration(cpp_declarationt &declaration)
 
     if(lex.LookAhead(0) == TOK_IDENTIFIER)
     {
-      cpp_namet cpp_name;
       cpp_tokent tk2;
       lex.get_token(tk2);
 
-      exprt name(ID_name);
-      name.set(ID_identifier, tk2.data.get(ID_C_base_name));
-      set_location(name, tk2);
-      cpp_name.get_sub().push_back(name);
-      declarator.name().swap(cpp_name);
+      declarator.name() = cpp_namet(tk2.data.get(ID_C_base_name));
+      set_location(declarator.name(), tk2);
 
       add_id(declarator.name(), new_scopet::kindt::TYPE_TEMPLATE_PARAMETER);
 
@@ -2457,7 +2453,9 @@ bool Parser::optIntegralTypeOrClassSpec(typet &p)
     case TOK_GCC_INT128: type_id=ID_gcc_int128; break;
     case TOK_GCC_FLOAT80: type_id=ID_gcc_float80; break;
     case TOK_GCC_FLOAT128: type_id=ID_gcc_float128; break;
-    case TOK_BOOL: type_id=ID_bool; break;
+    case TOK_BOOL:
+      type_id = ID_c_bool;
+      break;
     case TOK_CPROVER_BOOL: type_id=ID_proper_bool; break;
     case TOK_AUTO: type_id = ID_auto; break;
     default: type_id=irep_idt();
@@ -3344,8 +3342,8 @@ bool Parser::optPtrOperator(typet &ptrs)
   {
     if(it->id()==ID_merged_type)
     {
-      assert(!it->subtypes().empty());
-      it->subtypes().back().subtype().swap(ptrs);
+      auto &merged_type = to_merged_type(*it);
+      merged_type.last_type().subtype().swap(ptrs);
     }
     else
     {
@@ -3549,8 +3547,7 @@ bool Parser::rName(irept &name)
       std::cout << std::string(__indent, ' ') << "Parser::rName 5\n";
       #endif
       lex.get_token(tk);
-      components.push_back(irept(ID_name));
-      components.back().set(ID_identifier, tk.data.get(ID_C_base_name));
+      components.push_back(cpp_namet::namet(tk.data.get(ID_C_base_name)));
       set_location(components.back(), tk);
 
       {
@@ -3814,8 +3811,7 @@ bool Parser::rPtrToMember(irept &ptr_to_mem)
 
     case TOK_IDENTIFIER:
       lex.get_token(tk);
-      components.push_back(irept(ID_name));
-      components.back().set(ID_identifier, tk.data.get(ID_C_base_name));
+      components.push_back(cpp_namet::namet(tk.data.get(ID_C_base_name)));
       set_location(components.back(), tk);
 
       {
@@ -3928,7 +3924,7 @@ bool Parser::rTemplateArgs(irept &template_args)
       lex.Restore(pos);
       exprt tmp;
       if(rConditionalExpr(tmp, true))
-        exp.id("ambiguous");
+        exp.id(ID_ambiguous);
       #ifdef DEBUG
       std::cout << std::string(__indent, ' ') <<  "Parser::rTemplateArgs 4.1\n";
       #endif
@@ -4173,7 +4169,6 @@ bool Parser::rInitializeExpr(exprt &expr)
        t==TOK_MSC_IF_NOT_EXISTS)
     {
       // TODO
-      cpp_tokent tk;
       exprt name;
       lex.get_token(tk);
       if(lex.get_token(tk)!='(')
@@ -4471,7 +4466,6 @@ bool Parser::rClassSpec(typet &spec)
 
     if(lex.LookAhead(0)==TOK_GCC_ATTRIBUTE)
     {
-      cpp_tokent tk;
       lex.get_token(tk);
 
       if(!rAttribute(spec))
@@ -5860,7 +5854,7 @@ bool Parser::rTypeidExpr(exprt &exp)
         //                        Ptree::List(new Leaf(op), tname,
         //                        new Leaf(cp)));
 
-        exp=exprt("typeid");
+        exp = exprt(ID_typeid);
         set_location(exp, tk);
         return true;
       }
@@ -5879,7 +5873,7 @@ bool Parser::rTypeidExpr(exprt &exp)
         //     Ptree::List(new Leaf(op), subexp, new Leaf(cp))
         //   ));
 
-        exp=exprt("typeid");
+        exp = exprt(ID_typeid);
         set_location(exp, tk);
         return true;
       }
@@ -6719,7 +6713,7 @@ bool Parser::rPrimaryExpr(exprt &exp)
 
   case TOK_TRUE:
     lex.get_token(tk);
-    exp=true_exprt();
+    exp = typecast_exprt(true_exprt(), c_bool_type());
     set_location(exp, tk);
     #ifdef DEBUG
     std::cout << std::string(__indent, ' ') << "Parser::rPrimaryExpr 4\n";
@@ -6728,7 +6722,7 @@ bool Parser::rPrimaryExpr(exprt &exp)
 
   case TOK_FALSE:
     lex.get_token(tk);
-    exp=false_exprt();
+    exp = typecast_exprt(false_exprt(), c_bool_type());
     set_location(exp, tk);
     #ifdef DEBUG
     std::cout << std::string(__indent, ' ') << "Parser::rPrimaryExpr 5\n";
@@ -6930,7 +6924,7 @@ bool Parser::rVarNameCore(exprt &name)
   std::cout << std::string(__indent, ' ') << "Parser::rVarNameCore 0\n";
   #endif
 
-  name=exprt(ID_cpp_name);
+  name = cpp_namet().as_expr();
   irept::subt &components=name.get_sub();
 
   if(lex.LookAhead(0)==TOK_TYPENAME)
@@ -6979,8 +6973,7 @@ bool Parser::rVarNameCore(exprt &name)
       #endif
 
       lex.get_token(tk);
-      components.push_back(irept(ID_name));
-      components.back().set(ID_identifier, tk.data.get(ID_C_base_name));
+      components.push_back(cpp_namet::namet(tk.data.get(ID_C_base_name)));
       set_location(components.back(), tk);
 
       // may be followed by template arguments
@@ -7773,16 +7766,13 @@ bool Parser::rTryStatement(codet &statement)
     if(lex.get_token(try_token)!=TOK_TRY)
       return false;
 
-    statement=codet(ID_try_catch);
-    statement.operands().reserve(2);
-    set_location(statement, try_token);
-
     codet body;
 
     if(!rCompoundStatement(body))
       return false;
 
-    statement.move_to_operands(body);
+    statement = code_try_catcht(std::move(body));
+    set_location(statement, try_token);
   }
 
   // iterate while there are catch clauses
@@ -7817,12 +7807,7 @@ bool Parser::rTryStatement(codet &statement)
       assert(declaration.declarators().size()==1);
 
       if(declaration.declarators().front().name().is_nil())
-      {
-        irept name(ID_name);
-        name.set(ID_identifier, "#anon");
-        declaration.declarators().front().name()=cpp_namet();
-        declaration.declarators().front().name().get_sub().push_back(name);
-      }
+        declaration.declarators().front().name() = cpp_namet("#anon");
 
       codet code_decl;
       code_decl.set_statement(ID_decl);
@@ -7916,7 +7901,7 @@ bool Parser::rMSC_leaveStatement(codet &statement)
   if(lex.get_token(tk)!=TOK_MSC_LEAVE)
     return false;
 
-  statement=codet("msc_leave");
+  statement = codet(ID_msc_leave);
   set_location(statement, tk);
 
   return true;
@@ -8115,7 +8100,7 @@ bool Parser::rExprStatement(codet &statement)
     #endif
 
     lex.get_token(tk);
-    statement=codet(ID_skip);
+    statement = code_skipt();
     set_location(statement, tk);
     return true;
   }

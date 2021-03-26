@@ -142,7 +142,7 @@ void satcheck_minisat2_baset<T>::lcnf(const bvt &bv)
 
     clause_counter++;
   }
-  catch(Minisat::OutOfMemoryException)
+  catch(const Minisat::OutOfMemoryException &)
   {
     messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
@@ -156,6 +156,7 @@ static Minisat::Solver *solver_to_interrupt=nullptr;
 
 static void interrupt_solver(int signum)
 {
+  (void)signum; // unused parameter -- just removing the name trips up cpplint
   solver_to_interrupt->interrupt();
 }
 
@@ -264,7 +265,7 @@ propt::resultt satcheck_minisat2_baset<T>::prop_solve()
     status=statust::UNSAT;
     return resultt::P_UNSATISFIABLE;
   }
-  catch(Minisat::OutOfMemoryException)
+  catch(const Minisat::OutOfMemoryException &)
   {
     messaget::error() <<
       "SAT checker ran out of memory" << eom;
@@ -288,7 +289,7 @@ void satcheck_minisat2_baset<T>::set_assignment(literalt a, bool value)
     value ^= sign;
     solver->model[v] = Minisat::lbool(value);
   }
-  catch(Minisat::OutOfMemoryException)
+  catch(const Minisat::OutOfMemoryException &)
   {
     messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;
@@ -359,7 +360,7 @@ void satcheck_minisat_simplifiert::set_frozen(literalt a)
       solver->setFrozen(a.var_no(), true);
     }
   }
-  catch(Minisat::OutOfMemoryException)
+  catch(const Minisat::OutOfMemoryException &)
   {
     messaget::error() << "SAT checker ran out of memory" << eom;
     status = statust::ERROR;

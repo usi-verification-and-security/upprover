@@ -11,16 +11,20 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "escape_analysis.h"
 
+#include <util/cprover_prefix.h>
 #include <util/simplify_expr.h>
 
 bool escape_domaint::is_tracked(const symbol_exprt &symbol)
 {
   const irep_idt &identifier=symbol.get_identifier();
-  if(identifier=="__CPROVER_memory_leak" ||
-     identifier=="__CPROVER_malloc_object" ||
-     identifier=="__CPROVER_dead_object" ||
-     identifier=="__CPROVER_deallocated")
+  if(
+    identifier == CPROVER_PREFIX "memory_leak" ||
+    identifier == CPROVER_PREFIX "malloc_object" ||
+    identifier == CPROVER_PREFIX "dead_object" ||
+    identifier == CPROVER_PREFIX "deallocated")
+  {
     return false;
+  }
 
   return true;
 }
@@ -138,7 +142,7 @@ void escape_domaint::get_rhs_aliases(
   }
   else if(rhs.id()==ID_address_of)
   {
-    get_rhs_aliases_address_of(to_address_of_expr(rhs).op0(), alias_set);
+    get_rhs_aliases_address_of(to_address_of_expr(rhs).op(), alias_set);
   }
 }
 
@@ -162,7 +166,9 @@ void escape_domaint::get_rhs_aliases_address_of(
 }
 
 void escape_domaint::transform(
+  const irep_idt &,
   locationt from,
+  const irep_idt &,
   locationt,
   ai_baset &,
   const namespacet &)
@@ -186,9 +192,9 @@ void escape_domaint::transform(
       get_rhs_cleanup(code_assign.rhs(), cleanup_functions);
       assign_lhs_cleanup(code_assign.lhs(), cleanup_functions);
 
-      std::set<irep_idt> aliases;
-      get_rhs_aliases(code_assign.rhs(), aliases);
-      assign_lhs_aliases(code_assign.lhs(), aliases);
+      std::set<irep_idt> rhs_aliases;
+      get_rhs_aliases(code_assign.rhs(), rhs_aliases);
+      assign_lhs_aliases(code_assign.lhs(), rhs_aliases);
     }
     break;
 
@@ -217,7 +223,7 @@ void escape_domaint::transform(
       if(function.id()==ID_symbol)
       {
         const irep_idt &identifier=to_symbol_expr(function).get_identifier();
-        if(identifier=="__CPROVER_cleanup")
+        if(identifier == CPROVER_PREFIX "cleanup")
         {
           if(code_function_call.arguments().size()==2)
           {
@@ -232,9 +238,9 @@ void escape_domaint::transform(
               std::set<irep_idt> lhs_set;
               get_rhs_aliases(lhs, lhs_set);
 
-              for(const auto &lhs : lhs_set)
+              for(const auto &l : lhs_set)
               {
-                cleanup_map[lhs].cleanup_functions.insert(cleanup_function);
+                cleanup_map[l].cleanup_functions.insert(cleanup_function);
               }
             }
           }
@@ -406,9 +412,7 @@ void escape_analysist::insert_cleanup(
     const code_typet &function_type=to_code_type(function.type());
 
     goto_function.body.insert_before_swap(location);
-    code_function_callt code;
-    code.lhs().make_nil();
-    code.function()=function;
+    code_function_callt code(function);
     code.function().add_source_location()=source_location;
 
     if(function_type.parameters().size()==1)

@@ -13,14 +13,15 @@ Author: Daniel Kroening
 
 #include "xml_expr.h"
 
-#include "namespace.h"
-#include "expr.h"
-#include "xml.h"
 #include "arith_tools.h"
-#include "ieee_float.h"
-#include "fixedbv.h"
-#include "std_expr.h"
 #include "config.h"
+#include "expr.h"
+#include "fixedbv.h"
+#include "ieee_float.h"
+#include "invariant.h"
+#include "namespace.h"
+#include "std_expr.h"
+#include "xml.h"
 
 xmlt xml(const source_locationt &location)
 {
@@ -84,7 +85,8 @@ xmlt xml(
   else if(type.id()==ID_c_enum_tag)
   {
     // we return the base type
-    return xml(ns.follow_tag(to_c_enum_tag_type(type)).subtype(), ns);
+    return xml(
+      to_c_enum_type(ns.follow_tag(to_c_enum_tag_type(type))).subtype(), ns);
   }
   else if(type.id()==ID_fixedbv)
   {
@@ -94,7 +96,8 @@ xmlt xml(
   else if(type.id()==ID_pointer)
   {
     result.name="pointer";
-    result.new_element("subtype").new_element()=xml(type.subtype(), ns);
+    result.new_element("subtype").new_element() =
+      xml(to_pointer_type(type).subtype(), ns);
   }
   else if(type.id()==ID_bool)
   {
@@ -103,12 +106,14 @@ xmlt xml(
   else if(type.id()==ID_array)
   {
     result.name="array";
-    result.new_element("subtype").new_element()=xml(type.subtype(), ns);
+    result.new_element("subtype").new_element() =
+      xml(to_array_type(type).subtype(), ns);
   }
   else if(type.id()==ID_vector)
   {
     result.name="vector";
-    result.new_element("subtype").new_element()=xml(type.subtype(), ns);
+    result.new_element("subtype").new_element() =
+      xml(to_vector_type(type).subtype(), ns);
     result.new_element("size").new_element()=
       xml(to_vector_type(type).size(), ns);
   }
@@ -159,13 +164,13 @@ xmlt xml(
       std::size_t width=to_bitvector_type(type).get_width();
 
       result.name="integer";
-      result.set_attribute("binary",
-        id2string(to_constant_expr(expr).get_value()));
+      result.set_attribute(
+        "binary", integer2binary(numeric_cast_v<mp_integer>(expr), width));
       result.set_attribute("width", width);
 
-      const typet &underlying_type=
-        type.id()==ID_c_bit_field?type.subtype():
-        type;
+      const typet &underlying_type = type.id() == ID_c_bit_field
+                                       ? to_c_bit_field_type(type).subtype()
+                                       : type;
 
       bool is_signed=underlying_type.id()==ID_signedbv;
 
@@ -190,7 +195,8 @@ xmlt xml(
     {
       result.name="integer";
       result.set_attribute("binary", expr.get_string(ID_value));
-      result.set_attribute("width", type.subtype().get_string(ID_width));
+      result.set_attribute(
+        "width", to_c_enum_type(type).subtype().get_string(ID_width));
       result.set_attribute("c_type", "enum");
 
       mp_integer i;
@@ -199,9 +205,9 @@ xmlt xml(
     }
     else if(type.id()==ID_c_enum_tag)
     {
-      constant_exprt tmp;
-      tmp.type()=ns.follow_tag(to_c_enum_tag_type(type));
-      tmp.set_value(to_constant_expr(expr).get_value());
+      constant_exprt tmp(
+        to_constant_expr(expr).get_value(),
+        ns.follow_tag(to_c_enum_tag_type(type)));
       return xml(tmp, ns);
     }
     else if(type.id()==ID_bv)
@@ -241,8 +247,7 @@ xmlt xml(
       result.name="integer";
       result.set_attribute("c_type", "_Bool");
       result.set_attribute("binary", expr.get_string(ID_value));
-      mp_integer b;
-      to_integer(to_constant_expr(expr), b);
+      const mp_integer b = numeric_cast_v<mp_integer>(expr);
       result.data=integer2string(b);
     }
     else
@@ -273,7 +278,7 @@ xmlt xml(
     {
       const struct_typet &struct_type=to_struct_type(type);
       const struct_typet::componentst &components=struct_type.components();
-      assert(components.size()==expr.operands().size());
+      PRECONDITION(components.size() == expr.operands().size());
 
       for(unsigned m=0; m<expr.operands().size(); m++)
       {
@@ -285,15 +290,12 @@ xmlt xml(
   }
   else if(expr.id()==ID_union)
   {
+    const union_exprt &union_expr = to_union_expr(expr);
     result.name="union";
 
-    assert(expr.operands().size()==1);
-
     xmlt &e=result.new_element("member");
-    e.new_element(xml(expr.op0(), ns));
-    e.set_attribute(
-      "member_name",
-      id2string(to_union_expr(expr).get_component_name()));
+    e.new_element(xml(union_expr.op(), ns));
+    e.set_attribute("member_name", id2string(union_expr.get_component_name()));
   }
   else
     result.name="unknown";

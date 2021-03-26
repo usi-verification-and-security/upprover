@@ -51,16 +51,18 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <langapi/language.h>
 
 #include <util/config.h>
+#include <util/exception_utils.h>
 #include <util/exit_codes.h>
 #include <util/options.h>
 #include <util/unicode.h>
 #include <util/version.h>
 
-#include "taint_analysis.h"
-#include "unreachable_instructions.h"
+#include "show_on_source.h"
 #include "static_show_domain.h"
 #include "static_simplifier.h"
 #include "static_verifier.h"
+#include "taint_analysis.h"
+#include "unreachable_instructions.h"
 
 goto_analyzer_parse_optionst::goto_analyzer_parse_optionst(
   int argc,
@@ -86,7 +88,10 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     exit(CPROVER_EXIT_USAGE_ERROR);
   }
 
-  #if 0
+  if(cmdline.isset("function"))
+    options.set_option("function", cmdline.get_value("function"));
+
+#if 0
   if(cmdline.isset("c89"))
     config.ansi_c.set_c89();
 
@@ -104,9 +109,9 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
 
   if(cmdline.isset("cpp11"))
     config.cpp.set_cpp11();
-  #endif
+#endif
 
-  #if 0
+#if 0
   // check assertions
   if(cmdline.isset("no-assertions"))
     options.set_option("assertions", false);
@@ -122,7 +127,7 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
   // magic error label
   if(cmdline.isset("error-label"))
     options.set_option("error-label", cmdline.get_values("error-label"));
-  #endif
+#endif
 
   // Select a specific analysis
   if(cmdline.isset("taint"))
@@ -178,11 +183,6 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("dot", true);
     options.set_option("outfile", cmdline.get_value("dot"));
   }
-  else
-  {
-    options.set_option("text", true);
-    options.set_option("outfile", "-");
-  }
 
   // The use should either select:
   //  1. a specific analysis, or
@@ -195,6 +195,11 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("show", true);
     options.set_option("general-analysis", true);
   }
+  else if(cmdline.isset("show-on-source"))
+  {
+    options.set_option("show-on-source", true);
+    options.set_option("general-analysis", true);
+  }
   else if(cmdline.isset("verify"))
   {
     options.set_option("verify", true);
@@ -202,6 +207,10 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
   }
   else if(cmdline.isset("simplify"))
   {
+    if(cmdline.get_value("simplify") == "-")
+      throw invalid_command_line_argument_exceptiont(
+        "cannot output goto binary to stdout", "--simplify");
+
     options.set_option("simplify", true);
     options.set_option("outfile", cmdline.get_value("simplify"));
     options.set_option("general-analysis", true);
@@ -219,7 +228,7 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("intervals", true);
     options.set_option("domain set", true);
   }
-  else if(cmdline.isset("(show-non-null)"))
+  else if(cmdline.isset("show-non-null"))
   {
     // For backwards compatibility
     options.set_option("show", true);
@@ -229,8 +238,10 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
   }
   else if(cmdline.isset("intervals") || cmdline.isset("non-null"))
   {
-    // For backwards compatibility either of these on their own means show
-    options.set_option("show", true);
+    // Partial backwards compatability, just giving these domains without
+    // a task will work.  However it will use the general default of verify
+    // rather than their historical default of show.
+    options.set_option("verify", true);
     options.set_option("general-analysis", true);
   }
 
@@ -289,6 +300,11 @@ void goto_analyzer_parse_optionst::get_command_line_options(optionst &options)
         options.set_option("constants", true);
       }
     }
+  }
+
+  if(cmdline.isset("validate-goto-model"))
+  {
+    options.set_option("validate-goto-model", true);
   }
 }
 
@@ -382,7 +398,8 @@ int goto_analyzer_parse_optionst::doit()
 
   try
   {
-    goto_model=initialize_goto_model(cmdline, get_message_handler());
+    goto_model =
+      initialize_goto_model(cmdline.args, get_message_handler(), options);
   }
 
   catch(const char *e)
@@ -406,10 +423,15 @@ int goto_analyzer_parse_optionst::doit()
   if(process_goto_program(options))
     return CPROVER_EXIT_INTERNAL_ERROR;
 
+  if(cmdline.isset("validate-goto-model"))
+  {
+    goto_model.validate(validation_modet::INVARIANT);
+  }
+
   // show it?
   if(cmdline.isset("show-symbol-table"))
   {
-    ::show_symbol_table(goto_model.symbol_table, get_ui());
+    ::show_symbol_table(goto_model.symbol_table, ui_message_handler);
     return CPROVER_EXIT_SUCCESS;
   }
 
@@ -586,14 +608,15 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
 
   if(options.get_bool_option("general-analysis"))
   {
-
     // Output file factory
     const std::string outfile=options.get_option("outfile");
+
     std::ofstream output_stream;
-    if(!(outfile=="-"))
+    if(outfile != "-" && !outfile.empty())
       output_stream.open(outfile);
 
-    std::ostream &out((outfile=="-") ? std::cout : output_stream);
+    std::ostream &out(
+      (outfile == "-" || outfile.empty()) ? std::cout : output_stream);
 
     if(!out)
     {
@@ -614,20 +637,24 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
       return CPROVER_EXIT_INTERNAL_ERROR;
     }
 
-
     // Run
     status() << "Computing abstract states" << eom;
     (*analyzer)(goto_model);
 
     // Perform the task
     status() << "Performing task" << eom;
+
     bool result = true;
+
     if(options.get_bool_option("show"))
     {
-      result = static_show_domain(goto_model,
-                                  *analyzer,
-                                  options,
-                                  out);
+      static_show_domain(goto_model, *analyzer, options, out);
+      return CPROVER_EXIT_SUCCESS;
+    }
+    else if(options.get_bool_option("show-on-source"))
+    {
+      show_on_source(goto_model, *analyzer, get_message_handler());
+      return CPROVER_EXIT_SUCCESS;
     }
     else if(options.get_bool_option("verify"))
     {
@@ -639,6 +666,9 @@ int goto_analyzer_parse_optionst::perform_analysis(const optionst &options)
     }
     else if(options.get_bool_option("simplify"))
     {
+      PRECONDITION(!outfile.empty() && outfile != "-");
+      output_stream.close();
+      output_stream.open(outfile, std::ios::binary);
       result = static_simplifier(goto_model,
                                  *analyzer,
                                  options,
@@ -742,11 +772,13 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     remove_vector(goto_model);
     remove_complex(goto_model);
 
-    #if 0
+#if 0
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
     goto_check(options, goto_model);
-    #endif
+#else
+    (void)options; // unused parameter
+#endif
 
     // recalculate numbers, etc.
     goto_model.goto_functions.update();
@@ -788,7 +820,7 @@ void goto_analyzer_parse_optionst::help()
   std::cout << '\n' << banner_string("GOTO-ANALYZER", CBMC_VERSION) << '\n'
             <<
     "* *                   Copyright (C) 2017-2018                    * *\n"
-    "* *                  Daniel Kroening, DiffBlue                   * *\n"
+    "* *                  Daniel Kroening, Diffblue                   * *\n"
     "* *                   kroening@kroening.com                      * *\n"
     "\n"
     "Usage:                       Purpose:\n"
@@ -797,7 +829,8 @@ void goto_analyzer_parse_optionst::help()
     " goto-analyzer file.c ...     source file names\n"
     "\n"
     "Task options:\n"
-    " --show                       display the abstract domains\n"
+    " --show                       display the abstract states on the goto program\n" // NOLINT(*)
+    " --show-on-source             display the abstract states on the source\n"
     // NOLINTNEXTLINE(whitespace/line_length)
     " --verify                     use the abstract domains to check assertions\n"
     // NOLINTNEXTLINE(whitespace/line_length)
@@ -872,6 +905,7 @@ void goto_analyzer_parse_optionst::help()
     HELP_GOTO_CHECK
     "\n"
     "Other options:\n"
+    HELP_VALIDATE
     " --version                    show version and exit\n"
     HELP_FLUSH
     HELP_TIMESTAMP

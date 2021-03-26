@@ -52,7 +52,7 @@ int hybrid_binary(
       "--remove-section", "goto-cc",
       "--add-section", "goto-cc=" + goto_binary_file, output_file};
 
-    result = run(objcopy_argv[0], objcopy_argv, "", "");
+    result = run(objcopy_argv[0], objcopy_argv);
   }
 
   // delete the goto binary
@@ -79,7 +79,7 @@ int hybrid_binary(
       "lipo", output_file, "-create", "-arch", "hppa7100LC", goto_binary_file,
       "-output", output_file };
 
-    result = run(lipo_argv[0], lipo_argv, "", "");
+    result = run(lipo_argv[0], lipo_argv);
   }
 
   // delete the goto binary
@@ -93,6 +93,10 @@ int hybrid_binary(
   }
 
 #else
+  // unused parameters
+  (void)compiler_or_linker;
+  (void)goto_binary_file;
+  (void)output_file;
   message.error() << "binary merging not implemented for this platform"
                   << messaget::eom;
   result = 1;

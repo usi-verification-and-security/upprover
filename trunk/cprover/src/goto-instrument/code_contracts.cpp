@@ -13,6 +13,7 @@ Date: February 2016
 
 #include "code_contracts.h"
 
+#include <util/expr_util.h>
 #include <util/fresh_symbol.h>
 #include <util/replace_symbol.h>
 
@@ -156,9 +157,9 @@ static void check_apply_invariants(
   loop_end->targets.clear();
   loop_end->type=ASSUME;
   if(loop_head->is_goto())
-    loop_end->guard.make_false();
+    loop_end->guard = false_exprt();
   else
-    loop_end->guard.make_not();
+    loop_end->guard = boolean_negate(loop_end->guard);
 }
 
 void code_contractst::apply_contract(
@@ -189,7 +190,10 @@ void code_contractst::apply_contract(
 
   // TODO: return value could be nil
   if(type.return_type()!=empty_typet())
-    replace.insert("__CPROVER_return_value", call.lhs());
+  {
+    symbol_exprt ret_val(CPROVER_PREFIX "return_value", call.lhs().type());
+    replace.insert(ret_val, call.lhs());
+  }
 
   // formal parameters
   code_function_callt::argumentst::const_iterator a_it=
@@ -200,7 +204,10 @@ void code_contractst::apply_contract(
       a_it!=call.arguments().end();
       ++p_it, ++a_it)
     if(!p_it->get_identifier().empty())
-      replace.insert(p_it->get_identifier(), *a_it);
+    {
+      symbol_exprt p(p_it->get_identifier(), p_it->type());
+      replace.insert(p, *a_it);
+    }
 
   replace(requires);
   replace(ensures);
@@ -301,8 +308,7 @@ void code_contractst::add_contract_check(
   g->source_location=skip->source_location;
 
   // prepare function call including all declarations
-  code_function_callt call;
-  call.function()=ns.lookup(function).symbol_expr();
+  code_function_callt call(ns.lookup(function).symbol_expr());
   replace_symbolt replace;
 
   // decl ret
@@ -319,7 +325,8 @@ void code_contractst::add_contract_check(
 
     call.lhs()=r;
 
-    replace.insert("__CPROVER_return_value", r);
+    symbol_exprt ret_val(CPROVER_PREFIX "return_value", call.lhs().type());
+    replace.insert(ret_val, r);
   }
 
   // decl parameter1 ...
@@ -340,7 +347,10 @@ void code_contractst::add_contract_check(
     call.arguments().push_back(p);
 
     if(!p_it->get_identifier().empty())
-      replace.insert(p_it->get_identifier(), p);
+    {
+      symbol_exprt cur_p(p_it->get_identifier(), p_it->type());
+      replace.insert(cur_p, p);
+    }
   }
 
   // assume(requires)

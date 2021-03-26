@@ -14,7 +14,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <ostream>
 #include <iomanip>
 
+#include <util/expr_iterator.h>
+#include <util/find_symbols.h>
 #include <util/std_expr.h>
+#include <util/validate.h>
 
 #include <langapi/language_util.h>
 
@@ -163,8 +166,10 @@ std::ostream &goto_programt::output_instruction(
       unsigned i=0;
       const irept::subt &exception_list=
         instruction.code.find(ID_exception_list).get_sub();
-      DATA_INVARIANT(instruction.targets.size()==exception_list.size(),
-                     "size of target list");
+      DATA_INVARIANT(
+        instruction.targets.size() == exception_list.size(),
+        "unexpected discrepancy between sizes of instruction"
+        "targets and exception list");
       for(instructiont::targetst::const_iterator
             gt_it=instruction.targets.begin();
           gt_it!=instruction.targets.end();
@@ -208,7 +213,7 @@ std::ostream &goto_programt::output_instruction(
     break;
 
   default:
-    throw "unknown statement";
+    UNREACHABLE;
   }
 
   return out;
@@ -221,10 +226,12 @@ void goto_programt::get_decl_identifiers(
   {
     if(it->is_decl())
     {
-      DATA_INVARIANT(it->code.get_statement()==ID_decl,
-                     "declaration statements");
-      DATA_INVARIANT(it->code.operands().size()==1,
-                     "operand of declaration statement");
+      DATA_INVARIANT(
+        it->code.get_statement() == ID_decl,
+        "expected statement to be declaration statement");
+      DATA_INVARIANT(
+        it->code.operands().size() == 1,
+        "declaration statement expects one operand");
       const symbol_exprt &symbol_expr=to_symbol_expr(it->code.op0());
       decl_identifiers.insert(symbol_expr.get_identifier());
     }
@@ -235,26 +242,24 @@ void parse_lhs_read(const exprt &src, std::list<exprt> &dest)
 {
   if(src.id()==ID_dereference)
   {
-    assert(src.operands().size()==1);
-    dest.push_back(src.op0());
+    dest.push_back(to_dereference_expr(src).pointer());
   }
   else if(src.id()==ID_index)
   {
-    assert(src.operands().size()==2);
-    dest.push_back(src.op1());
-    parse_lhs_read(src.op0(), dest);
+    auto &index_expr = to_index_expr(src);
+    dest.push_back(index_expr.index());
+    parse_lhs_read(index_expr.array(), dest);
   }
   else if(src.id()==ID_member)
   {
-    assert(src.operands().size()==1);
-    parse_lhs_read(src.op0(), dest);
+    parse_lhs_read(to_member_expr(src).compound(), dest);
   }
   else if(src.id()==ID_if)
   {
-    assert(src.operands().size()==3);
-    dest.push_back(src.op0());
-    parse_lhs_read(src.op1(), dest);
-    parse_lhs_read(src.op2(), dest);
+    auto &if_expr = to_if_expr(src);
+    dest.push_back(if_expr.cond());
+    parse_lhs_read(if_expr.true_case(), dest);
+    parse_lhs_read(if_expr.false_case(), dest);
   }
 }
 
@@ -344,9 +349,9 @@ void objects_read(
   else if(src.id()==ID_dereference)
   {
     // this reads what is pointed to plus the pointer
-    assert(src.operands().size()==1);
-    dest.push_back(src);
-    objects_read(src.op0(), dest);
+    auto &deref = to_dereference_expr(src);
+    dest.push_back(deref);
+    objects_read(deref.pointer(), dest);
   }
   else
   {
@@ -374,9 +379,9 @@ void objects_written(
 {
   if(src.id()==ID_if)
   {
-    assert(src.operands().size()==3);
-    objects_written(src.op1(), dest);
-    objects_written(src.op2(), dest);
+    auto &if_expr = to_if_expr(src);
+    objects_written(if_expr.true_case(), dest);
+    objects_written(if_expr.false_case(), dest);
   }
   else
     dest.push_back(src);
@@ -483,10 +488,13 @@ std::string as_string(
     return "END THREAD";
 
   default:
-    throw "unknown statement";
+    UNREACHABLE;
   }
 }
 
+/// Assign each loop in the goto program a unique index. Every backwards goto is
+/// considered a loop. The loops are numbered starting from zero and in the
+/// order they appear in the goto program.
 void goto_programt::compute_loop_numbers()
 {
   unsigned nr=0;
@@ -516,6 +524,16 @@ std::ostream &goto_programt::output(
   return out;
 }
 
+/// Assign each target (i.e., an instruction that is in the `targets` list of
+/// another instruction) a unique index.
+///
+/// Instructions that are not targets get target number instructiont::nil_target. The
+/// targets are numbered starting from one and in the order they appear in the
+/// goto program. An instruction is considered a target if it is the target of a
+/// control-flow instruction (either GOTO or START_THREAD), i.e., it is
+/// contained in the `targets` list of those instructions. Instructions that are
+/// reached via straight-line control flow (fall-through for GOTO instructions)
+/// only are not considered targets.
 void goto_programt::compute_target_numbers()
 {
   // reset marking
@@ -542,7 +560,8 @@ void goto_programt::compute_target_numbers()
     if(i.is_target())
     {
       i.target_number=++cnt;
-      DATA_INVARIANT(i.target_number!=0, "target numbers");
+      DATA_INVARIANT(
+        i.target_number != 0, "GOTO instruction target cannot be zero");
     }
   }
 
@@ -555,15 +574,20 @@ void goto_programt::compute_target_numbers()
     {
       if(t!=instructions.end())
       {
-        DATA_INVARIANT(t->target_number!=0,
-                       "target numbers");
-        DATA_INVARIANT(t->target_number!=instructiont::nil_target,
-                       "target numbers");
+        DATA_INVARIANT(
+          t->target_number != 0, "instruction's number cannot be zero");
+        DATA_INVARIANT(
+          t->target_number != instructiont::nil_target,
+          "GOTO instruction target cannot be nil_target");
       }
     }
   }
 }
 
+/// Copy other goto program into this goto program. The current goto program is
+/// cleared, and targets are adjusted as needed
+///
+/// \param src: the goto program to copy from
 void goto_programt::copy_from(const goto_programt &src)
 {
   // Definitions for mapping between the two programs
@@ -593,8 +617,7 @@ void goto_programt::copy_from(const goto_programt &src)
       targets_mappingt::iterator
         m_target_it=targets_mapping.find(t);
 
-      if(m_target_it==targets_mapping.end())
-        throw "copy_from: target not found";
+      CHECK_RETURN(m_target_it != targets_mapping.end());
 
       t=m_target_it->second;
     }
@@ -604,7 +627,8 @@ void goto_programt::copy_from(const goto_programt &src)
   compute_target_numbers();
 }
 
-// number them
+/// Returns true if the goto program includes an `ASSERT` instruction the guard
+/// of which is not trivially true.
 bool goto_programt::has_assertion() const
 {
   for(const auto &i : instructions)
@@ -614,6 +638,7 @@ bool goto_programt::has_assertion() const
   return false;
 }
 
+/// Compute for each instruction the set of instructions it is a successor of.
 void goto_programt::compute_incoming_edges()
 {
   for(auto &i : instructions)
@@ -634,3 +659,266 @@ void goto_programt::compute_incoming_edges()
   }
 }
 
+bool goto_programt::instructiont::equals(const instructiont &other) const
+{
+  // clang-format off
+  return
+    type == other.type &&
+    code == other.code &&
+    guard == other.guard &&
+    targets.size() == other.targets.size() &&
+    labels == other.labels;
+  // clang-format on
+}
+
+void goto_programt::instructiont::validate(
+  const namespacet &ns,
+  const validation_modet vm) const
+{
+  validate_full_code(code, ns, vm);
+  validate_full_expr(guard, ns, vm);
+
+  const symbolt *table_symbol;
+  DATA_CHECK_WITH_DIAGNOSTICS(
+    vm,
+    !ns.lookup(function, table_symbol),
+    id2string(function) + " not found",
+    source_location);
+
+  auto expr_symbol_finder = [&](const exprt &e) {
+    find_symbols_sett typetags;
+    find_type_symbols(e.type(), typetags);
+    find_symbols(e, typetags);
+    const symbolt *symbol;
+    for(const auto &identifier : typetags)
+    {
+      DATA_CHECK_WITH_DIAGNOSTICS(
+        vm,
+        !ns.lookup(identifier, symbol),
+        id2string(identifier) + " not found",
+        source_location);
+    }
+  };
+
+  auto &current_source_location = source_location;
+  auto type_finder =
+    [&ns, vm, &table_symbol, &current_source_location](const exprt &e) {
+      if(e.id() == ID_symbol)
+      {
+        const auto &goto_symbol_expr = to_symbol_expr(e);
+        const auto &goto_id = goto_symbol_expr.get_identifier();
+
+        if(!ns.lookup(goto_id, table_symbol))
+          DATA_CHECK_WITH_DIAGNOSTICS(
+            vm,
+            base_type_eq(goto_symbol_expr.type(), table_symbol->type, ns),
+            id2string(goto_id) + " type inconsistency\n" +
+              "goto program type: " + goto_symbol_expr.type().id_string() +
+              "\n" + "symbol table type: " + table_symbol->type.id_string(),
+            current_source_location);
+      }
+    };
+
+  switch(type)
+  {
+  case NO_INSTRUCTION_TYPE:
+    break;
+  case GOTO:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      has_target(),
+      "goto instruction expects at least one target",
+      source_location);
+    // get_target checks that targets.size()==1
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      get_target()->is_target() && get_target()->target_number != 0,
+      "goto target has to be a target",
+      source_location);
+    break;
+  case ASSUME:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      targets.empty(),
+      "assume instruction should not have a target",
+      source_location);
+    break;
+  case ASSERT:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      targets.empty(),
+      "assert instruction should not have a target",
+      source_location);
+
+    std::for_each(guard.depth_begin(), guard.depth_end(), expr_symbol_finder);
+    std::for_each(guard.depth_begin(), guard.depth_end(), type_finder);
+    break;
+  case OTHER:
+    break;
+  case SKIP:
+    break;
+  case START_THREAD:
+    break;
+  case END_THREAD:
+    break;
+  case LOCATION:
+    break;
+  case END_FUNCTION:
+    break;
+  case ATOMIC_BEGIN:
+    break;
+  case ATOMIC_END:
+    break;
+  case RETURN:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      code.get_statement() == ID_return,
+      "return instruction should contain a return statement",
+      source_location);
+    break;
+  case ASSIGN:
+    DATA_CHECK(
+      vm,
+      code.get_statement() == ID_assign,
+      "assign instruction should contain an assign statement");
+    DATA_CHECK(
+      vm, targets.empty(), "assign instruction should not have a target");
+    break;
+  case DECL:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      code.get_statement() == ID_decl,
+      "declaration instructions should contain a declaration statement",
+      source_location);
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      !ns.lookup(to_code_decl(code).get_identifier(), table_symbol),
+      "declared symbols should be known",
+      id2string(to_code_decl(code).get_identifier()),
+      source_location);
+    break;
+  case DEAD:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      code.get_statement() == ID_dead,
+      "dead instructions should contain a dead statement",
+      source_location);
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      !ns.lookup(to_code_dead(code).get_identifier(), table_symbol),
+      "removed symbols should be known",
+      id2string(to_code_dead(code).get_identifier()),
+      source_location);
+    break;
+  case FUNCTION_CALL:
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      code.get_statement() == ID_function_call,
+      "function call instruction should contain a call statement",
+      source_location);
+
+    std::for_each(code.depth_begin(), code.depth_end(), expr_symbol_finder);
+    std::for_each(code.depth_begin(), code.depth_end(), type_finder);
+    break;
+  case THROW:
+    break;
+  case CATCH:
+    break;
+  case INCOMPLETE_GOTO:
+    break;
+  }
+}
+
+bool goto_programt::equals(const goto_programt &other) const
+{
+  if(instructions.size() != other.instructions.size())
+    return false;
+
+  goto_programt::const_targett other_it = other.instructions.begin();
+  for(const auto &ins : instructions)
+  {
+    if(!ins.equals(*other_it))
+      return false;
+
+    // the number of targets is the same as instructiont::equals returned "true"
+    auto other_target_it = other_it->targets.begin();
+    for(const auto t : ins.targets)
+    {
+      if(
+        t->location_number - ins.location_number !=
+        (*other_target_it)->location_number - other_it->location_number)
+      {
+        return false;
+      }
+
+      ++other_target_it;
+    }
+
+    ++other_it;
+  }
+
+  return true;
+}
+
+/// Outputs a string representation of a `goto_program_instruction_typet`
+std::ostream &operator<<(std::ostream &out, goto_program_instruction_typet t)
+{
+  switch(t)
+  {
+  case NO_INSTRUCTION_TYPE:
+    out << "NO_INSTRUCTION_TYPE";
+    break;
+  case GOTO:
+    out << "GOTO";
+    break;
+  case ASSUME:
+    out << "ASSUME";
+    break;
+  case ASSERT:
+    out << "ASSERT";
+    break;
+  case OTHER:
+    out << "OTHER";
+    break;
+  case DECL:
+    out << "DECL";
+    break;
+  case DEAD:
+    out << "DEAD";
+    break;
+  case SKIP:
+    out << "SKIP";
+    break;
+  case START_THREAD:
+    out << "START_THREAD";
+    break;
+  case END_THREAD:
+    out << "END_THREAD";
+    break;
+  case LOCATION:
+    out << "LOCATION";
+    break;
+  case END_FUNCTION:
+    out << "END_FUNCTION";
+    break;
+  case ATOMIC_BEGIN:
+    out << "ATOMIC_BEGIN";
+    break;
+  case ATOMIC_END:
+    out << "ATOMIC_END";
+    break;
+  case RETURN:
+    out << "RETURN";
+    break;
+  case ASSIGN:
+    out << "ASSIGN";
+    break;
+  case FUNCTION_CALL:
+    out << "FUNCTION_CALL";
+    break;
+  default:
+    out << "?";
+  }
+
+  return out;
+}

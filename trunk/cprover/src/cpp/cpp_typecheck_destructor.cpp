@@ -15,12 +15,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 bool cpp_typecheckt::find_dtor(const symbolt &symbol) const
 {
-  const irept &components=
-    symbol.type.find(ID_components);
-
-  forall_irep(cit, components.get_sub())
+  for(const auto &c : to_struct_type(symbol.type).components())
   {
-    if(cit->get(ID_base_name)=="~"+id2string(symbol.base_name))
+    if(c.get_base_name() == "~" + id2string(symbol.base_name))
       return true;
   }
 
@@ -35,22 +32,16 @@ void cpp_typecheckt::default_dtor(
   assert(symbol.type.id()==ID_struct ||
          symbol.type.id()==ID_union);
 
-  irept name;
-  name.id(ID_name);
-  name.set(ID_identifier, "~"+id2string(symbol.base_name));
-  name.set(ID_C_source_location, symbol.location);
-
   cpp_declaratort decl;
-  decl.name().id(ID_cpp_name);
-  decl.name().move_to_sub(name);
+  decl.name() = cpp_namet("~" + id2string(symbol.base_name), symbol.location);
   decl.type().id(ID_function_type);
   decl.type().subtype().make_nil();
 
   decl.value().id(ID_code);
   decl.value().add(ID_type).id(ID_code);
   decl.value().set(ID_statement, ID_block);
-  decl.add("cv").make_nil();
-  decl.add("throw_decl").make_nil();
+  decl.add(ID_cv).make_nil();
+  decl.add(ID_throw_decl).make_nil();
 
   dtor.add(ID_type).id(ID_destructor);
   dtor.add(ID_storage_spec).id(ID_cpp_storage_spec);
@@ -77,21 +68,14 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
     to_struct_union_type(symbol.type).components();
 
   // take care of virtual methods
-  for(struct_union_typet::componentst::const_iterator
-      cit=components.begin();
-      cit!=components.end();
-      cit++)
+  for(const auto &c : components)
   {
-    if(cit->get_bool("is_vtptr"))
+    if(c.get_bool(ID_is_vtptr))
     {
-      exprt name(ID_name);
-      name.set(ID_identifier, cit->get(ID_base_name));
-
-      cpp_namet cppname;
-      cppname.move_to_sub(name);
+      const cpp_namet cppname(c.get_base_name());
 
       const symbolt &virtual_table_symbol_type =
-        lookup(cit->type().subtype().get(ID_identifier));
+        lookup(c.type().subtype().get(ID_identifier));
 
       const symbolt &virtual_table_symbol_var = lookup(
         id2string(virtual_table_symbol_type.name) + "@" +
@@ -99,16 +83,16 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
 
       exprt var=virtual_table_symbol_var.symbol_expr();
       address_of_exprt address(var);
-      assert(address.type()==cit->type());
+      assert(address.type() == c.type());
 
       already_typechecked(address);
 
       exprt ptrmember(ID_ptrmember);
-      ptrmember.set(ID_component_name, cit->get(ID_name));
+      ptrmember.set(ID_component_name, c.get_name());
       ptrmember.operands().push_back(exprt("cpp-this"));
 
       code_assignt assign(ptrmember, address);
-      block.operands().push_back(assign);
+      block.add(assign);
       continue;
     }
   }
@@ -129,12 +113,7 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
        cpp_is_pod(type))
       continue;
 
-    irept name(ID_name);
-    name.set(ID_identifier, cit->get(ID_base_name));
-    name.set(ID_C_source_location, source_location);
-
-    cpp_namet cppname;
-    cppname.get_sub().push_back(name);
+    const cpp_namet cppname(cit->get_base_name(), source_location);
 
     exprt member(ID_ptrmember, type);
     member.set(ID_component_cpp_name, cppname);
@@ -144,24 +123,25 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
 
     const bool disabled_access_control = disable_access_control;
     disable_access_control = true;
-    codet dtor_code = cpp_destructor(source_location, member);
+    auto dtor_code = cpp_destructor(source_location, member);
     disable_access_control = disabled_access_control;
 
-    if(dtor_code.is_not_nil())
-      block.move_to_operands(dtor_code);
+    if(dtor_code.has_value())
+      block.add(dtor_code.value());
   }
 
-  const irept::subt &bases=symbol.type.find(ID_bases).get_sub();
+  if(symbol.type.id() == ID_union)
+    return std::move(block);
+
+  const auto &bases = to_struct_type(symbol.type).bases();
 
   // call the base destructors in the reverse order
-  for(irept::subt::const_reverse_iterator
-      bit=bases.rbegin();
-      bit!=bases.rend();
+  for(class_typet::basest::const_reverse_iterator bit = bases.rbegin();
+      bit != bases.rend();
       bit++)
   {
-    assert(bit->id()==ID_base);
-    assert(bit->find(ID_type).id() == ID_symbol_type);
-    const symbolt &psymb = lookup(bit->find(ID_type).get(ID_identifier));
+    DATA_INVARIANT(bit->id() == ID_base, "base class expression expected");
+    const symbolt &psymb = lookup(bit->type());
 
     symbol_exprt this_ptr(ID_this, pointer_type(symbol.type));
     dereference_exprt object(this_ptr, psymb.type);
@@ -169,12 +149,12 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
 
     const bool disabled_access_control = disable_access_control;
     disable_access_control = true;
-    exprt dtor_code = cpp_destructor(source_location, object);
+    auto dtor_code = cpp_destructor(source_location, object);
     disable_access_control = disabled_access_control;
 
-    if(dtor_code.is_not_nil())
-      block.move_to_operands(dtor_code);
+    if(dtor_code.has_value())
+      block.add(dtor_code.value());
   }
 
-  return block;
+  return std::move(block);
 }

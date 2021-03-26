@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <ostream>
 
+#include "exception_utils.h"
 #include "string2int.h"
 
 void xmlt::clear()
@@ -149,23 +150,23 @@ void xmlt::do_indent(std::ostream &out, unsigned indent)
   out << std::string(indent, ' ');
 }
 
-xmlt::elementst::const_iterator xmlt::find(const std::string &name) const
+xmlt::elementst::const_iterator xmlt::find(const std::string &key) const
 {
   for(elementst::const_iterator it=elements.begin();
       it!=elements.end();
       it++)
-    if(it->name==name)
+    if(it->name == key)
       return it;
 
   return elements.end();
 }
 
-xmlt::elementst::iterator xmlt::find(const std::string &name)
+xmlt::elementst::iterator xmlt::find(const std::string &key)
 {
   for(elementst::iterator it=elements.begin();
       it!=elements.end();
       it++)
-    if(it->name==name)
+    if(it->name == key)
       return it;
 
   return elements.end();
@@ -240,7 +241,7 @@ std::string xmlt::unescape(const std::string &str)
         result+=c;
       }
       else
-        throw "XML escape code not implemented"; // NOLINT(readability/throw)
+        throw deserialization_exceptiont("unknown XML escape code: " + tmp);
     }
     else
       result+=*it;

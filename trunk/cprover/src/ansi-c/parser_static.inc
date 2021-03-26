@@ -4,11 +4,13 @@
 #include <util/std_expr.h>
 #include <util/string2int.h>
 
+#include "merged_type.h"
+
 #define YYSTYPE unsigned
 #define YYSTYPE_IS_TRIVIAL 1
 
 #define mto(x, y) stack(x).move_to_operands(stack(y))
-#define mts(x, y) (stack_type(x).move_to_subtypes(stack_type(y)))
+#define mts(x, y) (to_type_with_subtypes(stack_type(x)).move_to_subtypes(stack_type(y)))
 #define binary(x, y, l, id, z) { init(x, id); \
   stack(x).add_source_location()=stack(l).source_location(); \
   stack(x).reserve_operands(2); mto(x, y); mto(x, z); }
@@ -115,13 +117,13 @@ static void merge_types(irept &dest, irept &src)
   if(dest.id()!=ID_merged_type)
   {
     source_locationt location=static_cast<const exprt &>(dest).source_location();
-    typet new_type(ID_merged_type);
+    merged_typet new_type;
     new_type.move_to_subtypes((typet &)(dest));
     dest.swap(new_type);
     static_cast<exprt &>(dest).add_source_location()=location;
   }
 
-  static_cast<typet &>(dest).move_to_subtypes(static_cast<typet &>(src));
+  to_type_with_subtypes(static_cast<typet &>(dest)).move_to_subtypes(static_cast<typet &>(src));
 }
 
 /*******************************************************************\
@@ -203,8 +205,8 @@ static void make_subtype(typet &dest, typet &src)
     if(p->id()==ID_merged_type)
     {
       // do last one
-      assert(!p->subtypes().empty());
-      sub=&(p->subtypes().back());
+      auto &merged_type = to_merged_type(*p);
+      sub = &merged_type.last_type();
     }
 
     if(sub->id()==ID_frontend_pointer ||
@@ -243,8 +245,8 @@ static void make_subtype(typet &dest, typet &src)
           }
           else if(p->id()==ID_merged_type)
           {
-            assert(!p->subtypes().empty());
-            p=&(p->subtypes().back());
+            auto &merged_type = to_merged_type(*p);
+            p=&merged_type.last_type();
           }
           else if(p->id()==irep_idt())
             assert(false);

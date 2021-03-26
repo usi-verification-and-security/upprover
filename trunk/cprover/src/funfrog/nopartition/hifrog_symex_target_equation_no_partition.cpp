@@ -57,6 +57,7 @@ void hifrog_symex_target_equationt::convert_guards(convertort &convertor)
             cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
             step.guard_literal = flaref_to_literal(convertor.get_const_literal(false));
+            //step.guard_handle = false_exprt();
         } else {
             exprt tmp(step.guard);
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -69,6 +70,7 @@ void hifrog_symex_target_equationt::convert_guards(convertort &convertor)
                 cout << "Before decider::convert(GUARD-OUT) --> ", tmp,false);
 #	endif
             step.guard_literal = flaref_to_literal(convertor.convert_bool_expr(tmp));
+            //step.guard_handle = tmp;
         }
     }      
 }
@@ -122,6 +124,7 @@ void hifrog_symex_target_equationt::convert_assumptions(convertort &convertor)
                 cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
 #           endif
                 step.cond_literal = flaref_to_literal(convertor.get_const_literal(true));
+                //step.cond_handle = true_exprt();
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
@@ -131,6 +134,7 @@ void hifrog_symex_target_equationt::convert_assumptions(convertort &convertor)
                             tmp, false);
 #               endif
                 step.cond_literal = flaref_to_literal(convertor.convert_bool_expr(tmp));
+                //step.cond_handle = tmp;
             }
         }
     }
@@ -146,7 +150,7 @@ void hifrog_symex_target_equationt::convert_goto_instructions(convertort &conver
                 cout << "Before decider::const_var(GOTO-OUT) --> true" << endl;
 #           endif
                 step.cond_literal = flaref_to_literal(convertor.get_const_literal(true));
-                // GF
+                //step.cond_handle = true_exprt();
             } else {
                 exprt tmp(step.cond_expr);
 #               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
@@ -155,6 +159,7 @@ void hifrog_symex_target_equationt::convert_goto_instructions(convertort &conver
                             tmp, false);
 #               endif
                 step.cond_literal = flaref_to_literal(convertor.convert_bool_expr(tmp));
+                //step.cond_handle = tmp;
             }
         }
     }
@@ -179,6 +184,7 @@ void hifrog_symex_target_equationt::convert_assertions(convertort &convertor)
                 convertor.set_to_false(step.cond_expr);
                 //step.cond_literal=const_literal(false);
                 step.cond_literal = flaref_to_literal(convertor.get_const_literal(false));
+                //step.cond_handle = false_exprt();
                 return; // prevent further assumptions!
             }
             else if(step.is_assume())
@@ -205,20 +211,27 @@ void hifrog_symex_target_equationt::convert_assertions(convertort &convertor)
 
             // do the conversion
             step.cond_literal = flaref_to_literal(convertor.convert_bool_expr(implication));
-
+            //step.cond_handle = implication;
             // store disjunct
             disjuncts.push_back(literal_exprt(!step.cond_literal));
+            //disjuncts.push_back(not_exprt(step.cond_handle));
         }
         else if(step.is_assume())
         {
             // the assumptions have been converted before
             // avoid deep nesting of ID_and expressions
+//            if(assumption.id()==ID_and)
+//                //assumption.copy_to_operands(step.cond_handle);
+//            else
+//                assumption=
+//                    and_exprt(assumption, step.cond_handle);
             if(assumption.id()==ID_and)
                 assumption.copy_to_operands(literal_exprt(step.cond_literal));
             else
                 assumption=
-                    and_exprt(assumption, literal_exprt(step.cond_literal));
+                        and_exprt(assumption, literal_exprt(step.cond_literal));
         }
+
     }
 
     // the below is 'true' if there are no assertions

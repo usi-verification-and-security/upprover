@@ -6,6 +6,7 @@
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
+#include <iostream>
 #endif
 
 #include "nopartition/hifrog_symex_target_equation_no_partition.h"
@@ -99,8 +100,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
 
     //reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
-    for(symex_target_equationt::SSA_stepst::iterator
-      it=equation.SSA_steps.begin();
+    for(auto it=equation.SSA_steps.begin();
       it!=equation.SSA_steps.end();
       it++)
     {
@@ -540,9 +540,10 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
 
 void dependency_checkert::print_SSA_steps()
 {
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
-    {
-      it->output(ns, std::cout);
+//    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+//    {
+    for (const auto & ssa_stp : SSA_steps) {
+      ssa_stp.output(std::cout);
     }
 }
 #endif

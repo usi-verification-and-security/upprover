@@ -91,6 +91,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modul
 
 find_package(GMP REQUIRED)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
 
 add_executable(hifrog main.cpp
@@ -112,6 +115,7 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
+    #-DSMT_DEBUG  #DEBUG SMT encoding for UF/LA/CUF
     #-DDISABLE_OPTIMIZATIONS
     #-DLATTICE_REF_ALGORITHM
     #-DPRINT_DEBUG_UPPROVER #Print debug info for summary IDs in UpProver

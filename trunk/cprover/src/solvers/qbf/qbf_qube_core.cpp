@@ -8,12 +8,12 @@ Author: CM Wintersteiger
 
 #include "qbf_qube_core.h"
 
-#include <cassert>
 #include <cstdlib>
-#include <fstream>
 #include <cstring>
+#include <fstream>
 
-#include <util/mp_arith.h>
+#include <util/arith_tools.h>
+#include <util/invariant.h>
 
 qbf_qube_coret::qbf_qube_coret() : qdimacs_coret()
 {
@@ -78,9 +78,9 @@ propt::resultt qbf_qube_coret::prop_solve()
       {
         mp_integer b(line.substr(2).c_str());
         if(b<0)
-          assignment[integer2unsigned(b.negate())]=false;
+          assignment[numeric_cast_v<std::size_t>(b.negate())] = false;
         else
-          assignment[integer2unsigned(b)]=true;
+          assignment[numeric_cast_v<std::size_t>(b)] = true;
       }
       else if(line=="s cnf 1")
       {
@@ -131,10 +131,10 @@ propt::resultt qbf_qube_coret::prop_solve()
 
 bool qbf_qube_coret::is_in_core(literalt) const
 {
-  throw "not supported";
+  UNIMPLEMENTED;
 }
 
 qdimacs_coret::modeltypet qbf_qube_coret::m_get(literalt) const
 {
-  throw "not supported";
+  UNIMPLEMENTED;
 }

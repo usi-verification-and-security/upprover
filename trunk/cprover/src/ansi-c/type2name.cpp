@@ -86,9 +86,9 @@ static std::string pointer_offset_bits_as_string(
   const typet &type,
   const namespacet &ns)
 {
-  mp_integer bits = pointer_offset_bits(type, ns);
-  CHECK_RETURN(bits != -1);
-  return integer2string(bits);
+  auto bits = pointer_offset_bits(type, ns);
+  CHECK_RETURN(bits.has_value());
+  return integer2string(*bits);
 }
 
 static bool parent_is_sym_check=false;
@@ -178,14 +178,19 @@ static std::string type2name(
   }
   else if(type.id()==ID_array)
   {
-    const array_typet &t=to_array_type(type);
-    mp_integer size;
-    if(t.size().id()==ID_symbol)
-      result += "ARR" + id2string(to_symbol_expr(t.size()).get_identifier());
-    else if(to_integer(t.size(), size))
-      result+="ARR?";
+    const exprt &size = to_array_type(type).size();
+
+    if(size.id() == ID_symbol)
+      result += "ARR" + id2string(to_symbol_expr(size).get_identifier());
     else
-      result+="ARR"+integer2string(size);
+    {
+      const auto size_int = numeric_cast<mp_integer>(size);
+
+      if(!size_int.has_value())
+        result += "ARR?";
+      else
+        result += "ARR" + integer2string(*size_int);
+    }
   }
   else if(
     type.id() == ID_symbol_type || type.id() == ID_c_enum_tag ||
@@ -203,18 +208,17 @@ static std::string type2name(
       result+="ST";
     if(type.id()==ID_union)
       result+="UN";
-    const struct_union_typet &t=to_struct_union_type(type);
-    const struct_union_typet::componentst &components = t.components();
     result+='[';
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    bool first = true;
+    for(const auto &c : to_struct_union_type(type).components())
     {
-      if(it!=components.begin())
+      if(!first)
         result+='|';
-      result+=type2name(it->type(), ns, symbol_number);
-      irep_idt component_name = it->get_name();
+      else
+        first = false;
+
+      result += type2name(c.type(), ns, symbol_number);
+      const irep_idt &component_name = c.get_name();
       CHECK_RETURN(!component_name.empty());
       result+="'"+id2string(component_name)+"'";
     }

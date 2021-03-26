@@ -35,12 +35,14 @@ SRC = accelerate/accelerate.cpp \
       full_slicer.cpp \
       function.cpp \
       function_modifies.cpp \
+      generate_function_bodies.cpp \
       goto_instrument_languages.cpp \
       goto_instrument_main.cpp \
       goto_instrument_parse_options.cpp \
       goto_program2code.cpp \
       havoc_loops.cpp \
       horn_encoding.cpp \
+      insert_final_assert_false.cpp \
       interrupt.cpp \
       k_induction.cpp \
       loop_utils.cpp \
@@ -53,9 +55,11 @@ SRC = accelerate/accelerate.cpp \
       race_check.cpp \
       reachability_slicer.cpp \
       remove_function.cpp \
+      replace_calls.cpp \
       rw_set.cpp \
       show_locations.cpp \
       skip_loops.cpp \
+      source_lines.cpp \
       splice_call.cpp \
       stack_depth.cpp \
       thread_instrumentation.cpp \
@@ -100,7 +104,7 @@ CLEANFILES = goto-instrument$(EXEEXT) goto-instrument$(LIBEXT)
 include ../config.inc
 include ../common
 
-all: goto-instrument$(EXEEXT) goto-instrument$(LIBEXT)
+all: goto-instrument$(EXEEXT)
 
 ifneq ($(LIB_GLPK),)
   LIBS += $(LIB_GLPK)
@@ -111,9 +115,6 @@ endif
 
 goto-instrument$(EXEEXT): $(OBJ)
 	$(LINKBIN)
-
-goto-instrument$(LIBEXT): $(OBJ)
-	$(LINKLIB)
 
 .PHONY: goto-instrument-mac-signed
 

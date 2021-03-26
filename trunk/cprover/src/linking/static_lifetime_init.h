@@ -16,10 +16,9 @@ class message_handlert;
 class source_locationt;
 class symbol_tablet;
 
-bool static_lifetime_init(
+void static_lifetime_init(
   symbol_tablet &symbol_table,
-  const source_locationt &source_location,
-  message_handlert &message_handler);
+  const source_locationt &source_location);
 
 #define INITIALIZE_FUNCTION CPROVER_PREFIX "initialize"
 

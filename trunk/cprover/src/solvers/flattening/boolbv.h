@@ -14,9 +14,10 @@ Author: Daniel Kroening, kroening@kroening.com
 // convert expression to boolean formula
 //
 
-#include <util/mp_arith.h>
-#include <util/expr.h>
 #include <util/byte_operators.h>
+#include <util/expr.h>
+#include <util/mp_arith.h>
+#include <util/optional.h>
 
 #include "bv_utils.h"
 #include "boolbv_width.h"
@@ -43,7 +44,10 @@ public:
   {
   }
 
-  virtual const bvt &convert_bv(const exprt &expr); // check cache
+  virtual const bvt &convert_bv( // check cache
+    const exprt &expr,
+    const optionalt<std::size_t> expected_width = nullopt);
+
   virtual bvt convert_bitvector(const exprt &expr); // no cache
 
   // overloading
@@ -69,8 +73,6 @@ public:
     const exprt &expr,
     std::size_t bit,
     literalt &literal) const;
-
-  using arrayst::literal;
 
   enum class unbounded_arrayt { U_NONE, U_ALL, U_AUTO };
   unbounded_arrayt unbounded_array;
@@ -129,7 +131,7 @@ protected:
   virtual literalt convert_verilog_case_equality(
     const binary_relation_exprt &expr);
   virtual literalt convert_ieee_float_rel(const exprt &expr);
-  virtual literalt convert_quantifier(const exprt &expr);
+  virtual literalt convert_quantifier(const quantifier_exprt &expr);
 
   virtual bvt convert_index(const exprt &array, const mp_integer &index);
   virtual bvt convert_index(const index_exprt &expr);
@@ -140,17 +142,17 @@ protected:
   virtual bvt convert_if(const if_exprt &expr);
   virtual bvt convert_struct(const struct_exprt &expr);
   virtual bvt convert_array(const exprt &expr);
-  virtual bvt convert_vector(const exprt &expr);
-  virtual bvt convert_complex(const exprt &expr);
-  virtual bvt convert_complex_real(const exprt &expr);
-  virtual bvt convert_complex_imag(const exprt &expr);
+  virtual bvt convert_vector(const vector_exprt &expr);
+  virtual bvt convert_complex(const complex_exprt &expr);
+  virtual bvt convert_complex_real(const complex_real_exprt &expr);
+  virtual bvt convert_complex_imag(const complex_imag_exprt &expr);
   virtual bvt convert_lambda(const exprt &expr);
   virtual bvt convert_let(const let_exprt &);
   virtual bvt convert_array_of(const array_of_exprt &expr);
   virtual bvt convert_union(const union_exprt &expr);
   virtual bvt convert_bv_typecast(const typecast_exprt &expr);
   virtual bvt convert_add_sub(const exprt &expr);
-  virtual bvt convert_mult(const exprt &expr);
+  virtual bvt convert_mult(const mult_exprt &expr);
   virtual bvt convert_div(const div_exprt &expr);
   virtual bvt convert_mod(const mod_exprt &expr);
   virtual bvt convert_floatbv_op(const exprt &expr);
@@ -159,12 +161,12 @@ protected:
   virtual bvt convert_with(const exprt &expr);
   virtual bvt convert_update(const exprt &expr);
   virtual bvt convert_case(const exprt &expr);
-  virtual bvt convert_cond(const exprt &expr);
+  virtual bvt convert_cond(const cond_exprt &);
   virtual bvt convert_shift(const binary_exprt &expr);
   virtual bvt convert_bitwise(const exprt &expr);
-  virtual bvt convert_unary_minus(const unary_exprt &expr);
+  virtual bvt convert_unary_minus(const unary_minus_exprt &expr);
   virtual bvt convert_abs(const abs_exprt &expr);
-  virtual bvt convert_concatenation(const exprt &expr);
+  virtual bvt convert_concatenation(const concatenation_exprt &expr);
   virtual bvt convert_replication(const replication_exprt &expr);
   virtual bvt convert_bv_literals(const exprt &expr);
   virtual bvt convert_constant(const constant_exprt &expr);

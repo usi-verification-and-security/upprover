@@ -50,21 +50,41 @@ public:
 protected:
     bool get_unwind(
     const symex_targett::sourcet &source,
-    const goto_symex_statet::call_stackt &context,
-    unsigned unwind) override;
+    const statet::call_stackt &context,
+    unsigned unwind);
 
 private:
+    // to be able to start with a fresh statePrt
+    void reset_state(){
+//      auto* storage = &this->path_storage;
+//      assert(storage);
+      // Clear the state
+      statePtr.reset(new goto_symext::statet());
+//          symex_targett::sourcet(goto_functionst::entry_point(), goto_program),
+//          [storage](const irep_idt &id) { return storage->get_unique_l2_index(id); }));
+      ns = namespacet{outer_symbol_table, statePtr->symbol_table};
+
+      // since not supporting multiple threads, we do not need to record events;
+      turn_off_recording_events();
+    }
+
+    void turn_off_recording_events() {
+      // turns off doing some book-keeping related to handling multiple threads by CProver
+      statePtr->record_events = false;
+    }
+    
     unsigned int max_unwind = 1;
     // Store for the symex result
     hifrog_symex_target_equationt &equation;
     
     const goto_programt &goto_program;
+    //const goto_functionst& goto_functions;
 
     // Current assertion
     const assertion_infot* current_assertion;
     
-    // Symex state holding the renaming levels
-    goto_symext::statet state;
+    // Symex statePrt holding the renaming levels
+    std::unique_ptr<statet> statePtr; //HiFrog specific
 
     unsigned loc;
 

@@ -33,7 +33,7 @@ exprt disjunction(const exprt::operandst &op)
   {
     or_exprt result;
     result.operands()=op;
-    return result;
+    return std::move(result);
   }
 }
 
@@ -57,7 +57,7 @@ exprt conjunction(const exprt::operandst &op)
   {
     and_exprt result;
     result.operands()=op;
-    return result;
+    return std::move(result);
   }
 }
 
@@ -74,7 +74,7 @@ static void build_object_descriptor_rec(
     build_object_descriptor_rec(ns, index.array(), dest);
 
     exprt sub_size=size_of_expr(expr.type(), ns);
-    assert(sub_size.is_not_nil());
+    CHECK_RETURN(sub_size.is_not_nil());
 
     dest.offset()=
       plus_exprt(dest.offset(),
@@ -89,7 +89,7 @@ static void build_object_descriptor_rec(
     build_object_descriptor_rec(ns, struct_op, dest);
 
     exprt offset=member_offset_expr(member, ns);
-    assert(offset.is_not_nil());
+    CHECK_RETURN(offset.is_not_nil());
 
     dest.offset()=
       plus_exprt(dest.offset(),
@@ -124,15 +124,13 @@ void object_descriptor_exprt::build(
   const exprt &expr,
   const namespacet &ns)
 {
-  assert(object().id()==ID_unknown);
+  PRECONDITION(object().id() == ID_unknown);
   object()=expr;
 
   if(offset().id()==ID_unknown)
     offset()=from_integer(0, index_type());
 
   build_object_descriptor_rec(ns, expr, *this);
-
-  assert(root_object().type().id()!=ID_empty);
 }
 
 shift_exprt::shift_exprt(
@@ -158,7 +156,7 @@ extractbits_exprt::extractbits_exprt(
   const typet &_type):
   exprt(ID_extractbits, _type)
 {
-  assert(_upper>=_lower);
+  PRECONDITION(_upper >= _lower);
   operands().resize(3);
   src()=_src;
   upper()=from_integer(_upper, integer_typet());
@@ -196,4 +194,18 @@ const exprt &
 struct_exprt::component(const irep_idt &name, const namespacet &ns) const
 {
   return ::component(*this, name, ns);
+}
+
+const exprt &object_descriptor_exprt::root_object() const
+{
+  const exprt *p = &object();
+
+  while(p->id() == ID_member || p->id() == ID_index)
+  {
+    DATA_INVARIANT(
+      p->has_operands(), "member and index expressions have operands");
+    p = &p->op0();
+  }
+
+  return *p;
 }

@@ -12,19 +12,26 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_CBMC_CBMC_PARSE_OPTIONS_H
 #define CPROVER_CBMC_CBMC_PARSE_OPTIONS_H
 
-#include <util/ui_message.h>
+#include <ansi-c/ansi_c_language.h>
+#include <ansi-c/c_object_factory_parameters.h>
+
 #include <util/parse_options.h>
 #include <util/timestamper.h>
+#include <util/ui_message.h>
+#include <util/validation_interface.h>
 
 #include <langapi/language.h>
 
 #include <analyses/goto_check.h>
 
+#include <goto-checker/solver_factory.h>
+
 #include <goto-programs/goto_trace.h>
+
+#include <solvers/refinement/string_refinement.h>
 
 #include "bmc.h"
 #include "xml_interface.h"
-#include "cbmc_solvers.h"
 
 class bmct;
 class goto_functionst;
@@ -44,14 +51,12 @@ class optionst;
   OPT_GOTO_CHECK \
   "(no-assertions)(no-assumptions)" \
   "(xml-ui)(xml-interface)(json-ui)" \
-  "(smt1)(smt2)(fpa)(cvc3)(cvc4)(boolector)(yices)(z3)(opensmt)(mathsat)" \
+  "(smt1)(smt2)(fpa)(cvc3)(cvc4)(boolector)(yices)(z3)(mathsat)" \
+  "(cprover-smt2)" \
   "(no-sat-preprocessor)" \
   "(beautify)" \
   "(dimacs)(refine)(max-node-refinement):(refine-arrays)(refine-arithmetic)"\
-  "(refine-strings)" \
-  "(string-printable)" \
-  "(string-max-length):" \
-  "(string-max-input-length):" \
+  OPT_STRING_REFINEMENT_CBMC \
   "(16)(32)(64)(LP64)(ILP64)(LLP64)(ILP32)(LP32)" \
   "(little-endian)(big-endian)" \
   OPT_SHOW_GOTO_FUNCTIONS \
@@ -73,6 +78,8 @@ class optionst;
   OPT_FLUSH \
   "(localize-faults)(localize-faults-method):" \
   OPT_GOTO_TRACE \
+  OPT_VALIDATE \
+  OPT_ANSI_C_LANGUAGE \
   "(claim):(show-claims)(floatbv)(all-claims)(all-properties)" // legacy, and will eventually disappear // NOLINT(whitespace/line_length)
 // clang-format on
 
@@ -113,7 +120,7 @@ protected:
 
   void register_languages();
   void get_command_line_options(optionst &);
-  void preprocessing();
+  void preprocessing(const optionst &);
   bool set_properties();
 };
 

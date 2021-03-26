@@ -8,45 +8,70 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "smt2_parser.h"
 
+#include "smt2_format.h"
+
 #include <util/arith_tools.h>
+#include <util/ieee_float.h>
+#include <util/range.h>
+
+#include <numeric>
+
+smt2_parsert::tokent smt2_parsert::next_token()
+{
+  const auto token = smt2_tokenizert::next_token();
+
+  if(token == OPEN)
+    parenthesis_level++;
+  else if(token == CLOSE)
+    parenthesis_level--;
+
+  return token;
+}
+
+void smt2_parsert::skip_to_end_of_list()
+{
+  while(parenthesis_level > 0)
+    if(next_token() == END_OF_FILE)
+      return;
+}
 
 void smt2_parsert::command_sequence()
 {
   exit=false;
 
-  while(next_token()==OPEN)
+  while(!exit)
   {
-    if(next_token()!=SYMBOL)
+    if(peek() == END_OF_FILE)
     {
-      error() << "expected symbol as command" << eom;
+      exit = true;
       return;
+    }
+
+    if(next_token() != OPEN)
+      throw error("command must start with '('");
+
+    if(next_token() != SYMBOL)
+    {
+      ignore_command();
+      throw error("expected symbol as command");
     }
 
     command(buffer);
 
-    if(exit)
-      return;
-
     switch(next_token())
     {
     case END_OF_FILE:
-      error() << "expected closing parenthesis at end of command,"
-                 " but got EOF" << eom;
-      return;
+      throw error(
+        "expected closing parenthesis at end of command,"
+        " but got EOF");
 
     case CLOSE:
       // what we expect
       break;
 
     default:
-      error() << "expected end of command" << eom;
-      return;
+      throw error("expected ')' at end of command");
     }
-  }
-
-  if(token!=END_OF_FILE)
-  {
-    error() << "unexpected token in command sequence" << eom;
   }
 }
 
@@ -71,14 +96,14 @@ void smt2_parsert::ignore_command()
       break;
 
     case END_OF_FILE:
-      error() << "unexpected EOF in command" << eom;
-      return;
+      throw error("unexpected EOF in command");
 
     default:
       next_token();
     }
   }
 }
+
 exprt::operandst smt2_parsert::operands()
 {
   exprt::operandst result;
@@ -124,10 +149,7 @@ irep_idt smt2_parsert::rename_id(const irep_idt &id) const
 exprt smt2_parsert::let_expression()
 {
   if(next_token()!=OPEN)
-  {
-    error() << "expected bindings after let" << eom;
-    return nil_exprt();
-  }
+    throw error("expected bindings after let");
 
   std::vector<std::pair<irep_idt, exprt>> bindings;
 
@@ -136,10 +158,7 @@ exprt smt2_parsert::let_expression()
     next_token();
 
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected symbol in binding" << eom;
-      return nil_exprt();
-    }
+      throw error("expected symbol in binding");
 
     irep_idt identifier=buffer;
 
@@ -147,20 +166,14 @@ exprt smt2_parsert::let_expression()
     exprt value=expression();
 
     if(next_token()!=CLOSE)
-    {
-      error() << "expected ')' after value in binding" << eom;
-      return nil_exprt();
-    }
+      throw error("expected ')' after value in binding");
 
     bindings.push_back(
       std::pair<irep_idt, exprt>(identifier, value));
   }
 
   if(next_token()!=CLOSE)
-  {
-    error() << "expected ')' at end of bindings" << eom;
-    return nil_exprt();
-  }
+    throw error("expected ')' at end of bindings");
 
   // save the renaming map
   renaming_mapt old_renaming_map=renaming_map;
@@ -178,21 +191,17 @@ exprt smt2_parsert::let_expression()
   exprt expr=expression();
 
   if(next_token()!=CLOSE)
-  {
-    error() << "expected ')' after let" << eom;
-    return nil_exprt();
-  }
+    throw error("expected ')' after let");
 
   exprt result=expr;
 
   // go backwards, build let_expr
   for(auto r_it=bindings.rbegin(); r_it!=bindings.rend(); r_it++)
   {
-    let_exprt let;
-    let.symbol()=symbol_exprt(r_it->first, r_it->second.type());
-    let.value()=r_it->second;
-    let.type()=result.type();
-    let.where().swap(result);
+    const let_exprt let(
+      symbol_exprt(r_it->first, r_it->second.type()),
+      r_it->second,
+      result);
     result=let;
   }
 
@@ -209,10 +218,7 @@ exprt smt2_parsert::let_expression()
 exprt smt2_parsert::quantifier_expression(irep_idt id)
 {
   if(next_token()!=OPEN)
-  {
-    error() << "expected bindings after " << id << eom;
-    return nil_exprt();
-  }
+    throw error() << "expected bindings after " << id;
 
   std::vector<symbol_exprt> bindings;
 
@@ -221,29 +227,20 @@ exprt smt2_parsert::quantifier_expression(irep_idt id)
     next_token();
 
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected symbol in binding" << eom;
-      return nil_exprt();
-    }
+      throw error("expected symbol in binding");
 
     irep_idt identifier=buffer;
 
     typet type=sort();
 
     if(next_token()!=CLOSE)
-    {
-      error() << "expected ')' after sort in binding" << eom;
-      return nil_exprt();
-    }
+      throw error("expected ')' after sort in binding");
 
     bindings.push_back(symbol_exprt(identifier, type));
   }
 
   if(next_token()!=CLOSE)
-  {
-    error() << "expected ')' at end of bindings" << eom;
-    return nil_exprt();
-  }
+    throw error("expected ')' at end of bindings");
 
   // go forwards, add to id_map
   for(const auto &b : bindings)
@@ -256,10 +253,7 @@ exprt smt2_parsert::quantifier_expression(irep_idt id)
   exprt expr=expression();
 
   if(next_token()!=CLOSE)
-  {
-    error() << "expected ')' after " << id << eom;
-    return nil_exprt();
-  }
+    throw error() << "expected ')' after " << id;
 
   exprt result=expr;
 
@@ -286,29 +280,18 @@ exprt smt2_parsert::function_application(
   #if 0
   const auto &f = id_map[identifier];
 
-  function_application_exprt result;
-
-  result.function()=symbol_exprt(identifier, f.type);
-  result.arguments()=op;
-
   // check the arguments
   if(op.size()!=f.type.variables().size())
-  {
-    error() << "wrong number of arguments for function" << eom;
-    return nil_exprt();
-  }
+    throw error("wrong number of arguments for function");
 
   for(std::size_t i=0; i<op.size(); i++)
   {
     if(op[i].type() != f.type.variables()[i].type())
-    {
-      error() << "wrong type for arguments for function" << eom;
-      return result;
-    }
+      throw error("wrong type for arguments for function");
   }
 
-  result.type()=f.type.range();
-  return result;
+  return function_application_exprt(
+    symbol_exprt(identifier, f.type), op, f.type.range());
   #endif
   return nil_exprt();
 }
@@ -324,7 +307,7 @@ exprt::operandst smt2_parsert::cast_bv_to_signed(const exprt::operandst &op)
     }
     else if(expr.type().id() != ID_unsignedbv)
     {
-      error() << "expected unsigned bitvector" << eom;
+      throw error("expected unsigned bitvector");
     }
     else
     {
@@ -342,10 +325,7 @@ exprt smt2_parsert::cast_bv_to_unsigned(const exprt &expr)
     return expr;
 
   if(expr.type().id()!=ID_signedbv)
-  {
-    error() << "expected signed bitvector" << eom;
-    return expr;
-  }
+    throw error("expected signed bitvector");
 
   const auto width=to_signedbv_type(expr.type()).get_width();
   return typecast_exprt(expr, unsignedbv_typet(width));
@@ -354,80 +334,115 @@ exprt smt2_parsert::cast_bv_to_unsigned(const exprt &expr)
 exprt smt2_parsert::multi_ary(irep_idt id, const exprt::operandst &op)
 {
   if(op.empty())
-  {
-    error() << "expression must have at least one operand" << eom;
-    return nil_exprt();
-  }
-  else
-  {
-    for(std::size_t i=1; i<op.size(); i++)
-    {
-      if(op[i].type()!=op[0].type())
-      {
-        error() << "expression must have operands with matching types,"
-                   " but got `"
-                << op[0].type().pretty()
-                << "' and `" << op[i].type().pretty() << '\'' << eom;
-        return nil_exprt();
-      }
-    }
+    throw error("expression must have at least one operand");
 
-    exprt result(id, op[0].type());
-    result.operands() = op;
-    return result;
+  for(std::size_t i = 1; i < op.size(); i++)
+  {
+    if(op[i].type() != op[0].type())
+    {
+      throw error() << "expression must have operands with matching types,"
+                       " but got `"
+                    << smt2_format(op[0].type()) << "' and `"
+                    << smt2_format(op[i].type()) << '\'';
+    }
   }
+
+  exprt result(id, op[0].type());
+  result.operands() = op;
+  return result;
 }
 
 exprt smt2_parsert::binary_predicate(irep_idt id, const exprt::operandst &op)
 {
   if(op.size()!=2)
-  {
-    error() << "expression must have two operands" << eom;
-    return nil_exprt();
-  }
-  else
-  {
-    if(op[0].type()!=op[1].type())
-    {
-      error() << "expression must have operands with matching types,"
-                 " but got `"
-              << op[0].type().pretty()
-              << "' and `" << op[1].type().pretty() << '\'' << eom;
-      return nil_exprt();
-    }
+    throw error("expression must have two operands");
 
-    return binary_predicate_exprt(op[0], id, op[1]);
+  if(op[0].type() != op[1].type())
+  {
+    throw error() << "expression must have operands with matching types,"
+                     " but got `"
+                  << smt2_format(op[0].type()) << "' and `"
+                  << smt2_format(op[1].type()) << '\'';
   }
+
+  return binary_predicate_exprt(op[0], id, op[1]);
 }
 
 exprt smt2_parsert::unary(irep_idt id, const exprt::operandst &op)
 {
   if(op.size()!=1)
-  {
-    error() << "expression must have one operand" << eom;
-    return nil_exprt();
-  }
-  else
-    return unary_exprt(id, op[0], op[0].type());
+    throw error("expression must have one operand");
+
+  return unary_exprt(id, op[0], op[0].type());
 }
 
 exprt smt2_parsert::binary(irep_idt id, const exprt::operandst &op)
 {
   if(op.size()!=2)
-  {
-    error() << "expression must have two operands" << eom;
-    return nil_exprt();
-  }
-  else
-  {
-    if(op[0].type()!=op[1].type())
-    {
-      error() << "expression must have operands with matching types" << eom;
-      return nil_exprt();
-    }
+    throw error("expression must have two operands");
 
-    return binary_exprt(op[0], id, op[1], op[0].type());
+  if(op[0].type() != op[1].type())
+    throw error("expression must have operands with matching types");
+
+  return binary_exprt(op[0], id, op[1], op[0].type());
+}
+
+exprt smt2_parsert::function_application_ieee_float_op(
+  const irep_idt &id,
+  const exprt::operandst &op)
+{
+  if(op.size() != 3)
+    throw error() << id << " takes three operands";
+
+  if(op[1].type().id() != ID_floatbv || op[2].type().id() != ID_floatbv)
+    throw error() << id << " takes FloatingPoint operands";
+
+  if(op[1].type() != op[2].type())
+  {
+    throw error() << id << " takes FloatingPoint operands with matching sort, "
+                  << "but got " << smt2_format(op[1].type()) << " vs "
+                  << smt2_format(op[2].type());
   }
+
+  // clang-format off
+  const irep_idt expr_id =
+    id == "fp.add" ? ID_floatbv_plus :
+    id == "fp.sub" ? ID_floatbv_minus :
+    id == "fp.mul" ? ID_floatbv_mult :
+    id == "fp.div" ? ID_floatbv_div :
+    throw error("unsupported floating-point operation");
+  // clang-format on
+
+  return std::move(ieee_float_op_exprt(op[1], expr_id, op[2], op[0]));
+}
+
+exprt smt2_parsert::function_application_fp(const exprt::operandst &op)
+{
+  // floating-point from bit-vectors
+  if(op.size() != 3)
+    throw error("fp takes three operands");
+
+  if(op[0].type().id() != ID_unsignedbv)
+    throw error("fp takes BitVec as first operand");
+
+  if(op[1].type().id() != ID_unsignedbv)
+    throw error("fp takes BitVec as second operand");
+
+  if(op[2].type().id() != ID_unsignedbv)
+    throw error("fp takes BitVec as third operand");
+
+  if(to_unsignedbv_type(op[0].type()).get_width() != 1)
+    throw error("fp takes BitVec of size 1 as first operand");
+
+  const auto width_e = to_unsignedbv_type(op[1].type()).get_width();
+  const auto width_f = to_unsignedbv_type(op[2].type()).get_width();
+
+  // stitch the bits together
+  concatenation_exprt c(bv_typet(width_e + width_f + 1));
+  c.operands() = {op[0], op[1], op[2]};
+
+  return std::move(
+    typecast_exprt(c, ieee_float_spect(width_f, width_e).to_type()));
 }
 
 exprt smt2_parsert::function_application()
@@ -439,36 +454,59 @@ exprt smt2_parsert::function_application()
     {
       // indexed identifier
       if(next_token()!=SYMBOL)
-      {
-        error() << "expected symbol after '_'" << eom;
-        return nil_exprt();
-      }
+        throw error("expected symbol after '_'");
 
       if(has_prefix(buffer, "bv"))
       {
         mp_integer i=string2integer(std::string(buffer, 2, std::string::npos));
 
         if(next_token()!=NUMERAL)
-        {
-          error() << "expected numeral as bitvector literal width" << eom;
-          return nil_exprt();
-        }
+          throw error("expected numeral as bitvector literal width");
 
         auto width=std::stoll(buffer);
 
         if(next_token()!=CLOSE)
-        {
-          error() << "expected ')' after bitvector literal" << eom;
-          return nil_exprt();
-        }
+          throw error("expected ')' after bitvector literal");
 
         return from_integer(i, unsignedbv_typet(width));
       }
       else
       {
-        error() << "unknown indexed identifier " << buffer << eom;
-        return nil_exprt();
+        throw error() << "unknown indexed identifier " << buffer;
       }
+    }
+    else if(buffer == "!")
+    {
+      // these are "term attributes"
+      const auto term = expression();
+
+      while(peek() == KEYWORD)
+      {
+        next_token(); // eat the keyword
+        if(buffer == "named")
+        {
+          // 'named terms' must be Boolean
+          if(term.type().id() != ID_bool)
+            throw error("named terms must be Boolean");
+
+          if(next_token() == SYMBOL)
+          {
+            const symbol_exprt symbol_expr(buffer, bool_typet());
+            auto &named_term = named_terms[symbol_expr.get_identifier()];
+            named_term.term = term;
+            named_term.name = symbol_expr;
+          }
+          else
+            throw error("invalid name attribute, expected symbol");
+        }
+        else
+          throw error("unknown term attribute");
+      }
+
+      if(next_token() != CLOSE)
+        throw error("expected ')' at end of term attribute");
+      else
+        return term;
     }
     else
     {
@@ -622,18 +660,17 @@ exprt smt2_parsert::function_application()
       }
       else if(id=="concat")
       {
-        if(op.size()!=2)
-        {
-          error() << "concat takes two operands " << op.size() << eom;
-          return nil_exprt();
-        }
+        // add the widths
+        auto op_width = make_range(op).map([](const exprt &o) {
+          return to_unsignedbv_type(o.type()).get_width();
+        });
 
-        auto width0=to_unsignedbv_type(op[0].type()).get_width();
-        auto width1=to_unsignedbv_type(op[1].type()).get_width();
+        const std::size_t total_width =
+          std::accumulate(op_width.begin(), op_width.end(), 0);
 
-        unsignedbv_typet t(width0+width1);
+        const unsignedbv_typet t(total_width);
 
-        return binary_exprt(op[0], ID_concatenation, op[1], t);
+        return concatenation_exprt(std::move(op), t);
       }
       else if(id=="distinct")
       {
@@ -643,28 +680,73 @@ exprt smt2_parsert::function_application()
       else if(id=="ite")
       {
         if(op.size()!=3)
-        {
-          error() << "ite takes three operands" << eom;
-          return nil_exprt();
-        }
+          throw error("ite takes three operands");
 
         if(op[0].type().id()!=ID_bool)
-        {
-          error() << "ite takes a boolean as first operand" << eom;
-          return nil_exprt();
-        }
+          throw error("ite takes a boolean as first operand");
 
         if(op[1].type()!=op[2].type())
-        {
-          error() << "ite needs matching types" << eom;
-          return nil_exprt();
-        }
+          throw error("ite needs matching types");
 
         return if_exprt(op[0], op[1], op[2]);
       }
       else if(id=="=>" || id=="implies")
       {
         return binary(ID_implies, op);
+      }
+      else if(id == "select")
+      {
+        // array index
+        if(op.size() != 2)
+          throw error("select takes two operands");
+
+        if(op[0].type().id() != ID_array)
+          throw error("select expects array operand");
+
+        return index_exprt(op[0], op[1]);
+      }
+      else if(id == "store")
+      {
+        // array update
+        if(op.size() != 3)
+          throw error("store takes three operands");
+
+        if(op[0].type().id() != ID_array)
+          throw error("store expects array operand");
+
+        if(to_array_type(op[0].type()).subtype() != op[2].type())
+          throw error("store expects value that matches array element type");
+
+        return with_exprt(op[0], op[1], op[2]);
+      }
+      else if(id == "fp.isNaN")
+      {
+        if(op.size() != 1)
+          throw error("fp.isNaN takes one operand");
+
+        if(op[0].type().id() != ID_floatbv)
+          throw error("fp.isNaN takes FloatingPoint operand");
+
+        return unary_predicate_exprt(ID_isnan, op[0]);
+      }
+      else if(id == "fp.isInf")
+      {
+        if(op.size() != 1)
+          throw error("fp.isInf takes one operand");
+
+        if(op[0].type().id() != ID_floatbv)
+          throw error("fp.isInf takes FloatingPoint operand");
+
+        return unary_predicate_exprt(ID_isinf, op[0]);
+      }
+      else if(id == "fp")
+      {
+        return function_application_fp(op);
+      }
+      else if(
+        id == "fp.add" || id == "fp.mul" || id == "fp.sub" || id == "fp.div")
+      {
+        return function_application_ieee_float_op(id, op);
       }
       else
       {
@@ -675,19 +757,17 @@ exprt smt2_parsert::function_application()
         {
           if(id_it->second.type.id()==ID_mathematical_function)
           {
-            function_application_exprt app;
-            app.function()=symbol_exprt(final_id, id_it->second.type);
-            app.arguments()=op;
-            app.type()=to_mathematical_function_type(
-              id_it->second.type).codomain();
-            return app;
+            return function_application_exprt(
+              symbol_exprt(final_id, id_it->second.type),
+              op,
+              to_mathematical_function_type(
+                id_it->second.type).codomain());
           }
           else
             return symbol_exprt(final_id, id_it->second.type);
         }
 
-        error() << "2 unknown symbol " << id << eom;
-        return nil_exprt();
+        throw error() << "unknown function symbol `" << id << '\'';
       }
     }
     break;
@@ -700,53 +780,35 @@ exprt smt2_parsert::function_application()
       {
         // indexed identifier
         if(next_token()!=SYMBOL)
-        {
-          error() << "expected symbol after '_'" << eom;
-          return nil_exprt();
-        }
+          throw error("expected symbol after '_'");
 
         irep_idt id=buffer; // hash it
 
         if(id=="extract")
         {
           if(next_token()!=NUMERAL)
-          {
-            error() << "expected numeral after extract" << eom;
-            return nil_exprt();
-          }
+            throw error("expected numeral after extract");
 
           auto upper=std::stoll(buffer);
 
           if(next_token()!=NUMERAL)
-          {
-            error() << "expected two numerals after extract" << eom;
-            return nil_exprt();
-          }
+            throw error("expected two numerals after extract");
 
           auto lower=std::stoll(buffer);
 
           if(next_token()!=CLOSE)
-          {
-            error() << "expected ')' after extract" << eom;
-            return nil_exprt();
-          }
+            throw error("expected ')' after extract");
 
           auto op=operands();
 
           if(op.size()!=1)
-          {
-            error() << "extract takes one operand" << eom;
-            return nil_exprt();
-          }
+            throw error("extract takes one operand");
 
           auto upper_e=from_integer(upper, integer_typet());
           auto lower_e=from_integer(lower, integer_typet());
 
           if(upper<lower)
-          {
-            error() << "extract got bad indices" << eom;
-            return nil_exprt();
-          }
+            throw error("extract got bad indices");
 
           unsignedbv_typet t(upper-lower+1);
 
@@ -759,26 +821,17 @@ exprt smt2_parsert::function_application()
                 id=="zero_extend")
         {
           if(next_token()!=NUMERAL)
-          {
-            error() << "expected numeral after " << id << eom;
-            return nil_exprt();
-          }
+            throw error() << "expected numeral after " << id;
 
           auto index=std::stoll(buffer);
 
           if(next_token()!=CLOSE)
-          {
-            error() << "expected ')' after " << id << " index" << eom;
-            return nil_exprt();
-          }
+            throw error() << "expected ')' after " << id << " index";
 
           auto op=operands();
 
           if(op.size()!=1)
-          {
-            error() << id << " takes one operand" << eom;
-            return nil_exprt();
-          }
+            throw error() << id << " takes one operand";
 
           if(id=="rotate_left")
           {
@@ -792,12 +845,17 @@ exprt smt2_parsert::function_application()
           }
           else if(id=="sign_extend")
           {
-            auto width=to_unsignedbv_type(op[0].type()).get_width();
-            signedbv_typet signed_type(width+index);
-            unsignedbv_typet unsigned_type(width+index);
+            // we first convert to a signed type of the original width,
+            // then extend to the new width, and then go to unsigned
+            const auto width = to_unsignedbv_type(op[0].type()).get_width();
+            const signedbv_typet small_signed_type(width);
+            const signedbv_typet large_signed_type(width + index);
+            const unsignedbv_typet unsigned_type(width + index);
 
             return typecast_exprt(
-              typecast_exprt(op[0], signed_type), unsigned_type);
+              typecast_exprt(
+                typecast_exprt(op[0], small_signed_type), large_signed_type),
+              unsigned_type);
           }
           else if(id=="zero_extend")
           {
@@ -815,20 +873,16 @@ exprt smt2_parsert::function_application()
         }
         else
         {
-          error() << "unknown indexed identifier " << buffer << eom;
-          return nil_exprt();
+          throw error() << "unknown indexed identifier `" << buffer << '\'';
         }
       }
       else
       {
         // just double parentheses
-        error() << "expected symbol or indexed identifier "
-                   "after '(' in an expression" << eom;
-
         exprt tmp=expression();
 
         if(next_token()!=CLOSE && next_token()!=CLOSE)
-          error() << "mismatched parentheses in an expression" << eom;
+          throw error("mismatched parentheses in an expression");
 
         return tmp;
       }
@@ -836,13 +890,10 @@ exprt smt2_parsert::function_application()
     else
     {
       // just double parentheses
-      error() << "expected symbol or indexed identifier "
-                 "after '(' in an expression" << eom;
-
       exprt tmp=expression();
 
       if(next_token()!=CLOSE && next_token()!=CLOSE)
-        error() << "mismatched parentheses in an expression" << eom;
+        throw error("mismatched parentheses in an expression");
 
       return tmp;
     }
@@ -850,12 +901,9 @@ exprt smt2_parsert::function_application()
 
   default:
     // just parentheses
-    error() << "expected symbol or indexed identifier "
-               "after '(' in an expression" << eom;
-
     exprt tmp=expression();
     if(next_token()!=CLOSE)
-      error() << "mismatched parentheses in an expression" << eom;
+      throw error("mismatched parentheses in an expression");
 
     return tmp;
   }
@@ -874,16 +922,46 @@ exprt smt2_parsert::expression()
         return true_exprt();
       else if(identifier==ID_false)
         return false_exprt();
+      else if(identifier == "roundNearestTiesToEven")
+      {
+        // we encode as 32-bit unsignedbv
+        return from_integer(ieee_floatt::ROUND_TO_EVEN, unsignedbv_typet(32));
+      }
+      else if(identifier == "roundNearestTiesToAway")
+      {
+        throw error("unsupported rounding mode");
+      }
+      else if(identifier == "roundTowardPositive")
+      {
+        // we encode as 32-bit unsignedbv
+        return from_integer(
+          ieee_floatt::ROUND_TO_PLUS_INF, unsignedbv_typet(32));
+      }
+      else if(identifier == "roundTowardNegative")
+      {
+        // we encode as 32-bit unsignedbv
+        return from_integer(
+          ieee_floatt::ROUND_TO_MINUS_INF, unsignedbv_typet(32));
+      }
+      else if(identifier == "roundTowardZero")
+      {
+        // we encode as 32-bit unsignedbv
+        return from_integer(ieee_floatt::ROUND_TO_ZERO, unsignedbv_typet(32));
+      }
       else
       {
         // rummage through id_map
         const irep_idt final_id=rename_id(identifier);
         auto id_it=id_map.find(final_id);
         if(id_it!=id_map.end())
-          return symbol_exprt(final_id, id_it->second.type);
+        {
+          symbol_exprt symbol_expr(final_id, id_it->second.type);
+          if(quoted_symbol)
+            symbol_expr.set(ID_C_quoted, true);
+          return std::move(symbol_expr);
+        }
 
-        error() << "1 unknown symbol " << identifier << eom;
-        return nil_exprt();
+        throw error() << "unknown expression `" << identifier << '\'';
       }
     }
 
@@ -915,12 +993,10 @@ exprt smt2_parsert::expression()
     return function_application();
 
   case END_OF_FILE:
-    error() << "EOF in an expression" << eom;
-    return nil_exprt();
+    throw error("EOF in an expression");
 
   default:
-    error() << "unexpected token in an expression" << eom;
-    return nil_exprt();
+    throw error("unexpected token in an expression");
   }
 }
 
@@ -936,125 +1012,125 @@ typet smt2_parsert::sort()
     else if(buffer=="Real")
       return real_typet();
     else
-    {
-      error() << "unexpected sort: `" << buffer << '\'' << eom;
-      return nil_typet();
-    }
+      throw error() << "unexpected sort: `" << buffer << '\'';
 
   case OPEN:
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected symbol after '(' in a sort " << eom;
-      return nil_typet();
-    }
+      throw error("expected symbol after '(' in a sort ");
 
     if(buffer=="_")
     {
       // indexed identifier
       if(next_token()!=SYMBOL)
-      {
-        error() << "expected symbol after '_' in a sort" << eom;
-        return nil_typet();
-      }
+        throw error("expected symbol after '_' in a sort");
 
       if(buffer=="BitVec")
       {
         if(next_token()!=NUMERAL)
-        {
-          error() << "expected numeral as bit-width" << eom;
-          return nil_typet();
-        }
+          throw error("expected numeral as bit-width");
 
         auto width=std::stoll(buffer);
 
         // eat the ')'
         if(next_token()!=CLOSE)
-        {
-          error() << "expected ')' at end of sort" << eom;
-          return nil_typet();
-        }
+          throw error("expected ')' at end of sort");
 
         return unsignedbv_typet(width);
       }
-      else
+      else if(buffer == "FloatingPoint")
       {
-        error() << "unexpected sort: `" << buffer << '\'' << eom;
-        return nil_typet();
+        if(next_token() != NUMERAL)
+          throw error("expected numeral as bit-width");
+
+        const auto width_e = std::stoll(buffer);
+
+        if(next_token() != NUMERAL)
+          throw error("expected numeral as bit-width");
+
+        const auto width_f = std::stoll(buffer);
+
+        // consume the ')'
+        if(next_token() != CLOSE)
+          throw error("expected ')' at end of sort");
+
+        return ieee_float_spect(width_f - 1, width_e).to_type();
       }
+      else
+        throw error() << "unexpected sort: `" << buffer << '\'';
+    }
+    else if(buffer == "Array")
+    {
+      // this gets two sorts as arguments, domain and range
+      auto domain = sort();
+      auto range = sort();
+
+      // eat the ')'
+      if(next_token() != CLOSE)
+        throw error("expected ')' at end of Array sort");
+
+      // we can turn arrays that map an unsigned bitvector type
+      // to something else into our 'array_typet'
+      if(domain.id() == ID_unsignedbv)
+        return array_typet(range, infinity_exprt(domain));
+      else
+        throw error("unsupported array sort");
     }
     else
-    {
-      error() << "unexpected sort: `" << buffer << '\'' << eom;
-      return nil_typet();
-    }
+      throw error() << "unexpected sort: `" << buffer << '\'';
 
   default:
-    error() << "unexpected token in a sort " << buffer << eom;
-    return nil_typet();
+    throw error() << "unexpected token in a sort: `" << buffer << '\'';
   }
 }
 
-typet smt2_parsert::function_signature_definition()
+smt2_parsert::signature_with_parameter_idst
+smt2_parsert::function_signature_definition()
 {
   if(next_token()!=OPEN)
-  {
-    error() << "expected '(' at beginning of signature" << eom;
-    return nil_typet();
-  }
+    throw error("expected '(' at beginning of signature");
 
   if(peek()==CLOSE)
   {
+    // no parameters
     next_token(); // eat the ')'
-    return sort();
+    return signature_with_parameter_idst(sort());
   }
 
   mathematical_function_typet::domaint domain;
+  std::vector<irep_idt> parameters;
 
   while(peek()!=CLOSE)
   {
     if(next_token()!=OPEN)
-    {
-      error() << "expected '(' at beginning of parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected '(' at beginning of parameter");
 
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected symbol in parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected symbol in parameter");
 
-    mathematical_function_typet::variablet var;
-    std::string id=buffer;
-    var.set_identifier(id);
-    var.type()=sort();
-    domain.push_back(var);
+    irep_idt id = buffer;
+    parameters.push_back(id);
+    domain.push_back(sort());
 
     auto &entry=id_map[id];
-    entry.type=var.type();
+    entry.type = domain.back();
     entry.definition=nil_exprt();
 
     if(next_token()!=CLOSE)
-    {
-      error() << "expected ')' at end of parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected ')' at end of parameter");
   }
 
   next_token(); // eat the ')'
 
   typet codomain = sort();
 
-  return mathematical_function_typet(domain, codomain);
+  return signature_with_parameter_idst(
+    mathematical_function_typet(domain, codomain), parameters);
 }
 
 typet smt2_parsert::function_signature_declaration()
 {
   if(next_token()!=OPEN)
-  {
-    error() << "expected '(' at beginning of signature" << eom;
-    return nil_typet();
-  }
+    throw error("expected '(' at beginning of signature");
 
   if(peek()==CLOSE)
   {
@@ -1067,26 +1143,15 @@ typet smt2_parsert::function_signature_declaration()
   while(peek()!=CLOSE)
   {
     if(next_token()!=OPEN)
-    {
-      error() << "expected '(' at beginning of parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected '(' at beginning of parameter");
 
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected symbol in parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected symbol in parameter");
 
-    mathematical_function_typet::variablet var;
-    var.type()=sort();
-    domain.push_back(var);
+    domain.push_back(sort());
 
     if(next_token()!=CLOSE)
-    {
-      error() << "expected ')' at end of parameter" << eom;
-      return nil_typet();
-    }
+      throw error("expected ')' at end of parameter");
   }
 
   next_token(); // eat the ')'
@@ -1098,78 +1163,100 @@ typet smt2_parsert::function_signature_declaration()
 
 void smt2_parsert::command(const std::string &c)
 {
-  if(c=="declare-const")
+  if(c == "declare-const" || c == "declare-var")
   {
+    // declare-var appears to be a synonym for declare-const that is
+    // accepted by Z3 and CVC4
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected a symbol after declare-const" << eom;
-      ignore_command();
-      return;
-    }
+      throw error() << "expected a symbol after `" << c << '\'';
 
-    irep_idt id=buffer;
+    irep_idt id = buffer;
+    auto type = sort();
 
     if(id_map.find(id)!=id_map.end())
-    {
-      error() << "identifier `" << id << "' defined twice" << eom;
-      ignore_command();
-      return;
-    }
+      throw error() << "identifier `" << id << "' defined twice";
 
-    auto &entry=id_map[id];
-    entry.type=sort();
-    entry.definition=nil_exprt();
+    auto &entry = id_map[id];
+    entry.type = type;
+    entry.definition = nil_exprt();
   }
   else if(c=="declare-fun")
   {
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected a symbol after declare-fun" << eom;
-      ignore_command();
-      return;
-    }
+      throw error("expected a symbol after declare-fun");
 
     irep_idt id=buffer;
+    auto type = function_signature_declaration();
 
     if(id_map.find(id)!=id_map.end())
+      throw error() << "identifier `" << id << "' defined twice";
+
+    auto &entry = id_map[id];
+    entry.type = type;
+    entry.definition = nil_exprt();
+  }
+  else if(c == "define-const")
+  {
+    if(next_token() != SYMBOL)
+      throw error("expected a symbol after define-const");
+
+    const irep_idt id = buffer;
+
+    if(id_map.find(id) != id_map.end())
+      throw error() << "identifier `" << id << "' defined twice";
+
+    const auto type = sort();
+    const auto value = expression();
+
+    // check type of value
+    if(value.type() != type)
     {
-      error() << "identifier `" << id << "' defined twice" << eom;
-      ignore_command();
-      return;
+      throw error() << "type mismatch in constant definition: expected `"
+                    << smt2_format(type) << "' but got `"
+                    << smt2_format(value.type()) << '\'';
     }
 
-    auto &entry=id_map[id];
-    entry.type=function_signature_declaration();
-    entry.definition=nil_exprt();
+    // create the entry
+    auto &entry = id_map[id];
+    entry.type = type;
+    entry.definition = value;
   }
   else if(c=="define-fun")
   {
     if(next_token()!=SYMBOL)
-    {
-      error() << "expected a symbol after define-fun" << eom;
-      ignore_command();
-      return;
-    }
+      throw error("expected a symbol after define-fun");
 
     const irep_idt id=buffer;
 
     if(id_map.find(id)!=id_map.end())
+      throw error() << "identifier `" << id << "' defined twice";
+
+    const auto signature = function_signature_definition();
+    const auto body = expression();
+
+    // check type of body
+    if(signature.type.id() == ID_mathematical_function)
     {
-      error() << "identifier `" << id << "' defined twice" << eom;
-      ignore_command();
-      return;
+      const auto &f_signature = to_mathematical_function_type(signature.type);
+      if(body.type() != f_signature.codomain())
+      {
+        throw error() << "type mismatch in function definition: expected `"
+                      << smt2_format(f_signature.codomain()) << "' but got `"
+                      << smt2_format(body.type()) << '\'';
+      }
+    }
+    else if(body.type() != signature.type)
+    {
+      throw error() << "type mismatch in function definition: expected `"
+                    << smt2_format(signature.type) << "' but got `"
+                    << smt2_format(body.type()) << '\'';
     }
 
     // create the entry
-    id_map[id];
-
-    auto signature=function_signature_definition();
-    exprt body=expression();
-
-    // set up the entry
-    auto &entry=id_map[id];
-    entry.type=signature;
-    entry.definition=body;
+    auto &entry = id_map[id];
+    entry.type = signature.type;
+    entry.parameters = signature.parameters;
+    entry.definition = body;
   }
   else if(c=="exit")
   {

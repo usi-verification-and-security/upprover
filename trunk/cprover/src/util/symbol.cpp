@@ -12,7 +12,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "source_location.h"
 #include "std_expr.h"
+#include "suffix.h"
 
+/// Dump the state of a symbol object to a given output stream.
+/// \param out: The stream to output object state to.
 void symbolt::show(std::ostream &out) const
 {
   out << "  " << name << '\n';
@@ -66,6 +69,10 @@ void symbolt::show(std::ostream &out) const
   out << '\n';
 }
 
+/// Overload of stream operator to work with symbols.
+/// \param out: A given stream to dump symbol state to.
+/// \param symbol: The symbol whose state is about to be dumped.
+/// \return The output stream.
 std::ostream &operator<<(std::ostream &out,
                          const symbolt &symbol)
 {
@@ -73,6 +80,8 @@ std::ostream &operator<<(std::ostream &out,
   return out;
 }
 
+/// Swap values between two symbols.
+/// \param b: The second symbol to swap values with.
 void symbolt::swap(symbolt &b)
 {
   #define SYM_SWAP1(x) x.swap(b.x)
@@ -106,9 +115,32 @@ void symbolt::swap(symbolt &b)
   SYM_SWAP2(is_volatile);
 }
 
-/// produces a symbol_exprt for a symbol
-/// \return symbol_exprt
+/// Produces a symbol_exprt for a symbol
+/// \return A new symbol_exprt with the name and
+///   type of the symbol object.
 symbol_exprt symbolt::symbol_expr() const
 {
   return symbol_exprt(name, type);
+}
+
+/// Check that the instance object is well formed.
+/// \return: true if well-formed; false otherwise.
+bool symbolt::is_well_formed() const
+{
+  // Well-formedness criterion number 1 is for a symbol
+  // to have a non-empty mode (see #1880)
+  if(mode.empty())
+  {
+    return false;
+  }
+
+  // Well-formedness criterion number 2 is for a symbol
+  // to have it's base name as a suffix to it's more
+  // general name.
+  if(!has_suffix(id2string(name), id2string(base_name)))
+  {
+    return false;
+  }
+
+  return true;
 }

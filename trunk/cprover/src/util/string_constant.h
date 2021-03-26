@@ -12,10 +12,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "std_expr.h"
 #include "expr.h"
 
-class string_constantt:public exprt
+class string_constantt : public nullary_exprt
 {
 public:
+  DEPRECATED("use string_constantt(value) instead")
   string_constantt();
+
   explicit string_constantt(const irep_idt &value);
 
   void set_value(const irep_idt &value);
@@ -31,13 +33,13 @@ public:
 
 inline const string_constantt &to_string_constant(const exprt &expr)
 {
-  assert(expr.id()==ID_string_constant);
+  PRECONDITION(expr.id() == ID_string_constant);
   return static_cast<const string_constantt &>(expr);
 }
 
 inline string_constantt &to_string_constant(exprt &expr)
 {
-  assert(expr.id()==ID_string_constant);
+  PRECONDITION(expr.id() == ID_string_constant);
   return static_cast<string_constantt &>(expr);
 }
 

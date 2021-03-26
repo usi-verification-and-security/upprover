@@ -357,7 +357,7 @@ exprt value_set_fivrt::to_expr(object_map_dt::const_iterator it) const
 
   od.type()=od.object().type();
 
-  return od;
+  return std::move(od);
 }
 
 bool value_set_fivrt::make_union(
@@ -824,17 +824,17 @@ void value_set_fivrt::get_reference_set(
 
   forall_objects(it, object_map.read())
   {
-    const exprt &expr=object_numbering[it->first];
+    const exprt &object = object_numbering[it->first];
 
-    if(expr.type().id()=="#REF#")
+    if(object.type().id() == "#REF#")
     {
-      const irep_idt &ident=expr.get(ID_identifier);
+      const irep_idt &ident = object.get(ID_identifier);
       valuest::const_iterator vit=values.find(ident);
       if(vit==values.end())
       {
         // Assume the variable never was assigned,
         // so assume it's reference set is unknown.
-        dest.insert(exprt(ID_unknown, expr.type()));
+        dest.insert(exprt(ID_unknown, object.type()));
       }
       else
       {
@@ -853,8 +853,8 @@ void value_set_fivrt::get_reference_set(
             t_it->second.reset();
         }
 
-        forall_objects(it, omt.read())
-          dest.insert(to_expr(it));
+        forall_objects(it2, omt.read())
+          dest.insert(to_expr(it2));
       }
     }
     else
@@ -1104,7 +1104,7 @@ void value_set_fivrt::assign(
         c_it++, no++)
     {
       const typet &subtype=c_it->type();
-      const irep_idt &name=c_it->get(ID_name);
+      const irep_idt &name = c_it->get_name();
 
       // ignore methods
       if(subtype.id()==ID_code)
@@ -1221,87 +1221,6 @@ void value_set_fivrt::assign(
 
     assign_recursion_sett recset;
     assign_rec(lhs, values_rhs, "", ns, recset, add_to_sets);
-  }
-}
-
-void value_set_fivrt::do_free(
-  const exprt &op,
-  const namespacet &ns)
-{
-  // op must be a pointer
-  if(op.type().id()!=ID_pointer)
-    throw "free expected to have pointer-type operand";
-
-  // find out what it points to
-  object_mapt value_set;
-  get_value_set(op, value_set, ns);
-  entryt e; e.identifier="VP:TEMP";
-  e.object_map=value_set;
-  flatten(e, value_set);
-
-  const object_map_dt &object_map=value_set.read();
-
-  // find out which *instances* interest us
-  dynamic_object_id_sett to_mark;
-
-  forall_objects(it, object_map)
-  {
-    const exprt &object=object_numbering[it->first];
-
-    if(object.id()==ID_dynamic_object)
-    {
-      const dynamic_object_exprt &dynamic_object=
-        to_dynamic_object_expr(object);
-
-      if(dynamic_object.valid().is_true())
-        to_mark.insert(dynamic_object.get_instance());
-    }
-  }
-
-  // mark these as 'may be invalid'
-  // this, unfortunately, destroys the sharing
-  for(valuest::iterator v_it=values.begin();
-      v_it!=values.end();
-      v_it++)
-  {
-    object_mapt new_object_map;
-
-    const object_map_dt &old_object_map=
-      v_it->second.object_map.read();
-
-    bool changed=false;
-
-    forall_objects(o_it, old_object_map)
-    {
-      const exprt &object=object_numbering[o_it->first];
-
-      if(object.id()==ID_dynamic_object)
-      {
-        const dynamic_object_exprt &dynamic_object=
-          to_dynamic_object_expr(object);
-
-        if(to_mark.count(dynamic_object.get_instance())==0)
-          set(new_object_map, o_it);
-        else
-        {
-          // adjust
-          offsett o = o_it->second;
-          exprt tmp(object);
-          to_dynamic_object_expr(tmp).valid()=exprt(ID_unknown);
-          insert_to(new_object_map, tmp, o);
-          changed=true;
-        }
-      }
-      else
-        set(new_object_map, o_it);
-    }
-
-    if(changed)
-    {
-      entryt &temp_entry=get_temporary_entry(v_it->second.identifier,
-                                               v_it->second.suffix);
-      temp_entry.object_map=new_object_map;
-    }
   }
 }
 
@@ -1576,8 +1495,7 @@ void value_set_fivrt::apply_code(
     // shouldn't be here
     UNREACHABLE;
   }
-  else if(statement==ID_assign ||
-          statement==ID_init)
+  else if(statement==ID_assign)
   {
     if(code.operands().size()!=2)
       throw "assignment expected to have two operands";
@@ -1604,15 +1522,6 @@ void value_set_fivrt::apply_code(
           statement==ID_cpp_delete_array)
   {
     // does nothing
-  }
-  else if(statement==ID_free)
-  {
-    // this may kill a valid bit
-
-    if(code.operands().size()!=1)
-      throw "free expected to have one operand";
-
-    do_free(code.op0(), ns);
   }
   else if(statement=="lock" || statement=="unlock")
   {

@@ -1,15 +1,32 @@
 file(GLOB_RECURSE sources "*.cpp" "*.h")
 
 # based on https://cmake.org/pipermail/cmake/2010-July/038015.html
-file(WRITE ${CMAKE_BINARY_DIR}/version.cmake
-  "
-  file(STRINGS \${PROJECT_SOURCE_DIR}/config.inc
-    config_inc_v REGEX \"CBMC_VERSION *= *[0-9\.]+\")
-  string(REGEX REPLACE \"^CBMC_VERSION *= *\" \"\" CBMC_RELEASE \${config_inc_v})
-  set(GIT_INFO \"n/a\")
-  configure_file(\${CUR}/version.cpp.in version.cpp)
-  "
-)
+find_package(Git)
+if(GIT_FOUND)
+  file(WRITE ${CMAKE_BINARY_DIR}/version.cmake
+          "
+    file(STRINGS \${PROJECT_SOURCE_DIR}/config.inc
+      config_inc_v REGEX \"CBMC_VERSION *= *[0-9\.]+\")
+    string(REGEX REPLACE \"^CBMC_VERSION *= *\" \"\" CBMC_RELEASE \${config_inc_v})
+    execute_process(
+      COMMAND \"${GIT_EXECUTABLE}\" \"describe\" \"--tags\" \"--always\" \"--dirty\"
+      OUTPUT_VARIABLE GIT_INFO
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    configure_file(\${CUR}/version.cpp.in version.cpp)
+    "
+  )
+else()
+  file(WRITE ${CMAKE_BINARY_DIR}/version.cmake
+          "
+    file(STRINGS \${PROJECT_SOURCE_DIR}/config.inc
+      config_inc_v REGEX \"CBMC_VERSION *= *[0-9\.]+\")
+    string(REGEX REPLACE \"^CBMC_VERSION *= *\" \"\" CBMC_RELEASE \${config_inc_v})
+    set(GIT_INFO \"n/a\")
+    configure_file(\${CUR}/version.cpp.in version.cpp)
+    "
+  )
+endif()
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/version.cpp.in
   "const char *CBMC_VERSION=\"@CBMC_RELEASE@ (@GIT_INFO@)\";\n")

@@ -81,7 +81,7 @@ static bool read_bin_goto_object_v4(
 
   count=irepconverter.read_gb_word(in); // # of functions
 
-  for(std::size_t i=0; i<count; i++)
+  for(std::size_t fct_index = 0; fct_index < count; ++fct_index)
   {
     irep_idt fname=irepconverter.read_gb_string(in);
     goto_functionst::goto_functiont &f = functions.function_map[fname];
@@ -94,7 +94,7 @@ static bool read_bin_goto_object_v4(
     bool hidden=false;
 
     std::size_t ins_count = irepconverter.read_gb_word(in); // # of instructions
-    for(std::size_t i=0; i<ins_count; i++)
+    for(std::size_t ins_index = 0; ins_index < ins_count; ++ins_index)
     {
       goto_programt::targett itarget = f.body.add_instruction();
       goto_programt::instructiont &instruction=*itarget;
@@ -125,7 +125,7 @@ static bool read_bin_goto_object_v4(
       {
         irep_idt label=irepconverter.read_string_ref(in);
         instruction.labels.push_back(label);
-        if(label=="__CPROVER_HIDE")
+        if(label == CPROVER_PREFIX "HIDE")
           hidden=true;
         // The above info is normally in the type of the goto_functiont object,
         // which should likely be stored in the binary.
@@ -145,7 +145,10 @@ static bool read_bin_goto_object_v4(
       {
         unsigned n=*nit;
         rev_target_mapt::const_iterator entry=rev_target_map.find(n);
-        assert(entry!=rev_target_map.end());
+        INVARIANT(
+          entry != rev_target_map.end(),
+          "something from the target map should also be in the reverse target "
+          "map");
         ins->targets.push_back(entry->second);
       }
     }

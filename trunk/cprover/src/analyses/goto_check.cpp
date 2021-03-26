@@ -22,6 +22,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/find_symbols.h>
 #include <util/guard.h>
 #include <util/ieee_float.h>
+#include <util/make_unique.h>
 #include <util/options.h>
 #include <util/pointer_offset_size.h>
 #include <util/pointer_predicates.h>
@@ -78,8 +79,8 @@ public:
 
 protected:
   const namespacet &ns;
-  local_bitvector_analysist *local_bitvector_analysis;
-  goto_programt::const_targett t;
+  std::unique_ptr<local_bitvector_analysist> local_bitvector_analysis;
+  goto_programt::const_targett current_target;
 
   void check_rec(
     const exprt &expr,
@@ -288,11 +289,8 @@ void goto_checkt::undefined_shift_check(
     if(width_expr.is_nil())
       throw "no number for width for operator "+expr.id_string();
 
-    binary_relation_exprt inequality(
-      expr.distance(), ID_lt, width_expr);
-
     add_guarded_claim(
-      inequality,
+      binary_relation_exprt(expr.distance(), ID_lt, width_expr),
       "shift distance too large",
       "undefined-shift",
       expr.find_source_location(),
@@ -863,11 +861,9 @@ void goto_checkt::nan_check(
   else
     UNREACHABLE;
 
-  isnan.make_not();
-
   add_guarded_claim(
-    isnan,
-    "NaN on "+expr.id_string(),
+    boolean_negate(isnan),
+    "NaN on " + expr.id_string(),
     "NaN",
     expr.find_source_location(),
     expr,
@@ -964,7 +960,7 @@ goto_checkt::address_check(const exprt &address, const exprt &size)
   const auto &pointer_type = to_pointer_type(address.type());
 
   local_bitvector_analysist::flagst flags =
-    local_bitvector_analysis->get(t, address);
+    local_bitvector_analysis->get(current_target, address);
 
   // For Java, we only need to check for null
   if(mode == ID_java)
@@ -1109,13 +1105,9 @@ void goto_checkt::bounds_check(
     }
     else
     {
-      mp_integer i;
+      const auto i = numeric_cast<mp_integer>(index);
 
-      if(!to_integer(index, i) && i>=0)
-      {
-        // ok
-      }
-      else
+      if(!i.has_value() || *i < 0)
       {
         exprt effective_offset=ode.offset();
 
@@ -1530,14 +1522,15 @@ void goto_checkt::goto_check(
 
   bool did_something = false;
 
-  local_bitvector_analysist local_bitvector_analysis_obj(goto_function);
-  local_bitvector_analysis=&local_bitvector_analysis_obj;
+  if(enable_pointer_check)
+    local_bitvector_analysis =
+      util_make_unique<local_bitvector_analysist>(goto_function);
 
   goto_programt &goto_program=goto_function.body;
 
   Forall_goto_program_instructions(it, goto_program)
   {
-    t=it;
+    current_target = it;
     goto_programt::instructiont &i=*it;
 
     new_code.clear();
@@ -1579,8 +1572,8 @@ void goto_checkt::goto_check(
       }
       else if(statement==ID_printf)
       {
-        forall_operands(it, i.code)
-          check(*it);
+        for(const auto &op : i.code.operands())
+          check(op);
       }
     }
     else if(i.is_assign())
@@ -1608,8 +1601,8 @@ void goto_checkt::goto_check(
       {
         exprt pointer=code_function_call.arguments()[0];
 
-        local_bitvector_analysist::flagst flags=
-          local_bitvector_analysis->get(t, pointer);
+        local_bitvector_analysist::flagst flags =
+          local_bitvector_analysis->get(current_target, pointer);
 
         if(flags.is_unknown() || flags.is_null())
         {
@@ -1627,8 +1620,8 @@ void goto_checkt::goto_check(
         }
       }
 
-      forall_operands(it, code_function_call)
-        check(*it);
+      for(const auto &op : code_function_call.operands())
+        check(op);
 
       // the call might invalidate any assertion
       assertions.clear();

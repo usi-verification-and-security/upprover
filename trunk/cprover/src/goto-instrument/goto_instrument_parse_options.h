@@ -12,9 +12,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 #define CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 
-#include <util/ui_message.h>
 #include <util/parse_options.h>
 #include <util/timestamper.h>
+#include <util/ui_message.h>
+#include <util/validation_interface.h>
 
 #include <goto-programs/class_hierarchy.h>
 #include <goto-programs/goto_functions.h>
@@ -71,6 +72,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(show-struct-alignment)(interval-analysis)(show-intervals)" \
   "(show-uninitialized)(show-locations)" \
   "(full-slice)(reachability-slice)(slice-global-inits)" \
+  "(fp-reachability-slice):" \
   "(inline)(partial-inline)(function-inline):(log):(no-caching)" \
   OPT_REMOVE_CONST_FUNCTION_POINTERS \
   "(print-internal-representation)" \
@@ -100,6 +102,8 @@ Author: Daniel Kroening, kroening@kroening.com
   OPT_GOTO_PROGRAM_STATS \
   "(show-local-safe-pointers)(show-safe-dereferences)" \
   OPT_REPLACE_CALLS \
+  "(validate-goto-binary)" \
+  OPT_VALIDATE \
   // empty last line
 
 // clang-format on

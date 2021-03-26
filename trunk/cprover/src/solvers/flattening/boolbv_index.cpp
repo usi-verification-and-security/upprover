@@ -8,9 +8,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "boolbv.h"
 
-#include <cassert>
+#include <algorithm>
 
 #include <util/arith_tools.h>
+#include <util/cprover_prefix.h>
 #include <util/pointer_offset_size.h>
 #include <util/simplify_expr.h>
 #include <util/std_expr.h>
@@ -61,16 +62,17 @@ bvt boolbvt::convert_index(const index_exprt &expr)
     }
 
     // Must have a finite size
-    mp_integer array_size;
-    if(to_integer(array_type.size(), array_size))
-      throw "failed to convert array size";
-
-    // see if the index address is constant
-    // many of these are compacted by simplify_expr
-    // but variable location writes will block this
-    mp_integer index_value;
-    if(!to_integer(index, index_value))
-      return convert_index(array, index_value);
+    mp_integer array_size = numeric_cast_v<mp_integer>(array_type.size());
+    {
+      // see if the index address is constant
+      // many of these are compacted by simplify_expr
+      // but variable location writes will block this
+      auto maybe_index_value = numeric_cast<mp_integer>(index);
+      if(maybe_index_value.has_value())
+      {
+        return convert_index(array, maybe_index_value.value());
+      }
+    }
 
     // Special case : arrays of one thing (useful for constants)
     // TODO : merge with ACTUAL_ARRAY_HACK so that ranges of the same
@@ -78,35 +80,24 @@ bvt boolbvt::convert_index(const index_exprt &expr)
     // this rather than as a series of individual options.
     #define UNIFORM_ARRAY_HACK
     #ifdef UNIFORM_ARRAY_HACK
-    bool is_uniform = false;
+    bool is_uniform = array.id() == ID_array_of;
 
-    if(array.id()==ID_array_of)
+    if(array.id() == ID_constant || array.id() == ID_array)
     {
-      is_uniform = true;
-    }
-    else if(array.id()==ID_constant || array.id()==ID_array)
-    {
-      bool found_exception = false;
-      forall_expr(it, array.operands())
-      {
-        if(*it != array.op0())
-        {
-          found_exception = true;
-          break;
-        }
-      }
-
-      if(!found_exception)
-        is_uniform = true;
+      is_uniform =
+        array.operands().size() <= 1 ||
+        std::all_of(
+          ++array.operands().begin(),
+          array.operands().end(),
+          [&array](const exprt &expr) { return expr == array.op0(); });
     }
 
     if(is_uniform && prop.has_set_to())
     {
       static int uniform_array_counter;  // Temporary hack
 
-      std::string identifier=
-        "__CPROVER_internal_uniform_array_"+
-        std::to_string(uniform_array_counter++);
+      const std::string identifier = CPROVER_PREFIX "internal_uniform_array_" +
+                                     std::to_string(uniform_array_counter++);
 
       symbol_exprt result(identifier, expr.type());
       bv = convert_bv(result);
@@ -115,12 +106,10 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       binary_relation_exprt lower_bound(
         from_integer(0, index.type()), ID_le, index);
+      CHECK_RETURN(lower_bound.lhs().is_not_nil());
       binary_relation_exprt upper_bound(
         index, ID_lt, from_integer(array_size, index.type()));
-
-      if(lower_bound.lhs().is_nil() ||
-         upper_bound.rhs().is_nil())
-        throw "number conversion failed (2)";
+      CHECK_RETURN(upper_bound.rhs().is_not_nil());
 
       and_exprt range_condition(lower_bound, upper_bound);
       implies_exprt implication(range_condition, value_equality);
@@ -147,9 +136,8 @@ bvt boolbvt::convert_index(const index_exprt &expr)
       // Symbol for output
       static int actual_array_counter;  // Temporary hack
 
-      std::string identifier=
-        "__CPROVER_internal_actual_array_"+
-        std::to_string(actual_array_counter++);
+      const std::string identifier = CPROVER_PREFIX "internal_actual_array_" +
+                                     std::to_string(actual_array_counter++);
 
       symbol_exprt result(identifier, expr.type());
       bv = convert_bv(result);
@@ -172,11 +160,12 @@ bvt boolbvt::convert_index(const index_exprt &expr)
       for(mp_integer i=0; i<array_size; i=i+1)
       {
         index_equality.rhs()=from_integer(i, index_equality.lhs().type());
+        CHECK_RETURN(index_equality.rhs().is_not_nil());
 
-        if(index_equality.rhs().is_nil())
-          throw "number conversion failed (1)";
-
-        assert(it != array.operands().end());
+        INVARIANT(
+          it != array.operands().end(),
+          "this loop iterates over the array, so `it` shouldn't be increased "
+          "past the array's end");
 
         value_equality.rhs()=*it++;
 
@@ -198,10 +187,8 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
     // get literals for the whole array
 
-    const bvt &array_bv=convert_bv(array);
-
-    if(array_size*width!=array_bv.size())
-      throw "unexpected array size";
+    const bvt &array_bv =
+      convert_bv(array, numeric_cast_v<std::size_t>(array_size * width));
 
     // TODO: maybe a shifter-like construction would be better
     // Would be a lot more compact but propagate worse
@@ -229,15 +216,13 @@ bvt boolbvt::convert_index(const index_exprt &expr)
       for(mp_integer i=0; i<array_size; i=i+1)
       {
         index_equality.rhs()=from_integer(i, index_equality.lhs().type());
-
-        if(index_equality.rhs().is_nil())
-          throw "number conversion failed (1)";
+        CHECK_RETURN(index_equality.rhs().is_not_nil());
 
         mp_integer offset=i*width;
 
         for(std::size_t j=0; j<width; j++)
-          equal_bv[j]=prop.lequal(bv[j],
-                             array_bv[integer2size_t(offset+j)]);
+          equal_bv[j] = prop.lequal(
+            bv[j], array_bv[numeric_cast_v<std::size_t>(offset + j)]);
 
         prop.l_set_to_true(
           prop.limplies(convert(index_equality), prop.land(equal_bv)));
@@ -256,7 +241,9 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       typet constant_type=index.type(); // type of index operand
 
-      assert(array_size>0);
+      DATA_INVARIANT(
+        array_size > 0,
+        "non-positive array sizes are forbidden in goto programs");
 
       for(mp_integer i=0; i<array_size; i=i+1)
       {
@@ -268,7 +255,7 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
         for(std::size_t j=0; j<width; j++)
         {
-          literalt l=array_bv[integer2size_t(offset+j)];
+          literalt l = array_bv[numeric_cast_v<std::size_t>(offset + j)];
 
           if(i==0) // this initializes bv
             bv[j]=l;
@@ -326,7 +313,7 @@ bvt boolbvt::convert_index(
     // If not there are large improvements possible as above
 
     for(std::size_t i=0; i<width; i++)
-      bv[i]=tmp[integer2size_t(offset+i)];
+      bv[i] = tmp[numeric_cast_v<std::size_t>(offset + i)];
   }
   else if(
     array.id() == ID_member || array.id() == ID_index ||
@@ -337,11 +324,13 @@ bvt boolbvt::convert_index(
     o.build(array, ns);
     CHECK_RETURN(o.offset().id() != ID_unknown);
 
-    const mp_integer subtype_bytes =
+    const auto subtype_bytes_opt =
       pointer_offset_size(array_type.subtype(), ns);
+    CHECK_RETURN(subtype_bytes_opt.has_value());
+
     exprt new_offset = simplify_expr(
       plus_exprt(
-        o.offset(), from_integer(index * subtype_bytes, o.offset().type())),
+        o.offset(), from_integer(index * (*subtype_bytes_opt), o.offset().type())),
       ns);
 
     byte_extract_exprt be(

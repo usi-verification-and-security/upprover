@@ -11,8 +11,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "custom_bitvector_analysis.h"
 
-#include <util/xml_expr.h>
+#include <util/expr_util.h>
 #include <util/simplify_expr.h>
+#include <util/xml_expr.h>
 
 #include <langapi/language_util.h>
 
@@ -203,14 +204,14 @@ std::set<exprt> custom_bitvector_analysist::aliases(
   {
     exprt pointer=to_dereference_expr(src).pointer();
 
-    std::set<exprt> pointer_set=
+    const std::set<exprt> alias_set =
       local_may_alias_factory(loc).get(loc, pointer);
 
     std::set<exprt> result;
 
-    for(const auto &pointer : pointer_set)
-      if(pointer.type().id()==ID_pointer)
-        result.insert(dereference_exprt(pointer));
+    for(const auto &alias : alias_set)
+      if(alias.type().id() == ID_pointer)
+        result.insert(dereference_exprt(alias));
 
     result.insert(src);
 
@@ -261,14 +262,15 @@ void custom_bitvector_domaint::assign_struct_rec(
     {
       dereference_exprt lhs_deref(lhs);
       dereference_exprt rhs_deref(rhs);
-      vectorst rhs_vectors=get_rhs(rhs_deref);
-      assign_lhs(lhs_deref, rhs_vectors);
+      assign_lhs(lhs_deref, get_rhs(rhs_deref));
     }
   }
 }
 
 void custom_bitvector_domaint::transform(
+  const irep_idt &function_from,
   locationt from,
+  const irep_idt &function_to,
   locationt to,
   ai_baset &ai,
   const namespacet &ns)
@@ -320,10 +322,11 @@ void custom_bitvector_domaint::transform(
       {
         const irep_idt &identifier=to_symbol_expr(function).get_identifier();
 
-        if(identifier=="__CPROVER_set_must" ||
-           identifier=="__CPROVER_clear_must" ||
-           identifier=="__CPROVER_set_may" ||
-           identifier=="__CPROVER_clear_may")
+        if(
+          identifier == CPROVER_PREFIX "set_must" ||
+          identifier == CPROVER_PREFIX "clear_must" ||
+          identifier == CPROVER_PREFIX "set_may" ||
+          identifier == CPROVER_PREFIX "clear_may")
         {
           if(code_function_call.arguments().size()==2)
           {
@@ -333,13 +336,13 @@ void custom_bitvector_domaint::transform(
             // initialize to make Visual Studio happy
             modet mode = modet::SET_MUST;
 
-            if(identifier=="__CPROVER_set_must")
+            if(identifier == CPROVER_PREFIX "set_must")
               mode=modet::SET_MUST;
-            else if(identifier=="__CPROVER_clear_must")
+            else if(identifier == CPROVER_PREFIX "clear_must")
               mode=modet::CLEAR_MUST;
-            else if(identifier=="__CPROVER_set_may")
+            else if(identifier == CPROVER_PREFIX "set_may")
               mode=modet::SET_MAY;
-            else if(identifier=="__CPROVER_clear_may")
+            else if(identifier == CPROVER_PREFIX "clear_may")
               mode=modet::CLEAR_MAY;
             else
               UNREACHABLE;
@@ -375,9 +378,9 @@ void custom_bitvector_domaint::transform(
                 // may alias other stuff
                 std::set<exprt> lhs_set=cba.aliases(deref, from);
 
-                for(const auto &lhs : lhs_set)
+                for(const auto &l : lhs_set)
                 {
-                  set_bit(lhs, bit_nr, mode);
+                  set_bit(l, bit_nr, mode);
                 }
               }
             }
@@ -399,7 +402,7 @@ void custom_bitvector_domaint::transform(
         else
         {
           // only if there is an actual call, i.e., we have a body
-          if(from->function != to->function)
+          if(function_from != function_to)
           {
             const code_typet &code_type=
               to_code_type(ns.lookup(identifier).type);
@@ -433,8 +436,7 @@ void custom_bitvector_domaint::transform(
               {
                 dereference_exprt lhs_deref(p);
                 dereference_exprt rhs_deref(*arg_it);
-                vectorst rhs_vectors=get_rhs(rhs_deref);
-                assign_lhs(lhs_deref, rhs_vectors);
+                assign_lhs(lhs_deref, get_rhs(rhs_deref));
               }
 
               ++arg_it;
@@ -508,9 +510,9 @@ void custom_bitvector_domaint::transform(
             // may alias other stuff
             std::set<exprt> lhs_set=cba.aliases(deref, from);
 
-            for(const auto &lhs : lhs_set)
+            for(const auto &l : lhs_set)
             {
-              set_bit(lhs, bit_nr, mode);
+              set_bit(l, bit_nr, mode);
             }
           }
         }
@@ -526,7 +528,7 @@ void custom_bitvector_domaint::transform(
       // Comparing iterators is safe as the target must be within the same list
       // of instructions because this is a GOTO.
       if(to!=from->get_target())
-        guard.make_not();
+        guard = boolean_negate(guard);
 
       exprt result=eval(guard, cba);
       exprt result2=simplify_expr(result, ns);

@@ -50,14 +50,8 @@ static bool have_to_remove_vector(const typet &type)
 {
   if(type.id()==ID_struct || type.id()==ID_union)
   {
-    const struct_union_typet &struct_union_type=
-      to_struct_union_type(type);
-
-    for(struct_union_typet::componentst::const_iterator
-        it=struct_union_type.components().begin();
-        it!=struct_union_type.components().end();
-        it++)
-      if(have_to_remove_vector(it->type()))
+    for(const auto &c : to_struct_union_type(type).components())
+      if(have_to_remove_vector(c.type()))
         return true;
   }
   else if(type.id()==ID_pointer ||
@@ -88,51 +82,57 @@ static void remove_vector(exprt &expr)
        expr.id()==ID_mod  || expr.id()==ID_bitxor ||
        expr.id()==ID_bitand || expr.id()==ID_bitor)
     {
+      // FIXME plus, mult, bitxor, bitand and bitor are defined as n-ary
+      //      operations rather than binary. This code assumes that they
+      //      can only have exactly 2 operands, and it is not clear
+      //      that it is safe to do so in this context
+      PRECONDITION(expr.operands().size() == 2);
+      auto const &binary_expr = to_binary_expr(expr);
       remove_vector(expr.type());
       array_typet array_type=to_array_type(expr.type());
 
-      mp_integer dimension;
-      to_integer(array_type.size(), dimension);
+      const mp_integer dimension =
+        numeric_cast_v<mp_integer>(array_type.size());
 
-      assert(expr.operands().size()==2);
       const typet subtype=array_type.subtype();
       // do component-wise:
       // x+y -> vector(x[0]+y[0],x[1]+y[1],...)
       array_exprt array_expr(array_type);
-      array_expr.operands().resize(integer2size_t(dimension));
+      array_expr.operands().resize(numeric_cast_v<std::size_t>(dimension));
 
       for(std::size_t i=0; i<array_expr.operands().size(); i++)
       {
         exprt index=from_integer(i, array_type.size().type());
 
-        array_expr.operands()[i]=
-          binary_exprt(index_exprt(expr.op0(), index, subtype), expr.id(),
-                       index_exprt(expr.op1(), index, subtype));
+        array_expr.operands()[i] = binary_exprt(
+          index_exprt(binary_expr.op0(), index, subtype),
+          binary_expr.id(),
+          index_exprt(binary_expr.op1(), index, subtype));
       }
 
       expr=array_expr;
     }
     else if(expr.id()==ID_unary_minus || expr.id()==ID_bitnot)
     {
+      auto const &unary_expr = to_unary_expr(expr);
       remove_vector(expr.type());
       array_typet array_type=to_array_type(expr.type());
 
-      mp_integer dimension;
-      to_integer(array_type.size(), dimension);
+      const mp_integer dimension =
+        numeric_cast_v<mp_integer>(array_type.size());
 
-      assert(expr.operands().size()==1);
       const typet subtype=array_type.subtype();
       // do component-wise:
       // -x -> vector(-x[0],-x[1],...)
       array_exprt array_expr(array_type);
-      array_expr.operands().resize(integer2size_t(dimension));
+      array_expr.operands().resize(numeric_cast_v<std::size_t>(dimension));
 
       for(std::size_t i=0; i<array_expr.operands().size(); i++)
       {
         exprt index=from_integer(i, array_type.size().type());
 
-        array_expr.operands()[i]=
-          unary_exprt(expr.id(), index_exprt(expr.op0(), index, subtype));
+        array_expr.operands()[i] = unary_exprt(
+          unary_expr.id(), index_exprt(unary_expr.op0(), index, subtype));
       }
 
       expr=array_expr;
@@ -140,6 +140,23 @@ static void remove_vector(exprt &expr)
     else if(expr.id()==ID_vector)
     {
       expr.id(ID_array);
+    }
+    else if(expr.id() == ID_typecast)
+    {
+      const auto &op = to_typecast_expr(expr).op();
+
+      if(op.type().id() != ID_array)
+      {
+        // (vector-type) x ==> { x, x, ..., x }
+        remove_vector(expr.type());
+        array_typet array_type = to_array_type(expr.type());
+        const auto dimension = numeric_cast_v<std::size_t>(array_type.size());
+        exprt casted_op =
+          typecast_exprt::conditional_cast(op, array_type.subtype());
+        array_exprt array_expr(array_type);
+        array_expr.operands().resize(dimension, op);
+        expr = array_expr;
+      }
     }
   }
 

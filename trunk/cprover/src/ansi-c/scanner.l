@@ -222,6 +222,8 @@ s_char [^"\\\n]|{escape_sequence}
 char_lit        ("L"|"u"|"U")?[']{c_char}+[']
 string_lit      ("L"|"u"|"U"|"u8")?["]{s_char}*["]
 
+CPROVER_PREFIX  "__CPROVER_"
+
 %x GRAMMAR
 %x COMMENT1
 %x COMMENT2
@@ -492,11 +494,11 @@ void ansi_c_scanner_init()
                     return make_identifier();
                 }
 
-"__CPROVER_Float64x" {
+{CPROVER_PREFIX}"Float64x" {
                   loc(); return TOK_GCC_FLOAT64X;
                 }
 
-"__CPROVER_Float80" {
+{CPROVER_PREFIX}"Float80" {
                   loc(); return TOK_GCC_FLOAT80;
                 }
 
@@ -514,7 +516,7 @@ void ansi_c_scanner_init()
                     return make_identifier();
                 }
 
-"__CPROVER_Float128" {
+{CPROVER_PREFIX}"Float128" {
                   loc(); return TOK_GCC_FLOAT128;
                 }
 
@@ -1205,57 +1207,83 @@ __decltype          { if(PARSER.cpp98 &&
                     return make_identifier();
                 }
 
-"__CPROVER_atomic"       { loc(); return TOK_CPROVER_ATOMIC; }
-"__CPROVER_forall"       { loc(); return TOK_FORALL; }
-"__CPROVER_exists"       { loc(); return TOK_EXISTS; }
-"__CPROVER_array_of"     { loc(); return TOK_ARRAY_OF; }
-"__CPROVER_thread_local" { loc(); return TOK_THREAD_LOCAL; }
-"__CPROVER_bitvector"    { loc(); return TOK_CPROVER_BITVECTOR; }
-"__CPROVER_floatbv"      { loc(); return TOK_CPROVER_FLOATBV; }
-"__CPROVER_fixedbv"      { loc(); return TOK_CPROVER_FIXEDBV; }
-"__CPROVER_bool"         { loc(); return TOK_CPROVER_BOOL; }
-"__CPROVER_throw"        { loc(); return TOK_CPROVER_THROW; }
-"__CPROVER_catch"        { loc(); return TOK_CPROVER_CATCH; }
-"__CPROVER_try"          { loc(); return TOK_CPROVER_TRY; }
-"__CPROVER_finally"      { loc(); return TOK_CPROVER_FINALLY; }
-"__CPROVER_ID"           { loc(); return TOK_CPROVER_ID; }
-"__CPROVER_loop_invariant" { loc(); return TOK_CPROVER_LOOP_INVARIANT; }
-"__CPROVER_requires"     { loc(); return TOK_CPROVER_REQUIRES; }
-"__CPROVER_ensures"      { loc(); return TOK_CPROVER_ENSURES; }
+{CPROVER_PREFIX}"atomic"       { loc(); return TOK_CPROVER_ATOMIC; }
+{CPROVER_PREFIX}"forall"       { loc(); return TOK_FORALL; }
+{CPROVER_PREFIX}"exists"       { loc(); return TOK_EXISTS; }
+{CPROVER_PREFIX}"array_of"     { loc(); return TOK_ARRAY_OF; }
+{CPROVER_PREFIX}"thread_local" { loc(); return TOK_THREAD_LOCAL; }
+{CPROVER_PREFIX}"bitvector"    { loc(); return TOK_CPROVER_BITVECTOR; }
+{CPROVER_PREFIX}"floatbv"      { loc(); return TOK_CPROVER_FLOATBV; }
+{CPROVER_PREFIX}"fixedbv"      { loc(); return TOK_CPROVER_FIXEDBV; }
+{CPROVER_PREFIX}"bool"         { loc(); return TOK_CPROVER_BOOL; }
+{CPROVER_PREFIX}"throw"        { loc(); return TOK_CPROVER_THROW; }
+{CPROVER_PREFIX}"catch"        { loc(); return TOK_CPROVER_CATCH; }
+{CPROVER_PREFIX}"try"          { loc(); return TOK_CPROVER_TRY; }
+{CPROVER_PREFIX}"finally"      { loc(); return TOK_CPROVER_FINALLY; }
+{CPROVER_PREFIX}"ID"           { loc(); return TOK_CPROVER_ID; }
+{CPROVER_PREFIX}"loop_invariant" { loc(); return TOK_CPROVER_LOOP_INVARIANT; }
+{CPROVER_PREFIX}"requires"     { loc(); return TOK_CPROVER_REQUIRES; }
+{CPROVER_PREFIX}"ensures"      { loc(); return TOK_CPROVER_ENSURES; }
 
-"\x22\x00" |
+"\xe2\x88\x80" |
 "\\forall"      { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_ACSL_FORALL;
                 }
 
-"\x22\x03" |
+"\xe2\x88\x83" |
 "\\exists"      { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_ACSL_EXISTS;
                 }
-"\x21\xD2" |
+
+"\\let"         { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return TOK_ACSL_LET;
+                }
+
+"\xe2\x87\x92" |
 "==>"           { /* Non-standard, obviously. Found in Spec# and ACSL syntax. */
                   loc(); return TOK_IMPLIES;
                 }
 
-"\x21\xD4" |
+"\xe2\x87\x94" |
 "<==>"          { /* Non-standard, obviously. Found in Spec# and ACSL syntax. */
                   loc(); return TOK_EQUIVALENT;
                 }
 
-"\x22\x65"      { /* Non-standard, obviously. Found in ACSL syntax. */
+"\xe2\x89\xa5"  { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_GE;
                 }
 
-"\x22\x64"      { /* Non-standard, obviously. Found in ACSL syntax. */
+"\xe2\x89\xa1"  { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return TOK_EQ;
+                }
+
+"\xe2\x89\xa2"  { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return TOK_NE;
+                }
+
+"\xe2\x89\xa4"  { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_LE;
                 }
 
-"\x22\x27"      { /* Non-standard, obviously. Found in ACSL syntax. */
+"\xe2\x88\xa7"  { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_ANDAND;
                 }
 
-"\x22\x28"      { /* Non-standard, obviously. Found in ACSL syntax. */
+"\xe2\x88\xa8"  { /* Non-standard, obviously. Found in ACSL syntax. */
                   loc(); return TOK_OROR;
+                }
+
+"\xc2\xac"      { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return '!';
+                }
+
+"\xe2\x8a\xbb" |
+"^^"            { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return TOK_XORXOR;
+                }
+
+"\xe2\x88\x92"  { /* Non-standard, obviously. Found in ACSL syntax. */
+                  loc(); return '-';
                 }
 
 "\\true"        { /* Non-standard, obviously. Found in ACSL syntax. */

@@ -8,8 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "functions.h"
 
-#include <cassert>
-
 #include <util/std_types.h>
 #include <util/std_expr.h>
 
@@ -32,7 +30,7 @@ void functionst::add_function_constraints()
 exprt functionst::arguments_equal(const exprt::operandst &o1,
                                   const exprt::operandst &o2)
 {
-  assert(o1.size()==o2.size());
+  PRECONDITION(o1.size() == o2.size());
 
   if(o1.empty())
     return true_exprt();
@@ -44,15 +42,11 @@ exprt functionst::arguments_equal(const exprt::operandst &o1,
   for(std::size_t i=0; i<o1.size(); i++)
   {
     exprt lhs=o1[i];
-    exprt rhs=o2[i];
-
-    if(lhs.type()!=rhs.type())
-      rhs.make_typecast(lhs.type());
-
+    exprt rhs = typecast_exprt::conditional_cast(o2[i], o1[i].type());
     conjuncts[i]=equal_exprt(lhs, rhs);
   }
 
-  return and_expr;
+  return std::move(and_expr);
 }
 
 void functionst::add_function_constraints(const function_infot &info)

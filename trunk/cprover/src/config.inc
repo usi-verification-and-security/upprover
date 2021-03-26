@@ -12,6 +12,9 @@ endif
 #CXXFLAGS += -O2 -DNDEBUG
 #CXXFLAGS += -O0 -g
 
+# With GCC this adds function names in stack backtraces
+#LINKFLAGS="-rdynamic"
+
 # If GLPK is available; this is used by goto-instrument and musketeer.
 #LIB_GLPK = -lglpk
 
@@ -25,10 +28,6 @@ endif
 #IPASIR = ../../ipasir
 #GLUCOSE = ../../glucose-syrup
 #CADICAL = ../../cadical
-
-# Extra library for SAT solver. This should link to the archive file to be used
-# when linking against an IPASIR solver.
-LIBSOLVER =
 
 # select default solver to be minisat2 if no other is specified
 ifeq ($(BOOLEFORCE)$(CHAFF)$(GLUCOSE)$(IPASIR)$(LINGELING)$(MINISAT)$(MINISAT2)$(PICOSAT)$(CADICAL),)
@@ -72,4 +71,4 @@ endif
 OSX_IDENTITY="Developer ID Application: Daniel Kroening"
 
 # Detailed version information
-CBMC_VERSION = 5.10
+CBMC_VERSION = 5.11

@@ -2,16 +2,18 @@
 
 #include "symbol_table.h"
 
+#include <algorithm>
 #include <util/invariant.h>
+#include <util/validate.h>
 
-/// Move or copy a new symbol to the symbol table
-/// \remark: This is a nicer interface than move and achieves the same
-/// result as both move and add
+/// Move or copy a new symbol to the symbol table.
+/// \remarks This is a nicer interface than move and achieves the same
+///   result as both move and add.
 /// \param symbol: The symbol to be added to the symbol table - can be
-/// moved or copied in
+///   moved or copied in.
 /// \return Returns a reference to the newly inserted symbol or to the
-/// existing symbol if a symbol with the same name already exists in the
-/// symbol table, along with a bool that is true if a new symbol was inserted.
+///   existing symbol if a symbol with the same name already exists in the
+///   symbol table, along with a bool that is true if a new symbol was inserted.
 std::pair<symbolt &, bool> symbol_tablet::insert(symbolt symbol)
 {
   // Add the symbol to the table or retrieve existing symbol with the same name
@@ -79,7 +81,7 @@ bool symbol_tablet::move(symbolt &symbol, symbolt *&new_symbol)
   return !result.second;
 }
 
-/// Remove a symbol from the symbol table
+/// Remove a symbol from the symbol table.
 /// \param entry: an iterator pointing at the symbol to remove
 void symbol_tablet::erase(const symbolst::const_iterator &entry)
 {
@@ -113,4 +115,107 @@ void symbol_tablet::erase(const symbolst::const_iterator &entry)
   internal_symbol_module_map.erase(module_it);
 
   internal_symbols.erase(entry);
+}
+
+/// Check whether the symbol table is in a valid state
+/// \param vm: Determine whether to throw exceptions or trigger INVARIANT
+///   when validation fails.
+void symbol_tablet::validate(const validation_modet vm) const
+{
+  // Check that identifiers are mapped to the correct symbol
+  for(const auto &elem : symbols)
+  {
+    const auto symbol_key = elem.first;
+    const auto &symbol = elem.second;
+
+    // First of all, ensure symbol well-formedness
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm, symbol.is_well_formed(), "Symbol is malformed: ", symbol_key);
+
+    // Check that symbols[id].name == id
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      symbol.name == symbol_key,
+      "Symbol table entry must map to a symbol with the correct identifier",
+      "Symbol table key '",
+      symbol_key,
+      "' maps to symbol '",
+      symbol.name,
+      "'");
+
+    // Check that the symbol basename is mapped to its full name
+    if(!symbol.base_name.empty())
+    {
+      const auto base_map_search =
+        symbol_base_map.equal_range(symbol.base_name);
+      const bool base_map_matches_symbol =
+        std::find_if(
+          base_map_search.first,
+          base_map_search.second,
+          [&symbol_key](const typename symbol_base_mapt::value_type &match) {
+            return match.second == symbol_key;
+          }) != symbol_base_map.end();
+
+      DATA_CHECK_WITH_DIAGNOSTICS(
+        vm,
+        base_map_matches_symbol,
+        "The base_name of a symbol should map to itself",
+        "Symbol table key '",
+        symbol_key,
+        "' has a base_name '",
+        symbol.base_name,
+        "' which does not map to itself");
+    }
+
+    // Check that the module name of the symbol is mapped to the full name
+    if(!symbol.module.empty())
+    {
+      auto module_map_search = symbol_module_map.equal_range(symbol.module);
+      bool module_map_matches_symbol =
+        std::find_if(
+          module_map_search.first,
+          module_map_search.second,
+          [&symbol_key](const typename symbol_module_mapt::value_type &match) {
+            return match.second == symbol_key;
+          }) != symbol_module_map.end();
+
+      DATA_CHECK_WITH_DIAGNOSTICS(
+        vm,
+        module_map_matches_symbol,
+        "Symbol table module map should map to symbol",
+        "Symbol table key '",
+        symbol_key,
+        "' has a module name of '",
+        symbol.module,
+        "' which does not map to itself");
+    }
+  }
+
+  // Check that all base name map entries point to a symbol entry
+  for(auto base_map_entry : symbol_base_map)
+  {
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      has_symbol(base_map_entry.second),
+      "Symbol table base_name map entries must map to a symbol name",
+      "base_name map entry '",
+      base_map_entry.first,
+      "' maps to non-existant symbol name '",
+      base_map_entry.second,
+      "'");
+  }
+
+  // Check that all module map entries point to a symbol entry
+  for(auto module_map_entry : symbol_module_map)
+  {
+    DATA_CHECK_WITH_DIAGNOSTICS(
+      vm,
+      has_symbol(module_map_entry.second),
+      "Symbol table module map entries must map to a symbol name",
+      "base_name map entry '",
+      module_map_entry.first,
+      "' maps to non-existant symbol name '",
+      module_map_entry.second,
+      "'");
+  }
 }

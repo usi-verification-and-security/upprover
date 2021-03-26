@@ -13,24 +13,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "arith_tools.h"
 #include "c_types.h"
-#include "format_expr.h"
-#include "format_type.h"
-#include "invariant.h"
-#include "message.h"
 #include "namespace.h"
 #include "pointer_offset_size.h"
 #include "std_code.h"
 #include "std_expr.h"
 
 template <bool nondet>
-class expr_initializert : public messaget
+class expr_initializert
 {
 public:
-  expr_initializert(
-    const namespacet &_ns,
-    message_handlert &_message_handler):
-    messaget(_message_handler),
-    ns(_ns)
+  explicit expr_initializert(const namespacet &_ns) : ns(_ns)
   {
   }
 
@@ -112,18 +104,16 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
       result = side_effect_expr_nondett(type, source_location);
     else
     {
-      exprt sub_zero = expr_initializer_rec(type.subtype(), source_location);
+      exprt sub_zero =
+        expr_initializer_rec(to_complex_type(type).subtype(), source_location);
+      if(sub_zero.is_nil())
+        return nil_exprt();
+
       result = complex_exprt(sub_zero, sub_zero, to_complex_type(type));
     }
 
     result.add_source_location()=source_location;
     return result;
-  }
-  else if(type_id==ID_code)
-  {
-    error().source_location=source_location;
-    error() << "cannot initialize code-type" << eom;
-    throw 0;
   }
   else if(type_id==ID_array)
   {
@@ -137,14 +127,14 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
       value.type().id(ID_array);
       value.type().set(ID_size, from_integer(0, size_type()));
       value.add_source_location()=source_location;
-      return value;
+      return std::move(value);
     }
     else
     {
       exprt tmpval =
         expr_initializer_rec(array_type.subtype(), source_location);
-
-      mp_integer array_size;
+      if(tmpval.is_nil())
+        return nil_exprt();
 
       if(array_type.size().id()==ID_infinity)
       {
@@ -153,26 +143,25 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
 
         array_of_exprt value(tmpval, array_type);
         value.add_source_location()=source_location;
-        return value;
+        return std::move(value);
       }
-      else if(to_integer(array_type.size(), array_size))
+
+      const auto array_size = numeric_cast<mp_integer>(array_type.size());
+      if(!array_size.has_value())
       {
         if(nondet)
           return side_effect_expr_nondett(type, source_location);
-
-        error().source_location=source_location;
-        error() << "failed to zero-initialize array of non-fixed size `"
-                << format(array_type.size()) << "'" << eom;
-        throw 0;
+        else
+          return nil_exprt();
       }
 
-      DATA_INVARIANT(
-        array_size >= 0, "array should not have negative size");
+      if(*array_size < 0)
+        return nil_exprt();
 
       array_exprt value(array_type);
-      value.operands().resize(integer2size_t(array_size), tmpval);
+      value.operands().resize(numeric_cast_v<std::size_t>(*array_size), tmpval);
       value.add_source_location()=source_location;
-      return value;
+      return std::move(value);
     }
   }
   else if(type_id==ID_vector)
@@ -180,28 +169,20 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
     const vector_typet &vector_type=to_vector_type(type);
 
     exprt tmpval = expr_initializer_rec(vector_type.subtype(), source_location);
+    if(tmpval.is_nil())
+      return nil_exprt();
 
-    mp_integer vector_size;
+    const mp_integer vector_size =
+      numeric_cast_v<mp_integer>(vector_type.size());
 
-    if(to_integer(vector_type.size(), vector_size))
-    {
-      if(nondet)
-        return side_effect_expr_nondett(type, source_location);
-
-      error().source_location=source_location;
-      error() << "failed to zero-initialize vector of non-fixed size `"
-              << format(vector_type.size()) << "'" << eom;
-      throw 0;
-    }
-
-    DATA_INVARIANT(
-      vector_size >= 0, "vector should not have negative size");
+    if(vector_size < 0)
+      return nil_exprt();
 
     vector_exprt value(vector_type);
-    value.operands().resize(integer2size_t(vector_size), tmpval);
+    value.operands().resize(numeric_cast_v<std::size_t>(vector_size), tmpval);
     value.add_source_location()=source_location;
 
-    return value;
+    return std::move(value);
   }
   else if(type_id==ID_struct)
   {
@@ -212,25 +193,27 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
 
     value.operands().reserve(components.size());
 
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &c : components)
     {
-      if(it->type().id()==ID_code)
+      if(c.type().id() == ID_code)
       {
-        constant_exprt code_value(ID_nil, it->type());
+        constant_exprt code_value(ID_nil, c.type());
         code_value.add_source_location()=source_location;
-        value.copy_to_operands(code_value);
+        value.add_to_operands(std::move(code_value));
       }
       else
-        value.copy_to_operands(
-          expr_initializer_rec(it->type(), source_location));
+      {
+        const exprt member = expr_initializer_rec(c.type(), source_location);
+        if(member.is_nil())
+          return nil_exprt();
+
+        value.add_to_operands(std::move(member));
+      }
     }
 
     value.add_source_location()=source_location;
 
-    return value;
+    return std::move(value);
   }
   else if(type_id==ID_union)
   {
@@ -245,22 +228,19 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
 
     // we need to find the largest member
 
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &c : components)
     {
       // skip methods
-      if(it->type().id()==ID_code)
+      if(c.type().id() == ID_code)
         continue;
 
-      mp_integer bits=pointer_offset_bits(it->type(), ns);
+      auto bits = pointer_offset_bits(c.type(), ns);
 
-      if(bits>component_size)
+      if(bits.has_value() && *bits > component_size)
       {
-        component=*it;
+        component = c;
         found=true;
-        component_size=bits;
+        component_size = *bits;
       }
     }
 
@@ -276,9 +256,11 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
       value.set_component_name(component.get_name());
       value.op()=
         expr_initializer_rec(component.type(), source_location);
+      if(value.op().is_nil())
+        return nil_exprt();
     }
 
-    return value;
+    return std::move(value);
   }
   else if(type_id == ID_symbol_type)
   {
@@ -298,17 +280,23 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
   }
   else if(type_id==ID_struct_tag)
   {
-    return
-      expr_initializer_rec(
-        ns.follow_tag(to_struct_tag_type(type)),
-        source_location);
+    exprt result = expr_initializer_rec(
+      ns.follow_tag(to_struct_tag_type(type)), source_location);
+
+    // use the tag type
+    result.type() = type;
+
+    return result;
   }
   else if(type_id==ID_union_tag)
   {
-    return
-      expr_initializer_rec(
-        ns.follow_tag(to_union_tag_type(type)),
-        source_location);
+    exprt result = expr_initializer_rec(
+      ns.follow_tag(to_union_tag_type(type)), source_location);
+
+    // use the tag type
+    result.type() = type;
+
+    return result;
   }
   else if(type_id==ID_string)
   {
@@ -322,67 +310,44 @@ exprt expr_initializert<nondet>::expr_initializer_rec(
     return result;
   }
   else
-  {
-    error().source_location=source_location;
-    error() << "failed to initialize `" << format(type) << "'" << eom;
-    throw 0;
-  }
+    return nil_exprt();
 }
 
-exprt zero_initializer(
-  const typet &type,
-  const source_locationt &source_location,
-  const namespacet &ns,
-  message_handlert &message_handler)
-{
-  expr_initializert<false> z_i(ns, message_handler);
-  return z_i(type, source_location);
-}
-
-exprt nondet_initializer(
-  const typet &type,
-  const source_locationt &source_location,
-  const namespacet &ns,
-  message_handlert &message_handler)
-{
-  expr_initializert<true> z_i(ns, message_handler);
-  return z_i(type, source_location);
-}
-
-exprt zero_initializer(
+/// Create the equivalent of zero for type `type`.
+/// \param type: Type of the target expression.
+/// \param source_location: Location to record in all created sub-expressions.
+/// \param ns: Namespace to perform type symbol/tag lookups.
+/// \return An expression if a constant expression of the input type can be
+/// built.
+optionalt<exprt> zero_initializer(
   const typet &type,
   const source_locationt &source_location,
   const namespacet &ns)
 {
-  std::ostringstream oss;
-  stream_message_handlert mh(oss);
-
-  try
-  {
-    expr_initializert<false> z_i(ns, mh);
-    return z_i(type, source_location);
-  }
-  catch(int)
-  {
-    throw oss.str();
-  }
+  expr_initializert<false> z_i(ns);
+  const exprt result = z_i(type, source_location);
+  if(result.is_nil())
+    return {};
+  else
+    return result;
 }
 
-exprt nondet_initializer(
+/// Create a non-deterministic value for type `type`, with all subtypes
+/// independently expanded as non-deterministic values.
+/// \param type: Type of the target expression.
+/// \param source_location: Location to record in all created sub-expressions.
+/// \param ns: Namespace to perform type symbol/tag lookups.
+/// \return An expression if a non-deterministic expression of the input type
+/// can be built.
+optionalt<exprt> nondet_initializer(
   const typet &type,
   const source_locationt &source_location,
   const namespacet &ns)
 {
-  std::ostringstream oss;
-  stream_message_handlert mh(oss);
-
-  try
-  {
-    expr_initializert<true> z_i(ns, mh);
-    return z_i(type, source_location);
-  }
-  catch(int)
-  {
-    throw oss.str();
-  }
+  expr_initializert<true> z_i(ns);
+  const exprt result = z_i(type, source_location);
+  if(result.is_nil())
+    return {};
+  else
+    return result;
 }

@@ -1,15 +1,10 @@
 cmake_minimum_required(VERSION 3.3)
 
-# Default is release
-if(NOT CMAKE_BUILD_TYPE)
-set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
-endif()
-
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
     message(STATUS "Rule launch compile: ${CCACHE_PROGRAM}")
- endif()
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
@@ -28,7 +23,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
     #   Ensure NDEBUG is not set for release builds
     set(CMAKE_CXX_FLAGS_RELEASE "-O2")
     #   Enable lots of warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror -Wno-deprecated-declarations")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic  -Wno-deprecated-declarations")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #   This would be the place to enable warnings for Windows builds, although
     #   config.inc doesn't seem to do that currently
@@ -43,13 +38,15 @@ set(sat_impl "minisat2" CACHE STRING
 if(${enable_cbmc_tests})
     enable_testing()
 endif()
+
+#HiFrog test
 if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
+
 add_subdirectory(src)
 #add_subdirectory(regression)
 #add_subdirectory(unit)
-
 #add_subdirectory(jbmc)
 
 set_target_properties(
@@ -65,6 +62,7 @@ set_target_properties(
     goto-analyzer-lib
     goto-cc
     goto-cc-lib
+    goto-checker
     #goto-diff
     #goto-diff-lib
     goto-instrument
@@ -73,10 +71,9 @@ set_target_properties(
     goto-symex
     jsil
     json
+    json-symtab-language
     langapi
     linking
-    #miniBDD
-    #mmcc
     pointer-analysis
     solvers
     test-bigint
@@ -84,6 +81,16 @@ set_target_properties(
     #unit
     util
     xml
+    #java_bytecode
+    # java-models-library
+    #jbmc
+    #jbmc-lib
+    #janalyzer:q
+    #janalyzer-lib
+    #jdiff
+    #jdiff-lib
+    #java-testing-utils
+    #java-unit
     #miniz
 
     PROPERTIES
@@ -91,3 +98,5 @@ set_target_properties(
     CXX_STANDARD_REQUIRED true
     XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Daniel Kroening"
 )
+
+

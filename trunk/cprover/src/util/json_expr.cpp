@@ -37,44 +37,48 @@ static exprt simplify_json_expr(
 
     if(type.id()==ID_pointer)
     {
-      const irep_idt &value=to_constant_expr(src).get_value();
+      const constant_exprt &c = to_constant_expr(src);
 
-      if(value!=ID_NULL &&
-         (value!=std::string(value.size(), '0') ||
-          !config.ansi_c.NULL_is_zero) &&
-         src.operands().size()==1 &&
-         src.op0().id()!=ID_constant)
-        // try to simplify the constant pointer
-        return simplify_json_expr(src.op0(), ns);
+      if(
+        c.get_value() != ID_NULL &&
+        (!c.value_is_zero_string() || !config.ansi_c.NULL_is_zero) &&
+        src.operands().size() == 1 &&
+        to_unary_expr(src).op().id() != ID_constant)
+      // try to simplify the constant pointer
+      {
+        return simplify_json_expr(to_unary_expr(src).op(), ns);
+      }
     }
   }
-  else if(src.id()==ID_address_of &&
-          src.operands().size()==1 &&
-          src.op0().id()==ID_member &&
-          id2string(to_member_expr(
-            src.op0()).get_component_name()).find("@")!=std::string::npos)
+  else if(
+    src.id() == ID_address_of &&
+    to_address_of_expr(src).object().id() == ID_member &&
+    id2string(
+      to_member_expr(to_address_of_expr(src).object()).get_component_name())
+        .find("@") != std::string::npos)
   {
     // simplify expressions of the form &member_expr(object, @class_identifier)
-    return simplify_json_expr(src.op0(), ns);
+    return simplify_json_expr(to_address_of_expr(src).object(), ns);
   }
-  else if(src.id()==ID_address_of &&
-          src.operands().size()==1 &&
-          src.op0().id()==ID_index &&
-          to_index_expr(src.op0()).index().id()==ID_constant &&
-          to_constant_expr(
-            to_index_expr(src.op0()).index()).value_is_zero_string())
+  else if(
+    src.id() == ID_address_of &&
+    to_address_of_expr(src).object().id() == ID_index &&
+    to_index_expr(to_address_of_expr(src).object()).index().id() ==
+      ID_constant &&
+    to_constant_expr(to_index_expr(to_address_of_expr(src).object()).index())
+      .value_is_zero_string())
   {
     // simplify expressions of the form  &array[0]
-    return simplify_json_expr(to_index_expr(src.op0()).array(), ns);
+    return simplify_json_expr(
+      to_index_expr(to_address_of_expr(src).object()).array(), ns);
   }
   else if(src.id()==ID_member &&
-          src.operands().size()==1 &&
           id2string(
             to_member_expr(src).get_component_name())
               .find("@")!=std::string::npos)
   {
     // simplify expressions of the form  member_expr(object, @class_identifier)
-    return simplify_json_expr(src.op0(), ns);
+    return simplify_json_expr(to_member_expr(src).struct_op(), ns);
   }
 
   return src;
@@ -154,7 +158,10 @@ json_objectt json(
   else if(type.id()==ID_c_enum_tag)
   {
     // we return the base type
-    return json(ns.follow_tag(to_c_enum_tag_type(type)).subtype(), ns, mode);
+    return json(
+      to_c_enum_type(ns.follow_tag(to_c_enum_tag_type(type))).subtype(),
+      ns,
+      mode);
   }
   else if(type.id()==ID_fixedbv)
   {
@@ -165,7 +172,7 @@ json_objectt json(
   else if(type.id()==ID_pointer)
   {
     result["name"]=json_stringt("pointer");
-    result["subtype"]=json(type.subtype(), ns, mode);
+    result["subtype"] = json(to_pointer_type(type).subtype(), ns, mode);
   }
   else if(type.id()==ID_bool)
   {
@@ -174,12 +181,12 @@ json_objectt json(
   else if(type.id()==ID_array)
   {
     result["name"]=json_stringt("array");
-    result["subtype"]=json(type.subtype(), ns, mode);
+    result["subtype"] = json(to_array_type(type).subtype(), ns, mode);
   }
   else if(type.id()==ID_vector)
   {
     result["name"]=json_stringt("vector");
-    result["subtype"]=json(type.subtype(), ns, mode);
+    result["subtype"] = json(to_vector_type(type).subtype(), ns, mode);
     result["size"]=json(to_vector_type(type).size(), ns, mode);
   }
   else if(type.id()==ID_struct)
@@ -214,6 +221,13 @@ json_objectt json(
   return result;
 }
 
+static std::string binary(const constant_exprt &src)
+{
+  const auto width = to_bitvector_type(src.type()).get_width();
+  const auto int_val = bvrep2integer(src.get_value(), width, false);
+  return integer2binary(int_val, width);
+}
+
 /// Output a CBMC expression in json.
 /// The mode is used to correctly report types.
 /// \param expr: an expression
@@ -242,9 +256,8 @@ json_objectt json(
         lang=std::unique_ptr<languaget>(get_default_language());
     }
 
-    const typet &underlying_type=
-      type.id()==ID_c_bit_field?type.subtype():
-      type;
+    const typet &underlying_type =
+      type.id() == ID_c_bit_field ? to_c_bit_field_type(type).subtype() : type;
 
     std::string type_string;
     bool error=lang->from_type(underlying_type, type_string, ns);
@@ -261,7 +274,7 @@ json_objectt json(
       std::size_t width=to_bitvector_type(type).get_width();
 
       result["name"]=json_stringt("integer");
-      result["binary"] = json_stringt(constant_expr.get_value());
+      result["binary"] = json_stringt(binary(constant_expr));
       result["width"]=json_numbert(std::to_string(width));
       result["type"]=json_stringt(type_string);
       result["data"]=json_stringt(value_string);
@@ -269,28 +282,29 @@ json_objectt json(
     else if(type.id()==ID_c_enum)
     {
       result["name"]=json_stringt("integer");
-      result["binary"] = json_stringt(constant_expr.get_value());
-      result["width"]=json_numbert(type.subtype().get_string(ID_width));
+      result["binary"] = json_stringt(binary(constant_expr));
+      result["width"] =
+        json_numbert(to_c_enum_type(type).subtype().get_string(ID_width));
       result["type"]=json_stringt("enum");
       result["data"]=json_stringt(value_string);
     }
     else if(type.id()==ID_c_enum_tag)
     {
-      constant_exprt tmp;
-      tmp.type()=ns.follow_tag(to_c_enum_tag_type(type));
-      tmp.set_value(to_constant_expr(expr).get_value());
+      constant_exprt tmp(
+        to_constant_expr(expr).get_value(),
+        ns.follow_tag(to_c_enum_tag_type(type)));
       return json(tmp, ns, mode);
     }
     else if(type.id()==ID_bv)
     {
       result["name"]=json_stringt("bitvector");
-      result["binary"] = json_stringt(constant_expr.get_value());
+      result["binary"] = json_stringt(binary(constant_expr));
     }
     else if(type.id()==ID_fixedbv)
     {
       result["name"]=json_stringt("fixed");
       result["width"]=json_numbert(type.get_string(ID_width));
-      result["binary"] = json_stringt(constant_expr.get_value());
+      result["binary"] = json_stringt(binary(constant_expr));
       result["data"]=
         json_stringt(fixedbvt(to_constant_expr(expr)).to_ansi_c_string());
     }
@@ -298,7 +312,7 @@ json_objectt json(
     {
       result["name"]=json_stringt("float");
       result["width"]=json_numbert(type.get_string(ID_width));
-      result["binary"] = json_stringt(constant_expr.get_value());
+      result["binary"] = json_stringt(binary(constant_expr));
       result["data"]=
         json_stringt(ieee_floatt(to_constant_expr(expr)).to_ansi_c_string());
     }
@@ -307,11 +321,15 @@ json_objectt json(
       result["name"]=json_stringt("pointer");
       result["type"]=json_stringt(type_string);
       exprt simpl_expr=simplify_json_expr(expr, ns);
-      if(simpl_expr.get(ID_value)==ID_NULL ||
-         // remove typecast on NULL
-         (simpl_expr.id()==ID_constant && simpl_expr.type().id()==ID_pointer &&
-          simpl_expr.op0().get(ID_value)==ID_NULL))
+      if(
+        simpl_expr.get(ID_value) == ID_NULL ||
+        // remove typecast on NULL
+        (simpl_expr.id() == ID_constant &&
+         simpl_expr.type().id() == ID_pointer &&
+         to_unary_expr(simpl_expr).op().get(ID_value) == ID_NULL))
+      {
         result["data"]=json_stringt(value_string);
+      }
       else if(simpl_expr.id()==ID_symbol)
       {
         const irep_idt &ptr_id=to_symbol_expr(simpl_expr).get_identifier();

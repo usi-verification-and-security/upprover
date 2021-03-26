@@ -22,17 +22,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <goto-programs/goto_functions.h>
 
-bool static_lifetime_init(
+void static_lifetime_init(
   symbol_tablet &symbol_table,
-  const source_locationt &source_location,
-  message_handlert &message_handler)
+  const source_locationt &source_location)
 {
-  namespacet ns(symbol_table);
+  PRECONDITION(symbol_table.has_symbol(INITIALIZE_FUNCTION));
 
-  const auto maybe_symbol=symbol_table.get_writeable(INITIALIZE_FUNCTION);
-  if(!maybe_symbol)
-    return false;
-  symbolt &init_symbol=*maybe_symbol;
+  const namespacet ns(symbol_table);
+
+  symbolt &init_symbol = symbol_table.get_writeable_ref(INITIALIZE_FUNCTION);
 
   init_symbol.value=code_blockt();
   init_symbol.value.add_source_location()=source_location;
@@ -40,7 +38,7 @@ bool static_lifetime_init(
   code_blockt &dest=to_code_block(to_code(init_symbol.value));
 
   // add the magic label to hide
-  dest.add(code_labelt("__CPROVER_HIDE", code_skipt()));
+  dest.add(code_labelt(CPROVER_PREFIX "HIDE", code_skipt()));
 
   // do assignments based on "value"
 
@@ -101,9 +99,9 @@ bool static_lifetime_init(
     {
       // C standard 6.9.2, paragraph 5
       // adjust the type to an array of size 1
-      symbolt &symbol=*symbol_table.get_writeable(identifier);
-      symbol.type=type;
-      symbol.type.set(ID_size, from_integer(1, size_type()));
+      symbolt &writable_symbol = *symbol_table.get_writeable(identifier);
+      writable_symbol.type = type;
+      writable_symbol.type.set(ID_size, from_integer(1, size_type()));
     }
 
     if(type.id()==ID_incomplete_struct ||
@@ -117,16 +115,9 @@ bool static_lifetime_init(
 
     if(symbol.value.is_nil())
     {
-      try
-      {
-        namespacet ns(symbol_table);
-        rhs=zero_initializer(symbol.type, symbol.location, ns, message_handler);
-        assert(rhs.is_not_nil());
-      }
-      catch(...)
-      {
-        return true;
-      }
+      const auto zero = zero_initializer(symbol.type, symbol.location, ns);
+      CHECK_RETURN(zero.has_value());
+      rhs = *zero;
     }
     else
       rhs=symbol.value;
@@ -134,7 +125,7 @@ bool static_lifetime_init(
     code_assignt code(symbol.symbol_expr(), rhs);
     code.add_source_location()=symbol.location;
 
-    dest.move_to_operands(code);
+    dest.add(code);
   }
 
   // call designated "initialization" functions
@@ -151,12 +142,9 @@ bool static_lifetime_init(
       code_type.return_type().id() == ID_constructor &&
       code_type.parameters().empty())
     {
-      code_function_callt function_call;
-      function_call.function()=symbol.symbol_expr();
+      code_function_callt function_call(symbol.symbol_expr());
       function_call.add_source_location()=source_location;
-      dest.move_to_operands(function_call);
+      dest.add(function_call);
     }
   }
-
-  return false;
 }

@@ -47,40 +47,38 @@ void cpp_typecheckt::typecheck_code(codet &code)
 
 void cpp_typecheckt::typecheck_try_catch(codet &code)
 {
-  codet::operandst &operands=code.operands();
+  bool first = true;
 
-  for(codet::operandst::iterator
-      it=operands.begin();
-      it!=operands.end();
-      it++)
+  for(auto &op : code.operands())
   {
-    if(it==operands.begin())
+    if(first)
     {
       // this is the 'try'
-      typecheck_code(to_code(*it));
+      typecheck_code(to_code(op));
+      first = false;
     }
     else
     {
       // This is (one of) the catch clauses.
-      codet &code=to_code_block(to_code(*it));
+      code_blockt &catch_block = to_code_block(to_code(op));
 
       // look at the catch operand
-      assert(!code.operands().empty());
+      auto &statements = catch_block.statements();
+      PRECONDITION(!statements.empty());
 
-      if(to_code(code.op0()).get_statement()==ID_ellipsis)
+      if(statements.front().get_statement() == ID_ellipsis)
       {
-        code.operands().erase(code.operands().begin());
+        statements.erase(statements.begin());
 
         // do body
-        typecheck_code(code);
+        typecheck_code(catch_block);
       }
       else
       {
         // turn references into non-references
         {
-          assert(to_code(code.op0()).get_statement()==ID_decl);
-          cpp_declarationt &cpp_declaration=
-            to_cpp_declaration(to_code_decl(to_code(code.op0())).symbol());
+          code_declt &decl = to_code_decl(statements.front());
+          cpp_declarationt &cpp_declaration = to_cpp_declaration(decl.symbol());
 
           assert(cpp_declaration.declarators().size()==1);
           cpp_declaratort &declarator=cpp_declaration.declarators().front();
@@ -90,22 +88,22 @@ void cpp_typecheckt::typecheck_try_catch(codet &code)
         }
 
         // typecheck the body
-        typecheck_code(code);
+        typecheck_code(catch_block);
 
         // the declaration is now in a decl_block
-
-        assert(!code.operands().empty());
-        assert(to_code(code.op0()).get_statement()==ID_decl_block);
+        CHECK_RETURN(!catch_block.statements().empty());
+        CHECK_RETURN(
+          catch_block.statements().front().get_statement() == ID_decl_block);
 
         // get the declaration
-        const code_declt &code_decl=
-          to_code_decl(to_code(code.op0().op0()));
+        const code_declt &code_decl =
+          to_code_decl(to_code(catch_block.statements().front().op0()));
 
         // get the type
-        const typet &type=code_decl.op0().type();
+        const typet &type = code_decl.symbol().type();
 
         // annotate exception ID
-        it->set(ID_exception_id, cpp_exception_id(type, *this));
+        op.set(ID_exception_id, cpp_exception_id(type, *this));
       }
     }
   }
@@ -162,8 +160,7 @@ void cpp_typecheckt::typecheck_switch(code_switcht &code)
 
     c_typecheck_baset::typecheck_switch(code);
 
-    code_blockt code_block;
-    code_block.move_to_operands(decl.op0(), code);
+    code_blockt code_block({to_code(decl.op0()), code});
     code.swap(code_block);
   }
   else
@@ -230,13 +227,12 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
 
     if(symbol_expr.get_bool(ID_C_not_accessible))
     {
-      irep_idt access = symbol_expr.get(ID_C_access);
+      const irep_idt &access = symbol_expr.get(ID_C_access);
+      CHECK_RETURN(
+        access == ID_private || access == ID_protected ||
+        access == ID_noaccess);
 
-      assert(access==ID_private ||
-             access==ID_protected ||
-             access=="noaccess");
-
-      if(access==ID_private || access=="noaccess")
+      if(access == ID_private || access == ID_noaccess)
       {
         #if 0
         error().source_location=code.source_location());
@@ -256,9 +252,10 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
   else
   {
     // a reference member
-    if(symbol_expr.id() == ID_dereference &&
-       symbol_expr.op0().id() == ID_member &&
-       symbol_expr.get_bool(ID_C_implicit) == true)
+    if(
+      symbol_expr.id() == ID_dereference &&
+      symbol_expr.op0().id() == ID_member &&
+      symbol_expr.get_bool(ID_C_implicit))
     {
       // treat references as normal pointers
       exprt tmp = symbol_expr.op0();
@@ -270,23 +267,24 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
     {
       // maybe the name of the member collides with a parameter of the
       // constructor
-      symbol_expr.make_nil();
-      cpp_typecheck_fargst fargs;
       exprt dereference(
         ID_dereference, cpp_scopes.current_scope().this_expr.type().subtype());
       dereference.copy_to_operands(cpp_scopes.current_scope().this_expr);
-      fargs.add_object(dereference);
+      cpp_typecheck_fargst deref_fargs;
+      deref_fargs.add_object(dereference);
 
       {
         cpp_save_scopet cpp_saved_scope(cpp_scopes);
         cpp_scopes.go_to(
           *(cpp_scopes.id_map[cpp_scopes.current_scope().class_identifier]));
-        symbol_expr=resolve(member, cpp_typecheck_resolvet::wantt::VAR, fargs);
+        symbol_expr =
+          resolve(member, cpp_typecheck_resolvet::wantt::VAR, deref_fargs);
       }
 
-      if(symbol_expr.id() == ID_dereference &&
-         symbol_expr.op0().id() == ID_member &&
-         symbol_expr.get_bool(ID_C_implicit) == true)
+      if(
+        symbol_expr.id() == ID_dereference &&
+        symbol_expr.op0().id() == ID_member &&
+        symbol_expr.get_bool(ID_C_implicit))
       {
         // treat references as normal pointers
         exprt tmp = symbol_expr.op0();
@@ -327,16 +325,17 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
         // it's a data member
         already_typechecked(symbol_expr);
 
-        exprt call=
+        auto call =
           cpp_constructor(code.source_location(), symbol_expr, code.operands());
 
-        if(call.is_nil())
+        if(call.has_value())
+          code.swap(call.value());
+        else
         {
-          call=codet(ID_skip);
-          call.add_source_location()=code.source_location();
+          auto source_location = code.source_location();
+          code = code_skipt();
+          code.add_source_location() = source_location;
         }
-
-        code.swap(call);
       }
     }
     else
@@ -424,7 +423,9 @@ void cpp_typecheckt::typecheck_decl(codet &code)
     // is there a constructor to be called?
     if(symbol.value.is_not_nil())
     {
-      assert(declarator.find("init_args").is_nil());
+      DATA_INVARIANT(
+        declarator.find(ID_init_args).is_nil(),
+        "declarator should not have init_args");
       if(symbol.value.id()==ID_code)
         new_code.copy_to_operands(symbol.value);
     }
@@ -434,21 +435,18 @@ void cpp_typecheckt::typecheck_decl(codet &code)
 
       already_typechecked(object_expr);
 
-      exprt constructor_call=
-        cpp_constructor(
-          symbol.location,
-          object_expr,
-          declarator.init_args().operands());
+      auto constructor_call = cpp_constructor(
+        symbol.location, object_expr, declarator.init_args().operands());
 
-      if(constructor_call.is_not_nil())
-        new_code.move_to_operands(constructor_call);
+      if(constructor_call.has_value())
+        new_code.move_to_operands(constructor_call.value());
     }
   }
 
   code.swap(new_code);
 }
 
-void cpp_typecheckt::typecheck_block(codet &code)
+void cpp_typecheckt::typecheck_block(code_blockt &code)
 {
   cpp_save_scopet saved_scope(cpp_scopes);
   cpp_scopes.new_block_scope();

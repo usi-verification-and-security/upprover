@@ -80,13 +80,13 @@ void full_slicert::operator()(
       jumps.push_back(e_it->second);
     else if(e_it->first->is_decl())
     {
-      const exprt &s=to_code_decl(e_it->first->code).symbol();
-      decl_dead[to_symbol_expr(s).get_identifier()].push(e_it->second);
+      const auto &s=to_code_decl(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
     else if(e_it->first->is_dead())
     {
-      const exprt &s=to_code_dead(e_it->first->code).symbol();
-      decl_dead[to_symbol_expr(s).get_identifier()].push(e_it->second);
+      const auto &s=to_code_dead(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
   }
 
@@ -568,8 +568,8 @@ void change_impactt::output_change_impact(
   {
     goto_program_change_impactt::const_iterator c_entry=
       c_i.find(target);
-    const unsigned mod_flags=
-      c_entry==c_i.end() ? SAME : c_entry->second;
+    const unsigned mod_flags =
+      c_entry == c_i.end() ? static_cast<unsigned>(SAME) : c_entry->second;
 
     char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence
@@ -623,8 +623,9 @@ void change_impactt::output_change_impact(
   {
     goto_program_change_impactt::const_iterator o_c_entry=
       o_c_i.find(o_target);
-    const unsigned old_mod_flags=
-      o_c_entry==o_c_i.end() ? SAME : o_c_entry->second;
+    const unsigned old_mod_flags = o_c_entry == o_c_i.end()
+                                     ? static_cast<unsigned>(SAME)
+                                     : o_c_entry->second;
 
     if(old_mod_flags&DELETED)
     {
@@ -636,8 +637,8 @@ void change_impactt::output_change_impact(
 
     goto_program_change_impactt::const_iterator c_entry=
       n_c_i.find(target);
-    const unsigned mod_flags=
-      c_entry==n_c_i.end() ? SAME : c_entry->second;
+    const unsigned mod_flags =
+      c_entry == n_c_i.end() ? static_cast<unsigned>(SAME) : c_entry->second;
 
     char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence
@@ -688,8 +689,9 @@ void change_impactt::output_change_impact(
   {
     goto_program_change_impactt::const_iterator o_c_entry=
       o_c_i.find(o_target);
-    const unsigned old_mod_flags=
-      o_c_entry==o_c_i.end() ? SAME : o_c_entry->second;
+    const unsigned old_mod_flags = o_c_entry == o_c_i.end()
+                                     ? static_cast<unsigned>(SAME)
+                                     : o_c_entry->second;
 
     char prefix = ' ';
     // syntactic changes are preferred over data/control-dependence

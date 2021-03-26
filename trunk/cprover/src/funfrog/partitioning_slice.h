@@ -36,7 +36,7 @@ protected:
   void prepare_assignment(symex_target_equationt::SSA_stept &SSA_step);
   void prepare_assertion(symex_target_equationt::SSA_stept &SSA_step);
   void prepare_assumption(partitioning_target_equationt &equation,
-          symex_target_equationt::SSA_stept &SSA_step);
+                          symex_target_equationt::SSA_stept &SSA_step);
   void prepare_partition(partitiont &partition);
   
   void mark_summary_symbols(const summary_storet & summary_store,

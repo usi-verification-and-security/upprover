@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_NAMESPACE_H
 #define CPROVER_UTIL_NAMESPACE_H
 
+#include "invariant.h"
 #include "irep.h"
 
 class symbol_tablet;
@@ -25,17 +26,31 @@ class c_enum_typet;
 class union_tag_typet;
 class struct_tag_typet;
 class c_enum_tag_typet;
+class symbol_table_baset;
 
+/// Basic interface for a namespace. This is not used
+/// in practice, as the one being used is \ref namespacet
+/// which uses two symbol tables, and \ref multi_namespacet
+/// which can combine more than two.
 class namespace_baset
 {
 public:
   // service methods
+
+  /// Lookup a symbol in the namespace.
+  /// \param name: The name of the symbol to lookup.
+  /// \return: A reference to the symbol found.
+  /// \remarks: It is a PRECONDITION that the symbol name exists
+  ///   in the namespace.
   const symbolt &lookup(const irep_idt &name) const
   {
     const symbolt *symbol;
-    if(lookup(name, symbol)) {
-      throw "identifier "+id2string(name)+" not found";
-    }
+    bool not_found = lookup(name, symbol);
+    INVARIANT(
+      !not_found,
+      "we are assuming that a name exists in the namespace "
+      "when this function is called - identifier " +
+        id2string(name) + " was not found");
     return *symbol;
   }
 
@@ -70,26 +85,29 @@ public:
   virtual bool lookup(const irep_idt &name, const symbolt *&symbol) const=0;
 };
 
-/*! \brief TO_BE_DOCUMENTED
-*/
+/// A namespacet is essentially one or two symbol tables bound
+/// together, to allow for symbol lookups in them. The basic
+/// idea is that you might want to combine a value table and
+/// a type table, so that for a variable you can lookup both
+/// of these essential properties, in one structure.
 class namespacet:public namespace_baset
 {
 public:
   // constructors
-  explicit namespacet(const symbol_tablet &_symbol_table)
+  explicit namespacet(const symbol_table_baset &_symbol_table)
   { symbol_table1=&_symbol_table; symbol_table2=nullptr; }
 
   namespacet(
-    const symbol_tablet &_symbol_table1,
-    const symbol_tablet &_symbol_table2)
+    const symbol_table_baset &_symbol_table1,
+    const symbol_table_baset &_symbol_table2)
   {
     symbol_table1=&_symbol_table1;
     symbol_table2=&_symbol_table2;
   }
 
   namespacet(
-    const symbol_tablet *_symbol_table1,
-    const symbol_tablet *_symbol_table2)
+    const symbol_table_baset *_symbol_table1,
+    const symbol_table_baset *_symbol_table2)
   {
     symbol_table1=_symbol_table1;
     symbol_table2=_symbol_table2;
@@ -97,22 +115,27 @@ public:
 
   using namespace_baset::lookup;
 
-  /// See namespace_baset::lookup(). Note that \ref namespacet has two symbol
-  /// tables.
+  /// See documentation for namespace_baset::lookup(). Note that
+  /// \ref namespacet has two symbol tables.
   bool lookup(const irep_idt &name, const symbolt *&symbol) const override;
 
   /// See documentation for namespace_baset::smallest_unused_suffix().
   std::size_t smallest_unused_suffix(const std::string &prefix) const override;
 
-  const symbol_tablet &get_symbol_table() const
+  /// Return first symbol table registered with the namespace.
+  const symbol_table_baset &get_symbol_table() const
   {
     return *symbol_table1;
   }
 
 protected:
-  const symbol_tablet *symbol_table1, *symbol_table2;
+  const symbol_table_baset *symbol_table1, *symbol_table2;
 };
 
+/// A multi namespace is essentially a namespace,
+/// with a list of namespaces. It's difference with
+/// \ref namespacet is that it can use more than two
+/// symbol tables to lookup symbols in.
 class multi_namespacet:public namespacet
 {
 public:
@@ -121,8 +144,8 @@ public:
   {
   }
 
-  explicit multi_namespacet(
-    const symbol_tablet &symbol_table):namespacet(nullptr, nullptr)
+  explicit multi_namespacet(const symbol_table_baset &symbol_table)
+    : namespacet(nullptr, nullptr)
   {
     add(symbol_table);
   }
@@ -130,16 +153,22 @@ public:
   // these do the actual lookup
   using namespace_baset::lookup;
 
+  /// See documentation for namespace_baset::lookup().
   bool lookup(const irep_idt &name, const symbolt *&symbol) const override;
+  /// See documentation for namespace_baset::smallest_unused_suffix().
   std::size_t smallest_unused_suffix(const std::string &prefix) const override;
 
-  void add(const symbol_tablet &symbol_table)
+  /// Add symbol table to the list of symbol tables this multi-namespace
+  /// is working with.
+  /// \param symbol_table: Reference to the symbol table to be added to this
+  /// namespace.
+  void add(const symbol_table_baset &symbol_table)
   {
     symbol_table_list.push_back(&symbol_table);
   }
 
 protected:
-  typedef std::vector<const symbol_tablet *> symbol_table_listt;
+  typedef std::vector<const symbol_table_baset *> symbol_table_listt;
   symbol_table_listt symbol_table_list;
 };
 

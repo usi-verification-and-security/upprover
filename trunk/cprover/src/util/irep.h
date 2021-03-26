@@ -10,11 +10,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_UTIL_IREP_H
 #define CPROVER_UTIL_IREP_H
 
-#include <cassert>
 #include <string>
 #include <vector>
 
 #include "deprecate.h"
+#include "invariant.h"
 #include "irep_ids.h"
 
 #define SHARING
@@ -192,7 +192,7 @@ public:
     if(data!=&empty_d)
     {
       // NOLINTNEXTLINE(build/deprecated)
-      assert(data->ref_count!=0);
+      PRECONDITION(data->ref_count != 0);
       data->ref_count++;
       #ifdef IREP_DEBUG
       std::cout << "COPY " << data << " " << data->ref_count << '\n';
@@ -460,6 +460,21 @@ struct irep_full_eq
   bool operator()(const irept &i1, const irept &i2) const
   {
     return i1.full_eq(i2);
+  }
+};
+
+struct irep_pretty_diagnosticst
+{
+  const irept &irep;
+  explicit irep_pretty_diagnosticst(const irept &irep);
+};
+
+template <>
+struct diagnostics_helpert<irep_pretty_diagnosticst>
+{
+  static std::string diagnostics_as_string(const irep_pretty_diagnosticst &irep)
+  {
+    return irep.irep.pretty();
   }
 };
 

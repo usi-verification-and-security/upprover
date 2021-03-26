@@ -192,8 +192,7 @@ void goto_convertt::do_printf(
   if(f_id==CPROVER_PREFIX "printf" ||
      f_id=="printf")
   {
-    typet return_type=
-      static_cast<const typet &>(function.type().find(ID_return_type));
+    const typet &return_type = to_code_type(function.type()).return_type();
     side_effect_exprt printf_code(
       ID_printf, return_type, function.source_location());
 
@@ -283,11 +282,11 @@ void goto_convertt::do_scanf(
 
               copy(array_copy_statement, OTHER, dest);
               #else
-              const index_exprt lhs(
+              const index_exprt new_lhs(
                 dereference_exprt(ptr, type), from_integer(0, index_type()));
               const side_effect_expr_nondett rhs(
                 type.subtype(), function.source_location());
-              code_assignt assign(lhs, rhs);
+              code_assignt assign(new_lhs, rhs);
               assign.add_source_location()=function.source_location();
               copy(assign, ASSIGN, dest);
               #endif
@@ -295,10 +294,10 @@ void goto_convertt::do_scanf(
             else
             {
               // make it nondet for now
-              const dereference_exprt lhs(ptr, type);
+              const dereference_exprt new_lhs(ptr, type);
               const side_effect_expr_nondett rhs(
                 type, function.source_location());
-              code_assignt assign(lhs, rhs);
+              code_assignt assign(new_lhs, rhs);
               assign.add_source_location()=function.source_location();
               copy(assign, ASSIGN, dest);
             }
@@ -309,10 +308,7 @@ void goto_convertt::do_scanf(
     else
     {
       // we'll just do nothing
-      code_function_callt function_call;
-      function_call.lhs()=lhs;
-      function_call.function()=function;
-      function_call.arguments()=arguments;
+      code_function_callt function_call(lhs, function, arguments);
       function_call.add_source_location()=function.source_location();
 
       copy(function_call, FUNCTION_CALL, dest);
@@ -462,8 +458,7 @@ void goto_convertt::do_cpp_new(
 
     tmp_symbol_expr=tmp_symbol.symbol_expr();
 
-    code_function_callt new_call;
-    new_call.function()=new_symbol;
+    code_function_callt new_call(new_symbol);
     if(new_array)
       new_call.arguments().push_back(count);
     new_call.arguments().push_back(object_size);
@@ -493,8 +488,7 @@ void goto_convertt::do_cpp_new(
 
     tmp_symbol_expr=tmp_symbol.symbol_expr();
 
-    code_function_callt new_call;
-    new_call.function()=new_symbol;
+    code_function_callt new_call(new_symbol);
     if(new_array)
       new_call.arguments().push_back(count);
     new_call.arguments().push_back(object_size);
@@ -906,11 +900,7 @@ void goto_convertt::do_function_call_symbol(
     if(lhs.is_nil())
       return;
 
-    function_application_exprt rhs;
-    rhs.type()=lhs.type();
-    rhs.add_source_location()=function.source_location();
-    rhs.function()=function;
-    rhs.arguments()=arguments;
+    const function_application_exprt rhs(function, arguments, lhs.type());
 
     code_assignt assignment(lhs, rhs);
     assignment.add_source_location()=function.source_location();
@@ -1202,13 +1192,10 @@ void goto_convertt::do_function_call_symbol(
     {
       goto_programt::targett t=dest.add_instruction(ASSIGN);
       t->source_location=function.source_location();
-      exprt zero=
-        zero_initializer(
-          dest_expr.type(),
-          function.source_location(),
-          ns,
-          get_message_handler());
-      t->code=code_assignt(dest_expr, zero);
+      const auto zero =
+        zero_initializer(dest_expr.type(), function.source_location(), ns);
+      CHECK_RETURN(zero.has_value());
+      t->code = code_assignt(dest_expr, *zero);
     }
   }
   else if(identifier=="__sync_fetch_and_add" ||
@@ -1552,10 +1539,7 @@ void goto_convertt::do_function_call_symbol(
     new_function.set_identifier(name);
     new_function.type()=f_type;
 
-    code_function_callt function_call;
-    function_call.lhs()=lhs;
-    function_call.function()=new_function;
-    function_call.arguments()=new_arguments;
+    code_function_callt function_call(lhs, new_function, new_arguments);
     function_call.add_source_location()=function.source_location();
 
     if(!symbol_table.has_symbol(name))
@@ -1575,10 +1559,7 @@ void goto_convertt::do_function_call_symbol(
     do_function_call_symbol(*symbol);
 
     // insert function call
-    code_function_callt function_call;
-    function_call.lhs()=lhs;
-    function_call.function()=function;
-    function_call.arguments()=arguments;
+    code_function_callt function_call(lhs, function, arguments);
     function_call.add_source_location()=function.source_location();
 
     copy(function_call, FUNCTION_CALL, dest);

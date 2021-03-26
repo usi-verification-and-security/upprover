@@ -12,6 +12,7 @@
 #include <util/xml.h>
 #include <util/xml_irep.h>
 #include <ansi-c/expr2c.h>
+#include <funfrog/call_stack.h>
 
 #include <fstream>
 
@@ -29,7 +30,7 @@
 goto_programt::const_targett claim_statst::find_assertion(
   const goto_programt::const_targett &start,
   const goto_functionst &goto_functions,
-  call_stackt &stack)
+  callStackt &stack)
 {
   auto it = start;
   it++;
@@ -58,8 +59,10 @@ goto_programt::const_targett claim_statst::find_assertion(
     }
     else if(it->type==END_FUNCTION)
     {
-      const irep_idt &name = it->function;
+      const irep_idt &name = it->function; //goto_programt::instructiont::function member has been removed in CPROVER 5.12
       decrement_unwinding_counter(name);
+//      const irep_idt &target_function = (it->code).get("identifier");
+//      decrement_unwinding_counter(target_function);
       if(stack.empty())
       {
         // this must be the end. 
@@ -133,7 +136,7 @@ void check_claims(
 
   const auto & goto_functions = goto_model.goto_functions;
   const auto & main_body = goto_functions.function_map.at(goto_functionst::entry_point()).body;
-  call_stackt stack;
+  callStackt stack;
   goto_programt::const_targett ass_ptr = main_body.instructions.begin();
   
   // NOTE: Not reimplemented yet

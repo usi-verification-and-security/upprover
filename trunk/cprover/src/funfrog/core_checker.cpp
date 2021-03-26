@@ -493,12 +493,16 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     std::unique_ptr<path_storaget> worklist;
+    //auto exploration_strategy = options.get_option("exploration-strategy");
+//    auto exploration_strategy = "fifo";
+//    std::unique_ptr<path_storaget> worklist = get_path_strategy(exploration_strategy);
+    
     symex_assertion_sumt symex { get_goto_functions(), call_tree_root, options, *worklist, ns.get_symbol_table(),
                                                       equation,
                                                       message_handler, get_main_function(), last_assertion_loc,
                                                       single_assertion_check, !no_ce_option,
                                                       unwind_bound,
-                                                      options.get_bool_option("partial-loops"),
+                                                      options.get_bool_option("partial-loops")
                                 };
     symex.set_assertion_info_to_verify(&assertion);
 
@@ -518,7 +522,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
     }
-
 
     // the checker main loop:
     unsigned summaries_used = 0;
@@ -650,6 +653,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
               << eom;  
 #endif
   
+  //statistics() << "\n### Generated VCC(s): " << symex_assertion_sumt::upprover_total_vccs  << eom;
+  
   if (options.get_bool_option("bootstrapping")){
       status() << "\n### Total number of initial summaries from bootstrapping (written in summary-file and omega): " << summary_store->generated_sumIDs.size() << eom;
   }
@@ -667,9 +672,9 @@ void core_checkert::assertion_violated (formula_managert& prop,
 {
     if (!options.get_bool_option("no-error-trace"))
     {
-        auto solver = decider->get_solver();
+        solvert* solver = decider->get_solver();
         assert(solver);
-        prop.error_trace(*solver, ns, guard_expln);
+        prop.error_trace(*decider, ns, guard_expln);
         if (solver->is_overapprox_encoding()){
             status() << "\nA bug found." << eom;
             status() << "WARNING: Possibly due to the Theory conversion." << eom;
@@ -963,6 +968,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     omega.set_initial_precision(assertion, has_summary);
     std::unique_ptr<path_storaget> worklist;
     partitioning_target_equationt equation {ns, summary_store, false};
+    //guard_managert guard_manager;
 
     symex_assertion_sumt symex{get_goto_functions(),
                                omega.get_call_tree_root(),
@@ -975,7 +981,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                omega.is_single_assertion_check(),
                                !options.get_bool_option("no-error-trace"),
                                options.get_unsigned_int_option("unwind"),
-                               options.get_bool_option("partial-loops"),
+                               options.get_bool_option("partial-loops")
     };
     symex.set_assertion_info_to_verify(&assertion);
 

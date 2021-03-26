@@ -1,6 +1,7 @@
 #include "smtcheck_z3_lia.h"
 
 #include <util/type.h>
+#include <util/mathematical_types.h>
 #include <funfrog/utils/naming_helpers.h>
 #include <funfrog/utils/string_utils.h>
 

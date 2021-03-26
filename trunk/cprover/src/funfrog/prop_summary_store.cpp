@@ -16,7 +16,10 @@ void prop_summary_storet::serialize(std::ostream& out) const
   out << max_id << std::endl;
   //write the size of summary-store
   out << store.size() << std::endl;
-  assert(max_id == store.size()+1);
+  
+  //assert(max_id == store.size()+1);
+  // no need for above limitation. In upprover sum_id could be deleted in refinement.
+  // See ex: 2nd phase of upprover in decompose_v1.c & decompose_v2.c
   
   // serializing the summaries
   for (const auto & summary_node : store) {

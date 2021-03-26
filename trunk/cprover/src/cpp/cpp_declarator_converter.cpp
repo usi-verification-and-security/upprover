@@ -45,8 +45,7 @@ symbolt &cpp_declarator_convertert::convert(
     type.swap(declarator.name().get_sub().back());
     declarator.type().subtype()=type;
     cpp_typecheck.typecheck_type(type);
-    irept name(ID_name);
-    name.set(ID_identifier, "("+cpp_type2name(type)+")");
+    cpp_namet::namet name("(" + cpp_type2name(type) + ")");
     declarator.name().get_sub().back().swap(name);
   }
 
@@ -106,7 +105,9 @@ symbolt &cpp_declarator_convertert::convert(
       // adjust type if it's a non-static member function
       if(final_type.id()==ID_code)
         cpp_typecheck.add_this_to_method_type(
-          scope->identifier, final_type, method_qualifier);
+          cpp_typecheck.lookup(scope->identifier),
+          to_code_type(final_type),
+          method_qualifier);
 
       get_final_identifier();
 
@@ -131,7 +132,7 @@ symbolt &cpp_declarator_convertert::convert(
 
     // If it is a constructor, we take care of the
     // object initialization
-    if(final_type.get(ID_return_type)==ID_constructor)
+    if(to_code_type(final_type).return_type().id() == ID_constructor)
     {
       const cpp_namet &name=declarator.name();
 
@@ -153,20 +154,16 @@ symbolt &cpp_declarator_convertert::convert(
 
       irep_idt identifier=symbol_expr.type().get(ID_identifier);
       const symbolt &symb=cpp_typecheck.lookup(identifier);
-      const typet &type = symb.type;
-      assert(type.id()==ID_struct);
+      const struct_typet &type = to_struct_type(symb.type);
 
       if(declarator.find(ID_member_initializers).is_nil())
         declarator.set(ID_member_initializers, ID_member_initializers);
 
       cpp_typecheck.check_member_initializers(
-        type.find(ID_bases),
-        to_struct_type(type).components(),
-        declarator.member_initializers());
+        type.bases(), type.components(), declarator.member_initializers());
 
       cpp_typecheck.full_member_initialization(
-        to_struct_type(type),
-        declarator.member_initializers());
+        type, declarator.member_initializers());
     }
 
     if(!storage_spec.is_extern())
@@ -212,10 +209,8 @@ symbolt &cpp_declarator_convertert::convert(
 
     if(symbol.type.id()=="cpp-template-type")
     {
-      cpp_scopet::id_sett id_set;
-
-      scope->lookup_identifier(
-        symbol.name, cpp_idt::id_classt::TEMPLATE_PARAMETER, id_set);
+      const auto id_set = scope->lookup_identifier(
+        symbol.name, cpp_idt::id_classt::TEMPLATE_PARAMETER);
 
       if(id_set.empty())
       {
@@ -326,11 +321,10 @@ void cpp_declarator_convertert::handle_initializer(
 {
   exprt &value=declarator.value();
 
-  // moves member initializers into 'value'
-  cpp_typecheck.move_member_initializers(
-    declarator.member_initializers(),
-    symbol.type,
-    value);
+  // moves member initializers into 'value' - only methods have these
+  if(symbol.type.id() == ID_code)
+    cpp_typecheck.move_member_initializers(
+      declarator.member_initializers(), to_code_type(symbol.type), value);
 
   // any initializer to be done?
   if(value.is_nil())
@@ -502,17 +496,12 @@ symbolt &cpp_declarator_convertert::convert_new_symbol(
 
   if(!is_code)
   {
-    cpp_scopest::id_sett id_set;
+    const auto id_set = cpp_typecheck.cpp_scopes.current_scope().lookup(
+      base_name, cpp_scopet::SCOPE_ONLY);
 
-    cpp_typecheck.cpp_scopes.current_scope().lookup(
-      base_name, cpp_scopet::SCOPE_ONLY, id_set);
-
-    for(cpp_scopest::id_sett::const_iterator
-        id_it=id_set.begin();
-        id_it!=id_set.end();
-        id_it++)
+    for(const auto &id_ptr : id_set)
     {
-      const cpp_idt &id=**id_it;
+      const cpp_idt &id = *id_ptr;
       // the name is already in the scope
       // this is ok if they belong to different categories
 

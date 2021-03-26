@@ -11,7 +11,7 @@ Author:
 #include <util/std_expr.h>
 #include <util/symbol.h>
 
-exprt cpp_symbol_expr(const symbolt &symbol)
+symbol_exprt cpp_symbol_expr(const symbolt &symbol)
 {
   symbol_exprt tmp(symbol.name, symbol.type);
 

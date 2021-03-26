@@ -17,6 +17,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/arith_tools.h>
 #include <util/c_types.h>
 #include <util/config.h>
+#include <util/cprover_prefix.h>
 #include <util/find_symbols.h>
 #include <util/fixedbv.h>
 #include <util/lispexpr.h>
@@ -205,7 +206,7 @@ std::string expr2ct::convert_rec(
 
   if(src.id()==ID_bool)
   {
-    return q+"_Bool"+d;
+    return q + CPROVER_PREFIX + "bool" + d;
   }
   else if(src.id()==ID_c_bool)
   {
@@ -213,7 +214,7 @@ std::string expr2ct::convert_rec(
   }
   else if(src.id()==ID_string)
   {
-    return q+"__CPROVER_string"+d;
+    return q + CPROVER_PREFIX + "string" + d;
   }
   else if(src.id()==ID_natural ||
           src.id()==ID_integer ||
@@ -244,7 +245,7 @@ std::string expr2ct::convert_rec(
     {
       std::string swidth=src.get_string(ID_width);
       std::string fwidth=src.get_string(ID_f);
-      return q+"__CPROVER_floatbv["+swidth+"]["+fwidth+"]";
+      return q + CPROVER_PREFIX + "floatbv[" + swidth + "][" + fwidth + "]";
     }
   }
   else if(src.id()==ID_fixedbv)
@@ -252,9 +253,8 @@ std::string expr2ct::convert_rec(
     const std::size_t width=to_fixedbv_type(src).get_width();
 
     const std::size_t fraction_bits=to_fixedbv_type(src).get_fraction_bits();
-    return
-      q+"__CPROVER_fixedbv["+std::to_string(width)+"]["+
-      std::to_string(fraction_bits)+"]"+d;
+    return q + CPROVER_PREFIX + "fixedbv[" + std::to_string(width) + "][" +
+           std::to_string(fraction_bits) + "]" + d;
   }
   else if(src.id()==ID_c_bit_field)
   {
@@ -323,8 +323,8 @@ std::string expr2ct::convert_rec(
     }
     else
     {
-      return q+sign_str+
-             "__CPROVER_bitvector["+integer2string(width)+"]"+d;
+      return q + sign_str + CPROVER_PREFIX + "bitvector[" +
+             integer2string(width) + "]" + d;
     }
   }
   else if(src.id()==ID_struct)
@@ -353,13 +353,10 @@ std::string expr2ct::convert_rec(
       dest+=" "+id2string(tag);
     dest+=" {";
 
-    for(union_typet::componentst::const_iterator
-        it=union_type.components().begin();
-        it!=union_type.components().end();
-        it++)
+    for(const auto &c : union_type.components())
     {
       dest+=' ';
-      dest+=convert_rec(it->type(), c_qualifierst(), id2string(it->get_name()));
+      dest += convert_rec(c.type(), c_qualifierst(), id2string(c.get_name()));
       dest+=';';
     }
 
@@ -621,9 +618,7 @@ std::string expr2ct::convert_rec(
   {
     const vector_typet &vector_type=to_vector_type(src);
 
-    mp_integer size_int;
-    to_integer(vector_type.size(), size_int);
-
+    const mp_integer size_int = numeric_cast_v<mp_integer>(vector_type.size());
     std::string dest="__gcc_v"+integer2string(size_int);
 
     std::string tmp=convert(vector_type.subtype());
@@ -673,8 +668,8 @@ std::string expr2ct::convert_rec(
 
 /// To generate C-like string for defining the given struct
 /// \param src: the struct type being converted
-/// \param qualifiers: any qualifiers on the type
-/// \param declarator: the declarator on the type
+/// \param qualifiers_str: any qualifiers on the type
+/// \param declarator_str: the declarator on the type
 /// \return Returns a type declaration for a struct, containing the body of the
 ///   struct and in that body the padding parameters.
 std::string expr2ct::convert_struct_type(
@@ -724,8 +719,7 @@ std::string expr2ct::convert_struct_type(
   {
     dest+=" {";
 
-    for(const struct_union_typet::componentt &component :
-      struct_type.components())
+    for(const auto &component : struct_type.components())
     {
       // Skip padding parameters unless we including them
       if(component.get_is_padding() && !inc_padding_components)
@@ -752,8 +746,8 @@ std::string expr2ct::convert_struct_type(
 /// To generate a C-like type declaration of an array. Includes the size of the
 /// array in the []
 /// \param src: The array type to convert
-/// qualifier
-/// declarator_str
+/// \param qualifiers: Any qualifiers on the type
+/// \param declarator_str: Previously computed string denoting the array symbol
 /// \return A C-like type declaration of an array
 std::string expr2ct::convert_array_type(
   const typet &src,
@@ -767,8 +761,8 @@ std::string expr2ct::convert_array_type(
 /// To generate a C-like type declaration of an array. Optionally can include or
 /// exclude the size of the array in the []
 /// \param src: The array type to convert
-/// qualifier
-/// declarator_str
+/// \param qualifiers: Any qualifiers on the type
+/// \param declarator_str: Previously computed string denoting the array symbol
 /// \param inc_size_if_possible: Should the generated string include the size of
 ///   the array (if it is known).
 /// \return A C-like type declaration of an array
@@ -1815,9 +1809,10 @@ std::string expr2ct::convert_constant(
     if(c_enum_type.id()!=ID_c_enum)
       return convert_norep(src, precedence);
 
-    bool is_signed=c_enum_type.subtype().id()==ID_signedbv;
+    const bool is_signed = c_enum_type.subtype().id() == ID_signedbv;
+    const auto width = to_bitvector_type(c_enum_type.subtype()).get_width();
 
-    mp_integer int_value=binary2integer(id2string(value), is_signed);
+    mp_integer int_value = bvrep2integer(value, width, is_signed);
     mp_integer i=0;
 
     irep_idt int_value_string=integer2string(int_value);
@@ -1853,8 +1848,10 @@ std::string expr2ct::convert_constant(
           type.id()==ID_c_bit_field ||
           type.id()==ID_c_bool)
   {
-    mp_integer int_value=
-      binary2integer(id2string(value), type.id()==ID_signedbv);
+    const auto width = to_bitvector_type(type).get_width();
+
+    mp_integer int_value =
+      bvrep2integer(value, width, type.id() == ID_signedbv);
 
     const irep_idt &c_type=
       type.id()==ID_c_bit_field?type.subtype().get(ID_C_c_type):
@@ -1971,8 +1968,6 @@ std::string expr2ct::convert_constant(
   }
   else if(type.id()==ID_pointer)
   {
-    const irep_idt &value=to_constant_expr(src).get_value();
-
     if(value==ID_NULL)
     {
       dest="NULL";
@@ -2040,7 +2035,8 @@ std::string expr2ct::convert_struct(
 /// To generate a C-like string representing a struct. Can optionally include
 /// the padding parameters.
 /// \param src: The struct declaration expression
-/// precedence
+/// \param [out] precedence: Precedence of the top level operator in the
+///   resulting string, used to decide about adding parentheses
 /// \param include_padding_components: Should the generated C code include the
 ///   padding members added to structs for GOTOs benefit
 /// \return A string representation of the struct expression
@@ -2071,8 +2067,7 @@ std::string expr2ct::convert_struct(
   bool newline=false;
   size_t last_size=0;
 
-  for(const struct_union_typet::componentt &component :
-    struct_type.components())
+  for(const auto &component : struct_type.components())
   {
     if(o_it->type().id()==ID_code)
       continue;
@@ -2224,10 +2219,7 @@ std::string expr2ct::convert_array(
       if(it==--src.operands().end())
         break;
 
-      assert(it->is_constant());
-      mp_integer i;
-      to_integer(*it, i);
-      unsigned int ch=integer2unsigned(i);
+      const unsigned int ch = numeric_cast_v<unsigned>(*it);
 
       if(last_was_hex)
       {
@@ -2809,16 +2801,16 @@ std::string expr2ct::convert_code_for(
   std::string dest=indent_str(indent);
   dest+="for(";
 
-  if(!src.op0().is_nil())
-    dest+=convert(src.op0());
+  if(!src.init().is_nil())
+    dest += convert(src.init());
   else
     dest+=' ';
   dest+="; ";
-  if(!src.op1().is_nil())
-    dest+=convert(src.op1());
+  if(!src.cond().is_nil())
+    dest += convert(src.cond());
   dest+="; ";
-  if(!src.op2().is_nil())
-    dest+=convert(src.op2());
+  if(!src.iter().is_nil())
+    dest += convert(src.iter());
 
   if(src.body().is_nil())
     dest+=");\n";
@@ -2840,12 +2832,12 @@ std::string expr2ct::convert_code_block(
   std::string dest=indent_str(indent);
   dest+="{\n";
 
-  forall_operands(it, src)
+  for(const auto &statement : src.statements())
   {
-    if(it->get(ID_statement)==ID_label)
-      dest+=convert_code(to_code(*it), indent);
+    if(statement.get_statement() == ID_label)
+      dest += convert_code(statement, indent);
     else
-      dest+=convert_code(to_code(*it), indent+2);
+      dest += convert_code(statement, indent + 2);
 
     dest+="\n";
   }
@@ -2980,9 +2972,6 @@ std::string expr2ct::convert_code(
   if(statement==ID_assign)
     return convert_code_assign(to_code_assign(src), indent);
 
-  if(statement==ID_init)
-    return convert_code_init(src, indent);
-
   if(statement=="lock")
     return convert_code_lock(src, indent);
 
@@ -2990,10 +2979,10 @@ std::string expr2ct::convert_code(
     return convert_code_unlock(src, indent);
 
   if(statement==ID_atomic_begin)
-    return indent_str(indent)+"__CPROVER_atomic_begin();";
+    return indent_str(indent) + CPROVER_PREFIX + "atomic_begin();";
 
   if(statement==ID_atomic_end)
-    return indent_str(indent)+"__CPROVER_atomic_end();";
+    return indent_str(indent) + CPROVER_PREFIX + "atomic_end();";
 
   if(statement==ID_function_call)
     return convert_code_function_call(to_code_function_call(src), indent);
@@ -3003,9 +2992,6 @@ std::string expr2ct::convert_code(
 
   if(statement==ID_switch_case)
     return convert_code_switch_case(to_code_switch_case(src), indent);
-
-  if(statement==ID_free)
-    return convert_code_free(src, indent);
 
   if(statement==ID_array_set)
     return convert_code_array_set(src, indent);
@@ -3034,28 +3020,6 @@ std::string expr2ct::convert_code_assign(
   std::string dest=indent_str(indent)+tmp+";";
 
   return dest;
-}
-
-std::string expr2ct::convert_code_free(
-  const codet &src,
-  unsigned indent)
-{
-  if(src.operands().size()!=1)
-  {
-    unsigned precedence;
-    return convert_norep(src, precedence);
-  }
-
-  return indent_str(indent)+"FREE("+convert(src.op0())+");";
-}
-
-std::string expr2ct::convert_code_init(
-  const codet &src,
-  unsigned indent)
-{
-  std::string tmp=convert_binary(src, "=", 2, true);
-
-  return indent_str(indent)+"INIT "+tmp+";";
 }
 
 std::string expr2ct::convert_code_lock(
@@ -3315,7 +3279,8 @@ std::string expr2ct::convert_code_assume(
     return convert_norep(src, precedence);
   }
 
-  return indent_str(indent)+"__CPROVER_assume("+convert(src.op0())+");";
+  return indent_str(indent) + CPROVER_PREFIX + "assume(" + convert(src.op0()) +
+         ");";
 }
 
 std::string expr2ct::convert_code_label(
@@ -3584,10 +3549,10 @@ std::string expr2ct::convert_with_precedence(
     return convert_function(src, "POINTER_OBJECT", precedence=16);
 
   else if(src.id()=="get_must")
-    return convert_function(src, "__CPROVER_get_must", precedence=16);
+    return convert_function(src, CPROVER_PREFIX "get_must", precedence = 16);
 
   else if(src.id()=="get_may")
-    return convert_function(src, "__CPROVER_get_may", precedence=16);
+    return convert_function(src, CPROVER_PREFIX "get_may", precedence = 16);
 
   else if(src.id()=="object_value")
     return convert_function(src, "OBJECT_VALUE", precedence=16);
@@ -3605,7 +3570,8 @@ std::string expr2ct::convert_with_precedence(
     return convert_function(src, "POINTER_CONS", precedence=16);
 
   else if(src.id()==ID_invalid_pointer)
-    return convert_function(src, "__CPROVER_invalid_pointer", precedence=16);
+    return convert_function(
+      src, CPROVER_PREFIX "invalid_pointer", precedence = 16);
 
   else if(src.id()==ID_dynamic_object)
     return convert_function(src, "DYNAMIC_OBJECT", precedence=16);
@@ -3634,9 +3600,9 @@ std::string expr2ct::convert_with_precedence(
   else if(src.id()==ID_bswap)
     return convert_function(
       src,
-      "__builtin_bswap"+
-      integer2string(pointer_offset_bits(src.op0().type(), ns)),
-      precedence=16);
+      "__builtin_bswap" +
+        integer2string(*pointer_offset_bits(src.op0().type(), ns)),
+      precedence = 16);
 
   else if(src.id()==ID_isnormal)
     return convert_function(src, "isnormal", precedence=16);
@@ -3835,7 +3801,7 @@ std::string expr2ct::convert_with_precedence(
     return convert_multi_ary(src, "||", precedence=4, false);
 
   else if(src.id()==ID_xor)
-    return convert_multi_ary(src, "^", precedence=7, false);
+    return convert_multi_ary(src, "!=", precedence = 9, false);
 
   else if(src.id()==ID_implies)
     return convert_binary(src, "==>", precedence=3, true);

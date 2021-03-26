@@ -36,6 +36,7 @@ public:
   {
     GENERIC,
     BOOLECTOR,
+    CPROVER_SMT2,
     CVC3,
     CVC4,
     MATHSAT,
@@ -74,6 +75,11 @@ public:
       break;
 
     case solvert::BOOLECTOR:
+      break;
+
+    case solvert::CPROVER_SMT2:
+      use_array_of_bool = true;
+      emit_set_logic = false;
       break;
 
     case solvert::CVC3:
@@ -241,11 +247,11 @@ protected:
   std::string floatbv_suffix(const exprt &) const;
   std::set<irep_idt> bvfp_set; // already converted
 
-  class smt2_symbolt:public exprt
+  class smt2_symbolt : public nullary_exprt
   {
   public:
-    smt2_symbolt(const irep_idt &_identifier, const typet &_type):
-      exprt(ID_smt2_symbol, _type)
+    smt2_symbolt(const irep_idt &_identifier, const typet &_type)
+      : nullary_exprt(ID_smt2_symbol, _type)
     { set(ID_identifier, _identifier); }
 
     const irep_idt &get_identifier() const

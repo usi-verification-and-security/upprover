@@ -9,19 +9,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "boolbv.h"
 
 #include <iostream>
-#include <cassert>
 
 #include <util/arith_tools.h>
 #include <util/byte_operators.h>
+#include <util/invariant.h>
 
 #include "bv_endianness_map.h"
 
 bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
 {
-  if(expr.operands().size()!=3)
-    throw "byte_update takes three operands";
-
-  const exprt &op=expr.op0();
+  const exprt &op = expr.op();
   const exprt &offset_expr=expr.offset();
   const exprt &value=expr.value();
 
@@ -41,11 +38,11 @@ bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
 
   // see if the byte number is constant
 
-  mp_integer index;
-  if(!to_integer(offset_expr, index))
+  const auto index = numeric_cast<mp_integer>(offset_expr);
+  if(index.has_value())
   {
     // yes!
-    mp_integer offset=index*8;
+    const mp_integer offset = *index * 8;
 
     if(offset+update_width>mp_integer(bv.size()) || offset<0)
     {
@@ -56,22 +53,25 @@ bvt boolbvt::convert_byte_update(const byte_update_exprt &expr)
       if(little_endian)
       {
         for(std::size_t i=0; i<update_width; i++)
-          bv[integer2size_t(offset+i)]=value_bv[i];
+          bv[numeric_cast_v<std::size_t>(offset + i)] = value_bv[i];
       }
       else
       {
         bv_endianness_mapt map_op(op.type(), false, ns, boolbv_width);
         bv_endianness_mapt map_value(value.type(), false, ns, boolbv_width);
 
-        std::size_t offset_i=integer2unsigned(offset);
+        const std::size_t offset_i = numeric_cast_v<std::size_t>(offset);
 
         for(std::size_t i=0; i<update_width; i++)
         {
           size_t index_op=map_op.map_bit(offset_i+i);
           size_t index_value=map_value.map_bit(i);
 
-          assert(index_op<bv.size());
-          assert(index_value<value_bv.size());
+          INVARIANT(
+            index_op < bv.size(), "bit vector index shall be within bounds");
+          INVARIANT(
+            index_value < value_bv.size(),
+            "bit vector index shall be within bounds");
 
           bv[index_op]=value_bv[index_value];
         }

@@ -12,8 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 #define CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 
-#include <analyses/local_safe_pointers.h>
-
 #include <util/options.h>
 #include <util/message.h>
 
@@ -40,6 +38,38 @@ class namespacet;
 class side_effect_exprt;
 class typecast_exprt;
 
+/// Functor generating fresh nondet symbols
+class symex_nondet_generatort
+{
+public:
+  nondet_symbol_exprt operator()(typet &type);
+
+private:
+  unsigned nondet_count = 0;
+};
+
+/// Configuration of the symbolic execution
+struct symex_configt final
+{
+  unsigned max_depth;
+  bool doing_path_exploration;
+  bool allow_pointer_unsoundness;
+  bool constant_propagation;
+  bool self_loops_to_assumptions;
+  bool simplify_opt;
+  bool unwinding_assertions;
+  bool partial_loops;
+  mp_integer debug_level;
+
+  /// \brief Should the additional validation checks be run?
+  ///
+  /// If this flag is set the checks for renaming (both level1 and level2) are
+  /// executed in the goto_symex_statet (in the assignment method).
+  bool run_validation_checks;
+
+  explicit symex_configt(const optionst &options);
+};
+
 /// \brief The main class for the forward symbolic simulator
 ///
 /// Higher-level architectural information on symbolic execution is
@@ -57,15 +87,7 @@ public:
     const optionst &options,
     path_storaget &path_storage)
     : should_pause_symex(false),
-      options(options),
-      max_depth(options.get_unsigned_int_option("depth")),
-      doing_path_exploration(options.is_set("paths")),
-      allow_pointer_unsoundness(
-        options.get_bool_option("allow-pointer-unsoundness")),
-      total_vccs(0),
-      remaining_vccs(0),
-      constant_propagation(true),
-      self_loops_to_assumptions(true),
+      symex_config(options),
       language_mode(),
       outer_symbol_table(outer_symbol_table),
       ns(outer_symbol_table),
@@ -73,29 +95,24 @@ public:
       atomic_section_counter(0),
       log(mh),
       guard_identifier("goto_symex::\\guard"),
-      path_storage(path_storage)
+      path_storage(path_storage),
+      path_segment_vccs(0),
+      _total_vccs(std::numeric_limits<unsigned>::max()),
+      _remaining_vccs(std::numeric_limits<unsigned>::max())
   {
   }
 
-  virtual ~goto_symext()
-  {
-  }
+  virtual ~goto_symext() = default;
 
   typedef
     std::function<const goto_functionst::goto_functiont &(const irep_idt &)>
     get_goto_functiont;
 
-  /// \brief symex entire program starting from entry point
-  ///
-  /// The state that goto_symext maintains has a large memory footprint.
-  /// This method deallocates the state as soon as symbolic execution
-  /// has completed, so use it if you don't care about having the state
-  /// around afterwards.
-  virtual void symex_from_entry_point_of(
-    const goto_functionst &goto_functions,
-    symbol_tablet &new_symbol_table);
+    //Non-static method for HiFrog/UpProver
+    goto_symext::get_goto_functiont construct_get_goto_function(const goto_functionst &goto_functions);
 
-  /// \brief symex entire program starting from entry point
+
+    /// \brief symex entire program starting from entry point
   ///
   /// The state that goto_symext maintains has a large memory footprint.
   /// This method deallocates the state as soon as symbolic execution
@@ -112,7 +129,7 @@ public:
   virtual void resume_symex_from_saved_state(
     const get_goto_functiont &get_goto_function,
     const statet &saved_state,
-    symex_target_equationt *const saved_equation,
+    symex_target_equationt *saved_equation,
     symbol_tablet &new_symbol_table);
 
   //// \brief symex entire program starting from entry point
@@ -139,37 +156,6 @@ public:
     const get_goto_functiont &,
     symbol_tablet &);
 
-  /// Symexes from the first instruction and the given state, terminating as
-  /// soon as the last instruction is reached.  This is useful to explicitly
-  /// symex certain ranges of a program, e.g. in an incremental decision
-  /// procedure.
-  /// \param state Symex state to start with.
-  /// \param goto_functions GOTO model to symex.
-  /// \param first Entry point in form of a first instruction.
-  /// \param limit Final instruction, which itself will not be symexed.
-  virtual void symex_instruction_range(
-    statet &,
-    const goto_functionst &,
-    goto_programt::const_targett first,
-    goto_programt::const_targett limit);
-
-  /// Symexes from the first instruction and the given state, terminating as
-  /// soon as the last instruction is reached.  This is useful to explicitly
-  /// symex certain ranges of a program, e.g. in an incremental decision
-  /// procedure.
-  /// \param state Symex state to start with.
-  /// \param get_goto_function retrieves a function body
-  /// \param first Entry point in form of a first instruction.
-  /// \param limit Final instruction, which itself will not be symexed.
-  virtual void symex_instruction_range(
-    statet &state,
-    const get_goto_functiont &get_goto_function,
-    goto_programt::const_targett first,
-    goto_programt::const_targett limit);
-
-  goto_symext::get_goto_functiont constuct_get_goto_function( 
-        const goto_functionst &goto_functions);
-  
   /// \brief Have states been pushed onto the workqueue?
   ///
   /// If this flag is set at the end of a symbolic execution run, it means that
@@ -180,16 +166,20 @@ public:
   bool should_pause_symex;
 
 protected:
+  symex_configt symex_config;
+
   /// Initialise the symbolic execution and the given state with <code>pc</code>
   /// as entry point.
   /// \param state Symex state to initialise.
-  /// \param goto_functions GOTO model to symex.
+  /// \param get_goto_function producer for GOTO functions
+  /// \param function_identifier The function in which the instructions are
   /// \param pc first instruction to symex
   /// \param limit final instruction, which itself will not
   /// be symexed.
   void initialize_entry_point(
     statet &state,
     const get_goto_functiont &get_goto_function,
+    const irep_idt &function_identifier,
     goto_programt::const_targett pc,
     goto_programt::const_targett limit);
 
@@ -204,27 +194,14 @@ protected:
     const get_goto_functiont &,
     statet &);
 
-  const optionst &options;
-
-  const unsigned max_depth;
-  const bool doing_path_exploration;
-  const bool allow_pointer_unsoundness;
-
 public:
-  // these bypass the target maps
-  virtual void symex_step_goto(statet &, bool taken);
-
-  // statistics
-  unsigned total_vccs, remaining_vccs;
-
-  bool constant_propagation;
-  bool self_loops_to_assumptions;
 
   /// language_mode: ID_java, ID_C or another language identifier
   /// if we know the source language in use, irep_idt() otherwise.
   irep_idt language_mode;
 
 protected:
+
   /// The symbol table associated with the goto-program that we're
   /// executing. This symbol table will not additionally contain objects
   /// that are dynamically created as part of symbolic execution; the
@@ -258,13 +235,9 @@ protected:
   void initialize_auto_object(const exprt &, statet &);
   void process_array_expr(exprt &);
   exprt make_auto_object(const typet &, statet &);
-  virtual void dereference(exprt &, statet &, const bool write);
+  virtual void dereference(exprt &, statet &, bool write);
 
-  void dereference_rec(
-    exprt &,
-    statet &,
-    guardt &,
-    const bool write);
+  void dereference_rec(exprt &, statet &, guardt &, bool write);
 
   void dereference_rec_address_of(
     exprt &,
@@ -281,20 +254,7 @@ protected:
 
   // guards
 
-  irep_idt guard_identifier;
-
-  // symex
-  virtual void symex_transition(
-    statet &,
-    goto_programt::const_targett to,
-    bool is_backwards_goto=false);
-
-  virtual void symex_transition(statet &state)
-  {
-    goto_programt::const_targett next=state.source.pc;
-    ++next;
-    symex_transition(state, next);
-  }
+  const irep_idt guard_identifier;
 
   virtual void symex_goto(statet &);
   virtual void symex_start_thread(statet &);
@@ -329,7 +289,7 @@ protected:
 
   // determine whether to unwind a loop -- true indicates abort,
   // with false we continue.
-  virtual bool get_unwind(
+  virtual bool should_stop_unwind(
     const symex_targett::sourcet &source,
     const goto_symex_statet::call_stackt &context,
     unsigned unwind);
@@ -364,25 +324,19 @@ protected:
 
   virtual bool get_unwind_recursion(
     const irep_idt &identifier,
-    const unsigned thread_nr,
+    unsigned thread_nr,
     unsigned unwind);
 
   void parameter_assignments(
-    const irep_idt function_identifier,
+    const irep_idt &function_identifier,
     const goto_functionst::goto_functiont &,
     statet &,
     const exprt::operandst &arguments);
 
   void locality(
-    const irep_idt function_identifier,
+    const irep_idt &function_identifier,
     statet &,
     const goto_functionst::goto_functiont &);
-
-  void add_end_of_function(
-    exprt &code,
-    const irep_idt &identifier);
-
-  nondet_symbol_exprt build_symex_nondet(typet &type);
 
   // exceptions
   void symex_throw(statet &);
@@ -404,13 +358,7 @@ protected:
     const exprt &rhs,
     guardt &,
     assignment_typet);
-  void symex_assign_symbol(
-    statet &,
-    const ssa_exprt &lhs,
-    const exprt &full_lhs,
-    const exprt &rhs,
-    guardt &,
-    assignment_typet);
+
   void symex_assign_typecast(
     statet &,
     const typecast_exprt &lhs,
@@ -447,6 +395,12 @@ protected:
     guardt &,
     assignment_typet);
 
+  /// Store the \p what expression by recursively descending into the operands
+  /// of \p lhs until the first operand \c op0 is _nil_: this _nil_ operand
+  /// is then replaced with \p what.
+  /// \param lhs: Non-symbol pointed-to expression
+  /// \param what: The expression to be added to the \p lhs
+  /// \return The resulting expression
   static exprt add_to_lhs(const exprt &lhs, const exprt &what);
 
   virtual void symex_gcc_builtin_va_arg_next(
@@ -463,16 +417,74 @@ protected:
   virtual void symex_input(statet &, const codet &);
   virtual void symex_output(statet &, const codet &);
 
-  static unsigned nondet_count;
+  symex_nondet_generatort build_symex_nondet;
   static unsigned dynamic_counter;
 
-  void read(exprt &);
-  void replace_nondet(exprt &);
   void rewrite_quantifiers(exprt &, statet &);
 
   path_storaget &path_storage;
 
-  std::unordered_map<irep_idt, local_safe_pointerst> safe_pointers;
+public:
+  /// \brief Number of VCCs generated during the run of this goto_symext object
+  ///
+  /// This member is always initialized to `0` upon construction of this object.
+  /// It therefore differs from goto_symex_statet::total_vccs, which persists
+  /// across the creation of several goto_symext objects. When CBMC is run in
+  /// path-exploration mode, the meaning of this member is "the number of VCCs
+  /// generated between the last branch point and the current instruction,"
+  /// while goto_symex_statet::total_vccs records the total number of VCCs
+  /// generated along the entire path from the beginning of the program.
+  std::size_t path_segment_vccs;
+
+  void symex_assign_symbol(
+        statet &,
+        const ssa_exprt &lhs,
+        const exprt &full_lhs,
+        const exprt &rhs,
+        guardt &,
+        assignment_typet);
+
+protected:
+  /// @{\name Statistics
+  ///
+  /// The actual number of total and remaining VCCs should be assigned to
+  /// the relevant members of goto_symex_statet. The members below are used to
+  /// cache the values from goto_symex_statet after symex has ended, so that
+  /// \ref bmct can read those values even after the state has been deallocated.
+
+  unsigned _total_vccs, _remaining_vccs;
+  ///@}
+
+public:
+  unsigned get_total_vccs()
+  {
+    INVARIANT(
+      _total_vccs != std::numeric_limits<unsigned>::max(),
+      "symex_threaded_step should have been executed at least once before "
+      "attempting to read total_vccs");
+    return _total_vccs;
+  }
+
+  unsigned get_remaining_vccs()
+  {
+    INVARIANT(
+      _remaining_vccs != std::numeric_limits<unsigned>::max(),
+      "symex_threaded_step should have been executed at least once before "
+      "attempting to read remaining_vccs");
+    return _remaining_vccs;
+  }
+
+  void validate(const namespacet &ns, const validation_modet vm) const
+  {
+    target.validate(ns, vm);
+  }
 };
+
+void symex_transition(goto_symext::statet &state);
+
+void symex_transition(
+  goto_symext::statet &,
+  goto_programt::const_targett to,
+  bool is_backwards_goto);
 
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_H

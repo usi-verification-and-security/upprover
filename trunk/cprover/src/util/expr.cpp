@@ -3,12 +3,15 @@
 Module: Expression Representation
 
 Author: Daniel Kroening, kroening@kroening.com
+        Joel Allred, joel.allred@diffblue.com
 
 \*******************************************************************/
 
 /// \file
 /// Expression Representation
 
+// clang-format off
+#include "arith_tools.h"
 #include "expr.h"
 #include "expr_iterator.h"
 #include "fixedbv.h"
@@ -16,12 +19,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "rational.h"
 #include "rational_tools.h"
 #include "std_expr.h"
+// clang-format on
 
 #include <stack>
-#include <sstream>
-#include "string2int.h"
-#include "mp_arith.h"
 
+/// Move the given argument to the end of `exprt`'s operands.
+/// The argument is destroyed and mutated to a reference to a nil `irept`.
+/// \param expr: `exprt` to append to the operands
 void exprt::move_to_operands(exprt &expr)
 {
   operandst &op=operands();
@@ -29,6 +33,10 @@ void exprt::move_to_operands(exprt &expr)
   op.back().swap(expr);
 }
 
+/// Move the given arguments to the end of `exprt`'s operands.
+/// The arguments are destroyed and mutated to a reference to a nil `irept`.
+/// \param e1: first `exprt` to append to the operands
+/// \param e2: second `exprt` to append to the operands
 void exprt::move_to_operands(exprt &e1, exprt &e2)
 {
   operandst &op=operands();
@@ -41,6 +49,11 @@ void exprt::move_to_operands(exprt &e1, exprt &e2)
   op.back().swap(e2);
 }
 
+/// Move the given arguments to the end of `exprt`'s operands.
+/// The arguments are destroyed and mutated to a reference to a nil `irept`.
+/// \param e1: first `exprt` to append to the operands
+/// \param e2: second `exprt` to append to the operands
+/// \param e3: third `exprt` to append to the operands
 void exprt::move_to_operands(exprt &e1, exprt &e2, exprt &e3)
 {
   operandst &op=operands();
@@ -55,35 +68,9 @@ void exprt::move_to_operands(exprt &e1, exprt &e2, exprt &e3)
   op.back().swap(e3);
 }
 
-void exprt::copy_to_operands(const exprt &expr)
-{
-  operands().push_back(expr);
-}
-
-void exprt::copy_to_operands(const exprt &e1, const exprt &e2)
-{
-  operandst &op=operands();
-  #ifndef USE_LIST
-  op.reserve(op.size()+2);
-  #endif
-  op.push_back(e1);
-  op.push_back(e2);
-}
-
-void exprt::copy_to_operands(
-  const exprt &e1,
-  const exprt &e2,
-  const exprt &e3)
-{
-  operandst &op=operands();
-  #ifndef USE_LIST
-  op.reserve(op.size()+3);
-  #endif
-  op.push_back(e1);
-  op.push_back(e2);
-  op.push_back(e3);
-}
-
+/// Create a \ref typecast_exprt to the given type.
+/// \param _type: cast destination type
+/// \deprecated use constructors instead
 void exprt::make_typecast(const typet &_type)
 {
   typecast_exprt new_expr(*this, _type);
@@ -91,39 +78,15 @@ void exprt::make_typecast(const typet &_type)
   swap(new_expr);
 }
 
-void exprt::make_not()
-{
-  if(is_true())
-  {
-    *this=false_exprt();
-    return;
-  }
-  else if(is_false())
-  {
-    *this=true_exprt();
-    return;
-  }
-
-  exprt new_expr;
-
-  if(id()==ID_not && operands().size()==1)
-  {
-    new_expr.swap(operands().front());
-  }
-  else
-  {
-    new_expr=exprt(ID_not, type());
-    new_expr.move_to_operands(*this);
-  }
-
-  swap(new_expr);
-}
-
+/// Return whether the expression is a constant.
+/// \return True if is a constant, false otherwise
 bool exprt::is_constant() const
 {
   return id()==ID_constant;
 }
 
+/// Return whether the expression is a constant representing `true`.
+/// \return True if is a Boolean constant representing `true`, false otherwise.
 bool exprt::is_true() const
 {
   return is_constant() &&
@@ -131,6 +94,8 @@ bool exprt::is_true() const
          get(ID_value)!=ID_false;
 }
 
+/// Return whether the expression is a constant representing `false`.
+/// \return True if is a Boolean constant representing `false`, false otherwise.
 bool exprt::is_false() const
 {
   return is_constant() &&
@@ -138,29 +103,30 @@ bool exprt::is_false() const
          get(ID_value)==ID_false;
 }
 
+/// Replace the expression by a Boolean expression representing \p value.
+/// \param value: the Boolean value to give to the expression
+/// \deprecated use constructors instead
 void exprt::make_bool(bool value)
 {
   *this=exprt(ID_constant, typet(ID_bool));
   set(ID_value, value?ID_true:ID_false);
 }
 
-void exprt::make_true()
-{
-  *this=exprt(ID_constant, typet(ID_bool));
-  set(ID_value, ID_true);
-}
-
-void exprt::make_false()
-{
-  *this=exprt(ID_constant, typet(ID_bool));
-  set(ID_value, ID_false);
-}
-
+/// Return whether the expression represents a Boolean.
+/// \return True if is a Boolean, false otherwise.
 bool exprt::is_boolean() const
 {
   return type().id()==ID_bool;
 }
 
+/// Return whether the expression is a constant representing 0.
+/// Will consider the following types: ID_integer, ID_natural, ID_rational,
+/// ID_unsignedbv, ID_signedbv, ID_c_bool, ID_c_bit_field, ID_fixedbv,
+/// ID_floatbv, ID_pointer.<br>
+/// For ID_pointer, returns true iff the value is a zero string or a null
+/// pointer.
+/// For everything not in the above list, return false.
+/// \return True if has value 0, false otherwise.
 bool exprt::is_zero() const
 {
   if(is_constant())
@@ -205,16 +171,23 @@ bool exprt::is_zero() const
   return false;
 }
 
+/// Return whether the expression is a constant representing 1.
+/// Will consider the following types: ID_integer, ID_natural, ID_rational,
+/// ID_unsignedbv, ID_signedbv, ID_c_bool, ID_c_bit_field, ID_fixedbv,
+/// ID_floatbv.<br>
+/// For all other types, return false.
+/// \return True if has value 1, false otherwise.
 bool exprt::is_one() const
 {
   if(is_constant())
   {
-    const std::string &value=get_string(ID_value);
-    const irep_idt &type_id=type().id_string();
+    const auto &constant_expr = to_constant_expr(*this);
+    const irep_idt &type_id = type().id();
 
     if(type_id==ID_integer || type_id==ID_natural)
     {
-      mp_integer int_value=string2integer(value);
+      mp_integer int_value =
+        string2integer(id2string(constant_expr.get_value()));
       if(int_value==1)
         return true;
     }
@@ -227,125 +200,32 @@ bool exprt::is_one() const
     }
     else if(type_id==ID_unsignedbv || type_id==ID_signedbv)
     {
-      mp_integer int_value=binary2integer(value, false);
+      const auto width = to_bitvector_type(type()).get_width();
+      mp_integer int_value =
+        bvrep2integer(id2string(constant_expr.get_value()), width, false);
       if(int_value==1)
         return true;
     }
     else if(type_id==ID_fixedbv)
     {
-      if(fixedbvt(to_constant_expr(*this))==1)
+      if(fixedbvt(constant_expr) == 1)
         return true;
     }
     else if(type_id==ID_floatbv)
     {
-      if(ieee_floatt(to_constant_expr(*this))==1)
+      if(ieee_floatt(constant_expr) == 1)
         return true;
     }
   }
 
   return false;
 }
-/*******************************************************************\
 
-Function: exprt::print_number - hckd¬!!
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-const std::string exprt::print_number_2smt() const
-{
-  if(is_constant())
-  {
-    const std::string &value=get_string(ID_value);
-    const irep_idt &type_id=type().id_string();
-
-    if(type_id==ID_integer || type_id==ID_natural)
-    {
-      mp_integer int_value=string2integer(value);
-      return integer2string(int_value);
-    }
-    else if(type_id==ID_c_enum || type_id==ID_c_enum_tag)
-    {
-        const irep_idt helper_id= // Taken from cprover expr2.cpp
-            type_id==ID_c_enum
-                ?to_c_enum_type(type()).subtype().id()
-                :to_c_enum_tag_type(type()).subtype().id();
-
-        mp_integer int_value=binary2integer(id2string(get_string(ID_value))
-                                            , helper_id==ID_signedbv);
-
-        return integer2string(int_value);
-    }
-    else if(type_id==ID_rational)
-    {
-      std::stringstream convert; // stringstream used for the conversion
-      convert.precision(1);
-      rationalt rat_value;
-      if(to_rational(*this, rat_value)) assert(false);
-      convert << rat_value;
-      return convert.str();
-    }
-    else if (type_id==ID_unsignedbv ||
-          type_id==ID_signedbv ||
-          type_id==ID_c_bit_field ||
-          type_id==ID_c_bool)
-    { // from expre2c.cpp code
-      mp_integer int_value=binary2integer(id2string(value),
-              type_id==ID_signedbv);
-      return integer2string(int_value);
-
-    }
-    else if (is_boolean())
-    {
-        if (is_true() || is_one())
-            return "1";
-        else if (is_false() || is_zero())
-            return "0";
-        else
-            return "";
-    }
-    else
-    {
-    	if (is_zero()) return "0";
-    	if (is_one()) return "1";
-
-    	// Else try to extract the number
-    	std::string temp_try1(get(ID_C_member_name).c_str()); // KE: need testing!
-    	if (temp_try1.size() > 0)
-    	{
-            // WIll get here only for positive numbers, the rest will try differently
-            return temp_try1;
-    	}
-    	else if(type_id==ID_fixedbv)
-        {
-           return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
-        }
-        else if(type_id==ID_floatbv)
-        {
-           ieee_floatt temp = ieee_floatt(to_constant_expr(*this));
-           std::string ans_cand = temp.to_ansi_c_string();
-           if (ans_cand.find("e+") != std::string::npos)
-               return temp.to_string_decimal(ans_cand.size());
-           if (ans_cand.find("e-") != std::string::npos)
-               return temp.to_string_decimal(ans_cand.size());
-           if (ans_cand != "0.000000" && ans_cand != "-0.000000" && ans_cand != "0" && ans_cand != "-0") {
-               return ans_cand; // If the translation makes sense - returns it
-           } else { // Else try to get something closer.
-               double temp_double = temp.to_double(); if (temp_double == 0) return "0";
-               return std::to_string(temp_double);
-           }
-        }
-    }
-  }
-
-  return "";
-}
-
+/// Get a \ref source_locationt from the expression or from its operands
+/// (non-recursively).
+/// If no source location is found, a nil `source_locationt` is returned.
+/// \return A source location if found in the expression or its operands, nil
+/// otherwise.
 const source_locationt &exprt::find_source_location() const
 {
   const source_locationt &l=source_location();
@@ -355,9 +235,9 @@ const source_locationt &exprt::find_source_location() const
 
   forall_operands(it, (*this))
   {
-    const source_locationt &l=it->find_source_location();
-    if(l.is_not_nil())
-      return l;
+    const source_locationt &op_l = it->find_source_location();
+    if(op_l.is_not_nil())
+      return op_l;
   }
 
   return static_cast<const source_locationt &>(get_nil_irep());

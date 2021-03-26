@@ -29,6 +29,7 @@ bool to_integer(const exprt &expr, mp_integer &int_value);
 bool to_integer(const constant_exprt &expr, mp_integer &int_value);
 
 // returns 'true' on error
+DEPRECATED("Use numeric_cast<unsigned>(e) instead")
 bool to_unsigned_integer(const constant_exprt &expr, unsigned &uint_value);
 
 /// Numerical cast provides a unified way of converting from one numerical type
@@ -125,8 +126,7 @@ optionalt<Target> numeric_cast(const exprt &arg)
 }
 
 /// Convert an mp_integer to integral type Target
-/// An invariant with fail with message "Bad conversion" if conversion
-/// is not possible.
+/// An invariant will fail if the conversion is not possible.
 /// \tparam Target: type to convert to
 /// \param arg: mp_integer
 /// \return value of type Target
@@ -134,13 +134,12 @@ template <typename Target>
 Target numeric_cast_v(const mp_integer &arg)
 {
   const auto maybe = numeric_castt<Target>{}(arg);
-  INVARIANT(maybe, "Bad conversion");
+  INVARIANT(maybe, "mp_integer should be convertible to target integral type");
   return *maybe;
 }
 
 /// Convert an expression to integral type Target
-/// An invariant with fail with message "Bad conversion" if conversion
-/// is not possible.
+/// An invariant will fail if the conversion is not possible.
 /// \tparam Target: type to convert to
 /// \param arg: constant expression
 /// \return value of type Target
@@ -148,7 +147,10 @@ template <typename Target>
 Target numeric_cast_v(const exprt &arg)
 {
   const auto maybe = numeric_castt<Target>{}(arg);
-  INVARIANT(maybe, "Bad conversion");
+  INVARIANT_WITH_DIAGNOSTICS(
+    maybe,
+    "expression should be convertible to target integral type",
+    irep_pretty_diagnosticst(arg));
   return *maybe;
 }
 
@@ -162,5 +164,16 @@ mp_integer power(const mp_integer &base, const mp_integer &exponent);
 
 void mp_min(mp_integer &a, const mp_integer &b);
 void mp_max(mp_integer &a, const mp_integer &b);
+
+bool get_bvrep_bit(
+  const irep_idt &src,
+  std::size_t width,
+  std::size_t bit_index);
+
+irep_idt
+make_bvrep(const std::size_t width, const std::function<bool(std::size_t)> f);
+
+irep_idt integer2bvrep(const mp_integer &, std::size_t width);
+mp_integer bvrep2integer(const irep_idt &, std::size_t width, bool is_signed);
 
 #endif // CPROVER_UTIL_ARITH_TOOLS_H

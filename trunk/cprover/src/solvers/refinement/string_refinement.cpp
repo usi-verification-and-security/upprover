@@ -63,7 +63,9 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   messaget::mstreamt &stream,
   const namespacet &ns,
   bool use_counter_example,
-  const union_find_replacet &symbol_resolve);
+  const union_find_replacet &symbol_resolve,
+  const std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    &not_contain_witnesses);
 
 static void initial_index_set(
   index_set_pairt &index_set,
@@ -97,13 +99,11 @@ static void update_index_set(
 /// For instance, if `axiom` corresponds to \f$\forall q.\ s[q+x]='a' \land
 /// t[q]='b'\f$, `instantiate(axiom,s,v)` would return an expression for
 /// \f$s[v]='a' \land t[v-x]='b'\f$.
-/// \param stream: output stream
 /// \param axiom: a universally quantified formula
 /// \param str: an array of char variable
 /// \param val: an index expression
 /// \return `axiom` with substitued `qvar`
 static exprt instantiate(
-  messaget::mstreamt &stream,
   const string_constraintt &axiom,
   const exprt &str,
   const exprt &val);
@@ -111,7 +111,8 @@ static exprt instantiate(
 static std::vector<exprt> instantiate(
   const string_not_contains_constraintt &axiom,
   const index_set_pairt &index_set,
-  const string_constraint_generatort &generator);
+  const std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    &witnesses);
 
 static optionalt<exprt> get_array(
   const std::function<exprt(const exprt &)> &super_get,
@@ -216,20 +217,20 @@ static void display_index_set(
 ///     appears in `P` indexed by some `f(x)` and `val` is in
 ///     the index set of `str` we find `y` such that `f(y)=val` and
 ///     add lemma `P(y)`.
-///     (See
-// NOLINTNEXTLINE
-///     `instantiate(messaget::mstreamt&,const string_constraintt&,const exprt &,const exprt&)`
+// NOLINTNEXTLINE(whitespace/line_length)
+///     (See `instantiate(messaget::mstreamt&,const string_constraintt&,const exprt &,const exprt&)`
 ///      for details)
 ///   * For formulas of the form
 ///     \f$\forall x. P(x) \Rightarrow \exists y .s_0[x+y] \ne s_1[y]) \f$ we
 ///     need to look at the index set of both `s_0` and `s_1`.
-///     (See `instantiate(const string_not_contains_constraintt &axiom)`
+// NOLINTNEXTLINE(whitespace/line_length)
+///     (See `instantiate(const string_not_contains_constraintt&,const index_set_pairt&,const std::map<string_not_contains_constraintt, symbol_exprt>&)`
 ///      for details)
 static std::vector<exprt> generate_instantiations(
-  messaget::mstreamt &stream,
-  const string_constraint_generatort &generator,
   const index_set_pairt &index_set,
-  const string_axiomst &axioms)
+  const string_axiomst &axioms,
+  const std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    &not_contain_witnesses)
 {
   std::vector<exprt> lemmas;
   for(const auto &i : index_set.current)
@@ -237,13 +238,13 @@ static std::vector<exprt> generate_instantiations(
     for(const auto &univ_axiom : axioms.universal)
     {
       for(const auto &j : i.second)
-        lemmas.push_back(instantiate(stream, univ_axiom, i.first, j));
+        lemmas.push_back(instantiate(univ_axiom, i.first, j));
     }
   }
   for(const auto &nc_axiom : axioms.not_contains)
   {
     for(const auto &instance :
-      instantiate(nc_axiom, index_set, generator))
+        instantiate(nc_axiom, index_set, not_contain_witnesses))
       lemmas.push_back(instance);
   }
   return lemmas;
@@ -267,12 +268,15 @@ static void make_char_array_pointer_associations(
   }
 }
 
-void replace_symbols_in_equations(
-  const union_find_replacet &symbol_resolve,
-  std::vector<equal_exprt> &equations)
+/// Substitute sub-expressions in equation by representative elements of
+/// `symbol_resolve` whenever possible.
+/// Similar to `symbol_resolve.replace_expr` but doesn't mutate the expression
+/// and returns the transformed expression instead.
+static exprt
+replace_expr_copy(const union_find_replacet &symbol_resolve, exprt expr)
 {
-  for(equal_exprt &eq : equations)
-    symbol_resolve.replace_expr(eq);
+  symbol_resolve.replace_expr(expr);
+  return expr;
 }
 
 /// Record the constraints to ensure that the expression is true when
@@ -298,12 +302,15 @@ void string_refinementt::set_to(const exprt &expr, bool value)
 }
 
 /// Add association for each char pointer in the equation
+/// \param symbol_solver: a union_find_replacet object to keep track of
+///   char pointer equations
 /// \param equations: vector of equations
 /// \param ns: namespace
 /// \param stream: output stream
 /// \return union_find_replacet where char pointer that have been set equal
 ///         by an equation are associated to the same element
-static union_find_replacet generate_symbol_resolution_from_equations(
+static void add_equations_for_symbol_resolution(
+  union_find_replacet &symbol_solver,
   const std::vector<equal_exprt> &equations,
   const namespacet &ns,
   messaget::mstreamt &stream)
@@ -311,7 +318,6 @@ static union_find_replacet generate_symbol_resolution_from_equations(
   const auto eom = messaget::eom;
   const std::string log_message =
     "WARNING string_refinement.cpp generate_symbol_resolution_from_equations:";
-  union_find_replacet solver;
   for(const equal_exprt &eq : equations)
   {
     const exprt &lhs = eq.lhs();
@@ -332,7 +338,7 @@ static union_find_replacet generate_symbol_resolution_from_equations(
 
     if(is_char_pointer_type(rhs.type()))
     {
-      solver.make_union(lhs, rhs);
+      symbol_solver.make_union(lhs, rhs);
     }
     else if(rhs.id() == ID_function_application)
     {
@@ -352,7 +358,7 @@ static union_find_replacet generate_symbol_resolution_from_equations(
             const member_exprt lhs_data(lhs, comp.get_name(), comp.type());
             const exprt rhs_data = simplify_expr(
               member_exprt(rhs, comp.get_name(), comp.type()), ns);
-            solver.make_union(lhs_data, rhs_data);
+            symbol_solver.make_union(lhs_data, rhs_data);
           }
         }
       }
@@ -363,7 +369,6 @@ static union_find_replacet generate_symbol_resolution_from_equations(
       }
     }
   }
-  return solver;
 }
 
 /// This is meant to be used on the lhs of an equation with string subtype.
@@ -610,9 +615,9 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 #endif
 
   debug() << "dec_solve: Build symbol solver from equations" << eom;
-  // This is used by get, that's why we use a class member here
-  symbol_resolve =
-    generate_symbol_resolution_from_equations(equations, ns, debug());
+  // symbol_resolve is used by get and is kept between calls to dec_solve,
+  // that's why we use a class member here
+  add_equations_for_symbol_resolution(symbol_resolve, equations, ns, debug());
 #ifdef DEBUG
   debug() << "symbol resolve:" << eom;
   for(const auto &pair : symbol_resolve.to_vector())
@@ -629,9 +634,6 @@ decision_proceduret::resultt string_refinementt::dec_solve()
   }
 #endif
 
-  debug() << "dec_solve: Replacing char pointer symbols" << eom;
-  replace_symbols_in_equations(symbol_resolve, equations);
-
   debug() << "dec_solve: Replacing string ids in function applications" << eom;
   for(equal_exprt &eq : equations)
   {
@@ -641,7 +643,7 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 
   // Generator is also used by get, so we have to use it as a class member
   // but we make sure it is cleared at each `dec_solve` call.
-  generator.clear_constraints();
+  generator.constraints.clear();
   make_char_array_pointer_associations(generator, equations);
 
 #ifdef DEBUG
@@ -650,10 +652,18 @@ decision_proceduret::resultt string_refinementt::dec_solve()
 
   debug() << "dec_solve: compute dependency graph and remove function "
           << "applications captured by the dependencies:" << eom;
-  std::vector<exprt> local_equations;
+  std::vector<equal_exprt> local_equations;
   for(const equal_exprt &eq : equations)
   {
-    if(!add_node(dependencies, eq, generator.array_pool))
+    // Ensures that arrays that are equal, are associated to the same nodes
+    // in the graph.
+    const equal_exprt eq_with_char_array_replaced_with_representative_elements =
+      to_equal_expr(replace_expr_copy(symbol_resolve, eq));
+    const bool node_added = add_node(
+      dependencies,
+      eq_with_char_array_replaced_with_representative_elements,
+      generator.array_pool);
+    if(!node_added)
       local_equations.push_back(eq);
   }
   equations.clear();
@@ -686,10 +696,9 @@ decision_proceduret::resultt string_refinementt::dec_solve()
     supert::set_to(eq, true);
   }
 
-  const auto constraints = generator.get_constraints();
   std::transform(
-    constraints.begin(),
-    constraints.end(),
+    generator.constraints.universal.begin(),
+    generator.constraints.universal.end(),
     std::back_inserter(axioms.universal),
     [&](string_constraintt constraint) {
       constraint.replace_expr(symbol_resolve);
@@ -700,29 +709,30 @@ decision_proceduret::resultt string_refinementt::dec_solve()
       return constraint;
     });
 
-  const auto not_contains_constraints =
-    generator.get_not_contains_constraints();
   std::transform(
-    not_contains_constraints.begin(),
-    not_contains_constraints.end(),
+    generator.constraints.not_contains.begin(),
+    generator.constraints.not_contains.end(),
     std::back_inserter(axioms.not_contains),
     [&](string_not_contains_constraintt axiom) {
-      symbol_resolve.replace_expr(axiom);
+      replace(symbol_resolve, axiom);
       return axiom;
     });
 
+  // Used to store information about witnesses for not_contains constraints
+  std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    not_contain_witnesses;
   for(const auto &nc_axiom : axioms.not_contains)
   {
     const auto &witness_type = [&] {
-      const auto &rtype = to_array_type(nc_axiom.s0().type());
+      const auto &rtype = to_array_type(nc_axiom.s0.type());
       const typet &index_type = rtype.size().type();
       return array_typet(index_type, infinity_exprt(index_type));
     }();
-    generator.witness[nc_axiom] =
+    not_contain_witnesses[nc_axiom] =
       generator.fresh_symbol("not_contains_witness", witness_type);
   }
 
-  for(const exprt &lemma : generator.get_lemmas())
+  for(const exprt &lemma : generator.constraints.existential)
     add_lemma(lemma);
 
   // Initial try without index set
@@ -740,7 +750,8 @@ decision_proceduret::resultt string_refinementt::dec_solve()
       debug(),
       ns,
       config_.use_counter_example,
-      symbol_resolve);
+      symbol_resolve,
+      not_contain_witnesses);
     if(satisfied)
     {
       debug() << "check_SAT: the model is correct" << eom;
@@ -757,12 +768,9 @@ decision_proceduret::resultt string_refinementt::dec_solve()
   initial_index_set(index_sets, ns, axioms);
   update_index_set(index_sets, ns, current_constraints);
   current_constraints.clear();
-  for(const auto &instance :
-        generate_instantiations(
-          debug(),
-          generator,
-          index_sets,
-          axioms))
+  const auto instances =
+    generate_instantiations(index_sets, axioms, not_contain_witnesses);
+  for(const auto &instance : instances)
     add_lemma(instance);
 
   while((loop_bound_--)>0)
@@ -781,7 +789,8 @@ decision_proceduret::resultt string_refinementt::dec_solve()
         debug(),
         ns,
         config_.use_counter_example,
-        symbol_resolve);
+        symbol_resolve,
+        not_contain_witnesses);
       if(satisfied)
       {
         debug() << "check_SAT: the model is correct" << eom;
@@ -817,12 +826,9 @@ decision_proceduret::resultt string_refinementt::dec_solve()
         }
       }
       current_constraints.clear();
-      for(const auto &instance :
-        generate_instantiations(
-          debug(),
-          generator,
-          index_sets,
-          axioms))
+      const auto instances =
+        generate_instantiations(index_sets, axioms, not_contain_witnesses);
+      for(const auto &instance : instances)
         add_lemma(instance);
     }
     else
@@ -926,7 +932,7 @@ static optionalt<exprt> get_array(
   {
     stream << "(sr::get_array) long string (size " << format(arr.length())
            << " = " << n << ") " << format(arr) << eom;
-    stream << "(sr::get_array) consider reducing string-max-input-length so "
+    stream << "(sr::get_array) consider reducing max-nondet-string-length so "
               "that no string exceeds "
            << MAX_CONCRETE_STRING_SIZE
            << " in length and "
@@ -1017,8 +1023,7 @@ void debug_model(
   messaget::mstreamt &stream,
   const namespacet &ns,
   const std::function<exprt(const exprt &)> &super_get,
-  const std::vector<symbol_exprt> &boolean_symbols,
-  const std::vector<symbol_exprt> &index_symbols)
+  const std::vector<symbol_exprt> &symbols)
 {
   stream << "debug_model:" << '\n';
   for(const auto &pointer_array : generator.array_pool.get_arrays_of_pointers())
@@ -1032,13 +1037,7 @@ void debug_model(
            << "  - model: " << format(model) << messaget::eom;
   }
 
-  for(const auto &symbol : boolean_symbols)
-  {
-    stream << " - " << symbol.get_identifier() << ": "
-           << format(super_get(symbol)) << '\n';
-  }
-
-  for(const auto &symbol : index_symbols)
+  for(const auto &symbol : symbols)
   {
     stream << " - " << symbol.get_identifier() << ": "
            << format(super_get(symbol)) << '\n';
@@ -1050,13 +1049,13 @@ void debug_model(
 /// 'if' expressions. e.g. for an array access arr[index], where: `arr :=
 /// array_of(12) with {0:=24} with {2:=42}` the constructed expression will be:
 /// `index==0 ? 24 : index==2 ? 42 : 12`
-/// If `left_propagate` is set to true, the expression will look like
-/// `index<=0 ? 24 : index<=2 ? 42 : 12`
 /// \param expr: A (possibly nested) 'with' expression on an `array_of`
 ///   expression. The function checks that the expression is of the form
 ///   `with_expr(with_expr(...(array_of(...)))`. This is the form in which
 ///   array valuations coming from the underlying solver are given.
 /// \param index: An index with which to build the equality condition
+/// \param left_propagate: If set to true, the expression will look like
+/// `index<=0 ? 24 : index<=2 ? 42 : 12`
 /// \return An expression containing no 'with' expression
 static exprt substitute_array_access(
   const with_exprt &expr,
@@ -1194,12 +1193,12 @@ static exprt negation_of_not_contains_constraint(
 {
   // If the for all is vacuously true, the negation is false.
   const auto lbe =
-    numeric_cast_v<mp_integer>(get(constraint.exists_lower_bound()));
+    numeric_cast_v<mp_integer>(get(constraint.exists_lower_bound));
   const auto ube =
-    numeric_cast_v<mp_integer>(get(constraint.exists_upper_bound()));
+    numeric_cast_v<mp_integer>(get(constraint.exists_upper_bound));
   const auto univ_bounds = and_exprt(
-    binary_relation_exprt(get(constraint.univ_lower_bound()), ID_le, univ_var),
-    binary_relation_exprt(get(constraint.univ_upper_bound()), ID_gt, univ_var));
+    binary_relation_exprt(get(constraint.univ_lower_bound), ID_le, univ_var),
+    binary_relation_exprt(get(constraint.univ_upper_bound), ID_gt, univ_var));
 
   // The negated existential becomes an universal, and this is the unrolling of
   // that universal quantifier.
@@ -1209,12 +1208,12 @@ static exprt negation_of_not_contains_constraint(
   {
     const constant_exprt i_expr = from_integer(i, univ_var.type());
     const exprt s0_char =
-      get(index_exprt(constraint.s0(), plus_exprt(univ_var, i_expr)));
-    const exprt s1_char = get(index_exprt(constraint.s1(), i_expr));
+      get(index_exprt(constraint.s0, plus_exprt(univ_var, i_expr)));
+    const exprt s1_char = get(index_exprt(constraint.s1, i_expr));
     conjuncts.push_back(equal_exprt(s0_char, s1_char));
   }
   const exprt equal_strings = conjunction(conjuncts);
-  return and_exprt(univ_bounds, get(constraint.premise()), equal_strings);
+  return and_exprt(univ_bounds, get(constraint.premise), equal_strings);
 }
 
 /// Debugging function which outputs the different steps an axiom goes through
@@ -1241,7 +1240,6 @@ static void debug_check_axioms_step(
 }
 
 /// \return true if the current model satisfies all the axioms
-/// \return a Boolean
 static std::pair<bool, std::vector<exprt>> check_axioms(
   const string_axiomst &axioms,
   string_constraint_generatort &generator,
@@ -1249,7 +1247,9 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   messaget::mstreamt &stream,
   const namespacet &ns,
   bool use_counter_example,
-  const union_find_replacet &symbol_resolve)
+  const union_find_replacet &symbol_resolve,
+  const std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    &not_contain_witnesses)
 {
   const auto eom=messaget::eom;
   // clang-format off
@@ -1269,12 +1269,7 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
 
 #ifdef DEBUG
   debug_model(
-    generator,
-    stream,
-    ns,
-    get,
-    generator.get_boolean_symbols(),
-    generator.get_index_symbols());
+    generator, stream, ns, get, generator.fresh_symbol.created_symbols);
 #endif
 
   // Maps from indexes of violated universal axiom to a witness of violation
@@ -1320,8 +1315,8 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
   for(std::size_t i = 0; i < axioms.not_contains.size(); i++)
   {
     const string_not_contains_constraintt &nc_axiom=axioms.not_contains[i];
-    const symbol_exprt univ_var = generator.fresh_univ_index(
-      "not_contains_univ_var", nc_axiom.s0().length().type());
+    const symbol_exprt univ_var = generator.fresh_symbol(
+      "not_contains_univ_var", nc_axiom.s0.length().type());
     const exprt negated_axiom = negation_of_not_contains_constraint(
       nc_axiom, univ_var, [&](const exprt &expr) {
         return simplify_expr(get(expr), ns); });
@@ -1378,13 +1373,14 @@ static std::pair<bool, std::vector<exprt>> check_axioms(
         const string_not_contains_constraintt &axiom=
           axioms.not_contains[v.first];
 
-        const exprt func_val=generator.get_witness_of(axiom, val);
+        const exprt func_val =
+          index_exprt(not_contain_witnesses.at(axiom), val);
         const exprt comp_val=simplify_sum(plus_exprt(val, func_val));
 
         std::set<std::pair<exprt, exprt>> indices;
         indices.insert(std::pair<exprt, exprt>(comp_val, func_val));
-        const exprt counter=::instantiate_not_contains(
-          axiom, indices, generator)[0];
+        const exprt counter =
+          ::instantiate_not_contains(axiom, indices, not_contain_witnesses)[0];
         lemmas.push_back(counter);
       }
       return { false, lemmas };
@@ -1461,8 +1457,8 @@ static exprt sum_over_map(
     int second=negated?(-term.second):term.second;
     if(t.id()==ID_constant)
     {
-      std::string value(to_constant_expr(t).get_value().c_str());
-      constants+=binary2integer(value, true)*second;
+      const auto int_value = numeric_cast_v<mp_integer>(to_constant_expr(t));
+      constants += int_value * second;
     }
     else
     {
@@ -1520,7 +1516,6 @@ exprt simplify_sum(const exprt &f)
   return sum_over_map(map, f.type());
 }
 
-/// \param stream: an output stream
 /// \param qvar: a symbol representing a universally quantified variable
 /// \param val: an expression
 /// \param f: an expression containing `+` and `-`
@@ -1531,7 +1526,6 @@ exprt simplify_sum(const exprt &f)
 ///   $q + x$, `compute_inverse_function(q,v,f)` returns an expression
 ///   for $v - x$.
 static exprt compute_inverse_function(
-  messaget::mstreamt &stream,
   const exprt &qvar,
   const exprt &val,
   const exprt &f)
@@ -1562,8 +1556,6 @@ static exprt compute_inverse_function(
         "a proper function must have exactly one "
         "occurrences after reduction, or it cancelled out, and it does not"
         " have one"));
-    stream << "in string_refinementt::compute_inverse_function:"
-           << " warning: occurrences of qvar cancelled out " << messaget::eom;
   }
 
   elems.erase(it);
@@ -1748,8 +1740,8 @@ static void initial_index_set(
   const namespacet &ns,
   const string_not_contains_constraintt &axiom)
 {
-  auto it=axiom.premise().depth_begin();
-  const auto end=axiom.premise().depth_end();
+  auto it = axiom.premise.depth_begin();
+  const auto end = axiom.premise.depth_end();
   while(it!=end)
   {
     if(it->id() == ID_index && is_char_type(it->type()))
@@ -1767,9 +1759,8 @@ static void initial_index_set(
   }
 
   const minus_exprt kminus1(
-    axiom.exists_upper_bound(),
-    from_integer(1, axiom.exists_upper_bound().type()));
-  add_to_index_set(index_set, ns, axiom.s1().content(), kminus1);
+    axiom.exists_upper_bound, from_integer(1, axiom.exists_upper_bound.type()));
+  add_to_index_set(index_set, ns, axiom.s1.content(), kminus1);
 }
 
 /// Add to the index set all the indices that appear in the formula
@@ -1836,32 +1827,30 @@ find_indexes(const exprt &expr, const exprt &str, const symbol_exprt &qvar)
 }
 
 /// Instantiates a string constraint by substituting the quantifiers.
-/// For a string constraint of the form \f$\forall q. P(x)\f$,
-/// substitute `qvar` the universally quantified variable of `axiom`, by
-/// an index `val`, in `axiom`, so that the index used for `str` equals `val`.
-/// For instance, if `axiom` corresponds to \f$\forall q. s[q+x]={\tt 'a'} \land
-/// t[q]={\tt 'b'} \f$, `instantiate(axiom,s,v)` would return an expression for
-/// \f$s[v]={\tt 'a'} \land t[v-x]={\tt 'b'}\f$.
-/// \param stream: a message stream
-/// \param axiom: a universally quantified formula `axiom`
+/// For a string constraint of the form `forall q. P(x)`,
+/// substitute `q` the universally quantified variable of `axiom`, by
+/// an `index`, in `axiom`, so that the index used for `str` equals `val`.
+/// For instance, if `axiom` is `forall q. s[q+x] = 'a' && t[q] = 'b'`,
+/// `instantiate(axiom,s,v)` would return the expression
+/// `s[v] = 'a' && t[v-x] = 'b'`.
+/// If there are several such indexes, the conjunction of the instantiations is
+/// returned, for instance for a formula:
+/// `forall q. s[q+x]='a' && s[q]=c` we would get
+/// `s[v] = 'a' && s[v-x] = c && s[v+x] = 'a' && s[v] = c`.
+/// \param axiom: a universally quantified formula
 /// \param str: an array of characters
 /// \param val: an index expression
 /// \return instantiated formula
 static exprt instantiate(
-  messaget::mstreamt &stream,
   const string_constraintt &axiom,
   const exprt &str,
   const exprt &val)
 {
-  const auto indexes = find_indexes(axiom.body, str, axiom.univ_var);
-  INVARIANT(
-    str.id() == ID_array || indexes.size() <= 1,
-    "non constant array should always be accessed at the same index");
   exprt::operandst conjuncts;
-  for(const auto &index : indexes)
+  for(const auto &index : find_indexes(axiom.body, str, axiom.univ_var))
   {
     const exprt univ_var_value =
-      compute_inverse_function(stream, axiom.univ_var, val, index);
+      compute_inverse_function(axiom.univ_var, val, index);
     implies_exprt instance(
       and_exprt(
         binary_relation_exprt(axiom.univ_var, ID_ge, axiom.lower_bound),
@@ -1889,15 +1878,16 @@ static exprt instantiate(
 /// entailed by a (transformed) axiom.
 /// \param [in] axiom: the axiom to instantiate
 /// \param index_set: set of indexes
-/// \param generator: constraint generator object
+/// \param witnesses: \p axiom's witnesses for non-containment
 /// \return the lemmas produced through instantiation
 static std::vector<exprt> instantiate(
   const string_not_contains_constraintt &axiom,
   const index_set_pairt &index_set,
-  const string_constraint_generatort &generator)
+  const std::unordered_map<string_not_contains_constraintt, symbol_exprt>
+    &witnesses)
 {
-  const array_string_exprt &s0 = axiom.s0();
-  const array_string_exprt &s1 = axiom.s1();
+  const array_string_exprt &s0 = axiom.s0;
+  const array_string_exprt &s1 = axiom.s1;
 
   const auto &index_set0=index_set.cumulative.find(s0.content());
   const auto &index_set1=index_set.cumulative.find(s1.content());
@@ -1919,7 +1909,7 @@ static std::vector<exprt> instantiate(
       for(const auto &i0 : index_set0->second)
         index_pairs.insert(expr_pairt(i0, ic1));
 
-    return ::instantiate_not_contains(axiom, index_pairs, generator);
+    return ::instantiate_not_contains(axiom, index_pairs, witnesses);
   }
   return { };
 }
@@ -2028,7 +2018,7 @@ exprt string_refinementt::get(const exprt &expr) const
         get_array(super_get, ns, debug(), arr))
       return *arr_model_opt;
 
-    if(generator.get_created_strings().count(arr))
+    if(generator.array_pool.created_strings().count(arr))
     {
       const exprt length = super_get(arr.length());
       if(const auto n = numeric_cast<std::size_t>(length))
@@ -2116,7 +2106,7 @@ is_linear_arithmetic_expr(const exprt &expr, const symbol_exprt &var)
 /// expressions in the body of a string constraint. This function returns true
 /// if this is the case and false otherwise.
 /// \related string_constraintt
-/// \param [in] expr: The string constraint to check
+/// \param [in] constr: The string constraint to check
 /// \return true if the universal variable only occurs in index expressions,
 ///   false otherwise.
 static bool universal_only_in_index(const string_constraintt &constr)

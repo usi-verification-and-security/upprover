@@ -125,7 +125,26 @@ int goto_instrument_parse_optionst::doit()
 
     get_goto_program();
 
+    {
+      const bool validate_only = cmdline.isset("validate-goto-binary");
+
+      if(validate_only || cmdline.isset("validate-goto-model"))
+      {
+        goto_model.validate(validation_modet::EXCEPTION);
+
+        if(validate_only)
+        {
+          return CPROVER_EXIT_SUCCESS;
+        }
+      }
+    }
+
     instrument_goto_program();
+
+    if(cmdline.isset("validate-goto-model"))
+    {
+      goto_model.validate(validation_modet::INVARIANT);
+    }
 
     {
       bool unwind_given=cmdline.isset("unwind");
@@ -464,7 +483,7 @@ int goto_instrument_parse_optionst::doit()
 
     if(cmdline.isset("show-symbol-table"))
     {
-      ::show_symbol_table(goto_model, get_ui());
+      ::show_symbol_table(goto_model, ui_message_handler);
       return CPROVER_EXIT_SUCCESS;
     }
 
@@ -519,7 +538,7 @@ int goto_instrument_parse_optionst::doit()
 
     if(cmdline.isset("list-symbols"))
     {
-      show_symbol_table_brief(goto_model, get_ui());
+      show_symbol_table_brief(goto_model, ui_message_handler);
       return CPROVER_EXIT_SUCCESS;
     }
 
@@ -696,8 +715,7 @@ int goto_instrument_parse_optionst::doit()
       if(cmdline.isset("dot"))
         hierarchy.output_dot(std::cout);
       else
-        show_class_hierarchy(
-          hierarchy, get_message_handler(), ui_message_handler.get_ui());
+        show_class_hierarchy(hierarchy, ui_message_handler);
 
       return CPROVER_EXIT_SUCCESS;
     }
@@ -898,11 +916,16 @@ void goto_instrument_parse_optionst::get_goto_program()
 {
   status() << "Reading GOTO program from `" << cmdline.args[0] << "'" << eom;
 
-  if(read_goto_binary(cmdline.args[0],
-    goto_model, get_message_handler()))
+  config.set(cmdline);
+
+  auto result = read_goto_binary(cmdline.args[0], get_message_handler());
+
+  if(!result.has_value())
     throw 0;
 
-  config.set(cmdline);
+  goto_model = std::move(result.value());
+
+  config.set_from_symbol_table(goto_model.symbol_table);
 }
 
 void goto_instrument_parse_optionst::instrument_goto_program()
@@ -990,7 +1013,10 @@ void goto_instrument_parse_optionst::instrument_goto_program()
   {
     if(cmdline.isset("show-custom-bitvector-analysis") ||
        cmdline.isset("custom-bitvector-analysis"))
-      config.ansi_c.defines.push_back("__CPROVER_CUSTOM_BITVECTOR_ANALYSIS");
+    {
+      config.ansi_c.defines.push_back(
+        std::string(CPROVER_PREFIX) + "CUSTOM_BITVECTOR_ANALYSIS");
+    }
 
     // add the library
     status() << "Adding CPROVER library (" << config.ansi_c.arch << ")" << eom;
@@ -1175,7 +1201,7 @@ void goto_instrument_parse_optionst::instrument_goto_program()
     status() << "Adding check for maximum call stack size" << eom;
     stack_depth(
       goto_model,
-      unsafe_string2unsigned(cmdline.get_value("stack-depth")));
+      safe_string2size_t(cmdline.get_value("stack-depth")));
   }
 
   // ignore default/user-specified initialization of variables with static
@@ -1426,6 +1452,15 @@ void goto_instrument_parse_optionst::instrument_goto_program()
       reachability_slicer(goto_model);
   }
 
+  if(cmdline.isset("fp-reachability-slice"))
+  {
+    do_indirect_call_and_rtti_removal();
+
+    status() << "Performing a function pointer reachability slice" << eom;
+    function_path_reachability_slicer(
+      goto_model, cmdline.get_comma_separated_values("fp-reachability-slice"));
+  }
+
   // full slice?
   if(cmdline.isset("full-slice"))
   {
@@ -1556,6 +1591,10 @@ void goto_instrument_parse_optionst::help()
     " --show-local-safe-pointers   show pointer expressions that are trivially dominated by a not-null check\n" // NOLINT(*)
     " --show-safe-dereferences     show pointer expressions that are trivially dominated by a not-null check\n" // NOLINT(*)
     "                              *and* used as a dereference operand\n" // NOLINT(*)
+    HELP_VALIDATE
+    // NOLINTNEXTLINE(whitespace/line_length)
+    " --validate-goto-binary       check the well-formedness of the passed in goto\n"
+    "                              binary and then exit\n"
     "\n"
     "Safety checks:\n"
     " --no-assertions              ignore user assertions\n"
@@ -1606,7 +1645,7 @@ void goto_instrument_parse_optionst::help()
     " --render-cluster-function    clusterises the dot by functions\n"
     "\n"
     "Slicing:\n"
-    " --reachability-slice         slice away instructions that can't reach assertions\n" // NOLINT(*)
+    HELP_REACHABILITY_SLICER
     " --full-slice                 slice away instructions that don't affect assertions\n" // NOLINT(*)
     " --property id                slice with respect to specific property only\n" // NOLINT(*)
     " --slice-global-inits         slice away initializations of unused global variables\n" // NOLINT(*)

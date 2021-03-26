@@ -13,9 +13,10 @@ Date: October 2012
 
 #include "concurrency.h"
 
-#include <util/std_expr.h>
 #include <util/find_symbols.h>
+#include <util/invariant.h>
 #include <util/replace_symbol.h>
+#include <util/std_expr.h>
 
 #include <analyses/is_threaded.h>
 
@@ -89,19 +90,20 @@ void concurrency_instrumentationt::instrument(exprt &expr)
   {
     if(s_it->id()==ID_symbol)
     {
-      const irep_idt identifier=
-        to_symbol_expr(*s_it).get_identifier();
+      const symbol_exprt &s = to_symbol_expr(*s_it);
 
-      shared_varst::const_iterator
-        v_it=shared_vars.find(identifier);
+      shared_varst::const_iterator v_it = shared_vars.find(s.get_identifier());
 
       if(v_it!=shared_vars.end())
       {
-        index_exprt new_expr;
-        // new_expr.array()=symbol_expr();
-        // new_expr.index()=symbol_expr();
+        UNIMPLEMENTED;
+        // not yet done: neither array_symbol nor w_index_symbol are actually
+        // initialized anywhere
+        const shared_vart &shared_var = v_it->second;
+        const index_exprt new_expr(
+          shared_var.array_symbol, shared_var.w_index_symbol);
 
-        replace_symbol.insert(identifier, new_expr);
+        replace_symbol.insert(s, new_expr);
       }
     }
   }
@@ -128,8 +130,8 @@ void concurrency_instrumentationt::instrument(
       instrument(code.function());
 
       // instrument(code.lhs(), LHS);
-      Forall_expr(it, code.arguments())
-        instrument(*it);
+      for(auto &arg : code.arguments())
+        instrument(arg);
     }
   }
 }

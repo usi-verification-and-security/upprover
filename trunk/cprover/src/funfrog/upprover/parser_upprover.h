@@ -25,19 +25,19 @@
   "(refine-mode):(init-mode):(logic):(list-templates)"\
   "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
   "(function):"
-  
-  
+
+
 class parser_upprovert : public parser_baset {
 
 public:
     parser_upprovert(int argc, const char **argv) :
-            parser_baset(UPPROVER_OPTIONS, std::string("UPPROVER ") + UPPROVER_VERSION,  argc, argv)
+        parser_baset(UPPROVER_OPTIONS + std::string("UPPROVER ") + UPPROVER_VERSION,  argc, argv)
     {
     }
-
+    
     int doit() override;
     void help() override;
-    
+
 protected:
     void trigger_upprover(const goto_modelt &goto_model_old);
 };

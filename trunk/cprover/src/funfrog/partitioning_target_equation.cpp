@@ -77,15 +77,11 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
 void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
-    if (partition.get_iface().call_tree_node.node_has_summary()) {
-        if (!partition.has_abstract_representation()) {
-            throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
-        }
-        partition.remove_abstract_representation();
-        //partition.partition_summary_ID_vec.clear();
-        //partition.partition_summary_ID_set.clear();
-        partition.partition_summaryID = 0;
+    if (!partition.has_abstract_representation()) {
+        throw std::logic_error{"Trying to refine a partition that was not summarized or stubbed before!"};
     }
+    partition.remove_abstract_representation();
+    partition.partition_summaryID = 0;
 }
 
 
@@ -367,7 +363,8 @@ void partitioning_target_equationt::print_partition() {
     out_basic.clear();
     terms_counter = 0;
 }
-
+//print SSA forms into file __SSA_query_default_1.smt2
+#ifdef DISABLE_OPTIMIZATIONS
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
@@ -383,7 +380,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // print each partition
     out << decl_buf.str() << out_partition.str() << "(check-sat)\n";
 }
-
+#endif
 void partitioning_target_equationt::getFirstCallExpr() 
 {
 //    saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);
@@ -421,9 +418,9 @@ void partitioning_target_equationt::convert_partition_assertions(
 
     std::vector<FlaRef> error_lits;
 
-    auto assumption_literal = convertor.get_const_literal(true);
+    auto assumption_literal = convertor.get_const_literal(true); //boundaries for LA
     auto var_constraints_lit = convertor.get_and_clear_var_constraints();
-    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+    for (symex_target_equationt::SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if(it->ignore) {continue;} // ignored instructions can be skippied
         if (it->is_assert()) {
 
@@ -431,6 +428,11 @@ void partitioning_target_equationt::convert_partition_assertions(
             auto tmp_literal = convertor.land(convertor.convert_bool_expr(it->cond_expr), var_constraints_lit);
             it->cond_literal = flaref_to_literal(convertor.limplies(assumption_literal, tmp_literal));
             error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
+//          Commented since CProver5.12: Instead of converting to Literalt, use CProver methods operating on exprt to exprt
+//            it->cond_handle = implies_exprt(assumption_expr, it->cond_expr);
+////          error_lits.push_back(!literal_to_flaref(it->cond_literal)); // negated literal
+//            error_lits.push_back(!convertor.limplies(convertor.convert_bool_expr(assumption_expr), tmp_literal)); // negated literal
+    
         } else if (it->is_assume()) {
             // If the assumption represents a call of the function g,
             // encode callstart_g propagation formula:
@@ -444,8 +446,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             if (target_partition && !target_partition->ignore) {
                 const partition_ifacet& target_partition_iface =
                         target_partition->get_iface();
-
-                auto tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
+    
+                FlaRef tmp = convertor.land(assumption_literal,literal_to_flaref(it->guard_literal));
+                //FlaRef tmp = convertor.land(convertor.convert_bool_expr(assumption_expr), convertor.convert_bool_expr(it->guard_handle));
                 convertor.set_equal(tmp, target_partition_iface.callstart_literal);
 
 #		ifdef DISABLE_OPTIMIZATIONS
@@ -478,9 +481,9 @@ void partitioning_target_equationt::convert_partition_assertions(
             }
 
             // Collect this assumption as:
-            //
-            //     assumption_literal = \land_{ass \in assumptions(f)} ass
-            //
+            //assumption_literal = \land_{ass \in assumptions(f)} ass
+            //Commented since CProver5.12: Instead of converting to Literalt, use CProver methods operating from exprt to exprt
+            //assumption_expr = and_exprt(assumption_expr, it->cond_handle); //5.12
             assumption_literal = convertor.land(assumption_literal, literal_to_flaref(it->cond_literal));
             number_of_assumptions++;
         }
@@ -520,6 +523,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         // NOTE: callstart_f \in assumptions(f)
         //
 
+        //auto tmp = convertor.limplies(partition_iface.callend_literal, convertor.convert_bool_expr(assumption_expr)); //5.12
         auto tmp = convertor.limplies(partition_iface.callend_literal, assumption_literal);
         convertor.assert_literal(tmp);
 
@@ -559,8 +563,10 @@ void partitioning_target_equationt::convert_partition_assertions(
 
 void partitioning_target_equationt::convert_partition_assumptions(
         convertort &convertor, partitiont &partition) {
-    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+    for (symex_target_equationt::SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assume()) {
+            //it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
+            //it->cond_handle = it->ignore ? true_exprt() : (it->cond_expr);
             it->cond_literal = flaref_to_literal(it->ignore ? const_formula(true) : convertor.convert_bool_expr(it->cond_expr));
         }
     }
@@ -895,13 +901,12 @@ std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
             } else if (it->is_assert()) {
                 // MB: copied from previous version
                 exprt tmp(it->cond_expr);
-                exprt fl;
-                fl.make_false();
+                exprt fl = false_exprt();
+                //fl.make_false();
                 exprt op_ass = exprt(ID_equal);
                 if (tmp.id() == ID_implies) {
-                    exprt tr;
-                    tr.make_true();
-
+                    exprt tr = true_exprt();
+                    //tr.make_true();
                     exprt op_gua = exprt(ID_equal); //
                     op_gua.operands().push_back(tr);
                     op_gua.operands().push_back(tmp.operands()[0]);

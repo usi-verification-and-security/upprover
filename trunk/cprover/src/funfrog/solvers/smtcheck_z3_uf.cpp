@@ -2,6 +2,7 @@
 
 #include <opensmt/Vec.h>
 #include "../utils/naming_helpers.h"
+#include <util/mathematical_types.h>
 
 const char* smtcheck_z3_uft::tk_sort_unumber = "U"; // Not to collide with the sort definitions in the solver
 const char* smtcheck_z3_uft::tk_mult = "fU*";
@@ -169,7 +170,7 @@ z3::expr smtcheck_z3_uft::convert(const exprt &expr)
     } else {
         
 #ifdef SMT_DEBUG
-        cout << "; IT IS AN OPERATOR" << endl;
+        cout << "; IT IS AN OPERATOR '" << _id.c_str() << "'" << endl;
 #endif
  
         // Convert Arguments:

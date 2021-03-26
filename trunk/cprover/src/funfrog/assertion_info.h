@@ -11,7 +11,7 @@
 #ifndef CPROVER_ASSERTION_INFO_H
 #define CPROVER_ASSERTION_INFO_H
 
-#include "call_stack.h"
+#include "funfrog/call_stack.h"
 
 // Unique identification of an assertion to be checked
 class assertion_infot {
@@ -22,7 +22,7 @@ public:
           matching_type(ASSERT_GROUPING), target_stack(nullptr),
           location(_location) {}
           
-  assertion_infot(const call_stackt& _target_stack,
+  assertion_infot(const callStackt& _target_stack,
           const goto_programt::const_targett& _location):
           matching_type(NO_ASSERT_GROUPING), target_stack(&_target_stack), 
           location(_location) {}
@@ -31,7 +31,7 @@ public:
           matching_type(MULTI_ASSERT), target_stack(nullptr),
           multi_location(_multi_location){}
 
-  const call_stackt& get_target_stack() const {
+  const callStackt& get_target_stack() const {
     assert(matching_type == NO_ASSERT_GROUPING); 
     return *target_stack;
   }
@@ -121,7 +121,7 @@ private:
   typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING, MULTI_ASSERT} matching_typet;
   
   matching_typet matching_type;
-  const call_stackt* target_stack;
+  const callStackt* target_stack;
   goto_programt::const_targett location;
   std::vector <goto_programt::const_targett> multi_location;
 };

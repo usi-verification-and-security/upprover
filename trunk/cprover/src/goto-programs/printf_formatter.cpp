@@ -11,7 +11,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "printf_formatter.h"
 
-#include <cassert>
 #include <sstream>
 
 #include <util/c_types.h>
@@ -47,7 +46,7 @@ void printf_formattert::print(std::ostream &out)
     while(!eol()) process_char(out);
   }
 
-  catch(eol_exceptiont)
+  catch(const eol_exceptiont &)
   {
   }
 }

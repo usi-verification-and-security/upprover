@@ -21,6 +21,8 @@ Date:   December 2016
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 
+#include <util/invariant.h>
+
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/remove_skip.h>
 
@@ -32,8 +34,8 @@ void slice_global_inits(goto_modelt &goto_model)
   const irep_idt entry_point=goto_functionst::entry_point();
   goto_functionst &goto_functions=goto_model.goto_functions;
 
-  if(!goto_functions.function_map.count(entry_point))
-    throw "entry point not found";
+  if(goto_functions.function_map.count(entry_point) == 0)
+    throw user_input_error_exceptiont("entry point not found");
 
   // Get the call graph restricted to functions reachable from
   // the entry point:
@@ -41,7 +43,8 @@ void slice_global_inits(goto_modelt &goto_model)
     call_grapht::create_from_root_function(goto_model, entry_point, false);
   const auto directed_graph = call_graph.get_directed_graph();
   INVARIANT(
-    !directed_graph.empty(), "At least __CPROVER_start should be reachable");
+    !directed_graph.empty(),
+    "at least " + id2string(entry_point) + " should be reachable");
 
   // gather all symbols used by reachable functions
 
@@ -73,7 +76,8 @@ void slice_global_inits(goto_modelt &goto_model)
 
   goto_functionst::function_mapt::iterator f_it;
   f_it=goto_functions.function_map.find(INITIALIZE_FUNCTION);
-  assert(f_it!=goto_functions.function_map.end());
+  if(f_it == goto_functions.function_map.end())
+    throw incorrect_goto_program_exceptiont("initialize function not found");
 
   goto_programt &goto_program=f_it->second.body;
 

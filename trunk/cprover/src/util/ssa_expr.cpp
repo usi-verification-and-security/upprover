@@ -13,6 +13,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/arith_tools.h>
 
+/// If \p expr is a symbol "s" add to \p os "s!l0@l1#l2" and to \p l1_object_os
+/// "s!l0@l1".
+/// If \p expr is a member or index expression, recursively apply the procedure
+/// and add ".component_name" or "[index]" to \p os.
 static void build_ssa_identifier_rec(
   const exprt &expr,
   const irep_idt &l0,
@@ -35,10 +39,7 @@ static void build_ssa_identifier_rec(
 
     build_ssa_identifier_rec(index.array(), l0, l1, l2, os, l1_object_os);
 
-    mp_integer idx;
-    if(to_integer(to_constant_expr(index.index()), idx))
-      UNREACHABLE;
-
+    const mp_integer idx = numeric_cast_v<mp_integer>(index.index());
     os << '[' << idx << ']';
   }
   else if(expr.id()==ID_symbol)
@@ -77,14 +78,15 @@ bool ssa_exprt::can_build_identifier(const exprt &expr)
 {
   if(expr.id()==ID_symbol)
     return true;
-  else if(expr.id()==ID_member ||
-          expr.id()==ID_index)
-    return can_build_identifier(expr.op0());
+  else if(expr.id() == ID_member)
+    return can_build_identifier(to_member_expr(expr).compound());
+  else if(expr.id() == ID_index)
+    return can_build_identifier(to_index_expr(expr).array());
   else
     return false;
 }
 
-std::pair<irep_idt, irep_idt> ssa_exprt::build_identifier(
+static std::pair<irep_idt, irep_idt> build_identifier(
   const exprt &expr,
   const irep_idt &l0,
   const irep_idt &l1,
@@ -96,4 +98,15 @@ std::pair<irep_idt, irep_idt> ssa_exprt::build_identifier(
   build_ssa_identifier_rec(expr, l0, l1, l2, oss, l1_object_oss);
 
   return std::make_pair(irep_idt(oss.str()), irep_idt(l1_object_oss.str()));
+}
+
+void ssa_exprt::update_identifier()
+{
+  const irep_idt &l0 = get_level_0();
+  const irep_idt &l1 = get_level_1();
+  const irep_idt &l2 = get_level_2();
+
+  auto idpair = build_identifier(get_original_expr(), l0, l1, l2);
+  set_identifier(idpair.first);
+  set(ID_L1_object_identifier, idpair.second);
 }

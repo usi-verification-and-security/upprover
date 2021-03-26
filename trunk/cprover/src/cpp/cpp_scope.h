@@ -29,21 +29,25 @@ public:
 
   enum lookup_kindt { SCOPE_ONLY, QUALIFIED, RECURSIVE };
 
-  void lookup(
-    const irep_idt &base_name,
-    lookup_kindt kind,
-    id_sett &id_set);
+  id_sett lookup(const irep_idt &base_name_to_lookup, lookup_kindt kind)
+  {
+    id_sett result;
+    lookup_rec(base_name_to_lookup, kind, result);
+    return result;
+  }
 
-  void lookup(
-    const irep_idt &base_name,
+  id_sett lookup(
+    const irep_idt &base_name_to_lookup,
     lookup_kindt kind,
-    cpp_idt::id_classt id_class,
-    id_sett &id_set);
+    cpp_idt::id_classt identifier_class)
+  {
+    id_sett result;
+    lookup_rec(base_name_to_lookup, kind, identifier_class, result);
+    return result;
+  }
 
-  void lookup_identifier(
-    const irep_idt &identifier,
-    cpp_idt::id_classt id_class,
-    id_sett &id_set);
+  id_sett
+  lookup_identifier(const irep_idt &id, cpp_idt::id_classt identifier_class);
 
   cpp_idt &insert(const irep_idt &_base_name)
   {
@@ -68,7 +72,7 @@ public:
     return it->second;
   }
 
-  bool contains(const irep_idt &base_name);
+  bool contains(const irep_idt &base_name_to_lookup);
 
   bool is_root_scope() const
   {
@@ -114,6 +118,15 @@ public:
   }
 
   class cpp_scopet &new_scope(const irep_idt &new_scope_name);
+
+protected:
+  void lookup_rec(const irep_idt &base_name, lookup_kindt kind, id_sett &);
+
+  void lookup_rec(
+    const irep_idt &base_name,
+    lookup_kindt kind,
+    cpp_idt::id_classt id_class,
+    id_sett &);
 };
 
 class cpp_root_scopet:public cpp_scopet

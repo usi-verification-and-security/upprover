@@ -92,13 +92,19 @@ void boolbvt::convert_with(
   else if(type.id()==ID_struct)
     return
       convert_with_struct(to_struct_type(type), op1, op2, prev_bv, next_bv);
+  else if(type.id() == ID_struct_tag)
+    return convert_with(
+      ns.follow_tag(to_struct_tag_type(type)), op1, op2, prev_bv, next_bv);
   else if(type.id()==ID_union)
     return convert_with_union(to_union_type(type), op2, prev_bv, next_bv);
-  else if(type.id()==ID_symbol)
+  else if(type.id() == ID_union_tag)
+    return convert_with(
+      ns.follow_tag(to_union_tag_type(type)), op1, op2, prev_bv, next_bv);
+  else if(type.id() == ID_symbol_type)
     return convert_with(ns.follow(type), op1, op2, prev_bv, next_bv);
 
   error().source_location=type.source_location();
-  error() << "unexpected with type: " << type.id();
+  error() << "unexpected with type: " << type.id() << eom;
   throw 0;
 }
 
@@ -119,9 +125,9 @@ void boolbvt::convert_with_array(
 
   const exprt &array_size=type.size();
 
-  mp_integer size;
+  const auto size = numeric_cast<mp_integer>(array_size);
 
-  if(to_integer(array_size, size))
+  if(!size.has_value())
   {
     error().source_location=type.source_location();
     error() << "convert_with_array expects constant array size" << eom;
@@ -130,7 +136,7 @@ void boolbvt::convert_with_array(
 
   const bvt &op2_bv=convert_bv(op2);
 
-  if(size*op2_bv.size()!=prev_bv.size())
+  if(*size * op2_bv.size() != prev_bv.size())
   {
     error().source_location=type.source_location();
     error() << "convert_with_array: unexpected operand 2 width" << eom;
@@ -144,9 +150,10 @@ void boolbvt::convert_with_array(
     // Yes, it is!
     next_bv=prev_bv;
 
-    if(op1_value>=0 && op1_value<size) // bounds check
+    if(op1_value >= 0 && op1_value < *size) // bounds check
     {
-      std::size_t offset=integer2unsigned(op1_value*op2_bv.size());
+      const std::size_t offset =
+        numeric_cast_v<std::size_t>(op1_value * op2_bv.size());
 
       for(std::size_t j=0; j<op2_bv.size(); j++)
         next_bv[offset+j]=op2_bv[j];
@@ -163,7 +170,7 @@ void boolbvt::convert_with_array(
 
     literalt eq_lit=convert(equal_exprt(op1, counter));
 
-    std::size_t offset=integer2unsigned(i*op2_bv.size());
+    const std::size_t offset = numeric_cast_v<std::size_t>(i * op2_bv.size());
 
     for(std::size_t j=0; j<op2_bv.size(); j++)
       next_bv[offset+j]=
@@ -185,7 +192,7 @@ void boolbvt::convert_with_bv(
     next_bv=prev_bv;
 
     if(op1_value<next_bv.size())
-      next_bv[integer2size_t(op1_value)]=l;
+      next_bv[numeric_cast_v<std::size_t>(op1_value)] = l;
 
     return;
   }
@@ -219,16 +226,13 @@ void boolbvt::convert_with_struct(
 
   std::size_t offset=0;
 
-  for(struct_typet::componentst::const_iterator
-      it=components.begin();
-      it!=components.end();
-      it++)
+  for(const auto &c : components)
   {
-    const typet &subtype=it->type();
+    const typet &subtype = c.type();
 
     std::size_t sub_width=boolbv_width(subtype);
 
-    if(it->get_name()==component_name)
+    if(c.get_name() == component_name)
     {
       if(!base_type_eq(subtype, op2.type(), ns))
       {

@@ -58,7 +58,9 @@ void constant_propagator_domaint::assign_rec(
 }
 
 void constant_propagator_domaint::transform(
+  const irep_idt &function_from,
   locationt from,
+  const irep_idt &function_to,
   locationt to,
   ai_baset &ai,
   const namespacet &ns)
@@ -91,7 +93,7 @@ void constant_propagator_domaint::transform(
   if(from->is_decl())
   {
     const code_declt &code_decl=to_code_decl(from->code);
-    const symbol_exprt &symbol=to_symbol_expr(code_decl.symbol());
+    const symbol_exprt &symbol = code_decl.symbol();
     values.set_to_top(symbol);
   }
   else if(from->is_assign())
@@ -132,7 +134,7 @@ void constant_propagator_domaint::transform(
   else if(from->is_dead())
   {
     const code_deadt &code_dead=to_code_dead(from->code);
-    values.set_to_top(to_symbol_expr(code_dead.symbol()));
+    values.set_to_top(code_dead.symbol());
   }
   else if(from->is_function_call())
   {
@@ -146,7 +148,7 @@ void constant_propagator_domaint::transform(
       const irep_idt id=symbol_expr.get_identifier();
 
       // Functions with no body
-      if(from->function == to->function)
+      if(function_from == function_to)
       {
         if(id==CPROVER_PREFIX "set_must" ||
            id==CPROVER_PREFIX "get_must" ||
@@ -195,7 +197,7 @@ void constant_propagator_domaint::transform(
     {
       // unresolved call
       INVARIANT(
-        from->function == to->function,
+        function_from == function_to,
         "Unresolved call can only be approximated if a skip");
 
       if(have_dirty)
@@ -208,13 +210,13 @@ void constant_propagator_domaint::transform(
   {
     // erase parameters
 
-    const irep_idt id=from->function;
+    const irep_idt id = function_from;
     const symbolt &symbol=ns.lookup(id);
 
     const code_typet &type=to_code_type(symbol.type);
 
     for(const auto &param : type.parameters())
-      values.set_to_top(param.get_identifier());
+      values.set_to_top(symbol_exprt(param.get_identifier(), param.type()));
   }
 
   INVARIANT(from->is_goto() || !values.is_bottom,
@@ -235,6 +237,8 @@ bool constant_propagator_domaint::two_way_propagate_rec(
 {
 #ifdef DEBUG
   std::cout << "two_way_propagate_rec: " << format(expr) << '\n';
+#else
+  (void)expr; // unused parameter
 #endif
 
   bool change=false;
@@ -266,6 +270,8 @@ bool constant_propagator_domaint::two_way_propagate_rec(
        assign_rec(values, rhs, lhs, ns);
     change = values.meet(copy_values, ns);
   }
+#else
+  (void)cp;   // unused parameter
 #endif
 
 #ifdef DEBUG
@@ -334,9 +340,10 @@ bool constant_propagator_domaint::valuest::is_constant_address_of(
 }
 
 /// Do not call this when iterating over replace_const.expr_map!
-bool constant_propagator_domaint::valuest::set_to_top(const irep_idt &id)
+bool constant_propagator_domaint::valuest::set_to_top(
+  const symbol_exprt &symbol_expr)
 {
-  const auto n_erased = replace_const.erase(id);
+  const auto n_erased = replace_const.erase(symbol_expr.get_identifier());
 
   INVARIANT(n_erased==0 || !is_bottom, "bottom should have no elements at all");
 
@@ -360,7 +367,9 @@ void constant_propagator_domaint::valuest::set_dirty_to_top(
 
     if((!symbol.is_procedure_local() || dirty(id)) &&
        !symbol.type.get_bool(ID_C_constant))
-      it=expr_map.erase(it);
+    {
+      it = replace_const.erase(it);
+    }
     else
       it++;
   }
@@ -456,7 +465,7 @@ bool constant_propagator_domaint::valuest::merge(const valuest &src)
 
       if(expr!=src_expr)
       {
-        it=expr_map.erase(it);
+        it = replace_const.erase(it);
         changed=true;
       }
       else
@@ -464,7 +473,7 @@ bool constant_propagator_domaint::valuest::merge(const valuest &src)
     }
     else
     {
-      it=expr_map.erase(it);
+      it = replace_const.erase(it);
       changed=true;
     }
   }
@@ -499,10 +508,11 @@ bool constant_propagator_domaint::valuest::meet(
     }
     else
     {
+      const typet &m_id_type = ns.lookup(m.first).type;
       DATA_INVARIANT(
-        base_type_eq(ns.lookup(m.first).type, m.second.type(), ns),
+        base_type_eq(m_id_type, m.second.type(), ns),
         "type of constant to be stored should match");
-      set_to(m.first, m.second);
+      set_to(symbol_exprt(m.first, m_id_type), m.second);
       changed=true;
     }
   }
@@ -558,7 +568,7 @@ bool constant_propagator_domaint::partial_evaluate_with_all_rounding_modes(
   {
     constant_propagator_domaint child(*this);
     child.values.set_to(
-      ID_cprover_rounding_mode_str,
+      symbol_exprt(ID_cprover_rounding_mode_str, integer_typet()),
       from_integer(rounding_modes[i], integer_typet()));
     exprt result = expr;
     if(child.replace_constants_and_simplify(result, ns))
@@ -621,7 +631,8 @@ void constant_propagator_ait::replace(
       d.partial_evaluate(rhs, ns);
 
       if(rhs.id()==ID_constant)
-        rhs.add_source_location()=it->code.op0().source_location();
+        rhs.add_source_location() =
+          to_code_assign(it->code).lhs().source_location();
     }
     else if(it->is_function_call())
     {

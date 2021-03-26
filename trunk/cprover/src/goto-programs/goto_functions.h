@@ -18,6 +18,7 @@ Date: June 2003
 
 #include <util/cprover_prefix.h>
 
+/// A collection of goto functions
 class goto_functionst
 {
 public:
@@ -63,16 +64,13 @@ public:
     return *this;
   }
 
+  /// Remove function from the function map
   void unload(const irep_idt &name) { function_map.erase(name); }
 
   void clear()
   {
     function_map.clear();
   }
-
-  void output(
-    const namespacet &ns,
-    std::ostream &out) const;
 
   void compute_location_numbers();
   void compute_location_numbers(goto_programt &);
@@ -99,6 +97,7 @@ public:
     update_instructions_function();
   }
 
+  /// Get the identifier of the entry point to a goto model
   static inline irep_idt entry_point()
   {
     // do not confuse with C's "int main()"
@@ -114,6 +113,31 @@ public:
   {
     for(const auto &fun : other.function_map)
       function_map[fun.first].copy_from(fun.second);
+  }
+
+  std::vector<function_mapt::const_iterator> sorted() const;
+  std::vector<function_mapt::iterator> sorted();
+
+  /// Check that the goto functions are well-formed
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  void validate(const namespacet &ns, const validation_modet vm) const
+  {
+    for(const auto &entry : function_map)
+    {
+      const goto_functiont &goto_function = entry.second;
+      const auto &function_name = entry.first;
+
+      DATA_CHECK(
+        vm,
+        goto_function.type == ns.lookup(function_name).type,
+        id2string(function_name) + " type inconsistency\ngoto program type: " +
+          goto_function.type.id_string() +
+          "\nsymbol table type: " + ns.lookup(function_name).type.id_string());
+
+      goto_function.validate(ns, vm);
+    }
   }
 };
 

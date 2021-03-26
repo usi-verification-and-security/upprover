@@ -12,7 +12,7 @@ template<typename C>
 void print_SSA_steps(const C & iterable, const namespacet & ns, std::ostream& out)
 {
   for (const auto& ssa_step : iterable){
-    ssa_step.output(ns, out);
+    ssa_step.output(out);
     out << '\n';
   }
 }
@@ -21,7 +21,7 @@ template<typename C>
 void print_SSA_steps_in_order(const C & iterable, const namespacet & ns, std::ostream& out)
 {
   for (const auto& ssa_step : iterable){
-    ssa_step->output(ns, out);
+    ssa_step.output(out);
     out << '\n';
   }
 }
@@ -29,7 +29,7 @@ void print_SSA_steps_in_order(const C & iterable, const namespacet & ns, std::os
 template<typename Iter>
 void print_SSA_steps(Iter beg, Iter end, const namespacet & ns, std::ostream& out){
     for (auto it = beg; it != end; ++it){
-        it->output(ns, out);
+        it->output(out);
         out << '\n';
     }
 }

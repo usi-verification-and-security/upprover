@@ -13,14 +13,15 @@ SRC = anonymous_member.cpp \
       builtin_factory.cpp \
       c_misc.cpp \
       c_nondet_symbol_factory.cpp \
+      c_object_factory_parameters.cpp \
       c_preprocess.cpp \
       c_qualifiers.cpp \
       c_storage_spec.cpp \
       c_typecast.cpp \
-      c_typecheck_argc_argv.cpp \
       c_typecheck_base.cpp \
       c_typecheck_code.cpp \
       c_typecheck_expr.cpp \
+      c_typecheck_gcc_polymorphic_builtins.cpp \
       c_typecheck_initializer.cpp \
       c_typecheck_type.cpp \
       c_typecheck_typecast.cpp \
@@ -28,6 +29,7 @@ SRC = anonymous_member.cpp \
       designator.cpp \
       expr2c.cpp \
       gcc_types.cpp \
+      gcc_version.cpp \
       literals/convert_character_literal.cpp \
       literals/convert_float_literal.cpp \
       literals/convert_integer_literal.cpp \
@@ -78,11 +80,9 @@ all: ansi-c$(LIBEXT)
 ###############################################################################
 
 ansi_c_y.tab.cpp: parser.y
-	$(YACC) $(YFLAGS) $$flags -pyyansi_c -d parser.y -o $@
+	$(YACC) $(YFLAGS) $$flags -pyyansi_c parser.y --defines=ansi_c_y.tab.h -o $@
 
 ansi_c_y.tab.h: ansi_c_y.tab.cpp
-	if [ -e ansi_c_y.tab.hpp ] ; then mv ansi_c_y.tab.hpp ansi_c_y.tab.h ; else \
-        mv ansi_c_y.tab.cpp.h ansi_c_y.tab.h ; fi
 
 ansi_c_lex.yy.cpp: scanner.l
 	$(LEX) -Pyyansi_c -o$@ scanner.l
@@ -114,8 +114,6 @@ cprover_library.inc: library/converter$(EXEEXT) library/*.c
 
 %.inc: %.h file_converter$(EXEEXT)
 	./file_converter$(EXEEXT) < $< > $@
-
-cprover_library.cpp: cprover_library.inc
 
 ansi_c_internal_additions$(OBJEXT): $(BUILTIN_FILES)
 

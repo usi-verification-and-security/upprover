@@ -54,11 +54,11 @@ class parser_hifrogt : public parser_baset
 {
 public:
     parser_hifrogt(int argc, const char **argv):
-            parser_baset(HIFROG_OPTIONS,std::string("HIFROG ") + HIFROG_VERSION,  argc, argv)
+        parser_baset(HIFROG_OPTIONS + std::string("HIFROG ") + HIFROG_VERSION,  argc, argv)
     {
     }
-  int doit() override;
-  void help() override;
+    int doit() override;
+    void help() override;
   
 };
 

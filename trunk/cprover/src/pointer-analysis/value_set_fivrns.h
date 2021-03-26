@@ -234,11 +234,6 @@ public:
     const idt &identifier,
     const std::string &suffix);
 
-  void make_any()
-  {
-    values.clear();
-  }
-
   void clear()
   {
     values.clear();
@@ -372,10 +367,6 @@ protected:
     const std::string &suffix,
     const namespacet &ns,
     bool add_to_sets);
-
-  void do_free(
-    const exprt &op,
-    const namespacet &ns);
 };
 
 #endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_FIVRNS_H

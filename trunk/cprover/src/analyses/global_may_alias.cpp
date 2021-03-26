@@ -11,6 +11,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "global_may_alias.h"
 
+/// Populate list of aliases for a given identifier in a context in
+/// which an object is being written to.
+/// \param lhs: A left hand side expression, containing an identifier.
+/// \param alias_set: An external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::assign_lhs_aliases(
   const exprt &lhs,
   const std::set<irep_idt> &alias_set)
@@ -28,6 +33,11 @@ void global_may_alias_domaint::assign_lhs_aliases(
   }
 }
 
+/// Populate list of aliases for a given identifier in a context in
+/// which is an object is being read.
+/// \param rhs: A right hand side expression.
+/// \param alias_set: A external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::get_rhs_aliases(
   const exprt &rhs,
   std::set<irep_idt> &alias_set)
@@ -52,10 +62,15 @@ void global_may_alias_domaint::get_rhs_aliases(
   }
   else if(rhs.id()==ID_address_of)
   {
-    get_rhs_aliases_address_of(to_address_of_expr(rhs).op0(), alias_set);
+    get_rhs_aliases_address_of(to_address_of_expr(rhs).object(), alias_set);
   }
 }
 
+/// Specialisation of \ref global_may_alias_domaint::get_rhs_aliases
+/// to deal with address_of expressions.
+/// \param rhs: A right hand side expression.
+/// \param alias_set: A external set of aliases to populate internal
+///   aliases set.
 void global_may_alias_domaint::get_rhs_aliases_address_of(
   const exprt &rhs,
   std::set<irep_idt> &alias_set)
@@ -76,7 +91,9 @@ void global_may_alias_domaint::get_rhs_aliases_address_of(
 }
 
 void global_may_alias_domaint::transform(
+  const irep_idt &,
   locationt from,
+  const irep_idt &,
   locationt,
   ai_baset &,
   const namespacet &)

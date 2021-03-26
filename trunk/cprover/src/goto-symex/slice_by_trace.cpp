@@ -16,12 +16,14 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <fstream>
 #include <iostream>
 
-#include <util/string2int.h>
-#include <util/simplify_expr.h>
 #include <util/arith_tools.h>
-#include <util/std_expr.h>
-#include <util/guard.h>
+#include <util/exception_utils.h>
+#include <util/expr_util.h>
 #include <util/format_expr.h>
+#include <util/guard.h>
+#include <util/simplify_expr.h>
+#include <util/std_expr.h>
+#include <util/string2int.h>
 
 void symex_slice_by_tracet::slice_by_trace(
   std::string trace_files,
@@ -79,29 +81,27 @@ void symex_slice_by_tracet::slice_by_trace(
   {
     exprt g_copy(*i);
 
+    DATA_INVARIANT(
+      g_copy.id() == ID_symbol || g_copy.id() == ID_not ||
+        g_copy.id() == ID_and || g_copy.id() == ID_constant,
+      "guards should only be and, symbol, constant, or `not'");
+
     if(g_copy.id()==ID_symbol || g_copy.id() == ID_not)
     {
-      g_copy.make_not();
-      simplify(g_copy, ns);
+      g_copy = simplify_expr(boolean_negate(g_copy), ns);
       implications.insert(g_copy);
     }
     else if(g_copy.id()==ID_and)
     {
-      exprt copy_last(g_copy.operands().back());
-      copy_last.make_not();
+      exprt copy_last = boolean_negate(g_copy.operands().back());
       simplify(copy_last, ns);
       implications.insert(copy_last);
-    }
-    else if(!(g_copy.id()==ID_constant))
-    {
-      throw "guards should only be and, symbol, constant, or `not'";
     }
   }
 
   slice_SSA_steps(equation, implications); // Slice based on implications
 
   guardt t_guard;
-  t_guard.make_true();
   symex_targett::sourcet empty_source;
   equation.SSA_steps.push_front(symex_target_equationt::SSA_stept());
   symex_target_equationt::SSA_stept &SSA_step=equation.SSA_steps.front();
@@ -122,7 +122,8 @@ void symex_slice_by_tracet::read_trace(std::string filename)
   std::cout << "Reading trace from file " << filename << '\n';
   std::ifstream file(filename);
   if(file.fail())
-    throw "failed to read from trace file";
+    throw invalid_command_line_argument_exceptiont(
+      "invalid file to read trace from: " + filename, "");
 
   // In case not the first trace read
   alphabet.clear();
@@ -219,9 +220,10 @@ void symex_slice_by_tracet::parse_events(std::string read_line)
     const std::string::size_type vnext=read_line.find(",", vidx);
     std::string event=read_line.substr(vidx, vnext - vidx);
     eis.insert(event);
-    if((!alphabet.empty()) &&
-       ((alphabet.count(event)!=0)!=alphabet_parity))
-      throw "trace uses symbol not in alphabet: "+event;
+    PRECONDITION(!alphabet.empty());
+    INVARIANT(
+      (alphabet.count(event) != 0) == alphabet_parity,
+      "trace uses symbol not in alphabet: " + event);
     if(vnext==std::string::npos)
       break;
     vidx=vnext;
@@ -340,10 +342,7 @@ void symex_slice_by_tracet::compute_ts_back(
         exprt u_rhs=exprt(ID_and, typet(ID_bool));
         if((semantics!=":suffix") || (j != 0))
         {
-          u_rhs.operands().reserve(2);
-          u_rhs.copy_to_operands(guard);
-          u_rhs.copy_to_operands(merge[j]);
-          u_rhs.op0().make_not();
+          u_rhs.add_to_operands(boolean_negate(guard), merge[j]);
         }
         else
         {
@@ -406,8 +405,7 @@ void symex_slice_by_tracet::slice_SSA_steps(
 
     if((guard.id()==ID_symbol) || (guard.id() == ID_not))
     {
-      guard.make_not();
-      simplify(guard, ns);
+      guard = simplify_expr(boolean_negate(guard), ns);
 
       if(implications.count(guard)!=0)
       {
@@ -424,8 +422,7 @@ void symex_slice_by_tracet::slice_SSA_steps(
     {
       Forall_operands(git, guard)
       {
-        exprt neg_expr=*git;
-        neg_expr.make_not();
+        exprt neg_expr = boolean_negate(*git);
         simplify(neg_expr, ns);
 
         if(implications.count(neg_expr)!=0)
@@ -451,26 +448,25 @@ void symex_slice_by_tracet::slice_SSA_steps(
       if(it->ssa_rhs.id()==ID_if)
       {
         conds_seen++;
-        exprt cond_copy(it->ssa_rhs.op0());
+        exprt cond_copy(to_if_expr(it->ssa_rhs).cond());
         simplify(cond_copy, ns);
 
         if(implications.count(cond_copy)!=0)
         {
           sliced_conds++;
-          exprt t_copy1(it->ssa_rhs.op1());
-          exprt t_copy2(it->ssa_rhs.op1());
+          exprt t_copy1(to_if_expr(it->ssa_rhs).true_case());
+          exprt t_copy2(to_if_expr(it->ssa_rhs).true_case());
           it->ssa_rhs=t_copy1;
           it->cond_expr.op1().swap(t_copy2);
         }
         else
         {
-          cond_copy.make_not();
-          simplify(cond_copy, ns);
+          cond_copy = simplify_expr(boolean_negate(cond_copy), ns);
           if(implications.count(cond_copy)!=0)
           {
             sliced_conds++;
-            exprt f_copy1(it->ssa_rhs.op2());
-            exprt f_copy2(it->ssa_rhs.op2());
+            exprt f_copy1(to_if_expr(it->ssa_rhs).false_case());
+            exprt f_copy2(to_if_expr(it->ssa_rhs).false_case());
             it->ssa_rhs=f_copy1;
             it->cond_expr.op1().swap(f_copy2);
           }
@@ -508,7 +504,6 @@ void symex_slice_by_tracet::assign_merges(
     merge_sym.set_level_2(merge_count);
     merge_count--;
     guardt t_guard;
-    t_guard.make_true();
     symex_targett::sourcet empty_source;
 
     exprt merge_copy(*i);
@@ -620,8 +615,7 @@ bool symex_slice_by_tracet::implies_false(const exprt e)
       i=imps.begin();
       i!=imps.end(); i++)
   {
-    exprt i_copy(*i);
-    i_copy.make_not();
+    exprt i_copy = boolean_negate(*i);
     simplify(i_copy, ns);
     if(imps.count(i_copy)!=0)
       return true;

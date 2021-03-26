@@ -8,13 +8,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "float_bv.h"
 
-#include <cassert>
 #include <algorithm>
 
 #include <util/std_expr.h>
 #include <util/arith_tools.h>
 
-exprt float_bvt::convert(const exprt &expr)
+exprt float_bvt::convert(const exprt &expr) const
 {
   if(expr.id()==ID_abs)
     return abs(to_abs_expr(expr).op(), get_spec(expr));
@@ -104,10 +103,9 @@ ieee_float_spect float_bvt::get_spec(const exprt &expr)
 exprt float_bvt::abs(const exprt &op, const ieee_float_spect &spec)
 {
   // we mask away the sign bit, which is the most significant bit
-  std::string mask_str(spec.width(), '1');
-  mask_str[0]='0';
+  const mp_integer v = power(2, spec.width() - 1) - 1;
 
-  constant_exprt mask(mask_str, op.type());
+  const constant_exprt mask(integer2bvrep(v, spec.width()), op.type());
 
   return bitand_exprt(op, mask);
 }
@@ -115,10 +113,9 @@ exprt float_bvt::abs(const exprt &op, const ieee_float_spect &spec)
 exprt float_bvt::negation(const exprt &op, const ieee_float_spect &spec)
 {
   // we flip the sign bit with an xor
-  std::string mask_str(spec.width(), '0');
-  mask_str[0]='1';
+  const mp_integer v = power(2, spec.width() - 1);
 
-  constant_exprt mask(mask_str, op.type());
+  constant_exprt mask(integer2bvrep(v, spec.width()), op.type());
 
   return bitxor_exprt(op, mask);
 }
@@ -151,10 +148,9 @@ exprt float_bvt::is_zero(const exprt &src)
   const floatbv_typet &type=to_floatbv_type(src.type());
   std::size_t width=type.get_width();
 
-  std::string mask_str(width, '1');
-  mask_str[0]='0';
+  const mp_integer v = power(2, width - 1) - 1;
 
-  constant_exprt mask(mask_str, src.type());
+  constant_exprt mask(integer2bvrep(v, width), src.type());
 
   ieee_floatt z(type);
   z.make_zero();
@@ -215,7 +211,7 @@ exprt float_bvt::sign_bit(const exprt &op)
 exprt float_bvt::from_signed_integer(
   const exprt &src,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   std::size_t src_width=to_signedbv_type(src.type()).get_width();
 
@@ -239,7 +235,7 @@ exprt float_bvt::from_signed_integer(
 exprt float_bvt::from_unsigned_integer(
   const exprt &src,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   unbiased_floatt result;
 
@@ -328,7 +324,7 @@ exprt float_bvt::conversion(
   const exprt &src,
   const exprt &rm,
   const ieee_float_spect &src_spec,
-  const ieee_float_spect &dest_spec)
+  const ieee_float_spect &dest_spec) const
 {
   // Catch the special case in which we extend,
   // e.g. single to double.
@@ -364,7 +360,9 @@ exprt float_bvt::conversion(
         unsignedbv_typet(dest_spec.f+1));
 
     // the exponent gets sign-extended
-    assert(unpacked_src.exponent.type().id()==ID_signedbv);
+    INVARIANT(
+      unpacked_src.exponent.type().id() == ID_signedbv,
+      "the exponent needs to have a signed type");
     result.exponent=
       typecast_exprt(unpacked_src.exponent, signedbv_typet(dest_spec.e));
 
@@ -406,14 +404,13 @@ exprt float_bvt::subtract_exponents(
   // extend both by one bit
   std::size_t old_width1=to_signedbv_type(src1.exponent.type()).get_width();
   std::size_t old_width2=to_signedbv_type(src2.exponent.type()).get_width();
-  assert(old_width1==old_width2);
+  PRECONDITION(old_width1 == old_width2);
 
   const typecast_exprt extended_exponent1(
     src1.exponent, signedbv_typet(old_width1 + 1));
+
   const typecast_exprt extended_exponent2(
     src2.exponent, signedbv_typet(old_width2 + 1));
-
-  assert(extended_exponent1.type()==extended_exponent2.type());
 
   // compute shift distance (here is the subtraction)
   return minus_exprt(extended_exponent1, extended_exponent2);
@@ -424,7 +421,7 @@ exprt float_bvt::add_sub(
   const exprt &op0,
   const exprt &op1,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   unbiased_floatt unpacked1=unpack(op0, spec);
   unbiased_floatt unpacked2=unpack(op1, spec);
@@ -593,7 +590,7 @@ exprt float_bvt::mul(
   const exprt &src1,
   const exprt &src2,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   // unpack
   const unbiased_floatt unpacked1=unpack(src1, spec);
@@ -642,7 +639,7 @@ exprt float_bvt::div(
   const exprt &src1,
   const exprt &src2,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   // unpack
   const unbiased_floatt unpacked1=unpack(src1, spec);
@@ -738,7 +735,9 @@ exprt float_bvt::relation(
   else if(rel==relt::GE)
     return relation(src2, relt::LE, src1, spec); // swapped
 
-  assert(rel==relt::EQ || rel==relt::LT || rel==relt::LE);
+  INVARIANT(
+    rel == relt::EQ || rel == relt::LT || rel == relt::LE,
+    "relation should be equality, less-than, or less-or-equal");
 
   // special cases: -0 and 0 are equal
   const exprt is_zero1 = is_zero(src1);
@@ -786,7 +785,7 @@ exprt float_bvt::relation(
       and_bv.copy_to_operands(not_exprt(both_zero));
       and_bv.copy_to_operands(not_exprt(nan));
 
-      return and_bv;
+      return std::move(and_bv);
     }
     else if(rel==relt::LE)
     {
@@ -799,7 +798,7 @@ exprt float_bvt::relation(
       return and_exprt(or_bv, not_exprt(nan));
     }
     else
-      assert(false);
+      UNREACHABLE;
   }
   else if(rel==relt::EQ)
   {
@@ -809,10 +808,8 @@ exprt float_bvt::relation(
       or_exprt(bitwise_equal, both_zero),
       not_exprt(nan));
   }
-  else
-    assert(0);
 
-  // not reached
+  UNREACHABLE;
   return false_exprt();
 }
 
@@ -870,7 +867,7 @@ void float_bvt::normalization_shift(
   // bits minus one, in case the faction is one exactly.
   std::size_t fraction_bits=to_unsignedbv_type(fraction.type()).get_width();
   std::size_t exponent_bits=to_signedbv_type(exponent.type()).get_width();
-  assert(fraction_bits!=0);
+  PRECONDITION(fraction_bits != 0);
 
   std::size_t depth = address_bits(fraction_bits - 1);
 
@@ -882,7 +879,9 @@ void float_bvt::normalization_shift(
   for(int d=depth-1; d>=0; d--)
   {
     unsigned distance=(1<<d);
-    assert(fraction_bits>distance);
+    INVARIANT(
+      fraction_bits > distance,
+      "distance must be within the range of fraction bits");
 
     // check if first 'distance'-many bits are zeros
     const extractbits_exprt prefix(
@@ -900,7 +899,7 @@ void float_bvt::normalization_shift(
       if_exprt(prefix_is_zero, shifted, fraction);
 
     // add corresponding weight to exponent
-    assert(d<(signed int)exponent_bits);
+    INVARIANT(d < (signed int)exponent_bits, "");
 
     exponent_delta=
       bitor_exprt(exponent_delta,
@@ -926,7 +925,7 @@ void float_bvt::denormalization_shift(
   // exponent for subnormal numbers.
 
   std::size_t exponent_bits=to_signedbv_type(exponent.type()).get_width();
-  assert(exponent_bits>=spec.e);
+  PRECONDITION(exponent_bits >= spec.e);
 
 #if 1
   // Need to sign extend to avoid overflow.  Note that this is a
@@ -992,7 +991,7 @@ void float_bvt::denormalization_shift(
 exprt float_bvt::rounder(
   const unbiased_floatt &src,
   const exprt &rm,
-  const ieee_float_spect &spec)
+  const ieee_float_spect &spec) const
 {
   // incoming: some fraction (with explicit 1),
   //           some exponent without bias
@@ -1041,7 +1040,7 @@ exprt float_bvt::fraction_rounding_decision(
   std::size_t fraction_bits=
     to_unsignedbv_type(fraction.type()).get_width();
 
-  assert(dest_bits<fraction_bits);
+  PRECONDITION(dest_bits < fraction_bits);
 
   // we have too many fraction bits
   std::size_t extra_bits=fraction_bits-dest_bits;
@@ -1061,7 +1060,8 @@ exprt float_bvt::fraction_rounding_decision(
   }
 
   // the rounding bit is the last extra bit
-  assert(extra_bits>=1);
+  INVARIANT(
+    extra_bits >= 1, "the extra bits contain at least the rounding bit");
   const extractbit_exprt rounding_bit(fraction, extra_bits - 1);
 
   // we get one bit of the fraction for some rounding decisions
@@ -1116,7 +1116,8 @@ void float_bvt::round_fraction(
   else // fraction gets smaller -- rounding
   {
     std::size_t extra_bits=result_fraction_size-fraction_size;
-    assert(extra_bits>=1);
+    INVARIANT(
+      extra_bits >= 1, "the extra bits include at least the rounding bit");
 
     // this computes the rounding decision
     exprt increment=fraction_rounding_decision(
@@ -1203,13 +1204,10 @@ void float_bvt::round_exponent(
   std::size_t result_exponent_size=
     to_signedbv_type(result.exponent.type()).get_width();
 
+  PRECONDITION(result_exponent_size >= spec.e);
+
   // do we need to enlarge the exponent?
-  if(result_exponent_size<spec.e)
-  {
-    // should have been done before
-    assert(false);
-  }
-  else if(result_exponent_size==spec.e) // it stays
+  if(result_exponent_size == spec.e) // it stays
   {
     // do nothing
   }
@@ -1278,7 +1276,8 @@ float_bvt::biased_floatt float_bvt::bias(
   result.exponent=add_bias(src.exponent, spec);
 
   // strip off the hidden bit
-  assert(to_unsignedbv_type(src.fraction.type()).get_width()==spec.f+1);
+  PRECONDITION(
+    to_unsignedbv_type(src.fraction.type()).get_width() == spec.f + 1);
 
   const extractbit_exprt hidden_bit(src.fraction, spec.f);
   const not_exprt denormal(hidden_bit);
@@ -1354,8 +1353,8 @@ exprt float_bvt::pack(
   const biased_floatt &src,
   const ieee_float_spect &spec)
 {
-  assert(to_unsignedbv_type(src.fraction.type()).get_width()==spec.f);
-  assert(to_unsignedbv_type(src.exponent.type()).get_width()==spec.e);
+  PRECONDITION(to_unsignedbv_type(src.fraction.type()).get_width() == spec.f);
+  PRECONDITION(to_unsignedbv_type(src.exponent.type()).get_width() == spec.e);
 
   // do sign -- we make this 'false' for NaN
   const if_exprt sign_bit(src.NaN, false_exprt(), src.sign);

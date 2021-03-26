@@ -25,41 +25,40 @@ bool cpp_typecheckt::cpp_is_pod(const typet &type) const
 
     const struct_typet &struct_type=to_struct_type(type);
 
-    if(!type.find(ID_bases).get_sub().empty())
+    if(!struct_type.bases().empty())
       return false;
 
     const struct_typet::componentst &components=
       struct_type.components();
 
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &c : components)
     {
-      if(it->get_bool(ID_is_type))
+      if(c.get_bool(ID_is_type))
         continue;
 
-      if(it->get_base_name()=="operator=")
+      if(c.get_base_name() == "operator=")
         return false;
 
-      if(it->get_bool(ID_is_virtual))
+      if(c.get_bool(ID_is_virtual))
         return false;
 
-      const typet &sub_type=it->type();
+      const typet &sub_type = c.type();
 
       if(sub_type.id()==ID_code)
       {
-        if(it->get_bool(ID_is_virtual))
+        if(c.get_bool(ID_is_virtual))
           return false;
 
-        const typet &return_type=to_code_type(sub_type).return_type();
+        const typet &comp_return_type = to_code_type(sub_type).return_type();
 
-        if(return_type.id()==ID_constructor ||
-           return_type.id()==ID_destructor)
+        if(
+          comp_return_type.id() == ID_constructor ||
+          comp_return_type.id() == ID_destructor)
+        {
           return false;
+        }
       }
-      else if(it->get(ID_access)!=ID_public &&
-              !it->get_bool(ID_is_static))
+      else if(c.get(ID_access) != ID_public && !c.get_bool(ID_is_static))
         return false;
 
       if(!cpp_is_pod(sub_type))
@@ -84,6 +83,13 @@ bool cpp_typecheckt::cpp_is_pod(const typet &type) const
   {
     const symbolt &symb = lookup(to_symbol_type(type));
     DATA_INVARIANT(symb.is_type, "type symbol is a type");
+    return cpp_is_pod(symb.type);
+  }
+  else if(type.id() == ID_struct_tag ||
+          type.id() == ID_union_tag)
+  {
+    const symbolt &symb = lookup(to_tag_type(type));
+    DATA_INVARIANT(symb.is_type, "tag symbol is a type");
     return cpp_is_pod(symb.type);
   }
 

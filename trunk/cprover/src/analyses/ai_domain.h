@@ -46,7 +46,7 @@ public:
   ///    (this also needs to set the LHS, if applicable)
   ///
   /// "this" is the domain before the instruction "from"
-  /// "from" is the instruction to be interpretted
+  /// "from" is the instruction to be interpreted
   /// "to" is the next instruction (for GOTO, FUNCTION_CALL, END_FUNCTION)
   ///
   /// PRECONDITION(from.is_dereferenceable(), "Must not be _::end()")
@@ -55,13 +55,15 @@ public:
   ///              (from->is_function_call() || from->is_end_function())
 
   virtual void transform(
+    const irep_idt &function_from,
     locationt from,
+    const irep_idt &function_to,
     locationt to,
     ai_baset &ai,
     const namespacet &ns) = 0;
 
   virtual void
-  output(std::ostream &out, const ai_baset &ai, const namespacet &ns) const
+  output(std::ostream &, const ai_baset &, const namespacet &) const
   {
   }
 
@@ -76,7 +78,7 @@ public:
   /// and domains may refuse to implement it.
   virtual void make_top() = 0;
 
-  /// a reasonable entry-point state
+  /// Make this domain a reasonable entry-point state
   virtual void make_entry() = 0;
 
   virtual bool is_bottom() const = 0;
@@ -100,8 +102,9 @@ public:
   /// simplification
 
   /// return true if unchanged
-  virtual bool ai_simplify(exprt &condition, const namespacet &ns) const
+  virtual bool ai_simplify(exprt &condition, const namespacet &) const
   {
+    (void)condition; // unused parameter
     return true;
   }
 

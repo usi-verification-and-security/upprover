@@ -11,13 +11,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "pointer_logic.h"
 
-#include <cassert>
-
 #include <util/arith_tools.h>
+#include <util/byte_operators.h>
 #include <util/c_types.h>
 #include <util/invariant.h>
 #include <util/pointer_offset_size.h>
 #include <util/prefix.h>
+#include <util/simplify_expr.h>
 #include <util/std_expr.h>
 
 bool pointer_logict::is_dynamic_object(const exprt &expr) const
@@ -52,13 +52,11 @@ std::size_t pointer_logict::add_object(const exprt &expr)
 
   if(expr.id()==ID_index)
   {
-    assert(expr.operands().size()==2);
-    return add_object(expr.op0());
+    return add_object(to_index_expr(expr).array());
   }
   else if(expr.id()==ID_member)
   {
-    assert(expr.operands().size()==1);
-    return add_object(expr.op0());
+    return add_object(to_member_expr(expr).compound());
   }
 
   return objects.number(expr);
@@ -80,110 +78,75 @@ exprt pointer_logict::pointer_expr(
   {
     if(pointer.offset==0)
     {
-      constant_exprt result(type);
-      result.set_value(ID_NULL);
-      return result;
+      null_pointer_exprt result(type);
+      return std::move(result);
     }
     else
     {
-      constant_exprt null(type);
-      null.set_value(ID_NULL);
+      null_pointer_exprt null(type);
       return plus_exprt(null,
         from_integer(pointer.offset, pointer_diff_type()));
     }
   }
   else if(pointer.object==invalid_object) // INVALID?
   {
-    constant_exprt result(type);
-    result.set_value("INVALID");
-    return result;
+    return constant_exprt("INVALID", type);
   }
 
   if(pointer.object>=objects.size())
   {
-    constant_exprt result(type);
-    result.set_value("INVALID-"+std::to_string(pointer.object));
-    return result;
+    return constant_exprt("INVALID-" + std::to_string(pointer.object), type);
   }
 
   const exprt &object_expr=objects[pointer.object];
 
-  exprt deep_object=object_rec(pointer.offset, type, object_expr);
+  typet subtype = type.subtype();
+  // This is a gcc extension.
+  // https://gcc.gnu.org/onlinedocs/gcc-4.8.0/gcc/Pointer-Arith.html
+  if(subtype.id() == ID_empty)
+    subtype = char_type();
+  exprt deep_object =
+    get_subexpression_at_offset(object_expr, pointer.offset, subtype, ns);
+  CHECK_RETURN(deep_object.is_not_nil());
+  simplify(deep_object, ns);
+  if(deep_object.id() != byte_extract_id())
+    return typecast_exprt::conditional_cast(
+      address_of_exprt(deep_object), type);
 
-  return address_of_exprt(deep_object, type);
-}
+  const byte_extract_exprt &be = to_byte_extract_expr(deep_object);
+  const address_of_exprt base(be.op());
+  if(be.offset().is_zero())
+    return typecast_exprt::conditional_cast(base, type);
 
-exprt pointer_logict::object_rec(
-  const mp_integer &offset,
-  const typet &pointer_type,
-  const exprt &src) const
-{
-  if(src.type().id()==ID_array)
+  const auto object_size = pointer_offset_size(be.op().type(), ns);
+  if(object_size.has_value() && *object_size <= 1)
   {
-    mp_integer size=
-      pointer_offset_size(src.type().subtype(), ns);
-
-    if(size<=0)
-      return src;
-
-    mp_integer index=offset/size;
-    mp_integer rest=offset%size;
-    if(rest<0)
-      rest=-rest;
-
-    index_exprt tmp(src.type().subtype());
-    tmp.index()=from_integer(index, typet(ID_integer));
-    tmp.array()=src;
-
-    return object_rec(rest, pointer_type, tmp);
+    return typecast_exprt::conditional_cast(
+      plus_exprt(base, from_integer(pointer.offset, pointer_diff_type())),
+      type);
   }
-  else if(src.type().id()==ID_struct)
+  else if(object_size.has_value() && pointer.offset % *object_size == 0)
   {
-    const struct_typet::componentst &components=
-      to_struct_type(src.type()).components();
-
-    if(offset<0)
-      return src;
-
-    mp_integer current_offset=0;
-
-    for(const auto &c : components)
-    {
-      assert(offset>=current_offset);
-
-      const typet &subtype=c.type();
-
-      mp_integer sub_size=pointer_offset_size(subtype, ns);
-      assert(sub_size>0);
-      mp_integer new_offset=current_offset+sub_size;
-
-      if(new_offset>offset)
-      {
-        // found it
-        member_exprt tmp(src, c);
-
-        return object_rec(
-          offset-current_offset, pointer_type, tmp);
-      }
-
-      assert(new_offset<=offset);
-      current_offset=new_offset;
-      assert(current_offset<=offset);
-    }
-
-    return src;
+    return typecast_exprt::conditional_cast(
+      plus_exprt(
+        base, from_integer(pointer.offset / *object_size, pointer_diff_type())),
+      type);
   }
-  else if(src.type().id()==ID_union)
-    return src;
-
-  return src;
+  else
+  {
+    return typecast_exprt::conditional_cast(
+      plus_exprt(
+        typecast_exprt(base, pointer_type(char_type())),
+        from_integer(pointer.offset, pointer_diff_type())),
+      type);
+  }
 }
 
 pointer_logict::pointer_logict(const namespacet &_ns):ns(_ns)
 {
   // add NULL
   null_object=objects.number(exprt(ID_NULL));
-  assert(null_object==0);
+  CHECK_RETURN(null_object == 0);
 
   // add INVALID
   invalid_object=objects.number(exprt("INVALID"));

@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <util/arith_tools.h>
 
 #include "boolbv.h"
 
@@ -78,19 +79,11 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
           expr_type.id()==ID_c_bit_field ||
           expr_type.id()==ID_incomplete_c_enum)
   {
-    const std::string &binary=id2string(expr.get_value());
-
-    if(binary.size()!=width)
-    {
-      error().source_location=expr.find_source_location();
-      error() << "wrong value length in constant: "
-              << expr.pretty() << eom;
-      throw 0;
-    }
+    const auto &value = expr.get_value();
 
     for(std::size_t i=0; i<width; i++)
     {
-      bool bit=(binary[binary.size()-i-1]=='1');
+      const bool bit = get_bvrep_bit(value, width, i);
       bv[i]=const_literal(bit);
     }
 

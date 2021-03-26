@@ -19,6 +19,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/guard.h>
 #include <util/options.h>
 
+/// \param expr: expression to check
+/// \param[out] symbol: symbol which gets assigned the value from the
+///   `failed_symbol` comment
+/// \return true when `expr` is a symbol, whose type contains a `failed_symbol`
+///   comment which exists in the namespace.
 bool goto_program_dereferencet::has_failed_symbol(
   const exprt &expr,
   const symbolt *&symbol)
@@ -41,6 +46,7 @@ bool goto_program_dereferencet::has_failed_symbol(
   return false;
 }
 
+/// \deprecated
 bool goto_program_dereferencet::is_valid_object(
   const irep_idt &identifier)
 {
@@ -60,6 +66,7 @@ bool goto_program_dereferencet::is_valid_object(
   #endif
 }
 
+/// \deprecated
 void goto_program_dereferencet::dereference_failure(
   const std::string &property,
   const std::string &msg,
@@ -69,7 +76,7 @@ void goto_program_dereferencet::dereference_failure(
 
   if(assertions.insert(guard_expr).second)
   {
-    guard_expr.make_not();
+    guard_expr = boolean_negate(guard_expr);
 
     // first try simplifier on it
     if(options.get_bool_option("simplify"))
@@ -89,6 +96,11 @@ void goto_program_dereferencet::dereference_failure(
   }
 }
 
+/// Turn subexpression of `expr` of the form `&*p` or `reference_to(*p)` to p
+/// and use `dereference` on subexpressions of the form `*p`
+/// \param expr: expression in which to remove dereferences
+/// \param guard: boolean expression assumed to hold when dereferencing
+/// \param mode: unused
 void goto_program_dereferencet::dereference_rec(
   exprt &expr,
   guardt &guard,
@@ -115,11 +127,7 @@ void goto_program_dereferencet::dereference_rec(
         dereference_rec(op, guard, value_set_dereferencet::modet::READ);
 
       if(expr.id()==ID_or)
-      {
-        exprt tmp(op);
-        tmp.make_not();
-        guard.add(tmp);
-      }
+        guard.add(boolean_negate(op));
       else
         guard.add(op);
     }
@@ -157,9 +165,7 @@ void goto_program_dereferencet::dereference_rec(
     if(o2)
     {
       guardt old_guard=guard;
-      exprt tmp(expr.op0());
-      tmp.make_not();
-      guard.add(tmp);
+      guard.add(boolean_negate(expr.op0()));
       dereference_rec(expr.op2(), guard, mode);
       guard.swap(old_guard);
     }
@@ -224,6 +230,10 @@ void goto_program_dereferencet::dereference_rec(
   }
 }
 
+/// Gets the value set corresponding to the current target and
+/// expression `expr`.
+/// \param expr: an expression
+/// \param[out] dest: gets the value set
 void goto_program_dereferencet::get_value_set(
   const exprt &expr,
   value_setst::valuest &dest)
@@ -231,6 +241,12 @@ void goto_program_dereferencet::get_value_set(
   value_sets.get_values(current_target, expr, dest);
 }
 
+/// Remove dereference expressions contained in `expr`.
+/// \param expr: an expression
+/// \param checks_only: when true, execute the substitution on a copy of expr
+///   so that `expr` stays unchanged. In that case the only observable effect
+///   is whether an exception would be thrown.
+/// \param mode: unused
 void goto_program_dereferencet::dereference_expr(
   exprt &expr,
   const bool checks_only,
@@ -282,6 +298,10 @@ void goto_program_dereferencet::dereference_program(
     dereference_program(it->second.body, checks_only);
 }
 
+/// Remove dereference from expressions contained in the instruction at
+/// `target`. If `check_only` is true, the dereferencing is performed on copies
+/// of the expressions, in that case the only observable effect is whether an
+/// exception would be thrown.
 void goto_program_dereferencet::dereference_instruction(
   goto_programt::targett target,
   bool checks_only)
@@ -347,6 +367,7 @@ void goto_program_dereferencet::dereference_instruction(
   }
 }
 
+/// Set the current target to `target` and remove derefence from expr.
 void goto_program_dereferencet::dereference_expression(
   goto_programt::const_targett target,
   exprt &expr)
@@ -359,18 +380,23 @@ void goto_program_dereferencet::dereference_expression(
   dereference_expr(expr, false, value_set_dereferencet::modet::READ);
 }
 
+/// Throw an exception in case removing dereferences from the program would
+/// throw an exception.
 void goto_program_dereferencet::pointer_checks(
   goto_programt &goto_program)
 {
   dereference_program(goto_program, true);
 }
 
+/// Throw an exception in case removing dereferences from the program would
+/// throw an exception.
 void goto_program_dereferencet::pointer_checks(
   goto_functionst &goto_functions)
 {
   dereference_program(goto_functions, true);
 }
 
+/// \deprecated
 void remove_pointers(
   goto_programt &goto_program,
   symbol_tablet &symbol_table,
@@ -386,6 +412,9 @@ void remove_pointers(
   goto_program_dereference.dereference_program(goto_program);
 }
 
+/// Remove dereferences in all expressions contained in the program
+/// `goto_model`. `value_sets` is used to determine to what objects the pointers
+/// may be pointing to.
 void remove_pointers(
   goto_modelt &goto_model,
   value_setst &value_sets)
@@ -402,6 +431,7 @@ void remove_pointers(
     goto_program_dereference.dereference_program(it->second.body);
 }
 
+/// \deprecated
 void pointer_checks(
   goto_programt &goto_program,
   symbol_tablet &symbol_table,
@@ -414,6 +444,7 @@ void pointer_checks(
   goto_program_dereference.pointer_checks(goto_program);
 }
 
+/// \deprecated
 void pointer_checks(
   goto_functionst &goto_functions,
   symbol_tablet &symbol_table,
@@ -426,6 +457,8 @@ void pointer_checks(
   goto_program_dereference.pointer_checks(goto_functions);
 }
 
+/// Remove dereferences in `expr` using `value_sets` to determine to what
+/// objects the pointers may be pointing to.
 void dereference(
   goto_programt::const_targett target,
   exprt &expr,

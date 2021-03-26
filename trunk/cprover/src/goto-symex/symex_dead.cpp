@@ -21,30 +21,23 @@ void goto_symext::symex_dead(statet &state)
 {
   const goto_programt::instructiont &instruction=*state.source.pc;
 
-  const codet &code = instruction.code;
-
-  if(code.operands().size()!=1)
-    throw "dead expects one operand";
-
-  if(code.op0().id()!=ID_symbol)
-    throw "dead expects symbol as first operand";
+  const code_deadt &code = to_code_dead(instruction.code);
 
   // We increase the L2 renaming to make these non-deterministic.
   // We also prevent propagation of old values.
 
-  ssa_exprt ssa(to_symbol_expr(code.op0()));
+  ssa_exprt ssa(code.symbol());
   state.rename(ssa, ns, goto_symex_statet::L1);
 
   // in case of pointers, put something into the value set
-  if(ns.follow(code.op0().type()).id()==ID_pointer)
+  if(ns.follow(code.symbol().type()).id() == ID_pointer)
   {
-    exprt failed=
-      get_failed_symbol(to_symbol_expr(code.op0()), ns);
+    exprt failed = get_failed_symbol(to_symbol_expr(code.symbol()), ns);
 
     exprt rhs;
 
     if(failed.is_not_nil())
-      rhs=address_of_exprt(failed, to_pointer_type(code.op0().type()));
+      rhs = address_of_exprt(failed, to_pointer_type(code.symbol().type()));
     else
       rhs=exprt(ID_invalid);
 
@@ -56,10 +49,14 @@ void goto_symext::symex_dead(statet &state)
   const irep_idt &l1_identifier=ssa_lhs.get_identifier();
 
   // prevent propagation
-  state.propagation.remove(l1_identifier);
+  state.propagation.erase(l1_identifier);
 
   // L2 renaming
+  //due to the HiFrog's need
   if(state.level2.current_names.find(l1_identifier)!=
      state.level2.current_names.end())
     state.level2.increase_counter(l1_identifier);
+//  auto level2_it = state.level2.current_names.find(l1_identifier);
+//  if(level2_it != state.level2.current_names.end())
+//    symex_renaming_levelt::increase_counter(level2_it);
 }

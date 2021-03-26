@@ -18,8 +18,7 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
   std::set<irep_idt> bases;
   std::set<irep_idt> vbases;
 
-  irep_idt default_class_access=
-    type.get_bool(ID_C_class)?ID_private:ID_public;
+  irep_idt default_class_access = type.default_access();
 
   irept::subt &bases_irep=type.add(ID_bases).get_sub();
 
@@ -44,7 +43,10 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
     // elaborate any class template instances given as bases
     elaborate_class_template(base_symbol_expr.type());
 
-    if(base_symbol_expr.type().id() != ID_symbol_type)
+    if(base_symbol_expr.type().id() == ID_symbol_type)
+      base_symbol_expr.type().id(ID_struct_tag);
+
+    if(base_symbol_expr.type().id() != ID_struct_tag)
     {
       error().source_location=name.source_location();
       error() << "expected type symbol as struct/class base" << eom;
@@ -52,7 +54,7 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
     }
 
     const symbolt &base_symbol =
-      lookup(to_symbol_type(base_symbol_expr.type()));
+      lookup(to_struct_tag_type(base_symbol_expr.type()));
 
     if(base_symbol.type.id()==ID_incomplete_struct)
     {
@@ -102,14 +104,12 @@ void cpp_typecheckt::typecheck_compound_bases(struct_typet &type)
   {
     // add a flag to determine
     // if this is the most-derived-object
-    struct_typet::componentt most_derived;
+    struct_typet::componentt most_derived(
+      cpp_scopes.current_scope().prefix + "::" + "@most_derived", bool_typet());
 
-    most_derived.type()=bool_typet();
     most_derived.set_access(ID_public);
-    most_derived.set(ID_base_name, "@most_derived");
-    most_derived.set_name(
-      cpp_scopes.current_scope().prefix+"::"+"@most_derived");
-    most_derived.set(ID_pretty_name, "@most_derived");
+    most_derived.set_base_name("@most_derived");
+    most_derived.set_pretty_name("@most_derived");
     most_derived.add_source_location()=type.source_location();
     put_compound_into_scope(most_derived);
 
@@ -144,19 +144,18 @@ void cpp_typecheckt::add_base_components(
     vbases.insert(from_name);
 
   // look at the the parents of the base type
-  forall_irep(it, from.find(ID_bases).get_sub())
+  for(const auto &b : from.bases())
   {
-    irep_idt sub_access=it->get(ID_access);
+    irep_idt sub_access = b.get(ID_access);
 
     if(access==ID_private)
       sub_access=ID_private;
     else if(access==ID_protected && sub_access!=ID_private)
       sub_access=ID_protected;
 
-    const symbolt &symb=
-      lookup(it->find(ID_type).get(ID_identifier));
+    const symbolt &symb = lookup(b.type());
 
-    bool is_virtual=it->get_bool(ID_virtual);
+    const bool is_virtual_base = b.get_bool(ID_virtual);
 
     // recursive call
     add_base_components(
@@ -165,23 +164,19 @@ void cpp_typecheckt::add_base_components(
       to,
       bases,
       vbases,
-      is_virtual);
+      is_virtual_base);
   }
 
   // add the components
-  const struct_typet::componentst &src_c=from.components();
   struct_typet::componentst &dest_c=to.components();
 
-  for(struct_typet::componentst::const_iterator
-      it=src_c.begin();
-      it!=src_c.end();
-      it++)
+  for(const auto &c : from.components())
   {
-    if(it->get_bool(ID_from_base))
+    if(c.get_bool(ID_from_base))
       continue;
 
     // copy the component
-    dest_c.push_back(*it);
+    dest_c.push_back(c);
 
     // now twiddle the copy
     struct_typet::componentt &component=dest_c.back();
@@ -192,19 +187,19 @@ void cpp_typecheckt::add_base_components(
     if(access==ID_public)
     {
       if(comp_access==ID_private)
-        component.set_access("noaccess");
+        component.set_access(ID_noaccess);
     }
     else if(access == ID_protected)
     {
       if(comp_access==ID_private)
-        component.set_access("noaccess");
+        component.set_access(ID_noaccess);
       else
         component.set_access(ID_private);
     }
     else if(access == ID_private)
     {
-      if(comp_access == "noaccess" || comp_access == ID_private)
-        component.set_access("noaccess");
+      if(comp_access == ID_noaccess || comp_access == ID_private)
+        component.set_access(ID_noaccess);
       else
         component.set_access(ID_private);
     }

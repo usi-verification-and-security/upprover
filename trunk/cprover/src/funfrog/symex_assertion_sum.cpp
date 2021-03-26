@@ -1,8 +1,8 @@
 /*******************************************************************
 
  Module: Symbolic execution and deciding of a given goto-program
- using and generating function summaries. Based on symex_asserion.cpp
-
+ using and generating function summaries. Based on CPROVER goto_symex
+ File initiated by Ondrej Sery
 \*******************************************************************/
 
 #include "symex_assertion_sum.h"
@@ -21,7 +21,9 @@
 #include "assertion_info.h"
 #include "utils/time_utils.h"
 #include "utils/expressions_utils.h"
-
+#include "format_type.h"
+#include "goto-symex/goto_symex_state.h"
+#include "goto-symex/renaming_level.h"
 #include <memory>
 #include <algorithm>
 #include <iostream>
@@ -30,46 +32,48 @@
 #include "utils/ssa_helpers.h"
 #endif // DEBUG_SSA
 
+#ifdef DISABLE_OPTIMIZATIONS
+#include "goto-symex/renaming_level.h"
+#endif
+
 #ifdef DEBUG_PARTITIONING
 #include <util/format_expr.h>
 #endif
 
-/*******************************************************************
+//debug constant propagation
+//#define DEBUG_CONST_PROPAGATION
 
- Function: symex_assertion_sumt::symex_assertion_sumt
-
- Constructor
-
-\*******************************************************************/
-symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _call_info,
-                                           const optionst &_options, path_storaget &_path_storage, const symbol_tablet & outer_symbol_table,
-                                           partitioning_target_equationt & _target,
-                                           message_handlert & _message_handler, const goto_programt & _goto_program,
-                                           unsigned _last_assertion_loc, bool _single_assertion_check,
-                                           bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
-  goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
-  goto_functions(_goto_functions),
-  call_tree_root(_call_info),
-  current_call_tree_node(&_call_info),
-  equation(_target),
-  goto_program(_goto_program),
-  last_assertion_loc(_last_assertion_loc),
-  single_assertion_check(_single_assertion_check),
-  do_guard_expl(_do_guard_expl),
-  max_unwind(_max_unwind)
+symex_assertion_sumt::symex_assertion_sumt(
+	const goto_functionst & _goto_functions,
+	call_tree_nodet & _call_info,
+	const optionst & _options,
+	path_storaget & _path_storage,
+	const symbol_tablet & outer_symbol_table,
+	partitioning_target_equationt & _target,
+	message_handlert & _message_handler,
+	const goto_programt & _goto_program, 
+  unsigned _last_assertion_loc,
+	bool _single_assertion_check,
+  bool _do_guard_expl,
+  unsigned int _max_unwind,
+	bool partial_loops)
+	: goto_symext(_message_handler, outer_symbol_table, _target, _options, _path_storage),
+	  goto_functions(_goto_functions),
+	  call_tree_root(_call_info),
+	  current_call_tree_node(&_call_info),
+	  equation(_target),
+	  goto_program(_goto_program),
+	  last_assertion_loc(_last_assertion_loc),
+	  single_assertion_check(_single_assertion_check),
+	  do_guard_expl(_do_guard_expl),
+	  max_unwind(_max_unwind)
 {
-  //options.set_option("partial-loops", partial_loops); // Why do we need to set it twice?! it is already set in parseoptions!
-  analyze_globals();
+	analyze_globals();
 }
 
 /*******************************************************************
 
  Function: symex_assertion_sumt::~symex_assertion_sumt
-
- Inputs:
-
- Outputs:
-
  Purpose: Delete all allocated partition_ifaces
 
 \*******************************************************************/
@@ -84,13 +88,9 @@ symex_assertion_sumt::~symex_assertion_sumt() {
 
  Function: symex_assertion_sumt::prepare_SSA
 
- Inputs:
-
- Outputs:
-
- Purpose: Generate SSA statements for the program starting from the root 
+ Purpose: Generate SSA statements for the program starting from the root
  stored in goto_program.
-//In normal hifrog (standalone verification) this method is called once, only for top_level nill
+//In hifrog (standalone verification) this method is called once, only for top_level nill
 \*******************************************************************/
 
 bool symex_assertion_sumt::prepare_SSA()
@@ -106,21 +106,20 @@ bool symex_assertion_sumt::prepare_SSA()
     return true;
   }
 
-  // Clear the state
   reset_state();
-  add_globals_to_state(state);
+  add_globals_to_state(*state);
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
-  produce_callsite_symbols(partition_iface, state); // MB: adding producing call site symbols for top level (nil) function to avoid nil symbols in conversion
+  // MB: adding producing call site symbols for top level (nil) function to avoid nil symbols in conversion
+  produce_callsite_symbols(partition_iface, *state);
   defer_function(deferred_functiont(call_tree_root, partition_iface));
   equation.select_partition(partition_iface.partition_id);
-
-  // Old: ??? state.value_set = value_sets;
-  state.source.pc = goto_program.instructions.begin();
+  
+  state->source.pc = goto_program.instructions.begin();
   
   loc = 0;
-  return process_planned(state);
+  return process_planned(*state);
 }
 /*******************************************************************
 
@@ -130,13 +129,11 @@ bool symex_assertion_sumt::prepare_SSA()
  compare to its summary; Prepare an artificial partition for the negated SUMMARY
     F /\ !SUM
 \*******************************************************************/
-
 bool symex_assertion_sumt::prepare_subtree_SSA()
 {
-  
   // Clear the state
   reset_state();
-  add_globals_to_state(state);
+  add_globals_to_state(*state);
   
   // Prepare a partition for the ROOT function and defer
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
@@ -146,27 +143,21 @@ bool symex_assertion_sumt::prepare_subtree_SSA()
   
   // Make all the interface symbols shared between
   // the inverted summary and the function.
-  prepare_fresh_arg_symbols(state, partition_iface);
-  
-  // Prepare a partition for the inverted SUMMARY
-//  fill_inverted_summary(call_tree_root, state, partition_iface);
-  
-  // Old: ??? state.value_set = value_sets;
-  state.source.pc = goto_program.instructions.begin();
+  prepare_fresh_arg_symbols(*state, partition_iface);
+
+  state->source.pc = goto_program.instructions.begin();
   
   // Plan the function for processing
-  dequeue_deferred_function(state); // This does all the necessary things, such as setting loc and selecting partition
+  dequeue_deferred_function(*state); //does key stuff like setting loc and selecting partition
   
-  return process_planned(state);
+  return process_planned(*state);
 }
 /*******************************************************************
-
  Purpose: Generate SSA statements for the refined program starting from 
  the given set of functions.
  NOTE: This function only refines the partitions that were already marked by
  refiner_assertion_sumt::reset_inline_wrt_slicing
 \*******************************************************************/
-
 bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refined_functions)
 {
   // Defer the functions
@@ -184,11 +175,8 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
                     log.status() << "Refining partition: " << partition_iface->partition_id
                     << " associated with " << refined_function->get_function_id().c_str()<< messaget::eom;
                  
-                  // Marks the given partition as invalid. This is used in incremental SSA
+                  // Refine the given partition since invalid. This is used in incremental SSA
                   // generation to replace previously summarized partitions
-                  //TODO
-                  //  equation.invalidate_partition(partition_iface->partition_id);
-                    
                     equation.refine_partition(partition_iface->partition_id);
                 }
                 auto const & partition = equation.get_partitions()[partition_iface->partition_id];
@@ -203,25 +191,18 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
         }
     }
   }
-  
   // Plan the function for processing
-  dequeue_deferred_function(state);
+  dequeue_deferred_function(*state);
   
-  return process_planned(state);
+  return process_planned(*state);
 }
 
 /*******************************************************************\
 
 Function: symex_assertion_sumt::process_planned
 
-  Inputs:
-
- Outputs:
-
  Purpose: Processes current code (pointed to by the state member variable) 
  as well as all the deferred functions
-
- * 
  * UPDATE CPROVER: check changes in: void goto_symext::symex_with_state
 \*******************************************************************/
 
@@ -230,282 +211,282 @@ bool symex_assertion_sumt::process_planned(statet & state)
   // Proceed with symbolic execution
   auto before=timestamp();
 
-  get_goto_functiont get_goto_function = constuct_get_goto_function(goto_functions);
+  get_goto_functiont get_goto_function = construct_get_goto_function(goto_functions);
   while (has_more_steps(state))
   {
     state.has_saved_jump_target = false; // Will crush in goto_symex else
     state.has_saved_next_instruction = false; // Will crush in goto_symex else
+    state.run_validation_checks = false;
     symex_step(get_goto_function, state);
-    //if(should_pause_symex) // KE: not sure if we need this
+    //if(should_pause_symex) // not sure if we need this
     //  return;
   }
   auto after=timestamp();
-  
-  
-  ///////////////////////////////////////////////////////////////////////
-  // Statistics - not related to the algorithm:
+
+  // Statistics
   log.statistics() << "SYMEX TIME: " << time_gap(after,before) << log.eom;
 
 #ifdef DEBUG_SSA
     print_SSA_steps(equation.SSA_steps, ns, std::cout);
 #endif //DEBUG_SSA
 
-  return false;
+  return false; //
 }
 
 /*******************************************************************\
-
 Function: symex_assertion_sumt::symex_step
-
-  Inputs:
-
- Outputs:
-
- Purpose: Perform a single symex step. The implementation is based 
+Purpose: Perform a single symex step. The implementation is based
  on the goto_symex, but it handles function calls differently. 
  Creation of expressions representing the calls is postponed, so that
  the formulas representing the function bodies can be passed to 
- an interpolating solver as separate conjuncts.i
-
+ an interpolating solver as separate conjuncts.
 
 Note: when upgrading Cprover, please also update the case-switch here
-follwoing the changes in symex_main.cpp
+follwoing the changes in symex_main.cpp goto_symext::execute_next_instruction
 
+The main symbolic execution loop code is \ref goto_symext::symex_step. This
+function case-switches over the type of the instruction that we're
+currently executing, and calls various other functions appropriate to
+the instruction type, i.e. goto_symext::symex_function_call() if the
+current instruction is a Function Call, goto_symext::symex_goto() if the
+current instruction is a Goto, etc.
 \*******************************************************************/
 
 void symex_assertion_sumt::symex_step(
   const get_goto_functiont &get_goto_function,
   statet &state)
 {
-#ifdef DEBUG_PARTITIONING    
-  std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
+  const auto loop_id = goto_programt::loop_id(*state.source.pc);
+      //goto_programt::loop_id(state.source.function_id, *state.source.pc);
+#ifdef DEBUG_PARTITIONING
+  std::cout << "\n**********************\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
   if (state.source.pc->type != DEAD)
   {
     std::cout << "Guard: " << format(state.guard.as_expr()) << '\n';
     std::cout << "Code: " << format(state.source.pc->code) << '\n';
-    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count << '\n';
-    std::cout << "Unwind Info."
-              << " unwind in last goto was " << prev_unwind_counter 
+    std::cout << "Unwind: " << state.top().loop_iterations[loop_id].count << '\n';
+    std::cout << "Unwind Info: "
+              << "unwind in last goto was " << prev_unwind_counter
               << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
               << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
   }
 #endif
 
-  const goto_programt::instructiont & instruction = *state.source.pc;
+  const goto_programt::instructiont &instruction = *state.source.pc;
   loc++;
   merge_gotos(state);
-
-//  MB: We do not use depth option
-//////////////////////////////////  CBMC_CODE
-//  // depth exceeded?
-//  unsigned max_depth=atoi(options.get_option("depth").c_str());
-//  if(max_depth!=0 && state.depth>max_depth)
-//      state.guard.add(false_exprt());
-//  state.depth++;
-//////////////////////////////////  end of CMBC_CODE
-
-  // KE: This switch-case is taken from: Function: goto_symext::symex_step
-  switch(instruction.type)
-  {
-  case SKIP:
-    if(!state.guard.is_false())
-      target.location(state.guard.as_expr(), state.source);
-    symex_transition(state);
-    break;
-
-  case END_FUNCTION:
-
-    //decrement_unwinding_counter(); 
-    store_return_value(state, get_current_deferred_function());
-    end_symex(state);
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-    break;
-  
-  case LOCATION:
-    if(!state.guard.is_false())
-      target.location(state.guard.as_expr(), state.source);
-    symex_transition(state);
-    break;
-  
-  case GOTO:
-    if (do_guard_expl)
-    {
-        bool store_expln;
-        std::string str;
-
-        store_expln = state.source.pc->guard.has_operands();
-        if (store_expln) {
-            try { str = from_expr(state.source.pc->guard.op0()); }
-            catch (const std::string &s) {
-                // TODO: MB: investigate why this happens, I encountered this in s3.c
-                // assert(false);
-                str = "";
-            }
-        }
-      
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-        symex_goto(state); // Original code from Cprover follow with break
-
-        if (do_guard_expl &&store_expln && !str.empty())
-        {
-            guard_expln[state.guard.as_expr().get("identifier")] = str;
-        }
-    } else {
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-        symex_goto(state); // Original code from Cprover follow with break
-    }
-        
-    break;
     
-  case ASSUME:
-    if(!state.guard.is_false())
-    {
-      exprt tmp = instruction.guard;
-      clean_expr(tmp, state, false);
-      state.rename(tmp, ns);
-      symex_assume(state, tmp);
-    }
+  // actually do instruction
+  //the "reachable" flag is set false whenever an unwind/depth
+  //limit break OR an ASSUME false happens, so
+  // ASSUME false implied unreachability but had no effect on the guard
+  //--unwind or --depth being exceeded usually meant setting the guard false
+  switch(instruction.type) {
+    case SKIP:
+      if(!state.guard.is_false())
+        target.location(state.guard.as_expr(), state.source);
+      symex_transition(state);
+      break;
+  
+    case END_FUNCTION: //different in Hifrog than CBMC
+      //decrement_unwinding_counter();
+      store_return_value(state, get_current_deferred_function());
+      end_symex(state);
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
+      break;
+  
+    case LOCATION:
+      if (!state.guard.is_false())
+        target.location(state.guard.as_expr(), state.source);
+      symex_transition(state);
+      break;
+  
+    case GOTO:
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
+      symex_goto(state);  //same as cbmc 5.11
+      break;
+//    if (do_guard_expl) //version 10
+//    {
+//        bool store_expln;
+//        std::string str;
+//
+//        store_expln = state.source.pc->guard.has_operands();
+//        if (store_expln) {
+//            try { str = from_expr(state.source.pc->guard.op0()); }
+//            catch (const std::string &s) {
+//                // TODO: MB: investigate why this happens, I encountered this in s3.c
+//                // assert(false);
+//                str = "";
+//            }
+//        }
+//
+//        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+//        symex_goto(state); // Original code from Cprover follow with break
+//
+//        if (do_guard_expl &&store_expln && !str.empty())
+//        {
+//            guard_expln[state.guard.as_expr().get("identifier")] = str;
+//        }
+//    } else {
+//        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+//        symex_goto(state); // Original code from Cprover follow with break
+//    }
+//
+//    break;
 
-    symex_transition(state);
-    break;
 
-  case ASSERT:
-    if(!state.guard.is_false())
-    {
-      if (get_current_deferred_function().call_tree_node.is_assertion_enabled(state.source.pc)) {
-          
-        // Skip asserts that are not currently being checked
-        if (current_assertion->assertion_matches(state.depth, state.source.pc))
+//      if (state.reachable) { //code from cprover 5.12
+//        symex_goto(state);
+//      } else {
+//        symex_unreachable_goto(state);
+//      }
+//      break;
+    
+    case ASSUME: //same as CBMC 5.11
+      if(!state.guard.is_false())
+      {
+          exprt tmp=instruction.guard;
+          clean_expr(tmp, state, false);
+          state.rename(tmp, ns);
+          symex_assume(state, tmp);
+      }
+
+      symex_transition(state);
+      break;
+
+    case ASSERT:
+      if(!state.guard.is_false()) //different in HiFrog vs CBMC 5.11
+      {
+        if (get_current_deferred_function().call_tree_node.is_assertion_enabled(state.source.pc))
         {
-            /* This is the code from ASSERT originally */
-            std::string msg=id2string(state.source.pc->source_location.get_comment());
+          // Skip asserts that are not currently being checked
+          if (current_assertion->assertion_matches(state.depth, state.source.pc))
+          {
+            std::string msg = id2string(state.source.pc->source_location.get_comment());
             if(msg.empty()) {
               msg = "assertion";
             }
-
             exprt tmp(instruction.guard);
             clean_expr(tmp, state, false);
+           
             vcc(tmp, msg, state);
-            /* END: This is the code from ASSERT originally */
-
+          
             // Checks which assert it is, and if we end the loop here
-            #ifdef DEBUG_PARTITIONING
-                bool is_exit = 
-                 ((single_assertion_check  
-                    && (!is_unwind_loop(state))
-                    && (!get_current_deferred_function().call_tree_node.is_in_loop()))
-                  || (loc >= last_assertion_loc && (max_unwind == 1)));
-                
-                std::cout << "Parsing Assert: " <<
-                "\n  file " << state.source.pc->source_location.get_file() <<
-                " line " << state.source.pc->source_location.get_line() <<
-                " function " << state.source.pc->source_location.get_function() << 
-                "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
-                "\n  " << from_expr(ns, "", state.source.pc->guard) <<
-                "\n  " << (is_exit ? "End before in location :" : "Current location ") 
-                       << loc << " (out of " << last_assertion_loc << ")" 
-                       << " is in loop? " << state.source.pc->loop_number // Check when this will become active
-                       << std::endl;
-            #endif 
-                    
-            /* Optimization to remove code that after the current checked assert + remove any other asserts */
-            // KE: change later (when supported) to state.source.pc->loop_number
-            // KE: Use get_current_unwind(state), if greater than 0 it is inside a loop
-            if ((single_assertion_check  
-                    && (!is_unwind_loop(state))
-                    && (!get_current_deferred_function().call_tree_node.is_in_loop()))
-               || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
-            {  
+#ifdef DEBUG_PARTITIONING
+            bool is_exit =
+                ((single_assertion_check
+                  && (!is_unwind_loop(state))
+                  && (!get_current_deferred_function().call_tree_node.is_in_loop()))
+                 || (loc >= last_assertion_loc && (max_unwind == 1)));
+            
+            //if there is no verification condition created, it's simply evaluated to true(you get SAT),
+            // thus you don't see full info of this print!
+            std::cout << "Parsing Assert: " <<
+                      "\n  file " << state.source.pc->source_location.get_file() <<
+                      " line " << state.source.pc->source_location.get_line() <<
+                      " function " << state.source.pc->source_location.get_function() <<
+                      "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
+                      "\n  " << from_expr(ns, "", state.source.pc->guard) <<
+                      "\n  " << (is_exit ? "End before in location :" : "Current location ")
+                      << loc << " (out of " << last_assertion_loc << ")"
+                      << " is in loop? " << state.source.pc->loop_number // Check when this will become active
+                      << std::endl;
+#endif
+            // Optimization to remove code that after the current checked assert + remove any other asserts
+            if ((single_assertion_check
+                 && (!is_unwind_loop(state))
+                 && (!get_current_deferred_function().call_tree_node.is_in_loop()))
+                || (loc >= last_assertion_loc && (max_unwind == 1)))
+            {
               end_symex(state);
               return;
             }
+          }
         }
       }
-    }
-
-    symex_transition(state);
-    break;
+      symex_transition(state);
+      break;
     
-  case RETURN:
-    if(!state.guard.is_false())
-    { 
-      return_assignment(state);
-    }
+    case RETURN:
+      //in CBMC this case (function return values) should have been removed by return-value removal,
+      //so this part of the code has been marked unreachable in CBMC5.12
+      //But Upprover/HiFrog needs the return assignment for the summaries.
+      // so return_assignment is now local for us.
+      if(!state.guard.is_false())
+      {
+        return_assignment(state);
+      }
+
+      symex_transition(state);
+      break;
     
-    symex_transition(state);
-    break;
-
-  case ASSIGN:      
-    if(!state.guard.is_false()) 
-      symex_assign(state, to_code_assign(instruction.code));
-          
-    symex_transition(state);
-    break;
-
-  case FUNCTION_CALL:
-    if(!state.guard.is_false())
-    {  
-      code_function_callt deref_code=
-        to_code_function_call(instruction.code);
-      // Process the function call according to the call_summary
-      handle_function_call(state, deref_code);
-    }  
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-    symex_transition(state);
-    break;
-
-  case OTHER:
-    if(!state.guard.is_false())
-      symex_other(state);
-
-    symex_transition(state);
-    break;
-
-  case DECL:
-    if(!state.guard.is_false())
-      symex_decl(state);
-
-    symex_transition(state);
-    break;
-
-  case DEAD:
-    // ignore for now
-    symex_transition(state);
-    break;
-
-  case START_THREAD:
-    throw "START_THREAD not yet implemented";
+    case ASSIGN: //original
+      if(!state.guard.is_false())
+          symex_assign(state, to_code_assign(instruction.code));
+      symex_transition(state);
+      break;
     
-  case END_THREAD:
-    {
+    case FUNCTION_CALL: //different in Hifrog vs CBMC(commented)
+      if(!state.guard.is_false())
+      {
+//            symex_function_call(
+//                    get_goto_function, state, instruction.get_function_call());
+        // Process the function call according to the call_summary
+        code_function_callt deref_code=
+            to_code_function_call(instruction.code);
+        handle_function_call(state, deref_code);
+      }
+      //else
+      prev_unwind_counter = state.top().loop_iterations[loop_id].count;
+      symex_transition(state);
+      break;
+    
+    case OTHER:
+      if(!state.guard.is_false())
+          symex_other(state);
+      symex_transition(state);
+      break;
+    
+    case DECL:
+      if(!state.guard.is_false())
+          symex_decl(state);
+      symex_transition(state);
+      break;
+    
+    case DEAD:
+      // ignore for now
+      symex_transition(state);
+      break;
+    
+    case START_THREAD:
+      throw "START_THREAD not yet implemented";
+    
+    case END_THREAD:
+      {
       // behaves like assume(0);
       state.guard.add(false_exprt());
       exprt tmp=state.guard.as_expr();
       target.assumption(state.guard.as_expr(), tmp, state.source);
-    }
-    symex_transition(state);
-    break;
+      }
+      symex_transition(state);
+      break;
+    
+    case ATOMIC_BEGIN:
+    
+    case ATOMIC_END:
+      // these don't have path semantics
+      symex_transition(state);
+      break;
   
-  case ATOMIC_BEGIN:
-  case ATOMIC_END:
-    // these don't have path semantics
-    symex_transition(state);
-    break;
-  
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
 /*******************************************************************
 
  Function: symex_assertion_sumt::defer_function
-
- Inputs:
-
- Outputs:
-
  Purpose: Add function to the wait queue to be processed by symex later and to
  create a separate partition for interpolation.
 
@@ -521,13 +502,7 @@ void symex_assertion_sumt::defer_function(
 }
 
 /*******************************************************************
-
  Function: symex_assertion_sumt::dequeue_deferred_function
-
- Inputs:
-
- Outputs:
-
  Purpose: Take a deferred function from the queue and prepare it for 
  symex processing. This would also mark a corresponding partition in
  the target equation.
@@ -541,25 +516,30 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     // Prepare the equation for further processing
     equation.prepare_partitions();
    
-/*#   ifdef DEBUG_PARTITIONING    
-    std::cerr << std::endl << "Current names L2 (" << 
-            state.level2.current_names.size() << "):" << std::endl;
-    for (statet::level2t::current_namest::const_iterator it =
-            state.level2.current_names.begin();
-            it != state.level2.current_names.end();
-            ++it) {
-      std::cerr << it->first.c_str() << " : " << it->second.count << std::endl;
-    }
-    std::cerr << std::endl << "Current names L1 (" << 
-            state.top().level1.current_names.size() << "):" << std::endl;
-    for (statet::level1t::current_namest::const_iterator it =
-            state.top().level1.current_names.begin();
-            it != state.top().level1.current_names.end();
-            ++it) {
-      std::cerr << it->first.c_str() << " : " << it->second << std::endl;
-    }
-    std::cerr << std::endl;
-#   endif*/
+#   ifdef DEBUG_PARTITIONING
+//    std::cerr << std::endl << "Current names L2 (" <<
+//            state.level2.current_names.size() << "):" << std::endl;
+//    for (statet::level2t::current_namest::const_iterator it =
+//            state.level2.current_names.begin();
+//            it != state.level2.current_names.end(); ++it) {
+//      std::cerr << it->first.c_str() << " : " << it->second.count << std::endl;
+//    } //iterate
+//    symex_renaming_levelt::viewt view;
+//    state.level2.current_names.get_view(view);
+//    for(const auto &pair : view)
+//    {
+//      std::cerr << pair.first.c_str() << " : " << pair.second.second << std::endl;
+//    }
+//    std::cerr << std::endl << "Current names L1 (" <<
+//            state.top().level1.current_names.size() << "):" << std::endl;
+//    for (statet::level1t::current_namest::const_iterator it =
+//            state.top().level1.current_names.begin();
+//            it != state.top().level1.current_names.end();
+//            ++it) {
+//      std::cerr << it->first.c_str() << " : " << it->second << std::endl;
+//    }
+//    std::cerr <<"\n**********************"<< std::endl;
+#   endif
     return;
   }
 
@@ -570,15 +550,16 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const irep_idt& function_id = current_call_tree_node->get_function_id();
   loc = current_call_tree_node->get_call_location();
 
-  log.statistics () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << log.eom;
+  log.statistics() << (std::string("Processing a deferred function: ") + function_id.c_str()) << log.eom;
 
-  // Select symex target equation to produce formulas into the corresponding
-  // partition
+  // Select symex target equation to produce formulas into the corresponding partition
   equation.select_partition(deferred_function.partition_iface.partition_id);
 
   // Prepare (and empty) the current state
-  state.guard.make_true();
-
+  //state.guard.add(true_exprt()); //SA// behaves like assume(1); is that what we need?
+  state.guard = true_exprt();
+  //state.reachable = true; 5.12
+    
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
   const goto_functionst::goto_functiont& function = get_function(function_id);
@@ -605,9 +586,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
           partition_iface.argument_symbols.begin();
           it1 != partition_iface.argument_symbols.end();
           ++it1) {
-    // KE: Original and first try are commented out
-    //symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
-    //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
+
     ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
     //FIXME: unify rename/SSA fabrication
     
@@ -615,27 +594,23 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     assert(lhs.id()==ID_symbol &&
        lhs.get_bool(ID_C_SSA_symbol) &&
        !lhs.has_operands());
-      
+
     guardt guard;
-    // MB without multithreading, no need to record events
+    // without multithreading, no need to record events
     //state.record_events=false;
     assert(state.record_events == false);
-    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::assignment_typet::HIDDEN);
+    assignment_typet assignment_type;
+    assignment_type = symex_targett::assignment_typet::HIDDEN;
+    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, assignment_type);
   }
 }
 
 /*******************************************************************
-
  Function: symex_assertion_sumt::prepare_fresh_arg_symbols
-
- Inputs:
-
- Outputs:
 
  Purpose: Creates fresh symbols for all the arguments, accessed globals 
  and return value. This is used in UpProver to unify symbols
  of the inverted summary and the function subtree.
-
 \*******************************************************************/
 
 void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
@@ -664,6 +639,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
     return_assignment_and_mark(goto_function.type, state, nullptr,
             partition_iface, true);
   } else {
+    //partition_iface.retval_symbol = symbol_exprt(goto_function.type);
     partition_iface.retval_symbol = symbol_exprt();
   }
   // Add also new assignments to all modified global variables
@@ -671,17 +647,11 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
 }
 
 /*******************************************************************
-
  Function: symex_assertion_sumt::assign_function_arguments
-
- Inputs:
-
- Outputs:
 
  Purpose: Assigns function arguments to new symbols, also makes
  assignment of the new symbol of return value to the lhs of
  the call site (if any)
-
 \*******************************************************************/
 void symex_assertion_sumt::assign_function_arguments(
         statet & state,
@@ -695,8 +665,9 @@ void symex_assertion_sumt::assign_function_arguments(
   const goto_functionst::goto_functiont &goto_function = get_function(identifier);
 
   // Add parameters assignment
-  bool old_cp = constant_propagation;
-  constant_propagation = false;
+  bool old_cp = symex_config.constant_propagation;
+  //stop constant propagation
+  symex_config.constant_propagation = false;
   // parameter_assignments is CProver's goto_symex method
   parameter_assignments(identifier, goto_function, state, function_call.arguments());
 
@@ -708,10 +679,15 @@ void symex_assertion_sumt::assign_function_arguments(
   mark_accessed_global_symbols(identifier, partition_iface);
   
   if (goto_function.type.return_type().id() != ID_empty) {
-    // Needs: DISABLE_OPTIMIZATIONS to work
-    //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
-    //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
-    //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
+
+#ifdef DEBUG_SSA
+    std::cout << "\n**********************\n** Assign_function_arguments \n"
+    //<< (function_call.lhs().is_nil())
+    << std::endl;
+    expr_pretty_print(std::cout << "**check: ", function_call); std::cout << std::endl;
+    //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") <<
+    //" and code: " << function_call.pretty() << std::endl;
+#endif
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
@@ -719,14 +695,27 @@ void symex_assertion_sumt::assign_function_arguments(
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
             partition_iface, skip_assignment);
   } else {
+    //partition_iface.retval_symbol = symbol_exprt(goto_function.type);
     partition_iface.retval_symbol = symbol_exprt();
   }
   // Add also new assignments to all modified global variables
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
   
-  constant_propagation = old_cp;
-}
+  symex_config.constant_propagation = old_cp;
+  
+#ifdef DEBUG_CONST_PROPAGATION
+/// Print the constant propagation map in a human-friendly format.
+/// This is primarily for use from the debugger;
+      std::cout << "**********************\nConstant Propagation DEBUG\n";
+      sharing_mapt<irep_idt, exprt>::viewt view;
+      state.propagation.get_view(view);
 
+      for(const auto &name_value : view)
+      {
+        std::cout << name_value.first << " <- " << format(name_value.second) << "\n";
+      }
+#endif
+}
 /*******************************************************************
 
  Function: symex_assertion_sumt::mark_argument_symbols
@@ -740,14 +729,15 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
 {
   for(const auto & parameter : function_type.parameters())
   {
-    const auto& identifier = parameter.get_identifier();
-    //std::cout << "identifier: " << identifier.c_str() << std::endl;
-    const auto & symbol = get_normal_symbol(identifier);
+    const auto& parameter_id = parameter.get_identifier();
+    //std::cout << "parameter_id: " << identifier.c_str() << "\n"; //e.g: func::a
+
+    const auto & symbol = get_normal_symbol(parameter_id);
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking argument symbol: ", current_version, "\n");
+    expr_pretty_print(std::cout << "Marking argument symbol of function: ", current_version, "\n");//e.g: |myfunc::a!0#1|
     std::cout << '\n';
 #   endif
     assert(is_L2_SSA_symbol(current_version));
@@ -833,12 +823,13 @@ void symex_assertion_sumt::return_assignment_and_mark(
   statet & state,
   const exprt * lhs,
   partition_ifacet & partition_iface,
-  bool skip_assignment) {
+  bool skip_assignment) 
+  {
   assert(function_type.return_type().is_not_nil());
 
 //  const typet & type = function_type.return_type();
   const irep_idt & function_id = partition_iface.function_id;
-  const irep_idt retval_symbol_id { as_string(function_id) + "::" + HifrogStringConstants::FUN_RETURN };
+  const irep_idt retval_symbol_id { as_string(function_id) + "::" + HifrogStringConstants::FUN_RETURN };//e.g:"main::#return_value"
 
   // return_value - create new symbol with versions to support unwinding
   if(!knows_artificial_symbol(retval_symbol_id)){
@@ -849,21 +840,24 @@ void symex_assertion_sumt::return_assignment_and_mark(
   // Connect the return value to the variable in the calling site
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
-    // Needs DISABLE_OPTIMIZATIONS to work
-    //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
-    //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
+    
+#ifdef DISABLE_OPTIMIZATIONS
+    expr_pretty_print(std::cout << "\n**return_assignment_and_mark\n** Lhs: ", assignment.lhs()); std::cout << std::endl;//e.g: lhs: |return'|, |main::1::y|
+    expr_pretty_print(std::cout << "** Rhs: ", assignment.rhs()); std::cout << std::endl;//rhs: |main::#return_value!0#1|
+#endif
 
     assert(base_type_eq(assignment.lhs().type(),
                         assignment.rhs().type(), ns));
 
-    bool old_cp = constant_propagation;
-    constant_propagation = false;
+    bool old_cp = symex_config.constant_propagation;
+    //stop constant propagation
+    symex_config.constant_propagation = false;
+    
     symex_assign(state, assignment);
-    constant_propagation = old_cp;
+    symex_config.constant_propagation = old_cp;
   }
 # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
-//      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol); //e.g: |myfunc::#return_value!0#1|
   std::cout << '\n';
 # endif
   partition_iface.retval_symbol = retval_symbol;
@@ -874,23 +868,20 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
  Function: symex_assertion_sumt::store_modified_globals
 
- Inputs:
-
- Outputs:
-
  Purpose: Assigns modified globals to the corresponding temporary SSA 
  symbols.
-
+Note: we do not need to stop constant propagation here
  FIXME: unify rename/SSA fabrication
 \*******************************************************************/
 void symex_assertion_sumt::store_modified_globals(
         statet &state,
         const deferred_functiont &deferred_function)
 {
-  // MB: constant propagation is used only in state.assignment,
-  // but we are deliberately working around it, because we already have proper L2 lhs and do not want to modify it
-//  bool old_cp = constant_propagation;
-//  constant_propagation = false;
+// constant propagation is used only in state.assignment,
+//  we already have proper L2 lhs and do not want to modify it
+//  commenting out code that has no effect
+//  bool old_cp = symex_config.constant_propagation;
+//  symex_config.constant_propagation = false;
   const partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   for (const auto & out_symbol : partition_iface.out_arg_symbols) {
@@ -901,19 +892,14 @@ void symex_assertion_sumt::store_modified_globals(
     // Emit the assignment
     raw_assignment(state, iface_symbol_version, rhs, ns);
   }
-//  constant_propagation = old_cp;
+//  symex_config.constant_propagation = old_cp;
 }
 /*******************************************************************
 
  Function: symex_assertion_sumt::store_return_value
 
- Inputs:
-
- Outputs:
-
  Purpose: Assigns return value to the corresponding temporary SSA
  symbol
-
 \*******************************************************************/
 void symex_assertion_sumt::store_return_value(
         statet &state,
@@ -929,12 +915,14 @@ void symex_assertion_sumt::store_return_value(
   
   assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
 
-  // MB: constant propagation is used only in state.assignment,
-  // but we are deliberately working around it, because we already have proper L2 lhs and do not want to modify it
-//  bool old_cp = constant_propagation;
-//  constant_propagation = false;
+// Note: we do not need to stop constant propagation here
+// constant propagation is used only in state.assignment,
+// we already have proper L2 LHS and do not want to modify it
+//  commenting out code that has no effect
+// bool old_cp = constant_propagation;
+// constant_propagation = false;
 
-  // Emit the assignment
+  // Do the assignment
   raw_assignment(state, lhs, rhs, ns);
 //  constant_propagation = old_cp;
 }
@@ -942,46 +930,44 @@ void symex_assertion_sumt::store_return_value(
 
  Function: symex_assertion_sumt::clear_locals_versions
 
- Inputs:
-
- Outputs:
-
  Purpose: Clear local symbols from the l2 cache.
 
 \*******************************************************************/
 void symex_assertion_sumt::clear_locals_versions(statet &state)
 {
   if (current_call_tree_node->get_function_id() != ID_nil) {
-#   ifdef DEBUG_PARTITIONING
-    std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
-#   endif
+
+    const std::set<irep_idt>& local_identifiers = state.top().local_objects;
     // Clear locals from l2 cache
-    for (const auto & local_id : state.top().local_objects) {
+    //iterate over std::set<irep_idt>::const_iterator
+    for (const irep_idt & local_id : local_identifiers) {
+#ifdef DEBUG_PARTITIONING
+//      std::cout << "local_identifiers size: " << local_identifiers.size() << std::endl;
+//      std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
+//      std::cerr << "Removing local:" << local_id.c_str() << " (" <<
+//                        state.top().level1.get_original_name(local_id) << "): " <<
+//                state.level2.current_names.find(local_id).has_value() << std::endl;
+#endif
+        // FIXME: MB: test if this behaviour is correct
 
-#     ifdef DEBUG_PARTITIONING
-/*      std::cerr << "Removing local:" << *it << " (" << 
-              state.top().level1.get_original_name(local_id) << "): " <<
-              (state.level2.current_names.find(local_id) !=
-              state.level2.current_names.end()) << std::endl;
-*/
-#     endif
+        auto it2 = state.level2.current_names.find(local_id);
+        if(it2 != state.level2.current_names.end())
+            state.level2.current_names[local_id].first.remove_level_2();
 
-      statet::level2t::current_namest::const_iterator it2 =
-          state.level2.current_names.find(local_id);
-      // FIXME: MB: test if this behaviour is correct
-      if(it2 != state.level2.current_names.end())
-        state.level2.current_names[local_id].first.remove_level_2();
+        //commented 5.12
+//      auto it2 = state.level2.current_names.find(local_id); //returns null if not found
+//      if(it2) {
+//        // MB: hack to do what we were doing before, but not sure why we do it
+//        symex_level2t & mutable_level = const_cast<symex_level2t&>(state.level2);
+//        ssa_exprt ssa_copy = it2->get().first;
+//        mutable_level.current_names.update(local_id, [](std::pair<ssa_exprt, size_t>& val) { val.first.remove_level_2(); });
+//      }
     }
   }
 }
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::handle_function_call
-
- Inputs:
-
- Outputs:
 
  Purpose: Processes a function call based on the corresponding
  summary type
@@ -1020,15 +1006,15 @@ void symex_assertion_sumt::handle_function_call(
    
     if (function_call.lhs().is_not_nil())
     {
-      exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
-      rhs.set(ID_identifier, "symex::" + std::to_string(nondet_count++));
-      
-      // KE: I think that's how it is done now - from expr.h
-      //rhs.source_location() = function_call.source_location();
-      rhs.add_source_location() = function_call.source_location(); 
-      
-      code_assignt code(function_call.lhs(), rhs);
-      symex_assign(state, code);      
+       //exprt rhs = path_storage.build_symex_nondet(function_call.lhs().type(), function_call.source_location()); //5.12
+        exprt rhs = build_symex_nondet(function_call.lhs().type());
+        rhs.add_source_location() = function_call.source_location();
+        code_assignt code(function_call.lhs(), rhs);
+      symex_assign(state, code);
+#ifdef DISABLE_OPTIMIZATIONS
+      expr_pretty_print(std::cout << "\n**handle_function\n** Lhs: ", code.lhs()); std::cout << std::endl;
+      expr_pretty_print(std::cout << "** Rhs: ", code.rhs()); std::cout << std::endl;
+#endif
     }
     return;
   }
@@ -1036,8 +1022,8 @@ void symex_assertion_sumt::handle_function_call(
     // created a new deferred_function for this call
     deferred_functiont deferred_function{call_tree_node,
                                          new_partition_iface(call_tree_node,
-                                                             get_current_deferred_function().partition_iface.partition_id,
-                                                             equation.get_SSA_steps_count())};
+                                            get_current_deferred_function().partition_iface.partition_id,
+                                    equation.get_SSA_steps_count())};
 
   // KE: to support loops, we not only checking the location,
   //     but also if we are in loop. E.g., while(1) { assert(x>5); func2updateX(x); }
@@ -1065,22 +1051,11 @@ void symex_assertion_sumt::handle_function_call(
       break;
     }
   }
-
-  //      if(call_tree_node.is_unwind_exceeded())
-  //      {
-  //        if(options.get_bool_option("unwinding-assertions"))
-  //          claim(false_exprt(), "recursion unwinding assertion", state);
-  //      }
 }
 
 /*******************************************************************
 
  Function: symex_assertion_sumt::summarize_function_call
-
- Inputs:
-
- Outputs:
-
  Purpose: Summarizes the given function call
 
 \*******************************************************************/
@@ -1100,9 +1075,11 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-  //log.statistics() << " for partition-ID: " << partition_iface.partition_id << " sumID "<<
-  // partition_iface.call_tree_node.get_node_sumID() << log.eom;
   
+#ifdef DPRINT_DEBUG_UPPROVER
+  log.statistics() << " for partition-ID: " << partition_iface.partition_id << " sumID "<<
+  partition_iface.call_tree_node.get_node_sumID() << log.eom;
+#endif
   //SA: use node in fill_summary_partition not function-name
   call_tree_nodet& node = partition_iface.call_tree_node;
   equation.fill_summary_partition(partition_id, node);
@@ -1111,10 +1088,6 @@ void symex_assertion_sumt::summarize_function_call(
 /*******************************************************************
 
  Function: symex_assertion_sumt::inline_function_call
-
- Inputs:
-
- Outputs:
 
  Purpose: Inlines the given function call
 
@@ -1125,7 +1098,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  log.statistics() << (std::string("*** INLINING function: ") + function_id.c_str()) << log.eom;
+  log.statistics() << (std::string("\n*** INLINING function: ") + function_id.c_str()) << log.eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1137,10 +1110,6 @@ void symex_assertion_sumt::inline_function_call(
 /*******************************************************************
 
  Function: symex_assertion_sumt::havoc_function_call
-
- Inputs:
-
- Outputs:
 
  Purpose: Abstract from the given function call (nondeterministic assignment
  to all the possibly modified variables)
@@ -1168,10 +1137,6 @@ void symex_assertion_sumt::havoc_function_call(
 
  Function: symex_assertion_sumt::produce_callsite_symbols
 
- Inputs:
-
- Outputs:
-
  Purpose: Creates new call site (start & end) symbols for the given
  deferred function
 
@@ -1183,10 +1148,11 @@ void symex_assertion_sumt::produce_callsite_symbols(
   irep_idt callstart_id = HifrogStringConstants::CALLSTART_SYMBOL;
   irep_idt callend_id = HifrogStringConstants::CALLEND_SYMBOL;
 
-  // create if not created
+  // create if not created identifier: hifrog::fun_start
   if(!knows_artificial_symbol(callstart_id)){
     create_new_artificial_symbol(callstart_id, typet(ID_bool), true);
   }
+  // create if not created identifier: hifrog::fun_end
   if(!knows_artificial_symbol(callend_id)){
     create_new_artificial_symbol(callend_id, typet(ID_bool), true);
   }
@@ -1196,7 +1162,7 @@ void symex_assertion_sumt::produce_callsite_symbols(
   
   if (partition_iface.assertion_in_subtree) {
     irep_idt error_id = HifrogStringConstants::ERROR_SYMBOL;
-
+    //create if not created identifier: hifrog::?err
     if(!knows_artificial_symbol(error_id)){
       create_new_artificial_symbol(error_id, typet(ID_bool), true);
     }
@@ -1208,10 +1174,6 @@ void symex_assertion_sumt::produce_callsite_symbols(
 
  Function: symex_assertion_sumt::produce_callsite_symbols
 
- Inputs:
-
- Outputs:
-
  Purpose: Inserts assumption that a given call ended (i.e., an assumption of
  the callend symbol)
 
@@ -1219,175 +1181,113 @@ void symex_assertion_sumt::produce_callsite_symbols(
 void symex_assertion_sumt::produce_callend_assumption(
         const partition_ifacet& partition_iface, statet& state)
 {
-  exprt tmp(partition_iface.callend_symbol);
-  state.guard.guard_expr(tmp);
-  target.assumption(state.guard.as_expr(), tmp, state.source);
+//    exprt tmp = state.guard.guard_expr(partition_iface.callend_symbol);
+//  target.assumption(state.guard.as_expr(), tmp, state.source);
+    exprt tmp(partition_iface.callend_symbol);
+    state.guard.guard_expr(tmp);
+    target.assumption(state.guard.as_expr(), tmp, state.source);
 }
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::raw_assignment
-
- Inputs:
-
- Outputs:
 
  Purpose: Makes an assignment without increasing the version of the
  lhs symbol (make sure that lhs symbol is not assigned elsewhere)
  
 \*******************************************************************/
-//void symex_assertion_sumt::raw_assignment(
-//        statet &state,
-//        exprt &lhs,
-//        const exprt &rhs,
-//        const namespacet &ns)
-//        //bool record_value) = false always!
-//{
-//  exprt lhs_orig(lhs); // to modify only here
-//
-//  symbol_exprt rhs_symbol = to_symbol_expr(rhs);
-//  rhs_symbol.set(ID_identifier, get_current_l2_name(state, rhs_symbol.get_identifier()));
-//
-//  assert(lhs_orig.id()==ID_symbol);
-//
-//  // the type might need renaming
-//  ssa_exprt ssa_lhs = ssa_exprt(lhs); // KE: If cause a bug, change lhs_identifier to be without the #1,#2,#3 etc.
-//  const irep_idt &lhs_identifier = ssa_lhs.get_identifier();
-//
-//  state.rename(lhs.type(), lhs_identifier, ns);
-//  ssa_lhs.update_type();
-//
-//  // GF: not sure, just commented this line
-//  // KE: it seems that the field of original names isn't in use any more in L2, but is in the state class
-//  // const irep_idt &identifier = lhs.get(ID_identifier);
-//  // irep_idt l1_identifier=state.level2.get_original_name(identifier);
-//  state.get_original_name(lhs_orig);
-//  irep_idt l1_identifier = lhs_orig.get(ID_identifier);
-//
-//  state.propagation.remove(l1_identifier); // pure name
-//  // KE: old code, not sure about it!
-//
-//  // update value sets
-//  exprt l1_rhs(rhs_symbol);
-//  state.get_l1_name(l1_rhs);
-//
-//  ssa_exprt l1_lhs(lhs);
-//  state.get_l1_name(l1_lhs);
-//
-//  state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
-//
-//  guardt empty_guard;
-//  target.assignment(
-//    empty_guard.as_expr(),
-//    ssa_lhs, //to_symbol_expr(lhs))
-//    //to_symbol_expr(ce2),
-//    lhs, l1_lhs,
-//    rhs_symbol,
-//    state.source,
-//    symex_targett::assignment_typet::STATE);
-//}
-
 void symex_assertion_sumt::raw_assignment(
-        statet &state,
-        const ssa_exprt &lhs,
-        const symbol_exprt &rhs,
-        const namespacet &ns)
+    statet &state,
+    const ssa_exprt &lhs,
+    const symbol_exprt &rhs,
+    const namespacet &ns)
 {
-
   // inspired by goto_symext::symex_assign_symbol, but we do not want to increment counter on LHS
   // so we do not want the full call to state.assignment
   // also there is no guard here (MB: TODO: what if the function call is in if block?
-
+  
   // LHS should already be L2 ssa
   assert(!lhs.get_level_2().empty());
-
+  
   exprt ssa_rhs=rhs;
   state.rename(ssa_rhs, ns);
   do_simplify(ssa_rhs);
-
+  
   // the following block is what we want from state.assign
   // update value sets
   value_sett::expr_sett rhs_value_set;
   exprt l1_rhs(rhs);
   state.get_l1_name(l1_rhs);
-
+  
   ssa_exprt l1_lhs(lhs);
   state.get_l1_name(l1_lhs);
-
+  
   state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
-
-
   // do the assignment
-
   target.assignment(
-    guardt().as_expr(),
-    lhs,
-    lhs, l1_lhs,
-    ssa_rhs,
-    state.source,
-    symex_targett::assignment_typet::STATE);
+      guardt().as_expr(),
+      lhs,
+      lhs, l1_lhs,
+      ssa_rhs,
+      state.source,
+      symex_targett::assignment_typet::STATE);
 }
 
 /*******************************************************************\
 
 Function: symex_assertion_sumt::phi_function
 
-  Inputs:
-
- Outputs:
-
  Purpose: Modification of the goto_symext version. In contrast, we
  do not generate Phi functions for dead identifiers.
-
- Note: to update check goto-symex::phi_function
+ SA: don't use cprover default phi-function! causes issue in upprover-houdini
+ see 008.493977f.43_1a.cil_safe.i, 009.64f9477.43_1a.cil_safe.i.
 \*******************************************************************/
 void symex_assertion_sumt::phi_function(
-  const statet::goto_statet &goto_state,
-  statet &dest_state)
+    const statet::goto_statet &goto_state,
+    statet &dest_state)
 {
   // go over all variables to see what changed
   std::unordered_set<ssa_exprt, irep_hash> variables;
-
+  
   goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
-
+  
   guardt diff_guard;
-
+  
   if(!variables.empty())
   {
     diff_guard=goto_state.guard;
-
+    
     // this gets the diff between the guards
     diff_guard-=dest_state.guard;
   }
-
+  
   for(const auto & variable : variables)
   {
     const irep_idt l1_identifier = variable.get_identifier();
     const irep_idt &obj_identifier = variable.get_object_name();
-
+    
     if(obj_identifier==guard_identifier)
       continue; // just a guard, don't bother
-
+    
     if(goto_state.level2_current_count(l1_identifier)==
        dest_state.level2.current_count(l1_identifier))
       continue; // not at all changed
-
+    
     if (is_dead_identifier(obj_identifier))
       continue;
-
+    
     // changed!
-
+    
     // shared variables are renamed on every access anyway, we don't need to
     // merge anything
     const symbolt &symbol=ns.lookup(obj_identifier);
-
+    
     // shared?
     if(dest_state.atomic_section_id==0 &&
        dest_state.threads.size()>=2 &&
        (symbol.is_shared()))
       continue; // no phi nodes for shared stuff
-
+    
     // don't merge (thread-)locals across different threads, which
     // may have been introduced by symex_start_thread (and will
     // only later be removed from level2.current_names by pop_frame
@@ -1395,34 +1295,34 @@ void symex_assertion_sumt::phi_function(
     if(!variable.get_level_0().empty() &&
        variable.get_level_0()!=std::to_string(dest_state.source.thread_nr))
       continue;
-
+    
     exprt goto_state_rhs = variable;
     exprt dest_state_rhs = variable;
-
+    
     {
-      auto p_it= goto_state.propagation.values.find(l1_identifier);
-
-      if(p_it!=goto_state.propagation.values.end())
+      auto p_it= goto_state.propagation.find(l1_identifier);
+      
+      if(p_it!=goto_state.propagation.end())
         goto_state_rhs=p_it->second;
       else
         to_ssa_expr(goto_state_rhs).set_level_2(
-          goto_state.level2_current_count(l1_identifier));
+            goto_state.level2_current_count(l1_identifier));
     }
-
+    
     {
-      goto_symex_statet::propagationt::valuest::const_iterator p_it=
-        dest_state.propagation.values.find(l1_identifier);
-
-      if(p_it!=dest_state.propagation.values.end())
+      auto p_it=
+          dest_state.propagation.find(l1_identifier);
+      
+      if(p_it!=dest_state.propagation.end())
         dest_state_rhs=p_it->second;
       else
         to_ssa_expr(dest_state_rhs).set_level_2(
-          dest_state.level2.current_count(l1_identifier));
-        //dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
+            dest_state.level2.current_count(l1_identifier));
+      //dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
     }
-
+    
     exprt rhs;
-
+    
     if(dest_state.guard.is_false())
       rhs=goto_state_rhs;
     else if(goto_state.guard.is_false())
@@ -1432,65 +1332,57 @@ void symex_assertion_sumt::phi_function(
       rhs=if_exprt(diff_guard.as_expr(), goto_state_rhs, dest_state_rhs);
       do_simplify(rhs);
     }
-
+    
     ssa_exprt new_lhs = variable;
     const bool record_events=dest_state.record_events;
     dest_state.record_events=false;
     dest_state.assignment(new_lhs, rhs, ns, true, true); // ++counter l2
     dest_state.record_events=record_events;
-
+    
     target.assignment(
-      true_exprt(),
-      new_lhs, new_lhs, new_lhs.get_original_expr(),
-      rhs,
-      dest_state.source,
-      symex_targett::assignment_typet::PHI);
+        true_exprt(),
+        new_lhs, new_lhs, new_lhs.get_original_expr(),
+        rhs,
+        dest_state.source,
+        symex_targett::assignment_typet::PHI);
   }
 }
-
 /*******************************************************************\
-
-Function: symex_assertion_sumt::claim
-
-  Inputs:
-
- Outputs:
-
- Purpose: vcc and claim is the same (one is in the old version
- and one is in the new version)
-
+ 
+ Purpose: symex of verification condition (claim)
+ 
 \*******************************************************************/
-
 void symex_assertion_sumt::vcc(
-  const exprt &vcc_expr,
+  const exprt &condition,
   const std::string &msg,
   statet &state)
 {
-  total_vccs++;
-
-  exprt expr=vcc_expr;
-  
+  state.total_vccs++;
+  exprt expr = condition;
   state.rename(expr, ns);
-
   if(expr.is_true())
     return;
 
   state.guard.guard_expr(expr);
 
-  remaining_vccs++;
+  state.remaining_vccs++;
   target.assertion(state.guard.as_expr(), expr, msg, state.source);
+
+// get the current L2 version of the L1 symbol
+//  exprt expr_l2 = state.rename<L2>(condition, ns).get();
+//
+//  if(expr_l2.is_true())
+//    return;
+//
+//  const exprt guarded_condition = state.guard.guard_expr(expr_l2);
+//  state.remaining_vccs++;
+//  target.assertion(state.guard.as_expr(), guarded_condition, msg, state.source);
 }
 
 /*******************************************************************\
-
 Function: symex_assertion_sumt::end_symex
 
-  Inputs:
-
- Outputs:
-
  Purpose:
-
 \*******************************************************************/
 void symex_assertion_sumt::end_symex(statet &state)
 {
@@ -1502,53 +1394,56 @@ void symex_assertion_sumt::end_symex(statet &state)
   dequeue_deferred_function(state);
 }
 
-/*
+/*******************************************************************\
  Check if in loop or recursion.
- * Fit to the version of Cprover where the unwind counter
- * goes from 0 to (unwind -1). If this changes, then change the
- * method accordingly.
- */
+   Fit to the version of Cprover where the unwind counter
+   goes from 0 to (unwind -1). If this changes, then change the
+   method accordingly.
+\*******************************************************************/
 bool symex_assertion_sumt::is_unwind_loop(statet &state)
 {
-    statet::framet &frame=state.top();
+  statet::framet &frame=state.top();
+  const auto loop_id = goto_programt::loop_id(*state.source.pc);
+    //goto_programt::loop_id(state.source.function_id, *state.source.pc);
 
-    unsigned int unwind_counter = // KE: for case 3. Not sure, can be the other option
-            state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-    if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].count > 0)
-    {
-        // If we are opening the loop iterations, we are in a loop
-        return true;
-    } 
-    else if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].is_recursion)
-    {
-        // If we are in recursion - we are in a loop, return true
-        return true;
-    }
-    // KE: unwind_counter isn't init, my guess is case 3 described below
+  unsigned unwind_counter = // KE: for case 3. Not sure, can be the other option
+            state.top().loop_iterations[loop_id].count;
+//  unwind_counter++; //fixme: why not to use this to show if we are in a LOOP?!
+//  if(!should_stop_unwind(state.source, state.call_stack(), unwind_counter))
+//  {
+//    //loop_bound not exceeded => in loop
+//    return true;
+//  }
+  
+  if (frame.loop_iterations[loop_id].count > 0)
+  {
+      // If we are opening the loop iterations, we are in a loop
+      return true;
+  }
+  else if (frame.loop_iterations[loop_id].is_recursion)
+  {
+      // If we are in recursion - we are in a loop, return true
+      return true;
+  }
+    // KE: unwind_counter isn't initialized, my guess is case 3 described below
     // Either shall be state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
     // OR frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count
-    else if (!frame.loop_iterations.empty() && prev_unwind_counter <= unwind_counter)
-    {
-        // If there are loops in this function, and we are still opening it, we are in a loop
-        return true;
-    }
-    else
-    {
-        // 1. Not in a loop, 2. Not in recursion, 3. out of loops if unwind 9 --> unwind 0 (e.g.,)
-        return false;
-    }
+  else if (!frame.loop_iterations.empty() && prev_unwind_counter <= unwind_counter)
+  {    //normal flow
+      // If there are loops in this function, and we are still opening it, we are in a loop
+      return true;
+  }
+  else
+  {
+      // 1. Not in a loop, 2. Not in recursion, 3. out of loops if unwind 9 --> unwind 0 (e.g.,)
+      return false;
+  }
 }
 
 /*******************************************************************
-
  Function: symex_assertion_sumt::new_partition_iface
 
- Inputs:
-
- Outputs:
-
  Purpose: Allocate new partition_interface
-
 \*******************************************************************/
 partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& call_tree_node,
                                       partition_idt parent_id, unsigned call_loc) {
@@ -1565,38 +1460,65 @@ partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& cal
 
 /*******************************************************************
 
- Purpose: Returns the current L2 version of a symbol (can be both artificial or normal (present in the program) symbol)
-
- Note: Currently, this ensures the constant propagation is turned off for this symbol.
-       Otherwise it could return retrieve the constant (current value) instead of current version of the symbol.
-       Should be used only in special circumstances, currently when processing interface of functions,
-       becuase we do not follow normal data flow there.
+ Purpose: Returns the current L2 version of a symbol
+ (can be both artificial or normal (present in the program) symbol)
+ Note:
+ Currently, this ensures the constant propagation is turned off for this symbol.
+ Otherwise it could return retrieve the constant (current value) instead of current version of the symbol.
+ Should be used only in special circumstances, currently when processing interface of functions,
+ becuase we do not follow normal data flow there.
 
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
-  ssa_exprt ssa = get_l1_ssa(symbol);
-  // before renaming to L2, we need to stop constant propagation, otherwise, it could be simplified to a constant,
+  ssa_exprt ssa = get_l1_ssa(symbol); //e.g., hifrog::fun_start!0#0
+  
+  // before renaming to L2, we need to stop constant propagation,
+  // otherwise it could be simplified to a constant,
   // which is not an ssa_exprt anymore
   stop_constant_propagation_for(ssa.get_identifier());
+  
   // get the current L2 version of the L1 symbol
-  state.rename(ssa, ns, goto_symex_statet::levelt::L2);
+  state->rename(ssa, ns, goto_symex_statet::levelt::L2);
   return ssa;
+  //exprt res = state->rename<L2>(ssa, ns).get(); //5.12
+  //return to_ssa_expr(res);
 }
 
 /*******************************************************************
 
- Purpose: Returns the next L2 version of a symbol (can be both artificial or normal (present in the program) symbol)
+ Purpose: Returns the next L2 version of a symbol
+ (can be both artificial or normal (present in the program) symbol)
 
  Note: Increases the inner counter keeping track of the current version being used.
 
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_next_version(const symbolt & symbol) {
-  // get the current L1 version of the symbol
-  auto ssa_l1_identifier = get_l1_identifier(symbol);
-  assert(state.level2.current_names.find(ssa_l1_identifier) != state.level2.current_names.end());
-  state.level2.increase_counter(ssa_l1_identifier);
+  // get the current L1 version of the symbol; identifier should be l0 or l1, make sure it's l1
+  //ssa_exprt ssa_l1 = get_l1_ssa(symbol);
+  irep_idt ssa_l1_identifier = get_l1_identifier(symbol); //e.g: "hifrog::fun_start!0"
+//  //safety
+  assert(state->level2.current_names.find(ssa_l1_identifier) != state->level2.current_names.end());
+  
+  // get the current L1 version of the symbol //5.10
+  state->level2.increase_counter(ssa_l1_identifier);
+  
   // get the correct L2 version after incrementing  the counter
   return get_current_version(symbol);
+  
+//  const auto p_it = state->level2.current_names.find(ssa_l1_identifier); //5.12
+//  assert(p_it.has_value());
+//
+//  //incrementing the counter
+//  const_cast<symex_level2t&>(state->level2).increase_generation( //5.12
+//      ssa_l1_identifier, ssa, state->get_l2_name_provider());
+
+    // get the correct L2 version after incrementing  the counter
+    //return get_current_version(symbol);
+
+    //5.11 do the l2 renaming
+    // const auto level2_it =
+    //  const_cast<symex_level2t&>(state->level2).current_names.emplace(ssa_l1_identifier, std::make_pair(ssa_l1, 0)).first;
+    //symex_renaming_levelt::increase_counter(level2_it);
 }
 
 /*******************************************************************
@@ -1635,18 +1557,27 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   symbol.type = type;
   symbol.is_thread_local = true;
 
-  get_symbol_table().add(symbol);
+  //get_symbol_table().add(symbol);
+   bool error = get_symbol_table().add(symbol);
+   assert(!error); (void)error;
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version
   ssa_exprt l1_ssa = get_l1_ssa(symbol);
   auto l1_id = l1_ssa.get_l1_object_identifier();
-  assert(state.level2.current_names.find(l1_id) == state.level2.current_names.end());
+  assert(state->level2.current_names.find(l1_id) == state->level2.current_names.end());
   // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but I fail to see the reason
-  state.level2.current_names[l1_id] = std::make_pair(l1_ssa,0);
+  state->level2.current_names[l1_id] = std::make_pair(l1_ssa,0);
+
+  //const irep_idt l1_id = l1_ssa.get_l1_object_identifier(); //e.g: "main::#return_value!0"
+  //assert(state.level2.current_names.find(l1_id) == state.level2.current_names.end()); ///.has_value
+  // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but why?
+  //const_cast<symex_level2t&>(state->level2).current_names.insert(l1_id,std::make_pair(l1_ssa,0));
 }
 
+/*******************************************************************
 
+\*******************************************************************/
 namespace{
 
     bool dont_need_globals(const dstringt & fun_name){
@@ -1725,96 +1656,154 @@ namespace{
 }
 
 
-// Declares the global variables to the symex state
-void symex_assertion_sumt::add_globals_to_state(statet & state) {
-    // get globals
-    std::unordered_set<irep_idt, irep_id_hash> globals;
-    for (auto & entry : this->accessed_globals) {
-        for (auto const & global_id : entry.second) {
-            globals.insert(global_id);
-        }
+
+/*******************************************************************
+ Declares the global variables to the symex state
+\*******************************************************************/
+void symex_assertion_sumt::add_globals_to_state(statet & state)
+{
+  // get globals
+  std::unordered_set<irep_idt, irep_id_hash> globals;
+  for (auto & entry : this->accessed_globals) {
+    for (auto const & global_id : entry.second) {
+      globals.insert(global_id);
     }
-    for (auto const & global_id : globals) {
-        auto const & symbol = this->ns.lookup(global_id);
-//        if (symbol.is_extern) {
-//        MB: we declare ALL globals, since if symex is not run from top, their declaration would not be encountered -> problem
-            // the following is taken from goto_symext::symex_decl
-            ssa_exprt ssa(symbol.symbol_expr());
-            state.rename(ssa, ns, goto_symex_statet::L1);
-            const auto & l1_identifier = ssa.get_identifier();
-            state.rename(ssa.type(), l1_identifier, ns);
-            ssa.update_type();
-            // end of section taken from CPROVER
-            assert(state.level2.current_names.find(l1_identifier) == state.level2.current_names.end());
-            state.level2.current_names[l1_identifier] = std::make_pair(ssa, 0);
-//        }
-    }
+  }
+  for (auto const & global_id : globals) {
+    auto const & symbol = this->ns.lookup(global_id);
+//  if (symbol.is_extern) {
+//  MB: we declare ALL globals, since if symex is not run from top,
+//  their declaration would not be encountered -> problem
+//  the following is taken from goto_symext::symex_decl
+    ssa_exprt ssa(symbol.symbol_expr());
+    state.rename(ssa, ns, goto_symex_statet::L1);
+    //ssa = state.rename_ssa<L1>(ssa, ns).get();
+    const auto & l1_identifier = ssa.get_identifier();
+    state.rename(ssa.type(), l1_identifier, ns);
+    ssa.update_type();
+    assert(state.level2.current_names.find(l1_identifier) == state.level2.current_names.end());
+    state.level2.current_names[l1_identifier] = std::make_pair(ssa, 0);
+//    const auto p_it = state.level2.current_names.find(l1_identifier);
+//    assert(!p_it);
+//    const_cast<symex_level2t&>(state.level2).current_names.insert(l1_identifier,std::make_pair(ssa, 0));
+  }
 }
 
+/*******************************************************************\
 
-
-void symex_assertion_sumt::analyze_globals() {
-    std::unordered_set<irep_idt, irep_id_hash> analyzed_functions;
-    analyze_globals_rec(goto_functionst::entry_point(), analyzed_functions);
+\*******************************************************************/
+void symex_assertion_sumt::analyze_globals()
+{
+  std::unordered_set<irep_idt, irep_id_hash> analyzed_functions;
+  analyze_globals_rec(goto_functionst::entry_point(), analyzed_functions);
 
 }
 /*******************************************************************\
-
-Function:
-
  Purpose: Fills in the sets of accessed and modified globals using
  recursive call graph traversal. We don't handle recursion here.
-
 \*******************************************************************/
 void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
-                                               std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions) {
-    const auto & body = goto_functions.function_map.at(function_to_analyze).body;
-    irep_lex_set globals_read;
-    irep_lex_set globals_written;
-
-    // MB: skip body of __CPROVER_initialize and main function, we do not need their globals and they cause some problems
-    bool skip = dont_need_globals(function_to_analyze);
+                                               std::unordered_set<irep_idt,
+                                               irep_id_hash> & analyzed_functions)
+{
+  const auto & body = goto_functions.function_map.at(function_to_analyze).body;
+  irep_lex_set globals_read;
+  irep_lex_set globals_written;
+  
+  // MB: skip body of __CPROVER_initialize and main function,
+  // we do not need their globals and they cause some problems
+  bool skip = dont_need_globals(function_to_analyze);
+  if (!skip) {
+    for (const auto & inst : body.instructions) {
+      const expr_listt tmp_r = objects_read(inst);
+      for (const auto & expr : tmp_r) {
+        add_to_set_if_global(ns, expr, globals_read);
+      }
+      
+      const expr_listt tmp_w = objects_written(inst);
+      for (const auto & expr : tmp_w) {
+        add_to_set_if_global(ns, expr, globals_read);
+        add_to_set_if_global(ns, expr, globals_written);
+      }
+    }
+  }
+  
+  analyzed_functions.insert(function_to_analyze);
+  for (auto const & inst : body.instructions) {
+    if (inst.type != FUNCTION_CALL) {
+      continue;
+    }
+    
+    // NOTE: Expects the function call to be a standard symbol call
+    const irep_idt & target_function = to_symbol_expr(
+        to_code_function_call(inst.code).function()).get_identifier();
+    
+    if (analyzed_functions.find(target_function) == analyzed_functions.end()) {
+      analyze_globals_rec(target_function, analyzed_functions);
+    }
     if (!skip) {
-        for (const auto & inst : body.instructions) {
-            const expr_listt tmp_r = objects_read(inst);
-            for (const auto & expr : tmp_r) {
-                add_to_set_if_global(ns, expr, globals_read);
-            }
-
-            const expr_listt tmp_w = objects_written(inst);
-            for (const auto & expr : tmp_w) {
-                add_to_set_if_global(ns, expr, globals_read);
-                add_to_set_if_global(ns, expr, globals_written);
-            }
-        }
+      const auto & accessed_globals = get_accessed_globals(target_function);
+      globals_read.insert(accessed_globals.begin(), accessed_globals.end());
+      const auto & modified_globals = get_modified_globals(target_function);
+      globals_written.insert(modified_globals.begin(), modified_globals.end());
     }
-
-    analyzed_functions.insert(function_to_analyze);
-    for (auto const & inst : body.instructions) {
-        if (inst.type != FUNCTION_CALL) {
-            continue;
-        }
-
-        // NOTE: Expects the function call to be a standard symbol call
-        const irep_idt & target_function = to_symbol_expr(
-                to_code_function_call(inst.code).function()).get_identifier();
-
-        if (analyzed_functions.find(target_function) == analyzed_functions.end()) {
-            analyze_globals_rec(target_function, analyzed_functions);
-        }
-        if (!skip) {
-            const auto & accessed_globals = get_accessed_globals(target_function);
-            globals_read.insert(accessed_globals.begin(), accessed_globals.end());
-            const auto & modified_globals = get_modified_globals(target_function);
-            globals_written.insert(modified_globals.begin(), modified_globals.end());
-        }
-    }
-    auto & accessed = accessed_globals[function_to_analyze];
-    assert(accessed.empty());
-    std::copy(std::begin(globals_read), std::end(globals_read),
-              std::back_inserter(accessed));
-    auto & modified = modified_globals[function_to_analyze];
-    assert(modified.empty());
-    std::copy(std::begin(globals_written), std::end(globals_written),
-              std::back_inserter(modified));
+  }
+  auto & accessed = accessed_globals[function_to_analyze];
+  assert(accessed.empty());
+  std::copy(std::begin(globals_read), std::end(globals_read),
+            std::back_inserter(accessed));
+  auto & modified = modified_globals[function_to_analyze];
+  assert(modified.empty());
+  std::copy(std::begin(globals_written), std::end(globals_written),
+            std::back_inserter(modified));
 }
+
+/*******************************************************************\
+Purpose: Upprover/HiFrog needs the return assignment for the summaries.
+ The idea is to add a new assignment with a new value of the return that
+ you fabricated and then use it to connect the rest of the code.
+Note:
+ Taken from the removed code in
+ https://github.com/diffblue/cbmc/commit/7dc47a4c6681ea61b562e3ad7edb96a3f55e5034
+\*******************************************************************/
+//void symex_assertion_sumt::return_assignment(statet &state)
+//{
+//  const statet::framet &frame = state.top();
+//  const goto_programt::instructiont &instruction = *state.source.pc;
+//  PRECONDITION(instruction.is_return());
+//  const code_returnt &code = to_code_return(instruction.code);
+//
+//  target.location(state.guard.as_expr(), state.source);
+//
+//  if(code.operands().size() == 1)
+//  {
+//    exprt value=code.op0(); //SA: in cprover5.12 not public anymore
+//    //exprt value = code.return_value();
+//
+//    if(frame.return_value.is_not_nil())
+//    {
+//      code_assignt assignment(frame.return_value, value);
+//
+//#ifdef DISABLE_OPTIMIZATIONS
+//      expr_pretty_print(std::cout << "\n**return_assignment\n** Lhs: ", assignment.lhs()); std::cout << std::endl;
+//      expr_pretty_print(std::cout << "** Rhs: ", assignment.rhs()); std::cout << std::endl;
+//#endif
+//
+//      if(!base_type_eq(assignment.lhs().type(),
+//                       assignment.rhs().type(), ns))
+//        throw
+//            "goto_symext::return_assignment type mismatch at "+
+//            instruction.source_location.as_string()+":\n"+
+//            "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
+//            "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
+//
+//      //Fabricate the assignment itself by L2-rename
+//      symex_assign(state, assignment);
+//    }
+//  }
+//  else
+//  {
+//    if(frame.return_value.is_not_nil())
+//      throw "return with unexpected value";
+//  }
+//}

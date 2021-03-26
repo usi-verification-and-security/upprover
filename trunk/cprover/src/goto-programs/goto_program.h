@@ -20,10 +20,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/invariant.h>
 #include <util/namespace.h>
-#include <util/symbol_table.h>
 #include <util/source_location.h>
-#include <util/std_expr.h>
 #include <util/std_code.h>
+#include <util/std_expr.h>
+#include <util/symbol_table.h>
+
+enum class validation_modet;
 
 /// The type of an instruction in a GOTO program.
 enum goto_program_instruction_typet
@@ -170,6 +172,9 @@ public:
   ///     clears all the catch clauses established as per the above in this
   ///     function?
   ///     Many analysis tools remove these instructions before they start.
+  /// - INCOMPLETE GOTO:
+  ///     goto for which the target is yet to be determined. The target set
+  ///     shall be empty
   class instructiont final
   {
   public:
@@ -389,6 +394,18 @@ public:
       instruction_id_builder << type;
       return instruction_id_builder.str();
     }
+
+    /// Syntactic equality: two instructiont are equal if they have the same
+    /// type, code, guard, number of targets, and labels. All other members can
+    /// only be evaluated in the context of a goto_programt (see
+    /// goto_programt::equals).
+    bool equals(const instructiont &other) const;
+
+    /// Check that the instruction is well-formed
+    ///
+    /// The validation mode indicates whether well-formedness check failures are
+    /// reported via DATA_INVARIANT violations or exceptions.
+    void validate(const namespacet &ns, const validation_modet vm) const;
   };
 
   // Never try to change this to vector-we mutate the list while iterating
@@ -415,15 +432,34 @@ public:
     return t;
   }
 
+  /// Get the id of the function that contains the instruction pointed-to by the
+  /// given instruction iterator.
+  ///
+  /// \param l: instruction iterator
+  /// \return id of the function that contains the pointed-to goto instruction
   static const irep_idt get_function_id(
     const_targett l)
   {
+    // The field `function` of an instruction may not always contain the id of
+    // the function it is currently in, due to goto program modifications such
+    // as inlining. For example, if an instruction in a function `f` is inlined
+    // into a function `g`, the instruction may, depending on the arguments to
+    // the inliner, retain the original value of `f` in the function field.
+    // However, instructions of type END_FUNCTION are never inlined into other
+    // functions, hence they contain the id of the function they are in. Thus,
+    // this function takes the END_FUNCTION instruction of the goto program and
+    // returns the value of its function field.
+
     while(!l->is_end_function())
       ++l;
 
     return l->function;
   }
 
+  /// Get the id of the function that contains the given goto program.
+  ///
+  /// \param p: the goto program
+  /// \return id of the function that contains the goto program
   static const irep_idt get_function_id(
     const goto_programt &p)
   {
@@ -468,36 +504,36 @@ public:
     instructions.splice(next, p.instructions);
   }
 
-  /// Insertion before the given target
+  /// Insertion before the instruction pointed-to by the given instruction
+  /// iterator `target`.
   /// \return newly inserted location
   targett insert_before(const_targett target)
   {
     return instructions.insert(target, instructiont());
   }
 
-  /// Insertion after the given target
+  /// Insertion after the instruction pointed-to by the given instruction
+  /// iterator `target`.
   /// \return newly inserted location
   targett insert_after(const_targett target)
   {
     return instructions.insert(std::next(target), instructiont());
   }
 
-  /// Appends the given program, which is destroyed
+  /// Appends the given program `p` to `*this`. `p` is destroyed.
   void destructive_append(goto_programt &p)
   {
     instructions.splice(instructions.end(),
                         p.instructions);
-    // BUG: The iterators to p-instructions are invalidated!
   }
 
-  /// Inserts the given program at the given location.
-  /// The program is destroyed.
+  /// Inserts the given program `p` before `target`.
+  /// The program `p` is destroyed.
   void destructive_insert(
     const_targett target,
     goto_programt &p)
   {
     instructions.splice(target, p.instructions);
-    // BUG: The iterators to p-instructions are invalidated!
   }
 
   /// Adds an instruction at the end.
@@ -533,7 +569,7 @@ public:
     const namespacet &ns,
     const irep_idt &identifier,
     std::ostream &out,
-    const instructionst::value_type &it) const;
+    const instructionst::value_type &instruction) const;
 
   /// Compute the target numbers
   void compute_target_numbers();
@@ -613,6 +649,8 @@ public:
     instructions.clear();
   }
 
+  /// Get an instruction iterator pointing to the END_FUNCTION instruction of
+  /// the goto program
   targett get_end_function()
   {
     PRECONDITION(!instructions.empty());
@@ -622,6 +660,8 @@ public:
     return end_function;
   }
 
+  /// Get an instruction iterator pointing to the END_FUNCTION instruction of
+  /// the goto program
   const_targett get_end_function() const
   {
     PRECONDITION(!instructions.empty());
@@ -640,8 +680,37 @@ public:
   typedef std::set<irep_idt> decl_identifierst;
   /// get the variables in decl statements
   void get_decl_identifiers(decl_identifierst &decl_identifiers) const;
+
+  /// Syntactic equality: two goto_programt are equal if, and only if, they have
+  /// the same number of instructions, each pair of instructions compares equal,
+  /// and relative jumps have the same distance.
+  bool equals(const goto_programt &other) const;
+
+  /// Check that the goto program is well-formed
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  void validate(const namespacet &ns, const validation_modet vm) const
+  {
+    for(const instructiont &ins : instructions)
+    {
+      ins.validate(ns, vm);
+    }
+  }
 };
 
+/// Get control-flow successors of a given instruction. The instruction is
+/// represented by a pointer `target` of type `Target`. An instruction has
+/// either 0, 1, or 2 successors (more than two successors is deprecated). For
+/// example, an `ASSUME` instruction with the `guard` being a `false_exprt` has
+/// 0 successors, and `ASSIGN` instruction has 1 successor, and a `GOTO`
+/// instruction with the `guard` not being a `true_exprt` has 2 successors.
+///
+/// \tparam Target: type used to represent a pointer to an instruction in a goto
+///   program
+/// \param target: pointer to the instruction of which to get the successors of
+/// \return List of control-flow successors of the pointed-to goto program
+///   instruction
 template <typename Target>
 std::list<Target> goto_programt::get_successors(
   Target target) const

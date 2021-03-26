@@ -8,22 +8,37 @@ Date: May 2018
 
 \*******************************************************************/
 
+/// \file
+/// Goto Function
+
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_FUNCTION_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_FUNCTION_H
 
 #include <iosfwd>
 
+#include <util/find_symbols.h>
 #include <util/std_types.h>
 
 #include "goto_program.h"
 
+/// A goto function, consisting of function type (see #type), function body (see
+/// #body), and parameter identifiers (see #parameter_identifiers).
 class goto_functiont
 {
 public:
   goto_programt body;
+
+  /// The type of the function, indicating the return type and parameter types
   code_typet type;
 
   typedef std::vector<irep_idt> parameter_identifierst;
+
+  /// The identifiers of the parameters of this function
+  ///
+  /// Note: This variable is currently unused and the vector is thus always
+  /// empty. In the future the code base may be refactored to fill in the
+  /// parameter identifiers here when creating a `goto_functiont`. For now the
+  /// parameter identifiers should be retrieved from the type (`code_typet`).
   parameter_identifierst parameter_identifiers;
 
   bool body_available() const
@@ -95,6 +110,28 @@ public:
     type = std::move(other.type);
     parameter_identifiers = std::move(other.parameter_identifiers);
     return *this;
+  }
+
+  /// Check that the goto function is well-formed
+  ///
+  /// The validation mode indicates whether well-formedness check failures are
+  /// reported via DATA_INVARIANT violations or exceptions.
+  void validate(const namespacet &ns, const validation_modet vm) const
+  {
+    body.validate(ns, vm);
+
+    find_symbols_sett typetags;
+    find_type_symbols(type, typetags);
+    const symbolt *symbol;
+    for(const auto &identifier : typetags)
+    {
+      DATA_CHECK(
+        vm,
+        !ns.lookup(identifier, symbol),
+        id2string(identifier) + " not found");
+    }
+
+    validate_full_type(type, ns, vm);
   }
 };
 

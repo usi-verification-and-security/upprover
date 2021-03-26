@@ -58,8 +58,10 @@ public:
 
   virtual void transform(
     const namespacet &ns,
+    const irep_idt &function_from,
     locationt from,
-    locationt to)=0;
+    const irep_idt &function_to,
+    locationt to) = 0;
 
   virtual void output(
     const namespacet &,
@@ -130,6 +132,7 @@ public:
   virtual void update(const goto_functionst &goto_functions);
 
   virtual void operator()(
+    const irep_idt &function_identifier,
     const goto_programt &goto_program);
 
   virtual void operator()(
@@ -193,6 +196,7 @@ protected:
 
   // true = found something new
   bool fixedpoint(
+    const irep_idt &function_identifier,
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
 
@@ -206,6 +210,7 @@ protected:
 
   // true = found something new
   bool visit(
+    const irep_idt &function_identifier,
     locationt l,
     working_sett &working_set,
     const goto_programt &goto_program,
@@ -237,14 +242,18 @@ protected:
 
   // function calls
   void do_function_call_rec(
-    locationt l_call, locationt l_return,
+    const irep_idt &calling_function,
+    locationt l_call,
+    locationt l_return,
     const exprt &function,
     const exprt::operandst &arguments,
     statet &new_state,
     const goto_functionst &goto_functions);
 
   void do_function_call(
-    locationt l_call, locationt l_return,
+    const irep_idt &calling_function,
+    locationt l_call,
+    locationt l_return,
     const goto_functionst &goto_functions,
     const goto_functionst::function_mapt::const_iterator f_it,
     const exprt::operandst &arguments,
@@ -282,7 +291,7 @@ public:
   {
     typename state_mapt::iterator it=state_map.find(l);
     if(it==state_map.end())
-      throw "failed to find state";
+      throw std::out_of_range("failed to find state");
 
     return it->second;
   }
@@ -291,7 +300,7 @@ public:
   {
     typename state_mapt::const_iterator it=state_map.find(l);
     if(it==state_map.end())
-      throw "failed to find state";
+      throw std::out_of_range("failed to find state");
 
     return it->second;
   }
@@ -315,7 +324,7 @@ protected:
   {
     typename state_mapt::iterator it=state_map.find(l);
     if(it==state_map.end())
-      throw "failed to find state";
+      throw std::out_of_range("failed to find state");
 
     return it->second;
   }
@@ -324,7 +333,7 @@ protected:
   {
     typename state_mapt::const_iterator it=state_map.find(l);
     if(it==state_map.end())
-      throw "failed to find state";
+      throw std::out_of_range("failed to find state");
 
     return it->second;
   }

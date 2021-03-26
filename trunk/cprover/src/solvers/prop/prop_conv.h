@@ -106,7 +106,7 @@ public:
   { return prop.has_is_in_conflict(); }
 
   // get literal for expression, if available
-  virtual bool literal(const exprt &expr, literalt &literal) const;
+  bool literal(const symbol_exprt &expr, literalt &literal) const;
 
   bool use_cache = true;
   bool equality_propagation = true;
@@ -124,6 +124,8 @@ public:
   {
     prop.set_time_limit_seconds(lim);
   }
+// deliberately protected now to protect lower-level API
+    propt &prop;
 
 protected:
   virtual void post_process();
@@ -148,8 +150,7 @@ protected:
 
   virtual void ignoring(const exprt &expr);
 
-  // deliberately protected now to protect lower-level API
-  public: propt &prop; // KE: change for hifrog
+
 };
 
 #endif // CPROVER_SOLVERS_PROP_PROP_CONV_H

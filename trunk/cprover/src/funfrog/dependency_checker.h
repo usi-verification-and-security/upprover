@@ -115,8 +115,8 @@ extern inline bool operator<(
 }
 
 extern inline bool operator==(
-    symex_target_equationt::SSA_stept a,
-    symex_target_equationt::SSA_stept b)
+        symex_target_equationt::SSA_stept a,
+        symex_target_equationt::SSA_stept b)
 {
   return a.source.pc == b.source.pc;
 }

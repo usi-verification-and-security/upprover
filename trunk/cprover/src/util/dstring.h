@@ -13,7 +13,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_UTIL_DSTRING_H
 
 #include <iosfwd>
+#include <string>
 
+#include "invariant.h"
 #include "string_container.h"
 
 /// \ref dstringt has one field, an unsigned integer \ref no which is an index
@@ -149,6 +151,17 @@ public:
     return no;
   }
 
+  // iterators for the underlying string
+  std::string::const_iterator begin() const
+  {
+    return as_string().begin();
+  }
+
+  std::string::const_iterator end() const
+  {
+    return as_string().end();
+  }
+
 private:
   #ifdef __GNUC__
   constexpr
@@ -197,5 +210,14 @@ struct hash<dstringt> // NOLINT(readability/identifiers)
   }
 };
 }
+
+template <>
+struct diagnostics_helpert<dstringt>
+{
+  static std::string diagnostics_as_string(const dstringt &dstring)
+  {
+    return as_string(dstring);
+  }
+};
 
 #endif // CPROVER_UTIL_DSTRING_H

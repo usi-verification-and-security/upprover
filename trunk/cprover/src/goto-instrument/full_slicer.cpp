@@ -284,7 +284,7 @@ static bool implicit(goto_programt::const_targett target)
 void full_slicert::operator()(
   goto_functionst &goto_functions,
   const namespacet &ns,
-  slicing_criteriont &criterion)
+  const slicing_criteriont &criterion)
 {
   // build the CFG data structure
   cfg(goto_functions);
@@ -310,13 +310,13 @@ void full_slicert::operator()(
       jumps.push_back(e_it->second);
     else if(e_it->first->is_decl())
     {
-      const exprt &s=to_code_decl(e_it->first->code).symbol();
-      decl_dead[to_symbol_expr(s).get_identifier()].push(e_it->second);
+      const auto &s = to_code_decl(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
     else if(e_it->first->is_dead())
     {
-      const exprt &s=to_code_dead(e_it->first->code).symbol();
-      decl_dead[to_symbol_expr(s).get_identifier()].push(e_it->second);
+      const auto &s = to_code_dead(e_it->first->code).symbol();
+      decl_dead[s.get_identifier()].push(e_it->second);
     }
   }
 
@@ -367,7 +367,7 @@ void full_slicert::operator()(
 void full_slicer(
   goto_functionst &goto_functions,
   const namespacet &ns,
-  slicing_criteriont &criterion)
+  const slicing_criteriont &criterion)
 {
   full_slicert()(goto_functions, ns, criterion);
 }

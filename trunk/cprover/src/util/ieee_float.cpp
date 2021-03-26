@@ -10,13 +10,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cstdint>
 #include <ostream>
-#include <cassert>
 #include <cmath>
 #include <limits>
 
 #include "arith_tools.h"
-#include "std_types.h"
+#include "invariant.h"
 #include "std_expr.h"
+#include "std_types.h"
 
 mp_integer ieee_float_spect::bias() const
 {
@@ -47,8 +47,11 @@ void ieee_float_spect::from_type(const floatbv_typet &type)
 {
   std::size_t width=type.get_width();
   f=type.get_f();
-  assert(f!=0);
-  assert(f<width);
+  DATA_INVARIANT(f != 0, "mantissa must be at least 1 bit");
+  DATA_INVARIANT(
+    f < width,
+    "mantissa bits must be less than "
+    "originating type width");
   e=width-f-1;
   x86_extended=type.get_bool(ID_x86_extended);
   if(x86_extended)
@@ -122,8 +125,8 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
 
 mp_integer ieee_floatt::base10_digits(const mp_integer &src)
 {
+  PRECONDITION(src >= 0);
   mp_integer tmp=src;
-  assert(tmp>=0);
   mp_integer result=0;
   while(tmp!=0) { ++result; tmp/=10; }
   return result;
@@ -199,7 +202,8 @@ std::string ieee_floatt::to_string_decimal(std::size_t precision) const
       // pad with zeros from the front, if needed
       while(mp_integer(tmp.size())<=position) tmp="0"+tmp;
 
-      std::size_t dot=tmp.size()-integer2size_t(position);
+      const std::size_t dot =
+        tmp.size() - numeric_cast_v<std::size_t>(position);
       result+=std::string(tmp, 0, dot)+'.';
       result+=std::string(tmp, dot, std::string::npos);
 
@@ -278,7 +282,7 @@ std::string ieee_floatt::to_string_scientific(std::size_t precision) const
 
     std::string decimals=integer2string(_fraction);
 
-    assert(!decimals.empty());
+    CHECK_RETURN(!decimals.empty());
 
     // First add top digit to result.
     result+=decimals[0];
@@ -311,8 +315,8 @@ std::string ieee_floatt::to_string_scientific(std::size_t precision) const
 
 void ieee_floatt::unpack(const mp_integer &i)
 {
-  assert(spec.f!=0);
-  assert(spec.e!=0);
+  PRECONDITION(spec.f != 0);
+  PRECONDITION(spec.e != 0);
 
   {
     mp_integer tmp=i;
@@ -549,15 +553,23 @@ void ieee_floatt::align()
   {
     exponent_offset-=(spec.f-lowPower2);
 
-    assert(fraction*power(2, (spec.f-lowPower2))>=f_power);
-    assert(fraction*power(2, (spec.f-lowPower2))<f_power_next);
+    INVARIANT(
+      fraction * power(2, (spec.f - lowPower2)) >= f_power,
+      "normalisation result must be >= lower bound");
+    INVARIANT(
+      fraction * power(2, (spec.f - lowPower2)) < f_power_next,
+      "normalisation result must be < upper bound");
   }
   else if(lowPower2>spec.f)  // too large
   {
     exponent_offset+=(lowPower2-spec.f);
 
-    assert(fraction/power(2, (lowPower2-spec.f))>=f_power);
-    assert(fraction/power(2, (lowPower2-spec.f))<f_power_next);
+    INVARIANT(
+      fraction / power(2, (lowPower2 - spec.f)) >= f_power,
+      "normalisation result must be >= lower bound");
+    INVARIANT(
+      fraction / power(2, (lowPower2 - spec.f)) < f_power_next,
+      "normalisation result must be < upper bound");
   }
 
   mp_integer biased_exponent=exponent+exponent_offset+spec.bias();
@@ -634,11 +646,11 @@ void ieee_floatt::align()
 }
 
 void ieee_floatt::divide_and_round(
-  mp_integer &fraction,
-  const mp_integer &factor)
+  mp_integer &dividend,
+  const mp_integer &divisor)
 {
-  mp_integer remainder=fraction%factor;
-  fraction/=factor;
+  const mp_integer remainder = dividend % divisor;
+  dividend /= divisor;
 
   if(remainder!=0)
   {
@@ -646,19 +658,19 @@ void ieee_floatt::divide_and_round(
     {
     case ROUND_TO_EVEN:
       {
-        mp_integer factor_middle=factor/2;
-        if(remainder<factor_middle)
+        mp_integer divisor_middle = divisor / 2;
+        if(remainder < divisor_middle)
         {
           // crop
         }
-        else if(remainder>factor_middle)
+        else if(remainder > divisor_middle)
         {
-          ++fraction;
+          ++dividend;
         }
         else // exactly in the middle -- go to even
         {
-          if((fraction%2)!=0)
-            ++fraction;
+          if((dividend % 2) != 0)
+            ++dividend;
         }
       }
       break;
@@ -669,12 +681,12 @@ void ieee_floatt::divide_and_round(
 
     case ROUND_TO_MINUS_INF:
       if(sign_flag)
-        ++fraction;
+        ++dividend;
       break;
 
     case ROUND_TO_PLUS_INF:
       if(!sign_flag)
-        ++fraction;
+        ++dividend;
       break;
 
     default:
@@ -685,14 +697,12 @@ void ieee_floatt::divide_and_round(
 
 constant_exprt ieee_floatt::to_expr() const
 {
-  constant_exprt result(spec.to_type());
-  result.set_value(integer2binary(pack(), spec.width()));
-  return result;
+  return constant_exprt(integer2bvrep(pack(), spec.width()), spec.to_type());
 }
 
 ieee_floatt &ieee_floatt::operator/=(const ieee_floatt &other)
 {
-  assert(other.spec.f==spec.f);
+  PRECONDITION(other.spec.f == spec.f);
 
   // NaN/x = NaN
   if(NaN_flag)
@@ -766,7 +776,7 @@ ieee_floatt &ieee_floatt::operator/=(const ieee_floatt &other)
 
 ieee_floatt &ieee_floatt::operator*=(const ieee_floatt &other)
 {
-  assert(other.spec.f==spec.f);
+  PRECONDITION(other.spec.f == spec.f);
 
   if(other.NaN_flag)
     make_NaN();
@@ -802,9 +812,8 @@ ieee_floatt &ieee_floatt::operator*=(const ieee_floatt &other)
 
 ieee_floatt &ieee_floatt::operator+=(const ieee_floatt &other)
 {
+  PRECONDITION(other.spec == spec);
   ieee_floatt _other=other;
-
-  assert(_other.spec==spec);
 
   if(other.NaN_flag)
     make_NaN();
@@ -859,7 +868,10 @@ ieee_floatt &ieee_floatt::operator+=(const ieee_floatt &other)
     _other.exponent=exponent;
   }
 
-  assert(exponent==_other.exponent);
+  INVARIANT(
+    exponent == _other.exponent,
+    "prior block equalises the exponents by setting both to the "
+    "minimum of their previous values while adjusting the mantissa");
 
   if(sign_flag)
     fraction.negate();
@@ -1003,7 +1015,7 @@ bool ieee_floatt::ieee_equal(const ieee_floatt &other) const
     return false;
   if(is_zero() && other.is_zero())
     return true;
-  assert(spec==other.spec);
+  PRECONDITION(spec == other.spec);
   return *this==other;
 }
 
@@ -1025,7 +1037,7 @@ bool ieee_floatt::ieee_not_equal(const ieee_floatt &other) const
     return true; // !!!
   if(is_zero() && other.is_zero())
     return false;
-  assert(spec==other.spec);
+  PRECONDITION(spec == other.spec);
   return *this!=other;
 }
 
@@ -1051,7 +1063,7 @@ void ieee_floatt::change_spec(const ieee_float_spect &dest_spec)
 void ieee_floatt::from_expr(const constant_exprt &expr)
 {
   spec=ieee_float_spect(to_floatbv_type(expr.type()));
-  unpack(binary2integer(id2string(expr.get_value()), false));
+  unpack(bvrep2integer(expr.get_value(), spec.width(), false));
 }
 
 mp_integer ieee_floatt::to_integer() const
@@ -1079,15 +1091,19 @@ void ieee_floatt::from_double(const double d)
 {
   spec.f=52;
   spec.e=11;
-  assert(spec.width()==64);
+  DATA_INVARIANT(spec.width() == 64, "width must be 64 bits");
 
-  // we need a 64-bit integer type for this
-  assert(sizeof(double)==sizeof(long long unsigned int));
+  static_assert(
+    std::numeric_limits<double>::is_iec559,
+    "this requires the double layout is according to the ieee754 "
+    "standard");
+  static_assert(
+    sizeof(double) == sizeof(std::uint64_t), "ensure double has 64 bit width");
 
   union
   {
     double d;
-    long long unsigned int i;
+    std::uint64_t i;
   } u;
 
   u.d=d;
@@ -1099,14 +1115,19 @@ void ieee_floatt::from_float(const float f)
 {
   spec.f=23;
   spec.e=8;
-  assert(spec.width()==32);
+  DATA_INVARIANT(spec.width() == 32, "width must be 32 bits");
 
-  assert(sizeof(float)==sizeof(unsigned int));
+  static_assert(
+    std::numeric_limits<float>::is_iec559,
+    "this requires the float layout is according to the ieee754 "
+    "standard");
+  static_assert(
+    sizeof(float) == sizeof(std::uint32_t), "ensure float has 32 bit width");
 
   union
   {
     float f;
-    unsigned int i;
+    std::uint32_t i;
   } u;
 
   u.f=f;
@@ -1164,6 +1185,7 @@ bool ieee_floatt::is_float() const
 /// for NaN.
 double ieee_floatt::to_double() const
 {
+  PRECONDITION(spec == ieee_float_spect::double_precision());
   union { double f; uint64_t i; } a;
 
   if(infinity_flag)
@@ -1183,7 +1205,8 @@ double ieee_floatt::to_double() const
   }
 
   mp_integer i=pack();
-  assert(i.is_ulong());
+  CHECK_RETURN(i.is_ulong());
+  CHECK_RETURN(i <= std::numeric_limits<std::uint64_t>::max());
 
   a.i=i.to_ulong();
   return a.f;
@@ -1193,10 +1216,13 @@ double ieee_floatt::to_double() const
 /// for NaN.
 float ieee_floatt::to_float() const
 {
-  if(sizeof(unsigned)!=sizeof(float))
-  {
-    throw "ieee_floatt::to_float not supported on this architecture";
-  }
+  // if false - ieee_floatt::to_float not supported on this architecture
+  static_assert(
+    std::numeric_limits<float>::is_iec559,
+    "this requires the float layout is according to the IEC 559/IEEE 754 "
+    "standard");
+  static_assert(
+    sizeof(float) == sizeof(uint32_t), "a 32 bit float type is required");
 
   union { float f; uint32_t i; } a;
 
@@ -1217,7 +1243,8 @@ float ieee_floatt::to_float() const
   }
 
   mp_integer i=pack();
-  assert(i.is_ulong());
+  CHECK_RETURN(i.is_ulong());
+  CHECK_RETURN(i <= std::numeric_limits<std::uint32_t>::max());
 
   a.i=i.to_ulong();
   return a.f;

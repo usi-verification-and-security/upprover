@@ -27,11 +27,18 @@ public:
   const std::list<std::string> &get_values(const std::string &option) const;
   const std::list<std::string> &get_values(char option) const;
 
+  std::list<std::string> get_comma_separated_values(const char *option) const;
+
   virtual bool isset(char option) const;
   virtual bool isset(const char *option) const;
   virtual void set(const std::string &option);
   virtual void set(const std::string &option, const std::string &value);
   virtual void clear();
+
+  bool has_option(const std::string &option) const
+  {
+    return getoptnr(option).has_value();
+  }
 
   typedef std::vector<std::string> argst;
   argst args;

@@ -14,6 +14,7 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
       ../pointer-analysis/pointer-analysis$(LIBEXT) \
+      ../goto-instrument/source_lines$(OBJEXT) \
       ../goto-instrument/cover$(OBJEXT) \
       ../goto-instrument/cover_basic_blocks$(OBJEXT) \
       ../goto-instrument/cover_filter$(OBJEXT) \
@@ -24,7 +25,6 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../goto-instrument/cover_instrument_mcdc$(OBJEXT) \
       ../goto-instrument/cover_instrument_other$(OBJEXT) \
       ../goto-instrument/cover_util$(OBJEXT) \
-      ../goto-symex/rewrite_union$(OBJEXT) \
       ../analyses/analyses$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \

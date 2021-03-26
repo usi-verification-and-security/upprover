@@ -18,24 +18,30 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/typecheck.h>
 #include <util/std_expr.h>
 
+class casting_replace_symbolt : public replace_symbolt
+{
+private:
+  bool replace_symbol_expr(symbol_exprt &dest) const override;
+};
+
 class linkingt:public typecheckt
 {
 public:
   linkingt(
-    symbol_tablet &_main_symbol_table,
-    symbol_tablet &_src_symbol_table,
-    message_handlert &_message_handler):
-    typecheckt(_message_handler),
-    main_symbol_table(_main_symbol_table),
-    src_symbol_table(_src_symbol_table),
-    ns(_main_symbol_table)
+    symbol_table_baset &_main_symbol_table,
+    symbol_table_baset &_src_symbol_table,
+    message_handlert &_message_handler)
+    : typecheckt(_message_handler),
+      main_symbol_table(_main_symbol_table),
+      src_symbol_table(_src_symbol_table),
+      ns(_main_symbol_table)
   {
   }
 
   virtual void typecheck();
 
   rename_symbolt rename_symbol;
-  replace_symbolt object_type_updates;
+  casting_replace_symbolt object_type_updates;
 
 protected:
   bool needs_renaming_type(
@@ -106,25 +112,21 @@ protected:
     const symbolt &new_symbol);
 
   std::string expr_to_string(
-    const namespacet &ns,
     const irep_idt &identifier,
     const exprt &expr) const;
 
   std::string type_to_string(
-    const namespacet &ns,
     const irep_idt &identifier,
     const typet &type) const;
 
   std::string type_to_string_verbose(
-    const namespacet &ns,
     const symbolt &symbol,
     const typet &type) const;
 
   std::string type_to_string_verbose(
-    const namespacet &ns,
     const symbolt &symbol) const
   {
-    return type_to_string_verbose(ns, symbol, symbol.type);
+    return type_to_string_verbose(symbol, symbol.type);
   }
 
   void detailed_conflict_report_rec(
@@ -165,8 +167,8 @@ protected:
     const struct_typet &old_type,
     const struct_typet &new_type);
 
-  symbol_tablet &main_symbol_table;
-  symbol_tablet &src_symbol_table;
+  symbol_table_baset &main_symbol_table;
+  symbol_table_baset &src_symbol_table;
 
   namespacet ns;
 
