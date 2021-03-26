@@ -594,38 +594,36 @@ void smtcheck_opensmt2t_la::add_constraints2type(const exprt & expr, const PTRef
     }
     else if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
     {
+        // The implementation contains support for: 16,32 and 64 bits only
+        if (size == 16 || size == 32 || size == 64) {
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    	cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
+            cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
 #endif
-        // The implementation contains support to: 16,32 and 64 bits only
-        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
-                && (size == 16 || size == 32 || size == 64));
-            
-    	std::string lower_bound = "0";
-    	std::string upper_bound = ((size==64) ? "18446744073709551615" : 
-                                        ((size==32) ? "4294967295" : "65535"));
-#ifdef SMT_DEBUG_VARS_BOUNDS   
-    	is_add_constraints = 
+            std::string lower_bound = "0";
+            std::string upper_bound = ((size == 64) ? "18446744073709551615" :
+                                       ((size == 32) ? "4294967295" : "65535"));
+#ifdef SMT_DEBUG_VARS_BOUNDS
+            is_add_constraints =
 #endif
-        push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+            push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+        }
     }
     else if(type_id==ID_signedbv) // int = 32, long = 64
     {
+        // The implementation contains support for: 16,32 and 64 bits only
+        if (size == 16 || size == 32 || size == 64) {
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    	cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
+            cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
 #endif
-        // The implementation contains support to: 16,32 and 64 bits only
-        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
-            && (size == 16 || size == 32 || size == 64));
-
-        std::string lower_bound = ((size==64) ? "-9223372036854775808" : 
-                            ((size==32) ? "-2147483648" : "-32768"));
-        std::string upper_bound = ((size==64) ? "9223372036854775807" : 
-                            ((size==32) ? "2147483647" : "32767"));
-#ifdef SMT_DEBUG_VARS_BOUNDS   
-    	is_add_constraints = 
-#endif 
-        push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+            std::string lower_bound = ((size == 64) ? "-9223372036854775808" :
+                                       ((size == 32) ? "-2147483648" : "-32768"));
+            std::string upper_bound = ((size == 64) ? "9223372036854775807" :
+                                       ((size == 32) ? "2147483647" : "32767"));
+#ifdef SMT_DEBUG_VARS_BOUNDS
+            is_add_constraints =
+#endif
+            push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+        }
     }
     else if(type_id==ID_fixedbv)
     {

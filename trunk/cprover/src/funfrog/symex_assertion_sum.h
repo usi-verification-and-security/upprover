@@ -419,6 +419,9 @@ private:
 
   // NOTE: use only when versions for interface symbols are needed!
   ssa_exprt get_current_version(const symbolt & symbol);
+
+  std::vector<ssa_exprt> symbolsToCurrentVersions(std::vector<irep_idt> identifiers);
+  std::vector<ssa_exprt> symbolsToNextVersions(std::vector<irep_idt> identifiers);
     
 // Note from CPROVER 5.12 about const propagation:
 // We cannot remove the object from the L1 renaming map, because L1 renaming

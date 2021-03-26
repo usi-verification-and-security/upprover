@@ -555,26 +555,23 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // NOTE: In order to prevent name clashes with argument SSA versions,
   // we renew them all here.
-  for (std::vector<symbol_exprt>::const_iterator it1 =
-          partition_iface.argument_symbols.begin();
-          it1 != partition_iface.argument_symbols.end();
-          ++it1) {
+  for (auto const& arg_symbol : partition_iface.argument_symbols) {
 
-    ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
-    //FIXME: unify rename/SSA fabrication
-    
+    ssa_exprt lhs = to_ssa_expr(arg_symbol);
+    lhs.remove_level_2();
+
     // Check before getting into symex_assign_symbol that lhs is correct
     assert(lhs.id()==ID_symbol &&
        lhs.get_bool(ID_C_SSA_symbol) &&
        !lhs.has_operands());
-    
+
     guardt guard{true_exprt{}, guard_manager};
     // without multithreading, no need to record events
     //state.record_events=false;
-    
+
     assignment_typet assignment_type;
     assignment_type = symex_targett::assignment_typet::HIDDEN;
-    symex_assignt{state, assignment_type, ns, symex_config, target}.assign_symbol(lhs, expr_skeletont{}, *it1, {});
+    symex_assignt{state, assignment_type, ns, symex_config, target}.assign_symbol(lhs, expr_skeletont{}, arg_symbol, {});
   }
 }
 
@@ -687,6 +684,61 @@ void symex_assertion_sumt::assign_function_arguments(
       }
 #endif
 }
+
+std::vector<ssa_exprt> symex_assertion_sumt::symbolsToCurrentVersions(std::vector<irep_idt> identifiers)
+{
+    std::vector<ssa_exprt> res;
+    for (auto const& identifier : identifiers) {
+        const auto & symbol = get_normal_symbol(identifier);
+        const auto & expr = clean_expr(symbol.symbol_expr(), *state, false);
+        if (expr.id() == ID_struct) {
+            auto const& struct_expr = to_struct_expr(expr);
+            auto const& components = to_struct_type(ns.follow(symbol.symbol_expr().type())).components();
+            std::vector<irep_idt> component_identifiers;
+            for (auto const& component : components) {
+                ssa_exprt component_expr = to_ssa_expr(struct_expr.component(component.get_name(), ns));
+                stop_constant_propagation_for(component_expr.get_identifier());
+                auto renamed = state->rename<L2>(component_expr, ns).get();
+                res.push_back(to_ssa_expr(renamed));
+            }
+        }
+        else {
+            res.push_back(get_current_version(symbol));
+        }
+    }
+    return res;
+}
+
+std::vector<ssa_exprt> symex_assertion_sumt::symbolsToNextVersions(std::vector<irep_idt> identifiers)
+{
+    std::vector<ssa_exprt> res;
+    for (auto const& identifier : identifiers) {
+        const auto & symbol = get_normal_symbol(identifier);
+        const auto & expr = clean_expr(symbol.symbol_expr(), *state, false);
+        if (expr.id() == ID_struct) {
+            auto const& struct_expr = to_struct_expr(expr);
+            auto const& components = to_struct_type(ns.follow(symbol.symbol_expr().type())).components();
+            std::vector<irep_idt> component_identifiers;
+            for (auto const& component : components) {
+                ssa_exprt component_expr = to_ssa_expr(struct_expr.component(component.get_name(), ns));
+                const auto p_it = state->get_level2().current_names.find(component_expr.get_l1_object_identifier());
+                assert(p_it.has_value());
+
+                //incrementing the counter
+                const_cast<symex_level2t&>(state->get_level2()).increase_generation(
+                    component_expr.get_l1_object_identifier(), component_expr, state->get_l2_name_provider());
+                stop_constant_propagation_for(component_expr.get_identifier());
+                auto renamed = state->rename<L2>(component_expr, ns).get();
+                res.push_back(to_ssa_expr(renamed));
+            }
+        }
+        else {
+            res.push_back(get_next_version(symbol));
+        }
+    }
+    return res;
+}
+
 /*******************************************************************
 
  Function: symex_assertion_sumt::mark_argument_symbols
@@ -698,15 +750,13 @@ void symex_assertion_sumt::assign_function_arguments(
 \*******************************************************************/
 void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_type, partition_ifacet & partition_iface)
 {
-  for(const auto & parameter : function_type.parameters())
+  std::vector<irep_idt> param_identifiers;
+  std::transform(function_type.parameters().begin(), function_type.parameters().end(), std::back_inserter(param_identifiers),
+                 [](code_typet::parametert const& param) { return param.get_identifier(); });
+  auto current_versions = symbolsToCurrentVersions(std::move(param_identifiers));
+  for(const auto & current_version : current_versions)
   {
-    const auto& parameter_id = parameter.get_identifier();
-    //std::cout << "parameter_id: " << identifier.c_str() << "\n"; //e.g: func::a
-
-    const auto & symbol = get_normal_symbol(parameter_id);
-    auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
-
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking argument symbol of function: ", current_version, "\n");//e.g: |myfunc::a!0#1|
     std::cout << '\n';
@@ -727,11 +777,9 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
 void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface)
 {
   const auto& globals_accessed = get_accessed_globals(function_id);
+  auto current_versions = symbolsToCurrentVersions(globals_accessed);
 
-  for (auto global_id : globals_accessed) {
-    const auto & symbol = get_normal_symbol(global_id);
-    // this also stops constant propagation! see method description
-    auto current_version = get_current_version(symbol);
+  for (auto current_version : current_versions) {
     partition_iface.argument_symbols.push_back(current_version);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
@@ -762,17 +810,17 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     partition_ifacet &partition_iface)
 {
   const auto& globals_modified = get_modified_globals(function_id);
+  auto next_versions = symbolsToNextVersions(globals_modified);
 
-  for (const auto & global_id : globals_modified){
-    const auto& symbol = get_normal_symbol(global_id);
-    auto ssa_expr = get_next_version(symbol);
-    partition_iface.out_arg_symbols.push_back(ssa_expr);
+
+  for (const auto & next_version : next_versions){
+    partition_iface.out_arg_symbols.push_back(next_version);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", next_version);
     std::cout << '\n';
 #   endif
-    assert(is_L2_SSA_symbol(ssa_expr)); // KE: avoid creating junk
+    assert(is_L2_SSA_symbol(next_version)); // KE: avoid creating junk
   }
 }
 
@@ -857,10 +905,12 @@ void symex_assertion_sumt::store_modified_globals(
 
   for (const auto & out_symbol : partition_iface.out_arg_symbols) {
     // get original symbol expression
-    const ssa_exprt & iface_symbol_version = to_ssa_expr(out_symbol);
-    const symbol_exprt & rhs  = to_symbol_expr(iface_symbol_version.get_original_expr());
+    ssa_exprt const & iface_symbol_version = to_ssa_expr(out_symbol);
+    ssa_exprt rhs = iface_symbol_version;
+    rhs.remove_level_2();
     assert(ns.follow(out_symbol.type()) == ns.follow(rhs.type()));
     // Emit the assignment
+    stop_constant_propagation_for(to_ssa_expr(rhs).get_identifier());
     raw_assignment(state, iface_symbol_version, rhs, ns);
   }
 //  symex_config.constant_propagation = old_cp;

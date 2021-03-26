@@ -118,9 +118,9 @@ PTRef smtcheck_opensmt2t::constant_to_ptref(const exprt & expr){
         }
         else{
             assert(expr.type().id() == ID_c_bool);
-            std::string num(expr.get_string(ID_value));
-            assert(num.size() == 8); // if not 8, but longer, please add the case
-            val = num.compare("00000000") != 0;
+            std::string num_str(expr.get_string(ID_value));
+            auto num = std::stoll(num_str);
+            val = num != 0;
         }
         return constant_bool(val);
     }
