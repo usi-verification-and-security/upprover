@@ -4,10 +4,7 @@
 
 UpProver
 =====
-[UpProver](http://verify.inf.usi.ch/upprover) is a a Bounded Model Checker that incrementally verifies C program revisions that are closely-related, instead of verifying the full program over and over again. 
-It exploits tree-interpolation algorithms in SMT to summarize functions as their behavior relevant to a property in a reusable, localized form. 
-It allows verifying user-specified assertions. The verification is performed by unwinding the loops in the program and passing the resulting equation to SMT solver OpenSMT.
-
+[UpProver](http://verify.inf.usi.ch/upprover) is a a Bounded Model Checker that incrementally verifies C program revisions that are closely-related, instead of verifying the full program over and over again. It allows verifying user-specified assertions within a predefined bound. UpProver is implemented in C++ and uses the interpolating SMT solver [OpenSMT](https://github.com/usi-verification-and-security/opensmt.git) which is used for both satisfiability solving and interpolation for computing function summaries.
 
 
 
@@ -25,7 +22,7 @@ $ mkdir build; cd build; cmake ..; make install
 
 Then compile UpProver (uses `cmake` as a build system generator) using the following command
 ```
-$ mkdir build; cd build; cmake ..; make
+$ cd hifrog/trunk/cprover; mkdir build; cd build; cmake ..; make
 ```
 
 ### Changing build type
@@ -34,6 +31,14 @@ The default build type is RELEASE. Different build type can be configured using 
 $ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
-## Contact
+Usage
+=====
+To see all the commands, type `./upprover --help`.
+
+Check the [manual](http://verify.inf.usi.ch/upprover/usage) to use UpProver for verifying different revisions of a C program.
+
+
+Contact
+=====
 If you have questions please mail them to me at
 sepideh.a65@gmail.com, or to the discussion forum!
