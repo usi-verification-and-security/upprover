@@ -304,8 +304,8 @@ void parser_baset::set_options_All(const cmdlinet &cmdline)
   status() << "\n*** NO INTERPOLATION MODE, NOT USING SUMMARY FILES (DPRODUCE_PROOF is off) ***\n" << eom;
 #endif
 #ifdef DISABLE_OPTIMIZATIONS
-  if (cmdline.isset("dump-SSA-tree"))
-        options.set_option("dump-SSA-tree", true);
+  if (cmdline.isset("dump-SSA-form"))
+        options.set_option("dump-SSA-form", true);
     
     if (cmdline.isset("dump-pre-query"))
         options.set_option("dump-pre-query", true);

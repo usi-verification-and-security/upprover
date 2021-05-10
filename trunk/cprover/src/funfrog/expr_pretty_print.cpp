@@ -184,8 +184,9 @@ expr_pretty_print(std::ostream& out, const exprt& expr,
   return out;
 }
 
-///////////////////////////////////////////
-/* Main of Print SSA */
+/*******************************************************************
+Main of SSA print
+\*******************************************************************/
 std::ostream&
 expr_ssa_print(std::ostream& out, const exprt& expr, std::map <std::string,exprt>* partition_smt_decl,
 		bool isNeg, bool contTerm)
@@ -232,9 +233,15 @@ expr_ssa_print_guard(std::ostream& out, const exprt& expr, std::map <std::string
   return out;
 }
 
-// Recursive inner order SSA representation
-void
-expr_pretty_printt::visit_SSA(const exprt& expr) 
+/*******************************************************************
+ Goal: takes CProver expression and creates SMT representation out of it without using OpenSMT,
+ but employs string SMT-lib representation.
+ This method is expected to mimic what we are exactly doing in the conversion (encoding):
+ instead of using OPenSMT to convert to PTRefs,
+ it manually converts exprs into SMTlib strings and dumps them.
+ It does "Recursive inner order SSA representation"
+\*******************************************************************/
+void expr_pretty_printt::visit_SSA(const exprt& expr)
 {
     bool isNegIn = false;
     if (expr.id() == ID_notequal) 

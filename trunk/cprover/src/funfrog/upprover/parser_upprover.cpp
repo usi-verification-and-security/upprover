@@ -92,7 +92,7 @@ void parser_upprovert::help()
 #ifdef DISABLE_OPTIMIZATIONS
     "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
     //"--list-templates               dump the templates of the functions for user-defined summaries\n"
-    "--dump-SSA-tree                ask to dump SSA-form in smt2 format into default file: __SSA__dump_1.smt2\n"
+    "--dump-SSA-form                ask to dump SSA-form in smt2 format into default file: __SSA__dump_1.smt2\n"
     "--dump-pre-query               ask UpProver to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
     "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
     "--dump-query-name <base>       base name for the files where queries are dumped\n"

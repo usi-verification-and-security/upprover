@@ -69,6 +69,8 @@ public:
   unsigned start_idx=0;
   // Index after the last SSA corresponding to this partition
   unsigned end_idx=0;
+  //We can iterate over partition, as
+  //Each partition has a start_it and end_it.
   symex_target_equationt::SSA_stepst::iterator start_it;
   // Iterator after the last SSA corresponding to this partition
   symex_target_equationt::SSA_stepst::iterator end_it;

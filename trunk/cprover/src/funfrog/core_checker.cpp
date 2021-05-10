@@ -494,7 +494,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                                                 store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
-    if (options.get_bool_option("dump-SSA-tree")) {
+    if (options.get_bool_option("dump-SSA-form")) {
         equation.set_dump_SSA_tree(true);
         equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
     }

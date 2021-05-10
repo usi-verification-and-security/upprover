@@ -25,7 +25,7 @@
   "(no-error-trace)" \
   "(no-cex-model)" \
   "(refine-mode):(init-mode):(logic):(list-templates)"\
-  "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
+  "(solver):(dump-query)(dump-pre-query)(dump-SSA-form)(dump-query-name):"\
   "(function):"
 
 

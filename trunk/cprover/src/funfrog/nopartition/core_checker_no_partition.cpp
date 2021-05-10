@@ -30,7 +30,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 
   hifrog_symex_target_equationt equation(ns);
 #ifdef DISABLE_OPTIMIZATIONS
-  if (options.get_bool_option("dump-SSA-tree")) {
+  if (options.get_bool_option("dump-SSA-form")) {
     equation.set_dump_SSA_tree(true);
     equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
   }

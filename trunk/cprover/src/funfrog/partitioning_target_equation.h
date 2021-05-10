@@ -158,6 +158,7 @@ protected:
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
+  void print();
 #endif
   unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 

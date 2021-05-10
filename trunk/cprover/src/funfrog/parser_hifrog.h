@@ -46,7 +46,7 @@ Module: Command Line Parsing
   "(no-cex-model)" \
   "(no-sum-refine)" \
   "(refine-mode):(init-mode):(logic):(list-templates)"\
-  "(solver):(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):"\
+  "(solver):(dump-query)(dump-pre-query)(dump-SSA-form)(dump-query-name):"\
   "(partial-loops)" \
   "(function):"
 

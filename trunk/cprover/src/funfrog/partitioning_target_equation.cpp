@@ -328,6 +328,7 @@ void partitioning_target_equationt::close_current_partition()  {
 
 /***************************************************************************/
 #ifdef DISABLE_OPTIMIZATIONS
+//print declarations of SSA form
 std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
     if (!partition_smt_decl->empty())
     {
@@ -342,7 +343,7 @@ std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
     }
     return out;
 }
-
+//print SSA forms for each partition
 void partitioning_target_equationt::print_partition() {
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
     std::string basic_str = out_basic.str();
@@ -363,8 +364,7 @@ void partitioning_target_equationt::print_partition() {
     out_basic.clear();
     terms_counter = 0;
 }
-//print SSA forms into file __SSA_query_default_1.smt2
-#ifdef DISABLE_OPTIMIZATIONS
+//print SSA forms all into file __SSA_query_default_1.smt2
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
@@ -375,13 +375,26 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     std::stringbuf decl_buf;
     out_decl.rdbuf(&decl_buf);
 
-    // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
-    print_decl_smt(out_decl); // print the symbol decl
-    // print each partition
+    // print the symbol declaration
+    print_decl_smt(out_decl);
+    // Thanks to print_partition() each partition print each partition
     out << decl_buf.str() << out_partition.str() << "(check-sat)\n";
 }
-#endif
-void partitioning_target_equationt::getFirstCallExpr() 
+/*
+//print raw SSA forms into standard output
+void partitioning_target_equationt::print() {
+  //since the whole SSA steps are partitioned and each partition has start and end
+  for (auto it_part = partitions.rbegin(); it_part != partitions.rend(); ++it_part) //all partitions
+  {
+    for (auto iter = it_part->start_it; iter != it_part->end_it; ++iter)  //each partition has start and end
+    {
+        iter->output(std::cout);
+        std::cout << "\n";
+    }
+  }
+} */
+
+void partitioning_target_equationt::getFirstCallExpr()
 {
 //    saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);
 }
@@ -753,6 +766,8 @@ void partitioning_target_equationt::convert(convertort &convertor,
         print_all_partition(out_ssaT);
 
         out_ssaT.close();
+        //print all instructions in std output
+        //print();
       }
 #endif
 }
