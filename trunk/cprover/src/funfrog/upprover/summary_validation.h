@@ -32,7 +32,7 @@ public:
 	{};
     
     bool call_graph_traversal();
-    void sanity_check(vector<call_tree_nodet*>& calls);
+    void TIP_sanity_check(vector<call_tree_nodet*>& calls);
     
 protected:
 //counts total number of summary validation

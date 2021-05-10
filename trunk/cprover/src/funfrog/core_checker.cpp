@@ -214,37 +214,46 @@ std::unique_ptr<ssa_solvert> core_checkert::initialize__cuf_solver()
 /*******************************************************************
  Function:
 
- Purpose: Generic initialise for any solver - lra
+ Purpose: Generic initialize for LRA solver and LRA interpolation algorithms
 \*******************************************************************/
-void core_checkert::initialize__lra_option_solver()
-{
-    solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
-    
-    initialize_solver_options();
-        
-    initialize_solver_debug_options();
+void core_checkert::initialize__lra_option_solver() {
+  solver_options.initialize_numeric_solver_options(options.get_unsigned_int_option("type-constraints"));
+  
+  initialize_solver_options();
+  
+  initialize_solver_debug_options();
 
-#ifdef PRODUCE_PROOF
-    if (options.is_set("itp-lra-algorithm")) {
-        solver_options.m_lra_itp_algorithm = options.get_unsigned_int_option("itp-lra-algorithm");
-    }
-    status() << "\n*** LRA Interpolation Algorithm in OpenSMT2: ";
-    if(solver_options.m_lra_itp_algorithm == 0)
-        status() << "Farkas Algorithm";
-    else if (solver_options.m_lra_itp_algorithm == 2)
-        status() << "Dual Farkas Algorithm";
-    else if (solver_options.m_lra_itp_algorithm == 3)
-        status() << "Flexible Farkas Algorithm";
-    else if (solver_options.m_lra_itp_algorithm == 4)
-        status() << "Decomposing Farkas Algorithm";
-    else if (solver_options.m_lra_itp_algorithm == 5)
-        status() << "Dual Decomposing Farkas Algorithm";
-    status() << eom;
-    
-    if (options.is_set("itp-lra-factor")) {
-        solver_options.m_lra_factor = options.get_option("itp-lra-factor");
-    }
-#endif // PRODUCE_PROOF
+  if (options.is_set("itp-lra-algorithm")) {
+    solver_options.m_lra_itp_algorithm = options.get_unsigned_int_option("itp-lra-algorithm");
+  }
+  status() << "\n*** LRA Interpolation Algorithm in OpenSMT2: ";
+  if (solver_options.m_lra_itp_algorithm == 0){
+    status() << "Farkas Algorithm" << eom; //This is the default interpolation Alg that guarantees TIP
+  }
+  else if (solver_options.m_lra_itp_algorithm == 2){
+    status() << "Dual Farkas Algorithm" << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
+       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+  }
+  else if (solver_options.m_lra_itp_algorithm == 3) {
+    status() << "Flexible Farkas Algorithm" << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
+       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+  }
+  else if (solver_options.m_lra_itp_algorithm == 4) {
+    status() << "Decomposing Farkas Algorithm" << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
+       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+  }
+  else if (solver_options.m_lra_itp_algorithm == 5) {
+    status() << "Dual Decomposing Farkas Algorithm" << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
+       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+  }
+  
+  if (options.is_set("itp-lra-factor")) {
+    solver_options.m_lra_factor = options.get_option("itp-lra-factor");
+  }
 }
 /*******************************************************************
  Function:

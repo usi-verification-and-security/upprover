@@ -75,7 +75,7 @@ bool launch_upprover(
     msg.status() << "DIFF TIME: " << time_gap(after,before) << msg.eom;
     if (res_diff){
         msg.status() << "The program models are identical" <<msg.eom;
-        if(!options.is_set("sanity-check")){
+        if(!options.is_set("TIP-check")){
             return 0;
         }
     }
@@ -134,8 +134,8 @@ bool summary_validationt::call_graph_traversal()
     init_solver_and_summary_store();
     
     std::vector<call_tree_nodet*>& calls = omega.get_call_summaries();
-    if(options.is_set("sanity-check")){
-       sanity_check(calls);
+    if(options.is_set("TIP-check")){
+      TIP_sanity_check(calls);
     }
     bool validated = false;
 //    auto before_iteration_over_functions = timestamp();
@@ -564,7 +564,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
     return is_verified;
 }
 /*******************************************************************\
-Function: sanity_check for tree interpolation property
+Function: TIP_sanity_check checks tree interpolation property on the summaries
 
 Purpose: Given a call graph, first it extracts the direct children of each parent
  then checks the tree interpolation property for each subtree
@@ -573,11 +573,11 @@ parent---> direct child
 main  ---> phi1
 phi1  ---> phi2 phi3
 phi3  ---> phi4 phi5
- The sanity check would be:
+ The sanity check of tree interpolation property (TIP) would be:
  I2 /\ I3 /| Phi1 --> I1
  I4 /\ I5 /| Phi3 --> I3
 \*******************************************************************/
-void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
+void summary_validationt::TIP_sanity_check(vector<call_tree_nodet*>& calls) {
 
     //associates each parent to its direct children in each subtree
     std::map<call_tree_nodet *, vector<call_tree_nodet *>> map_parent_childs;
@@ -620,9 +620,10 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
 //  }
 ////iterate over parents and insert each parent and negation of its summary to solve + summary of childs
 //  for (auto & map_parent_child : map_parent_childs) {
+    bool TIP_preserved = true;
     for (unsigned j = 0; j < insertOrder.size(); j++) {
         call_tree_nodet* current_parent =  insertOrder[j];
-        status() << "\n------sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
+        status() << "\n------TIP sanity check " << current_parent->get_function_id().c_str() << " ..." << eom;
 
         //in each insert do the cleaning
         init_solver_and_summary_store();
@@ -715,8 +716,15 @@ void summary_validationt::sanity_check(vector<call_tree_nodet*>& calls) {
             status() << "------Implication holds! " << eom;
         }
         else {
-            status() << "------Implication does not hold! " << eom;
+            TIP_preserved = false;
+            status() << "------Implication does not hold! "<< eom;
         }
+    }
+    if (TIP_preserved) {
+      status() << "\n------Tree-interpolation property is preserved on the existing summaries! \n" << eom;
+    }
+    else {
+      status() << "\n------Tree-interpolation property is NOT preserved on the existing summaries! \n" << eom;
     }
     exit(0);
 }

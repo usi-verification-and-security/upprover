@@ -46,7 +46,7 @@ public:
     
     // LRA
     //the default LRA interpolation algorithm
-    unsigned m_lra_itp_algorithm=4;
+    unsigned m_lra_itp_algorithm=0;
     std::string m_lra_factor="1/2";
     //to produce more compact summary set simplify_interpolant to 4, otherwise 0
     int simplify_interpolant = 4;

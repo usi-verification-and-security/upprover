@@ -352,14 +352,14 @@ void parser_baset::set_options_All(const cmdlinet &cmdline)
   }
   options.set_option("bootstrapping", cmdline.isset("bootstrapping"));
   
-  //"sanity-check" behaves as if doing upgrade checking of 2 same programs, so we trigger summary-validation internally
-  if (cmdline.isset("sanity-check")) {
-    options.set_option("sanity-check", cmdline.isset("sanity-check"));
+  //"TIP-check" behaves as if doing incremental checking of 2 same programs, so we trigger summary-validation internally
+  if (cmdline.isset("TIP-check")) {
+    options.set_option("TIP-check", cmdline.isset("TIP-check"));
     options.set_option("summary-validation", true);
-    options.set_option("summary-validation", cmdline.get_value("sanity-check"));
-//N.B. if(options.is_set("summary-validation")) At this point returns true
-// but
-//     if(cmdline.isset("summary-validation") still returns false!
+    std::string filename=cmdline.args[0];
+    options.set_option("summary-validation", filename);
+//N.B. At this point (options.is_set("summary-validation"))  returns true
+// but (cmdline.isset("summary-validation") still returns false!
   }
 #endif
 
@@ -622,7 +622,7 @@ bool process_goto_program(goto_modelt &goto_model,const cmdlinet &cmdline,
     //before performing symbolic execution in symex
     //The reason is we want to differentiate each function call inside a loop so that later
     //each of which would have a single function summary.
-    if (cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("sanity-check"))
+    if (cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("TIP-check"))
     {
       unwindsett unwindset;
       unwindset.parse_unwind(cmdline.get_value(HiFrogOptions::UNWIND.c_str()));

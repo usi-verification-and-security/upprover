@@ -59,13 +59,11 @@ void parser_upprovert::help()
     "                                 osmt - use OpenSMT2 solver,\n"
     "                                 z3   - use Z3 solver\n"
     "--no-cex-model                 skips the cex validator if model cannot be extracted \n"
-#ifdef PRODUCE_PROOF
-    "\nUpProver options (Incremental verification of changes):\n"
+    "\nUpProver options (Incremental verification of program revisions):\n"
     "--bootstrapping                prepare for upgrade checking\n"
-    "--summary-validation<file>     incremental upgrade check with the specified\n"
-    "                               updated version of the program\n"
-    "--sanity-check <file1>         sanity checking after bootstrapping for TI property\n"
-    "                               usage: <hifrog> <logic> <file1> --sanity-check <file1> \n"
+    "--summary-validation<file>     incremental check with the specified\n"
+    "                               changed version of the program\n"
+    "--TIP-check <file1>         check Tree-Interpolation Property in generated summaries\n"
     "--save-omega <filename>        save the last used substitution scenario\n"
     "                               to the given file\n"
     "--load-omega <filename>        load substitution scenario\n"
@@ -80,15 +78,16 @@ void parser_upprovert::help()
     "                                 2 - Weak,\n"
     "                                 3 - Random\n"
     "--itp-lra-algorithm            LRA interpolation algorithm:\n"
-    "                                 0 - Strong,\n"
-    "                                 2 - Weak\n"
-    "                                 3 - custom factor.\n"
+    "                                 0 - Farkas (the default),\n"
+    "                                 2 - Dual Farkas,\n"
+    "                                 3 - custom factor,\n"
+    "                                 4 - Decomposing Farkas,\n"
+    "                                 5 - Dual decomposing Farkas.\n"
     "--itp-lra-factor               LRA interpolation strength factor:\n"
     "                               must be a fraction in the interval [0,1)\n"
     "--reduce-proof                 enable Proof Reduction\n"
     "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
     "--reduce-proof-loops           number of reduction iterations\n"
-#endif
 
 #ifdef DISABLE_OPTIMIZATIONS
     "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
@@ -131,10 +130,10 @@ void parser_upprovert::trigger_upprover(const goto_modelt &goto_model_old) {
   }
 
 //2nd phase
-  if (cmdline.isset("summary-validation") || cmdline.isset("sanity-check")) {
+  if (cmdline.isset("summary-validation") || cmdline.isset("TIP-check")) {
     std::string new_filepath;
-    if (cmdline.isset("sanity-check")) {
-      new_filepath = cmdline.get_value("sanity-check");
+    if (cmdline.isset("TIP-check")) { //a hack in TIP sanity-check: new file and old file are the same
+      new_filepath = cmdline.args[0];  //old file path
     }
     else {
       new_filepath = cmdline.get_value("summary-validation");
@@ -161,7 +160,6 @@ void parser_upprovert::trigger_upprover(const goto_modelt &goto_model_old) {
         goto_model_new,
         options,
         ui_message_handler);
-    
   }
 }
 
@@ -258,7 +256,7 @@ int parser_upprovert::doit()
   
   if(validate_input_options()) {
     //preparation for UpProver
-    if(cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("sanity-check")){
+    if(cmdline.isset("bootstrapping") || cmdline.isset("summary-validation") || cmdline.isset("TIP-check")){
       trigger_upprover(goto_model);
       status_interface("#X: Done.");
       return CPROVER_EXIT_SUCCESS;

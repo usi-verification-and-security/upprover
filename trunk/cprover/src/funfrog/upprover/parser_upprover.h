@@ -8,11 +8,13 @@
   "D:I:(16)(32)(64)(v):(version)" \
   "(i386-linux)(i386-macos)(ppc-macos)" \
   "(show-goto-functions)(show-fpfreed-program)(show-dereferenced-program)" \
+  "(save-summaries):(load-summaries):" \
   "(save-omega):(load-omega):" \
   "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \
   "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
-  "(bootstrapping)(summary-validation):(sanity-check):" \
+  "(bootstrapping)(TIP-check)(summary-validation):" \
+  "(sum-theoref)" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
