@@ -15,7 +15,7 @@
 void parser_hifrogt::help()
 {
     std::cout <<"\n"
-"* * *                HiFrog " << HIFROG_VERSION
+      "HiFrog [version " << HIFROG_VERSION << " uses CPROVER " << CPROVER_VERSION_HIFROG << "]"
       "\n"
       "Usage:                         Purpose:\n"
       "\n"
