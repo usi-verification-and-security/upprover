@@ -1,6 +1,0 @@
-SAT - doesn't hold
-Violated property:
-  file 03_simple/nan-check.c line 3 function f00
-  NaN on +
-  !(x == -inf && y == +inf || x == +inf && y == -inf)
-ASSERTION(S) DO(ES)N'T HOLD

@@ -1,0 +1,7 @@
+(define-fun |c::nonlin#0| (
+  (|c::nonlin::x!0| Real)
+  (|hifrog::?fun_start| Bool)
+  (|hifrog::?fun_end| Bool)
+  (|c::nonlin::?retval| Real) )  Bool
+  (= 1 |c::nonlin::?retval|)
+)

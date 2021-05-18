@@ -1,5 +1,0 @@
-Violated property:
-  file funfrog/01_choice/main7.c line 3 function main
-  assertion 0
-  (_Bool)0
-VERIFICATION FAILED

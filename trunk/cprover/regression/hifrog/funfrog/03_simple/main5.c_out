@@ -1,5 +1,0 @@
-Violated property:
-  file funfrog/03_simple/main5.c line 19 function main
-  assertion i == j
-  i == j
-VERIFICATION FAILED

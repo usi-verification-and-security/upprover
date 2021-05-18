@@ -1,6 +1,0 @@
-SAT - doesn't hold
-Violated property:
-  file 03_simple/malloc.c line 28 function main
-  assertion
-  arr[1] == 0
-ASSERTION(S) DO(ES)N'T HOLD
