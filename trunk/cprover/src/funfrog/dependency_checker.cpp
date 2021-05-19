@@ -12,6 +12,8 @@
 #include "subst_scenario.h"
 #include "partitioning_target_equation.h"
 #include "solvers/satcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
+#include "solvers/smtcheck_opensmt2_uf.h"
 #include "utils/naming_helpers.h"
 #include "conversion_utils.h"
 #include <funfrog/solvers/solver_options.h>
@@ -709,7 +711,7 @@ void dependency_checkert::convert_assumptions(
     {
         if(((*it).is_assume() || ((*it).is_assert() && it != it2)) && !(*it).ignore)
         {
-            //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
+            //std::cout << "convert assume :" << from_expr(ns, "", (*it).cond_expr) <<"\n";
             convertor.set_to_true((*it).cond_expr);
             set_guards_to_true(convertor, ((*it).cond_expr));
         }
@@ -727,7 +729,7 @@ void dependency_checkert::convert_assertions(
         convertort &convertor, SSA_steps_it &it2)
 {
     assert((*it2).is_assert());
-    //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
+    //std::cout << "convert assert :" << from_expr(ns, "", (*it2).cond_expr) <<"\n";
     set_guards_to_true(convertor, ((*it2).cond_expr));
     convertor.set_to_false((*it2).cond_expr);
 }
@@ -811,8 +813,18 @@ std::pair<bool, timet>
 dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dependency_checkert::SSA_steps_it c2) {
     try{
         // TODO: create solver according to current settings?
+        std::unique_ptr<check_opensmt2t> decider;
+        check_opensmt2t* raw = nullptr;
         solver_optionst solver_options; // Set defaults inside
-        satcheck_opensmt2t* decider = new satcheck_opensmt2t(solver_options, "implication checker", ns);
+        if (logic == "qflra") {
+			raw = new smtcheck_opensmt2t_lra(solver_options, "implication checker");
+        } else if (logic == "qfuf") {
+			raw = new smtcheck_opensmt2t_uf(solver_options, "implication checker");
+        } else {
+			raw = new satcheck_opensmt2t(solver_options, "implication checker", ns);
+        }
+        decider.reset(raw);
+
         decider->new_partition();
 
         convert_delta_SSA(*decider, c1, c2);

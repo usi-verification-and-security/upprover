@@ -10,6 +10,7 @@
 #include <funfrog/utils/time_utils.h>
 #include <map>
 #include <funfrog/interface/convertor.h>
+#include <string>
 
 class goto_programt;
 class namespacet;
@@ -34,11 +35,13 @@ public:
           subst_scenariot &_omega,
           //int percentage
           int fraction,
-          unsigned int SSA_steps_size
+          unsigned int SSA_steps_size,
+          std::string logic
     ) :
           goto_program(_goto_program),
           ns(_ns),
-          omega(_omega)
+          omega(_omega),
+          logic(logic)
     {
           set_message_handler(_message_handler);
           //last_label could be useless after the updates
@@ -80,6 +83,7 @@ protected:
   const goto_programt &goto_program;
   const namespacet &ns;
   subst_scenariot &omega;
+  std::string logic;
 
   int last_label;
   std::map<std::string,int*> label;

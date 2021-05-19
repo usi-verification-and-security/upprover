@@ -506,7 +506,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                     get_main_function(),
                     omega, 
                     options.get_unsigned_int_option("claims-opt"), 
-                    equation.SSA_steps.size())
+                    equation.SSA_steps.size(),
+                    options.get_option(HiFrogOptions::LOGIC))
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
     }
