@@ -18,7 +18,7 @@ void subst_scenariot::setup_default_precision(init_modet init)
 {
   if (init == init_modet::ALL_HAVOCING){
      default_precision = HAVOC;
-   } else if (init == init_modet::ALL_SUBSTITUTING){
+   } else if (init == init_modet::ALL_SUBSTITUTING){ //funcs are initialized to use summaries if any
      default_precision = INLINE;
    } else {
      assert(false);

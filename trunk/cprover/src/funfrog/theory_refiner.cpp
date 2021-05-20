@@ -36,7 +36,7 @@ void theory_refinert::initialize()
   decider = new smtcheck_opensmt2t_cuf(solver_options, "theory refiner");
     
     omega.initialize_call_info(omega.get_call_tree_root(), goto_program);
-  omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
+  omega.setup_default_precision(init_modet::ALL_SUBSTITUTING); //funcs are initialized to use summaries if any
 }
 
 void get_numbers(std::set<int>& nums, std::string set){

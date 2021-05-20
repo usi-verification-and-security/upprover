@@ -55,7 +55,7 @@ public:
 
   void initialize_call_info
           (call_tree_nodet &call_info, const goto_programt &code);
-
+//wrapper
   void set_initial_precision
           (const assertion_infot & assertion, const std::function<bool(const std::string &)> & has_summary)
   {

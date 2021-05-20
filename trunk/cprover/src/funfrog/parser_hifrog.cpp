@@ -20,7 +20,7 @@ void parser_hifrogt::help()
       "Usage:                         Purpose:\n"
       "\n"
       " hifrog [-?] [-h] [--help]     show help\n"
-      " hifrog [options] <logic> <file>       run on C `file'\n"
+      " hifrog [options] <--logic> <file>       run on C `file'\n"
       "\nGeneral Purpose options:\n"
       "--version                      show version information\n"
       "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
@@ -32,15 +32,10 @@ void parser_hifrogt::help()
       "                               from the given file(s)\n"
       "--show-claims                  output the claims list\n"
       "                               and prints the total number of claims\n"
-      //  "--bounds-check                 enable array bounds checks\n"
-      //  "--div-by-zero-check            enable division by zero checks\n"
-      //  "--pointer-check                enable pointer checks\n"
-      //  "--overflow-check               enable arithmetic over- and underflow checks\n"
-      //  "--nan-check                    check floating-point for NaN\n"
       "--claim <int>                  check a specific claim\n"
       "--all-claims                   check all claims in one run\n"
-      "--claims-opt <steps>           remove weaker claims using the given treshold\n"
-      "                               (treshold = number of SSA steps)\n"
+      "--claims-opt <steps>           remove weaker claims using the given threshold\n"
+      "                               (threshold = number of SSA steps)\n"
       "                               and check stronger claims at once\n"
       "--unwind <bound>               loop unwind bound\n"
       "--partial-loops                do not forbid paths with unsufficient loop unwinding (due to unwind bound)\n"
@@ -101,25 +96,25 @@ void parser_hifrogt::help()
       "--itp-lra-factor               LRA interpolation strength factor:\n"
       "                               must be a fraction in the interval [0,1)\n"
       "--verbose-solver <N>           set the verbosity to N\n"
-      "                                 1 - print statistics on the inerpolating solver,\n"
+      "                                 1 - print statistics on the interpolating solver,\n"
       "                                 2 - get the interpolant directly in the console,\n"
       "--reduce-proof                 enable Proof Reduction\n"
       "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
       "--reduce-proof-loops           number of reduction iterations\n"
+      "--list-templates               dump the templates of the functions for user-defined summaries\n"
       #ifdef DISABLE_OPTIMIZATIONS
       "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
-//"--list-templates               dump the templates of the functions for user-defined summaries\n"
-"--dump-SSA-tree                ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
-"--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
-"--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
-"--dump-query-name <base>       base name for the files where queries are dumped\n"
+      "--dump-SSA-tree                ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
+      "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
+      "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
+      "--dump-query-name <base>       base name for the files where queries are dumped\n"
       #endif
       "\nProgram representations:\n"
       "--show-symbol-table             show symbol table\n"
       "--show-goto-functions           show goto functions(show goto program)\n"
       //  "\nRefinement options:\n"
       //  "--refine-mode <mode>:\n"
-      //  "  0 | \"force-inlining\"         inline every function call\n"
+      //  "  0 | \"force-inlining\"       inline every function call\n"
       //  "                               after an unsuccessful attempt\n"
       //  "                               of summary substitution\n"
       //  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
@@ -136,7 +131,12 @@ void parser_hifrogt::help()
       //  "\nI/O options:\n"
       //  "--xml-ui                       use XML-formatted output\n"
       //  "--xml-interface                stdio-XML interface\n"
-      "\n";
+      //  "--bounds-check                 enable array bounds checks\n"
+      //  "--div-by-zero-check            enable division by zero checks\n"
+      //  "--pointer-check                enable pointer checks\n"
+      //  "--overflow-check               enable arithmetic over- and underflow checks\n"
+      //  "--nan-check                    check floating-point for NaN\n"
+"\n";
 }
 
 /*******************************************************************
@@ -183,7 +183,7 @@ int parser_hifrogt::doit()
     }
     
     //namespacet ns (symbol_table);
-    cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
+    status()<< std::string("Loading `")+cmdline.args[0]+"' ..." << eom;
     auto before=timestamp();
     
     
@@ -193,7 +193,7 @@ int parser_hifrogt::doit()
     }
     
     auto after=timestamp();
-    cbmc_status_interface(std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec."));
+    status() << std::string("    LOAD Time: ") + std::to_string(time_gap(after,before)) + std::string(" sec.") << eom;
     
     
     if (cmdline.isset("show-symbol-table"))
@@ -204,7 +204,6 @@ int parser_hifrogt::doit()
     
     if(cmdline.isset("show-goto-functions"))
     {
-        
         show_goto_functions(
                 goto_model,
                 get_message_handler(),
@@ -215,8 +214,7 @@ int parser_hifrogt::doit()
     
     if(cmdline.isset("list-templates")) {
         if (options.get_option("logic") != "prop") {
-            cbmc_status_interface("Listing templates\n");
-            
+            status() <<"*** Listing summary templates \n" <<eom;
             UserDefinedSummaryt uds;
             namespacet ns(goto_model.get_symbol_table());
             auto& goto_functions = goto_model.get_goto_functions();
@@ -224,9 +222,10 @@ int parser_hifrogt::doit()
             uds.dump_list_templates(ns, main, goto_functions, options, options.get_unsigned_int_option(HiFrogOptions::UNWIND),
                                     options.get_option(HiFrogOptions::LOGIC), options.get_option(HiFrogOptions::SAVE_FILE));
         }
-        else{
-            cbmc_error_interface("Error: invalid request for listing the template; it is supported only in LRA and EUF");
+        else {
+          status() <<"Error: invalid request for listing the template; it is supported only in LRA and EUF" <<eom;
         }
+        status() <<"\n*** Check the generated templates in the file '__summaries' and edit it as you wish!\n" <<eom;
         return 0;
     }
     
@@ -242,11 +241,11 @@ int parser_hifrogt::doit()
                      claim_user_nr);
     }
     else {
-        cbmc_status_interface("Please check --help to revise the user's options ");
+        status() <<"Please check --help to revise the user's options " <<eom;
         return 1;
     }
     
-    cbmc_status_interface("#X: Done.");
+    status() << "#X: Done." << eom;
     
     return 0;
 }
