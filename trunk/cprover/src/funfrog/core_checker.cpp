@@ -510,6 +510,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
                     options.get_option(HiFrogOptions::LOGIC))
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
+        status() <<"***************************\n" <<eom;
     }
 
 

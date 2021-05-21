@@ -69,7 +69,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
     temp_end = timestamp();
     duration = time_gap(temp_end,initial);
-    status () << "TIME FOR find_assert_deps: " << (duration) << eom;
+    //status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
     initial = timestamp();
 
@@ -323,7 +323,7 @@ void dependency_checkert::find_assert_deps()
 \*******************************************************************/
 bool dependency_checkert::compare_assertions(std::size_t idx1, std::size_t idx2){
     assert(idx2 > idx1);
-    return (idx2 - idx1) < treshold;
+    return (idx2 - idx1) < threshold;
 }
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -625,8 +625,8 @@ long dependency_checkert::find_implications() {
                                      from_expr(ns, "", assert_2.cond_expr) << ") [" << assert_2.source.pc->source_location.get_line() << "] [weaker]" << eom;
                         }
 
-                        weaker[i] = false;
-                        stronger[j] = false;
+                        weaker[j] = true;
+                        //stronger[j] = false;
                         hl_may_impl << assert_1.source.pc->source_location.get_property_id() << " " <<
                                     assert_2.source.pc->source_location.get_property_id() << " " <<
                                     assert1_idx << " " <<
@@ -663,19 +663,26 @@ long dependency_checkert::find_implications() {
 //      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
 
     hl_may_impl.close();
-
+    
+    status() <<"\n\n***************************" <<eom;
     status () << "Discarded assertions: " << discarded << eom;
     if (notdisc > 0) warning () << "WARNING: " << notdisc << " true implications exceeded timeout!" << eom;
 
     status () << "Total number of implication checks: " << impchecks << eom;
-    status () << "Total number of comparisons: " << checks << eom;
+    if(VERBOSE)
+      status () << "Total number of comparisons: " << checks << eom;
 
     for (int i = asserts.size() - 1; i >= 0; i--)
     {
         if (weaker[i] == true)
         {
             auto removable = SSA_steps[asserts[i]];
-            status () << "Removing << " << removable.source.pc->source_location.get_line() << eom;
+            status () << "Redundant assertion at: \n" <<
+            "file \"" << removable.source.pc->source_location.get_file() <<
+            "\",\nfunction: \"" << removable.source.pc->source_location.get_function() <<
+            "\", \nline number: " << removable.source.pc->source_location.get_line() <<
+            "\n" << from_expr(ns, "", removable.source.pc->guard) << eom;
+            
             removable.ignore = true;
         }
     }
@@ -817,11 +824,11 @@ dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dep
         check_opensmt2t* raw = nullptr;
         solver_optionst solver_options; // Set defaults inside
         if (logic == "qflra") {
-			raw = new smtcheck_opensmt2t_lra(solver_options, "implication checker");
+            raw = new smtcheck_opensmt2t_lra(solver_options, "implication checker");
         } else if (logic == "qfuf") {
-			raw = new smtcheck_opensmt2t_uf(solver_options, "implication checker");
+            raw = new smtcheck_opensmt2t_uf(solver_options, "implication checker");
         } else {
-			raw = new satcheck_opensmt2t(solver_options, "implication checker", ns);
+            raw = new satcheck_opensmt2t(solver_options, "implication checker", ns);
         }
         decider.reset(raw);
 
@@ -833,9 +840,9 @@ dependency_checkert::check_implication(dependency_checkert::SSA_steps_it c1, dep
         auto initial=timestamp();
         bool r = decider->solve();
         auto end=timestamp();
-        auto duration_out = time_gap(end,initial);   
+        auto duration_out = time_gap(end,initial);
         timet duration(duration_out);
-          
+        
         status() << "SOLVER TIME FOR check_implication: " << duration_out << eom;
         // solve it
         return std::make_pair(!r, duration);

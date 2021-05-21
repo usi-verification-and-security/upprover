@@ -47,10 +47,10 @@ public:
           //last_label could be useless after the updates
           //last_label = 0;
           impl_timeout = 2000;
-          // FIXME: make treshold parametrized
-          treshold = fraction; //equation.SSA_steps.size() / fraction;
-          //treshold = percentage * equation.SSA_steps.size() / 100;
-          status () << "Using the treshold of " << treshold << " out of " << SSA_steps_size << " SSA steps\n";
+          // FIXME: make threshold parametrized
+          threshold = fraction; //equation.SSA_steps.size() / fraction;
+          //threshold = percentage * equation.SSA_steps.size() / 100;
+          status () << "Using the threshold of " << threshold << " out of " << SSA_steps_size << " SSA steps\n";
           status () << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << eom;
     }
 
@@ -95,7 +95,7 @@ protected:
   /* Contain indices to SSA_steps */
   std::vector<std::size_t> asserts;
 //  std::map<std::string,int> instances;
-  unsigned treshold;
+  unsigned threshold;
 
   SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
   std::map<exprt, exprt> SSA_map;
