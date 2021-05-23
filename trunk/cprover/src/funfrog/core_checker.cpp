@@ -643,7 +643,10 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     auto after = timestamp();
     omega.get_unwinding_depth();
 
-    status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
+    if (options.is_set("unwind") && !(options.get_unsigned_int_option("unwind") == std::numeric_limits<unsigned int>::max()))
+        status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
+    else
+      status() << "Initial unwinding bound: " << "no bound!" << eom;
     status() << "Total number of steps: " << iteration_counter << eom;
     if (omega.get_recursive_total() > 0){
         status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
