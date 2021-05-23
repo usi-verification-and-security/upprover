@@ -153,8 +153,8 @@ void core_checkert::assertion_violated_no_partition(prepare_formula_no_partition
     assert(solver);
     prop.error_trace(*decider, ns, guard_expln);
     if (solver->is_overapprox_encoding()) {
-      status() << "\nA bug found." << "\n";
-      status() << "WARNING: Possibly due to the Theory conversion." << eom;
+      status() << "\nA bug found." << eom;
+      status() << "WARNING: Possibly due to the abstraction!" << eom;
     } else {
       status() << "A real bug found." << eom;
     }

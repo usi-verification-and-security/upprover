@@ -686,7 +686,7 @@ void core_checkert::assertion_violated (formula_managert& prop,
         prop.error_trace(*decider, ns, guard_expln);
         if (solver->is_overapprox_encoding()){
             status() << "\nA bug found." << eom;
-            status() << "WARNING: Possibly due to the Theory conversion." << eom;
+            status() << "WARNING: Possibly due to the abstraction!" << eom;
         } else {
             status() << "A real bug found." << eom;
         }

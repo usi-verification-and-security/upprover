@@ -139,7 +139,11 @@ public:
     void dump_function(std::ostream& out, const SummaryTemplate & templ);
 
       virtual bool is_overapprox_encoding() const override
-      { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping());}
+      { return (unsupported_info.has_unsupported_vars() && !has_overappox_mapping()) ||
+        logic->getLogic() == opensmt::Logic_t::QF_UF ||
+        logic->getLogic() == opensmt::Logic_t::QF_LRA ||
+        logic->getLogic() == opensmt::Logic_t::QF_LIA;
+      }
 
       virtual SRef get_numeric_sort() const=0; // used in core
 
