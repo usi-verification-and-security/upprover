@@ -117,8 +117,11 @@ bool core_checkert::assertion_holds_smt_no_partition(
   }
   auto after = timestamp();
   omega.get_unwinding_depth();
-
-  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
+  
+  if (options.is_set("unwind"))
+    status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
+  else
+    status() << "Initial unwinding bound: " << "No bound!" << eom;
   status() << "Total number of steps: " << count << eom;
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
