@@ -1,9 +1,9 @@
 
-[![Join the chat at https://gitter.im/usi-verification-and-security/upprover-forum](https://badges.gitter.im/usi-verification-and-security/upprover-forum.svg)](https://gitter.im/usi-verification-and-security/upprover-forum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Gitter](https://badges.gitter.im/upprover/upprover-forum.svg)](https://gitter.im/upprover/upprover-forum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 UpProver
 =====
-[UpProver](http://verify.inf.usi.ch/upprover) is a Bounded Model Checker that incrementally verifies C program revisions that are closely related, instead of verifying the full program over and over again. It allows verifying user-specified assertions within a predefined bound. UpProver is implemented in C++.  For both satisfiability solving and interpolation,  UpProver uses the SMT solver [OpenSMT](https://github.com/usi-verification-and-security/opensmt.git) which is equipped with a flexible interpolation framework for EUF and LRA for computing function summaries.
+[UpProver](http://verify.inf.usi.ch/upprover) is a Bounded Model Checker that incrementally verifies different revisions of a C program. The key idea in UpProver is reusing efforts from one verification run to another, instead of verifying the full program over and over again. It uses Function Summarization based on Craig interpolation. For both satisfiability solving and interpolation,  UpProver uses the SMT solver [OpenSMT](https://github.com/usi-verification-and-security/opensmt.git) which is equipped with a flexible interpolation framework for EUF and LRA for computing function summaries. UpProver is implemented in C++. It allows verifying user-specified assertions within a predefined bound. 
 
 
 Project page: http://verify.inf.usi.ch/upprover
