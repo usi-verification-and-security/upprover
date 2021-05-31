@@ -76,14 +76,14 @@ hifrog --logic qflra ex_choice.c
 
 ### Summary and Theory Refinement
 
-First see how tedious might be finding an approporiate precision **manually** for each claim! Among qfuf (the cheapest), qflra, prop (the most expensive) encodings, let's find the lightest possible (i.e., less expensive) encoding for verifying each claim of program `sumtheoref2.c`
+First see how tedious might be to **manually** find an appropriate precision for each claim! Among qfuf (the cheapest), qflra, prop (the most expensive) encodings, let's find the lightest possible (i.e., less expensive) encoding for verifying each claim of program `sumtheoref2.c`
 
 By running manually for each claim: 
 ```
 rm __summaries
 hifrog --logic <logic> sumtheoref2.c --claim <N> --save-summaries __summaries 
 ```
-We trust the safe result (if the over-approximative theory is safe, more precise theories also will be safe), but we don't trust the unsafe result (it might be false positive due to abstracton) unless prop approves it!
+We trust the safe result (if the over-approximative theory is safe, more precise theories also will be safe), but we don't trust the unsafe result (it might be a false positive due to abstraction) unless the prop encoding confirms that!
 
 Now, run HiFrog with `--sum-theoref` option to see the tool **automatically** will find the appropriate encoding for each claim:
 ```
@@ -225,7 +225,7 @@ upprover --logic qfuf --unwind 4  gpu_v1.i --summary-validation gpu_v2.i
     upprover --logic qflra ex6-v1.c  --bootstrapping
     upprover --logic qflra ex6-v1.c --summary-validation ex6-v2-delete.c 
     ``` 
-  UpProver reprts the assertion has been violated thus a bug is introduced in the 2nd version!
+  UpProver reports the assertion has been violated thus a bug is introduced in the 2nd version!
   
     2) changing the signature of functions in the new version:
     ```
