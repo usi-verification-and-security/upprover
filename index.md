@@ -146,7 +146,7 @@ hifrog --logic qflra sin_cos.c --load-summaries __summaries_nonlin
 
 See the summary of `mod_mult` function stored in `summaries_mult_mod`
 
-#
+
 
 ### Tuning the strength of summaries
 - LRA strong summary
@@ -246,7 +246,7 @@ upprover --logic qfuf --unwind 4  gpu_v1.i --summary-validation gpu_v2.i
 upprover --logic qflra ex_conj_itp_v1.c --bootstrapping
 upprover --logic qflra ex_conj_itp_v1.c --TIP-check
 ```
-#
+
 
 - UF vs PROP encoding
 ```
