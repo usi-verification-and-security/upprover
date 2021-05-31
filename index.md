@@ -5,14 +5,15 @@ First, please download the demo examples of HiFrog and UpProver from [here](http
 `wget -q http://verify.inf.usi.ch/sites/default/files/executable/lab_hifrog_upprover.gz ;  tar -xzvf  lab_hifrog_upprover.gz`
 
 # Part 1: HiFrog Demo: 
+` cd lab_hifrog_upprover/hifrogDemo` navigates to the directory that contains demo examples for HiFrog.
+
 ### How to run HiFrog?
 ```
 rm __summaries
 hifrog [options] --logic <logic>  <file> --claim <N>
 ```
 where `<logic>` could be `qfuf`, `qflra`, `prop`
-#
-` cd lab_hifrog_upprover/hifrogDemo` navigates to the directory that contains demo examples for HiFrog.
+
 
 ### Use of Function Summarization in verifying different assertions: 
 - A toy example:
@@ -38,7 +39,7 @@ hifrog --logic qflra  disk.c --claim 79 --load-summaries __summaries
 ```
 For comparison, remove __summaries then run claim 79.
 
-#
+
 
 ### Use of Uninterpreted Functions (qfuf) vs. Propositional Logic (prop): 
 
@@ -54,7 +55,7 @@ Too costly! You may need to kill the process manually!
 rm __summaries
 hifrog --logic qfuf ex_product.c
 ```
-#
+
 
 ### Use of Linear Real Arithmetic (qflra) vs. Uninterpreted Functions (qfuf): 
 
@@ -70,7 +71,7 @@ Note to the "Warning" the tool reports! It says the reported bug might be due to
 rm __summaries
 hifrog --logic qflra ex_choice.c 
 ```
-#
+
 
 
 ### Summary and Theory Refinement
@@ -110,7 +111,7 @@ Solution:
 
 
 
-#
+
 ### Removing redundant assertions:
 HiFrog has an option --claims-opt <steps> which identifies and reports the redundant assertions using the threshold <steps> as the maximum number of SSA steps between the assertions including the SSA steps at the functions calls (if any) between the assertions.
 ```
@@ -119,14 +120,14 @@ hifrog --logic qflra --claims-opt 20 ex_redundant.c
 ```
   
   
-#
+
 ### Error trace:
 Whenever a safety property is violated, HiFrog prints a concrete counterexample mapping it to the exact lines in the program: 
 ```
 hifrog  --logic qflra --claim 1 ex_unsafe.c
 ```
   
-#
+
 
   
 ### User-Provided Summaries:
@@ -165,7 +166,7 @@ hifrog --logic qflra --claim 1 --itp-lra-algorithm 2 --verbose-solver 2 --save-s
 `(<= (- 2) |abs::#return_value!0#1|)`
 
       
-#
+
 ### Proof reduction
 See proof compression information 
 ```
@@ -173,11 +174,10 @@ hifrog --verbose-solver 1 --reduce-proof --logic qfuf --itp-uf-algorithm 0 --cla
 ```
 
 
-#
-
 
 
 # Part 2: UpProver Demo: 
+` cd lab_hifrog_upprover/upproverDemo` navigates to the directory that contains demo examples for UpProver.
 
 ### How to run UpProver
 - bootstrapping of the first version
@@ -190,9 +190,8 @@ upprover [options] --logic <logic>  <file1> --bootstrapping
  ```
 upprover [options] --logic <logic>  <file1> --summary-validation <file2> 
 ```
-#
-` cd lab_hifrog_upprover/upproverDemo` navigates to the directory that contains demo examples for UpProver.
-#
+
+
 - A toy example
 
 ```
@@ -207,7 +206,7 @@ rm __*
 upprover --logic qflra  --unwind 4 --bootstrapping  drivers_video_v1.i 
 upprover --logic qflra --unwind 4 drivers_video_v1.i --summary-validation drivers_video_v2.i
 ```
-#
+
 
 - Identical code: (Syntactically or semantically identical w.r.t to the property) 
 ```
@@ -218,7 +217,7 @@ upprover --logic qfuf --unwind 4  gpu_v1.i --summary-validation gpu_v2.i
 *Exercise) Verify gpu_v2.i from scratch and compare the runtime with the above incremental check!*
 
 
-#
+
 - Other types of changes: 
 
     1) deleting a function in the new version:
@@ -239,7 +238,6 @@ upprover --logic qfuf --unwind 4  gpu_v1.i --summary-validation gpu_v2.i
     *Exercise) introduce a new function to ex5_orig.c and verify it!*
 
 
-#
 
 
 - Checking "Tree interpolation property" in generated summaries
