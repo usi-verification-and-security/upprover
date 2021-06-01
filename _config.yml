@@ -5,8 +5,8 @@ baseurl: ""
 url: "http://verify.inf.usi.ch/tools"
 
 # Build settings
-markdown: kramdown
-permalink: pretty
-highlighter: rouge
+# markdown: kramdown
+# permalink: pretty
+# highlighter: rouge
 
 theme: jekyll-theme-cayman 
