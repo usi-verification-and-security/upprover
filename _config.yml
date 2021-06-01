@@ -1,7 +1,8 @@
+theme: jekyll-theme-cayman 
 # Site settings
 title: "Notes about UpProver and HiFrog"
 description: "SMT-based Bounded Model Checker for C"
-baseurl: ""
+# baseurl: ""
 url: "http://verify.inf.usi.ch/tools"
 
 # Build settings
@@ -9,4 +10,3 @@ url: "http://verify.inf.usi.ch/tools"
 # permalink: pretty
 # highlighter: rouge
 
-theme: jekyll-theme-cayman 
