@@ -8,3 +8,5 @@ url: "http://verify.inf.usi.ch/tools"
 markdown: kramdown
 permalink: pretty
 highlighter: rouge
+
+theme: jekyll-theme-cayman 
