@@ -10,14 +10,27 @@ Author: Ondrej Sery
 #define CPROVER_EXPR_PRETTY_PRINT_H
 #ifdef DISABLE_OPTIMIZATIONS
 #include <expr.h>
+
 class expr_pretty_printt
 {
 public:
     expr_pretty_printt(std::ostream &_out) : expr_pretty_printt(_out, nullptr) {}
 
     expr_pretty_printt(std::ostream &_out, std::map<std::string, exprt> *partition_smt_decl)
-            : out(_out), is_prev_token(false), orig_indent(0), last(false), partition_smt_decl(partition_smt_decl),
-              isAlreadyConverted(false) {}
+      : out(_out), is_prev_token(false), orig_indent(0), last(false), partition_smt_decl(partition_smt_decl),
+        isAlreadyConverted(false), terminal_color(false)
+        {
+            if(terminal_color)
+            {
+              EDGE_COLOR = "\033[2;31m";
+              TYPE_COLOR = "\033[0;35m"; //Magenta purple
+              CONSTANT_COLOR = "\033[0;36m"; //cyan
+              SYMBOL_COLOR = "\033[0m";
+              OPERATOR_COLOR = "\033[1;32m"; //green
+              NORMAL_COLOR = "\033[0m";
+              DEBUG_COLOR = "\0[34m";
+            }
+        }
 
     virtual ~expr_pretty_printt() { partition_smt_decl = nullptr; } // to assure nothing will happen to the map
     virtual void operator()(const exprt &expr);
@@ -35,7 +48,7 @@ public:
         orig_indent = indent_str.length();
         indent = indent_str;
     }
-
+    
 private:
     std::ostream &out;
     bool is_prev_token; // is token or space
@@ -58,6 +71,17 @@ private:
     // Can do it only because refer to const!!
     bool isAlreadyConverted;
     double last_convered_value;
+    
+    //to print colored text (e.g, in SSA-form) set to true in C'tor
+    bool  terminal_color;
+    
+    std::string EDGE_COLOR;
+    std::string TYPE_COLOR;
+    std::string  CONSTANT_COLOR;
+    std::string  SYMBOL_COLOR;
+    std::string  OPERATOR_COLOR;
+    std::string  NORMAL_COLOR;
+    std::string  DEBUG_COLOR;
 };
 
 std::ostream &expr_pretty_print(std::ostream &out, const exprt &expr,

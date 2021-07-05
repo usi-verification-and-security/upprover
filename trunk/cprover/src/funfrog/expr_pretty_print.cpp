@@ -11,16 +11,7 @@ Module: Simple pretty printing visitor for exprt.
 #include "utils/naming_helpers.h"
 #include "utils/expressions_utils.h"
 
-#include <iostream>
 #include <sstream>
-
-#define EDGE_COLOR "\033[2;37m"
-#define TYPE_COLOR "\033[0;37m"
-#define CONSTANT_COLOR "\033[0;36m"
-#define SYMBOL_COLOR "\033[0m"
-#define OPERATOR_COLOR "\033[1;32m"
-#define NORMAL_COLOR "\033[0m"
-#define DEBUG_COLOR "\E[47;34m"
 
 std::string 
 expr_pretty_printt::addToDeclMap(const exprt &expr) 
