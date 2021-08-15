@@ -12,7 +12,8 @@ Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 #include <funfrog/utils/containers_utils.h>
 #include <funfrog/utils/SummaryInvalidException.h>
 #include <util/mathematical_types.h>
-#include <smt2newcontext.h>
+
+#include "opensmt/smt2newcontext.h"
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -58,8 +59,8 @@ bool smtcheck_opensmt2t::is_assignment_true(FlaRef fr) const
     else if (fr.is_false())
         return false;
     //value for boolean expression
-    ValPair a_p = mainSolver->getValue(flaref_to_ptref(fr));
-    return ((*a_p.val == *true_str) ^ (fr.sign()));
+    PTRef val = mainSolver->getModel()->evaluate(flaref_to_ptref(fr));
+    return ((val == logic->getTerm_true()) ^ (fr.sign()));
 }
 
 //debug: print the formula being inserted:  logic->pp(ptr)
@@ -552,7 +553,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
     interpolant.setDecider(this);
 
     // prepare the substitution map how OpenSMT expects it
-    Map<PTRef,PtAsgn,PTRefHash> subst;
+    Logic::SubstMap subst;
     std::unordered_set<std::string> globals;
     for(const auto& expr : common_symbols){
         // get the original PTRef for this expression
@@ -573,14 +574,13 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt & interpolant, std::vector<
         PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name.c_str());
 //        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
 //        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
-        subst.insert(original, PtAsgn{ new_var, l_True });
+        subst.insert(original, new_var);
         //fill argument of summaries
         tt.addArg(new_var);
     }
     //apply substitution to the interpolant
     PTRef old_root = interpolant.getInterpolant();
-    PTRef new_root;
-    logic->varsubstitute(old_root, subst, new_root);
+    PTRef new_root = substitute(old_root, subst);
 
 //    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
 //    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
@@ -600,7 +600,7 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
     // and they are in the same order
     // one exception is if global variable is both on input and output, then the out argument was distinguished
 
-    Map<PTRef, PtAsgn, PTRefHash> subst;
+    Logic::SubstMap subst;
     if (symbols.size() != static_cast<std::size_t>(args.size())) {
         throw SummaryInvalidException("Number of interface symbols do not match the summary signature!\n");
         for (size_t i =0 ; i < symbols.size() ; i++) {
@@ -626,13 +626,12 @@ PTRef smtcheck_opensmt2t::instantiate(smt_itpt const & smt_itp, const std::vecto
             throw SummaryInvalidException(ss.str());
         }
         PTRef symbol_ptref = expression_to_ptref(symbols[i]);
-        subst.insert(argument, PtAsgn(symbol_ptref, l_True));
+        subst.insert(argument, symbol_ptref);
     }
 
     // do the actual substitution
     PTRef old_root = sumTemplate.getBody();
-    PTRef new_root;
-    logic->varsubstitute(old_root, subst, new_root);
+    PTRef new_root = substitute(old_root, subst);
     return new_root;
 }
 //replaces the function with the summary body(new root)

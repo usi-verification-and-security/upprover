@@ -343,7 +343,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             if (solver->isConjunctive(one_disjunct)) {
                                 // dropping conjuncts inside the disjunctions, but keeping the full disjunctions.
                                 //size-1 because you want to keep at least one element in each conjunct
-                                Map<PTRef, PtAsgn, PTRefHash> subst;
+                                Logic::SubstMap subst;
                                 size_t number_of_conjuncts = solver->getLogic()->getPterm(one_disjunct).size();
                                 for (size_t conj = 0; conj < number_of_conjuncts - 1; conj++) {
                                     const PTRef one_conj = solver->getLogic()->getPterm(one_disjunct)[conj];
@@ -352,10 +352,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                     std::cout <<";; a sub-conj to be deleted: \n" << solver->getLogic()->pp(one_conj) <<"\n\n";
 #endif
                                     //get rid of one_conj by setting it true
-                                    subst.insert(one_conj, PtAsgn{solver->getLogic()->getTerm_true(), l_True});
-                                    PTRef res_subst = PTRef_Undef;
-                                    solver->getLogic()->varsubstitute(sumFull_pref, subst,
-                                                                      res_subst); //sumFull_pref as entire disj fla is kept
+                                    subst.insert(one_conj, solver->getLogic()->getTerm_true());
+                                    PTRef res_subst = solver->substitute(sumFull_pref, subst); //sumFull_pref as entire disj fla is kept
                                     // original disjunctive is untouched here
 #ifdef DEBUG_HOUDINI
                                     std::cout << ";; res_subst is (got rid of one_conj by setting it true): \n" << solver->getLogic()->pp(res_subst) << "\n";

@@ -1278,9 +1278,10 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
     if (is_expr_bb) {
         PTRef ptrf = converted_bitblasted_exprs[expr.hash()];
         bitblaster->computeModel();
-        ValPair v1 = bitblaster->getValue(ptrf);
-        assert(v1.val != NULL);
-        irep_idt value(v1.val);
+        PTRef val = bitblaster->getValue(ptrf);
+        assert(val != PTRef_Undef);
+        std::string val_string(getPTermString(val));
+        irep_idt value(val_string.c_str());
 
         // Create the expr with it
         // constant_exprt tmp(value, expr.type());

@@ -1,6 +1,8 @@
 #include "check_opensmt2.h"
 #include <solvers/prop/literal.h>
 
+#include <opensmt/Substitutor.h>
+
 // Shall be static - no need to allocate these all the time!
 const char* check_opensmt2t::false_str = "false";
 const char* check_opensmt2t::true_str = "true";
@@ -154,5 +156,10 @@ void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vec
         itpCtx->getSingleInterpolant(interpolants, mask);
     }
 }
+
+PTRef check_opensmt2t::substitute(PTRef term, Logic::SubstMap const & subst) {
+    return Substitutor(*logic, subst).rewrite(term);
+}
+
 
 #endif

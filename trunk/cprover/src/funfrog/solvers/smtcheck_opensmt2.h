@@ -246,30 +246,17 @@ protected:
 
     irep_idt get_value_from_solver(PTRef ptrf)
     {
-      if (logic->hasSortBool(ptrf))
-      {
-          lbool v1 = mainSolver->getTermValue(ptrf);
-          int int_v1 = toInt(v1);
-          irep_idt value(std::to_string(int_v1).c_str());
-
-          return value;
-      }
-      else
-      {
-          ValPair v1 = mainSolver->getValue(ptrf);
-          assert(v1.val != nullptr);
-          irep_idt value(v1.val);
-
-          return value;
-      }
+        auto model = mainSolver->getModel();
+        PTRef val = model->evaluate(ptrf);
+        std::string val_string(getPTermString(val));
+        irep_idt value(val_string.c_str());
+        return value;
     }
 
     bool is_value_from_solver_false(PTRef ptrf)
     {
-      assert(logic->hasSortBool(ptrf));
-
-      lbool v1 = mainSolver->getTermValue(ptrf);
-      return (toInt(v1) == 0);
+        auto model = mainSolver->getModel();
+        return model->evaluate(ptrf) == logic->getTerm_false();
     }
 
 #ifdef DISABLE_OPTIMIZATIONS

@@ -302,8 +302,9 @@ tvt satcheck_opensmt2t::l_get(literalt a) const
   else if (a.is_false())
     return tvt(false);
 
-  ValPair a_p = mainSolver->getValue(ptrefs[a.var_no()]);
-  lbool lresult = (*a_p.val == *true_str) ? l_True : l_False;
+  PTRef ptref = ptrefs[a.var_no()];
+  PTRef value = mainSolver->getModel()->evaluate(ptref);
+  lbool lresult = (value == logic->getTerm_true()) ? l_True : l_False;
 
   tvt tvtresult(tvt::tv_enumt::TV_UNKNOWN);
   if (lresult == l_True)

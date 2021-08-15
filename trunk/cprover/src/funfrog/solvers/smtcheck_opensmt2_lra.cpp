@@ -23,7 +23,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(solver_optionst solver_options, co
     const char* msg2 = nullptr;
     config->setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     assert(strcmp(msg2, "ok") == 0);
-    config->simplify_interpolant = solver_options.simplify_interpolant;
+    config->setSimplifyInterpolant(solver_options.simplify_interpolant);
     mainSolver.reset(new MainSolver(*logic, *config, name));
     // Initialize parameters
     this->verbosity = solver_options.m_verbosity;

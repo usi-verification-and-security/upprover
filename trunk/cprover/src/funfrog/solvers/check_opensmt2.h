@@ -75,6 +75,8 @@ public:
 
     virtual bool is_overapproximating() const = 0;
 
+    PTRef substitute(PTRef term, Logic::SubstMap const & subst);
+
     /* General consts for prop version - Shall be Static. No need to allocate these all the time */
     static const char* false_str;
     static const char* true_str;
