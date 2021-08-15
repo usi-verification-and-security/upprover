@@ -89,8 +89,6 @@ option(USE_Z3 "" OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 
-find_package(GMP REQUIRED)
-
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -123,15 +121,7 @@ target_compile_definitions(hifrog-lib PUBLIC
 
 #option(PRINT_DEBUG_UPPROVER "Print debug info of summary IDs in UpProver" ON)
 
-find_library(OPENSMT2_LIB NAMES opensmt)
-if(NOT OPENSMT2_LIB)
-	message(FATAL_ERROR "opensmt library not found")
-endif()
-
-find_path(OPENSMT2_INCLUDE opensmt/opensmt2.h)
-if(NOT OPENSMT2_INCLUDE)
-	message(FATAL_ERROR "opensmt header files not found")
-endif()
+find_package(OPENSMT CONFIG REQUIRED PATHS ${OPENSMT_ROOT} ${OPENSMT_DIR})
 
 # Locating Z3 and setting related options
 if(USE_Z3)
@@ -159,16 +149,14 @@ endif(USE_Z3)
 add_subdirectory(solvers)
 add_subdirectory(utils)
 
-target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE}/opensmt ${OPENSMT2_INCLUDE})
-target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
-    )
+target_link_libraries(hifrog-lib PUBLIC OpenSMT::OpenSMT)
 
-target_link_libraries(hifrog-lib hifrog-utils
+target_link_libraries(hifrog-lib PUBLIC hifrog-utils
         ansi-c cpp goto-symex goto-instrument-lib pointer-analysis solvers util xml
 )
 
-target_link_libraries(hifrog hifrog-lib)
-target_link_libraries(upprover hifrog-lib)
+target_link_libraries(hifrog PUBLIC hifrog-lib)
+target_link_libraries(upprover PUBLIC hifrog-lib)
 
 set_target_properties(upprover hifrog hifrog-lib hifrog-utils
 PROPERTIES
