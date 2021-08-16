@@ -23,6 +23,11 @@ Then compile UpProver (uses `cmake` as a build system generator) using the follo
 $ cd upprover/trunk/cprover; mkdir build; cd build; cmake ..; make
 ```
 
+If OpenSMT is installed in a non-standard location, you need to provide a hint where CMake should look for it using a variable OPENSMT_ROOT:
+```
+$ cmake -DOPENSMT_ROOT=/my/custom/path ..
+```
+
 ### Changing build type
 The default build type is RELEASE. Different build types can be configured using cmake variable CMAKE_BUILD_TYPE. For example, to create a debug build use
 ```
