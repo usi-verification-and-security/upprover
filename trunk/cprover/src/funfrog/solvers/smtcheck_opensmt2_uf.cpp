@@ -170,6 +170,13 @@ smtcheck_opensmt2t_uf::mkURealMinus(vec<PTRef>& args)
     return mkFun(s_minus, args);
 }
 
+PTRef
+smtcheck_opensmt2t_uf::mkURealNegate(vec<PTRef>& args)
+{
+    assert(args.size() == 1);
+    return mkFun(s_neg, args);
+}
+
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t_uf::mkURealLt
@@ -442,8 +449,9 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             //ptref = logic->mkRealMinus(args);
             ptref = this->mkURealMinus(args);
         } else if(_id == ID_unary_minus) {
+            assert(expr.operands().size() == 1);
             //ptref = logic->mkRealMinus(args);
-            ptref = this->mkURealMinus(args);
+            ptref = this->mkURealNegate(args);
         } else if(_id == ID_unary_plus) {
             //ptref = logic->mkRealPlus(args);
             ptref = this->mkURealPlus(args);

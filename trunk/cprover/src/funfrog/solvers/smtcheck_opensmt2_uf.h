@@ -62,6 +62,7 @@ private:
     PTRef mkURealDiv(vec<PTRef>& args);
     PTRef mkURealPlus(vec<PTRef>& args);
     PTRef mkURealMinus(vec<PTRef>& args);
+    PTRef mkURealNegate(vec<PTRef>& args);
     PTRef mkURealLt(vec<PTRef>& args);
     PTRef mkURealLe(vec<PTRef>& args);
     PTRef mkURealGt(vec<PTRef>& args);
