@@ -6,12 +6,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include "xml_parser.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 
+#include "xml_parser.h"
 xml_parsert xml_parser;
 
 // 'do it all' function
