@@ -20,7 +20,7 @@
 #include <unordered_set>
 
 #define HOUDINI_REF
-//#define DEBUG_HOUDINI
+#define DEBUG_HOUDINI
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -245,7 +245,15 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
 //      print summary-in-use in the console
 //      itpt_summaryt& currentSum = summary_store->find_summary(single_sumID);
 //      currentSum.serialize(std::cout);
-        validated = validate_summary(node , sumID_full);
+  
+        itpt_summaryt &itpFull = summary_store->find_summary(sumID_full);
+        smt_itpt_summaryt *sumFull = dynamic_cast<smt_itpt_summaryt *>(&itpFull);
+        PTRef sumFull_pref = sumFull->getInterpolant();
+        // auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
+        smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver());
+        assert(solver);
+      
+        validated = validate_summary(node , sumID_full, solver->isConjunctive(sumFull_pref));
         if (!validated) {
             //Since the original summary of node was invalid, mark the parent to be checked anyway
             bool has_parent = node.get_function_id() != ID_main;
@@ -261,16 +269,12 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                     node.remove_node_sumID(sumID_full); //just deletes from node_summaryID_set
                 }
                 else if (_logic == "qflra" || _logic == "qfuf") { //if summary is con/dis-junctive, logic could n't be prop.
-                    itpt_summaryt &itpFull = summary_store->find_summary(sumID_full);
+                
 # ifdef DEBUG_HOUDINI
                     std::cout << ";; summary orig is :\n";
                     itpFull.serialize(std::cout);
 #endif
-                    smt_itpt_summaryt *sumFull = dynamic_cast<smt_itpt_summaryt *>(&itpFull);
-                    PTRef sumFull_pref = sumFull->getInterpolant();
-                    // auto decider_backup = this->decider;  //shared_ptr 2nd wrapper for object to keep it alive for next itter
-                    smtcheck_opensmt2t *solver = dynamic_cast<smtcheck_opensmt2t *>(decider->get_solver());
-                    assert(solver);
+                 
                     //Get the args of full-summary and use it in the sub-summary
                     std::vector<PTRef> sumArgs_copy = sumFull->getTempl().getArgs();
                     //Remove full-summary and its ID from everywhere
@@ -299,7 +303,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             //add ID <set> node_summaryID_set
                             node.add_node_sumID(sub_sumID);
                             //Validate new sub summary
-                            validated = validate_summary(node, sub_sumID);
+                            validated = validate_summary(node, sub_sumID, solver->isConjunctive(sumFull_pref));
                             //regardless of validation result remove summaryID from everywhere; validated conjuncts will be mkAnd
                             summary_store->remove_summary(sub_sumID);
                             node.remove_node_sumID(sub_sumID);
@@ -325,7 +329,8 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                             repaired_nodes.insert(node.get_function_id());
                             status() << "\n" << " weakened summary  composed of " << validConjs.size() << " conjuncts was good enough to capture the change of "
                                      << node.get_function_id().c_str() << eom;
-                            validated = true;
+                            //validated = true;//don't do this, because if you call validaye node will have opprtunity to interpolate over subtrees with better itps
+                          validated = validate_summary(node, sub_sumID, true);
                         }
                         else { //none of conjuncts was good enough
                             status() << "\n" << "--none of conjuncts was good enough for  "
@@ -366,7 +371,7 @@ bool summary_validationt::validate_node(call_tree_nodet &node) {
                                     sub_sumID = summary_store->insert_summary(sub_fla_sum, node.get_function_id().c_str());
                                     node.add_node_sumID(sub_sumID);
                                     //Validate new sub summary
-                                    validated = validate_summary(node, sub_sumID);
+                                    validated = validate_summary(node, sub_sumID, solver->isConjunctive(sumFull_pref));
             
                                     if (!validated) {
                                         //remove summary ID from everywhere
@@ -411,7 +416,7 @@ Function:
 
 \*******************************************************************/
 
-bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id) {
+bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt summary_id, bool conjunctive) {
     status() << "------validating summary of " << node.get_function_id().c_str() << " with ID: " << summary_id << eom;
     counter_validation_check++;
     //each time we need a cleaned solver; this resets mainSolver but logic and config stay the same.
@@ -481,7 +486,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
         catch (SummaryInvalidException &ex) {
             // TODO: figure out a way to check beforehand whether interface matches or not
             // Summary cannot be used for current body -> invalidated
-            if (node.node_has_summary()) {
+            if (node.node_has_summary() && !conjunctive ) {
                 node.set_inline();
                 node.set_precision(INLINE);
                 //remove summary and ID from everywhere

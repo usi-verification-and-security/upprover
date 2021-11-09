@@ -42,7 +42,7 @@ protected:
     
     bool validate_node(call_tree_nodet & node);
 	
-	bool validate_summary(call_tree_nodet & node, summary_idt summary);
+	bool validate_summary(call_tree_nodet & node, summary_idt summary, bool);
     void update_subtree_summaries(call_tree_nodet & node);
 };
 
