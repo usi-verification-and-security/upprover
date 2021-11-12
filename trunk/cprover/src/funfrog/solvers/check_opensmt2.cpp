@@ -117,7 +117,9 @@ fle_part_idt check_opensmt2t::new_partition() {
     if (!last_partition_closed) {
         assert(partition_count != 0);
         if(current_partition.empty()){
-            std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
+            std::cerr << "WARNING: last partition was empty probably due to slicing, or "
+            "in UpProver the function signature got changed and summaries would n't match in terms of number of args."
+            << std::endl;
         }
         // this is the important statement in this block; before is just checking
         close_partition();
