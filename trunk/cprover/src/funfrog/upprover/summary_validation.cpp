@@ -20,7 +20,7 @@
 #include <unordered_set>
 
 #define HOUDINI_REF
-#define DEBUG_HOUDINI
+//#define DEBUG_HOUDINI
 /*******************************************************************\
 
 Standalone Function: check_initial
@@ -505,6 +505,7 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
         return false;
     }
     unsigned iteration_counter = 0;
+    std::list<call_tree_nodet *> refined_functions;
     while (!assertion_holds)
     {
         iteration_counter++;
@@ -526,38 +527,43 @@ bool summary_validationt::validate_summary(call_tree_nodet &node, summary_idt su
             // it reaches the top-level main and fails --> report immediately
             // 1st figure out functions that can be refined
             refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
-            const std::list<call_tree_nodet *> refined_functions = refiner.get_refined_functions();
+            refined_functions = refiner.get_refined_functions();
             if (refined_functions.empty()) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
                 break;
             }
             else {
-                //there is room for refinement; remove the summary of functions accumulated in refiner
-                for (auto const & refined_node : refined_functions ){
-                    if (refined_node->node_has_summary()) {
-                        const summary_idt smID = refined_node->get_node_sumID();
-                        summary_store->remove_summary(smID);
-                        refined_node->remove_node_sumID(smID);
-                        refined_node->set_inline();
-                        node.set_precision(INLINE);
-                        //decrease # of repaired summaries
-                        if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
-                            repaired_nodes.erase(refined_node->get_function_id());
-                    }
-                }
                 status() << ("Go to next iteration\n") << eom;
                 // do the actual refinement of ssa; clear summary info from partition; partition.summary_ID_vec
                 refineSSA(symex, refined_functions );
             }
         }
     } // end of refinement loop
-
+    //had refinement but didn't hold, so remove
+    if (iteration_counter > 0 && !assertion_holds) {
+      //there is room for refinement; remove the summary of functions accumulated in refiner
+      for (auto const & refined_node : refined_functions ){
+        if (refined_node->node_has_summary()) {
+          const summary_idt smID = refined_node->get_node_sumID();
+          summary_store->remove_summary(smID);
+          refined_node->remove_node_sumID(smID);
+          refined_node->set_inline();
+          node.set_precision(INLINE);
+          //decrease # of cat  summaries
+          if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
+            repaired_nodes.erase(refined_node->get_function_id());
+        }
+      }
+    }
+    
     // if true, the assertion has been successfully verified
     const bool is_verified = assertion_holds;
     if (is_verified) {
         // produce and store the summaries
         assert(decider->get_interpolating_solver()->can_interpolate());
         extract_interpolants(equation);
+        node.set_precision(SUMMARY); //lets do this again, maybe refinement made it unsat again
+        node.add_node_sumID(summary_id);
     } // End of UNSAT section
     else // assertion was falsified
     {

@@ -232,23 +232,23 @@ void core_checkert::initialize__lra_option_solver() {
   }
   else if (solver_options.m_lra_itp_algorithm == 2){
     status() << "Dual Farkas Algorithm" << eom;
-    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
-       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not guaranteed in interpolation algorithm " << solver_options.m_lra_itp_algorithm <<
+       ", to guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
   }
   else if (solver_options.m_lra_itp_algorithm == 3) {
     status() << "Flexible Farkas Algorithm" << eom;
-    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
-       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not guaranteed in the interpolation algorithm " << solver_options.m_lra_itp_algorithm <<
+       ", to guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
   }
   else if (solver_options.m_lra_itp_algorithm == 4) {
     status() << "Decomposing Farkas Algorithm" << eom;
-    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
-       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not guaranteed in the interpolation algorithm " << solver_options.m_lra_itp_algorithm <<
+       ", to guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
   }
   else if (solver_options.m_lra_itp_algorithm == 5) {
     status() << "Dual Decomposing Farkas Algorithm" << eom;
-    warning() << "Tree-Interpolation Property (TIP) is not preserved in this interpolation algorithm. "
-       "To guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
+    warning() << "Tree-Interpolation Property (TIP) is not guaranteed in the interpolation algorithm " << solver_options.m_lra_itp_algorithm <<
+       ", to guarantee the soundness of incremental check in UpProver check TIP on generated summaries via TIP-check option." << eom;
   }
   
   if (options.is_set("itp-lra-factor")) {
@@ -537,6 +537,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
     unsigned iteration_counter = 0;
     formula_managert ssa_to_formula = formula_managert(equation, message_handler);
     auto solver = decider->get_solver();
+    std::list<call_tree_nodet *> refined_functions;
     while (!assertion_holds) {
         iteration_counter++;
 
@@ -570,33 +571,35 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
 
             // figure out functions that can be refined
             refiner.mark_sum_for_refine(*solver, omega.get_call_tree_root(), equation);
-            const std::list<call_tree_nodet *> refined_functions = refiner.get_refined_functions();
+            refined_functions = refiner.get_refined_functions();
             if (refined_functions.empty()) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
                 break;
             } else {
                 // REPORT
                 status() << ("Go to next iteration\n") << eom;
-                for (auto const & refined_node : refined_functions ){
-                    if (refined_node->node_has_summary()) {
-                        const summary_idt smID = refined_node->get_node_sumID();
-                        summary_store->remove_summary(smID);
-                        refined_node->remove_node_sumID(smID);
-                        //notify partitions about removal of summaries
-                        //equation.refine_partition(entry_partition.get_iface().partition_id);
-                        if(options.is_set("summary-validation")) {
-                            //if function were already marked as repaired delete it
-                            if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
-                                repaired_nodes.erase(refined_node->get_function_id());
-                        }
-                    }
-                }
                 // do the actual refinement of ssa
                 refineSSA(symex, refiner.get_refined_functions());
             }
         }
     } // end of refinement loop
-  
+  //had refinement but didn't hold, so remove
+  if (iteration_counter>0 && !assertion_holds) {
+      for (auto const & refined_node : refined_functions ){
+        if (refined_node->node_has_summary()) {
+          const summary_idt smID = refined_node->get_node_sumID();
+          summary_store->remove_summary(smID);
+          refined_node->remove_node_sumID(smID);
+          //notify partitions about removal of summaries
+          //equation.refine_partition(entry_partition.get_iface().partition_id);
+          if(options.is_set("summary-validation")) {
+            //if function were already marked as repaired delete it
+            if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
+              repaired_nodes.erase(refined_node->get_function_id());
+          }
+        }
+      }
+    }
   
     ////////////////// 
     // Report Part: //
