@@ -33,12 +33,20 @@ public:
     virtual ~check_opensmt2t();
     
     void reset_solver() override {
-        mainSolver.reset(new MainSolver(*logic, *config, "opensmt"));
+#ifdef PARTITIONS_ITP
+      std::cout << "Solver and Partitions reset!\n" << std::endl;
+#endif
+      //reset everything in solver
+      mainSolver.reset(new MainSolver(*logic, *config, "opensmt"));
+      //reset of partitions is necessary before building a local partition of a subtree
+      partition_count = 0;
+      current_partition.clear();
+      top_level_formulas.clear();
+      pushed_formulas = 0;
+      last_partition_closed = true;
     }
     // ********************* methods implementing ssa_solvert interface ***************************************
-#ifdef PRODUCE_PROOF
     interpolating_solvert* get_interpolating_solver() override { return this; }
-#endif // PRODUCE_PROOF
     solvert* get_solver() override { return this; }
 
     convertort* get_convertor() override { return this; }

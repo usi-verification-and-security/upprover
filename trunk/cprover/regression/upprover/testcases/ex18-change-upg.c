@@ -1,21 +1,18 @@
 int a;
 int b;
 
-int C(){
+void C(){
   a = b + 1;
-  return 0;
 }
 
-int B(){
+void B(){ //arg a; B is marked inlined since summary of old B doesn't match anymore, but C still can use its summary till end
   C();
-  return 0;
 }
 
-int A(){
+void A(){
   a = 0;
   b = 0;
-  B();
-  return 0;
+  B(); //B inline, but summary of C can be used.
 }
 
 void main(void){

@@ -1,19 +1,16 @@
 int a;
 int b;
 
-int A(){
-  a = 0;
-  return 0;
-}
-
-int B(){
-  b = a;
-  return 0;
-}
-
-int C(){
+void C(){
   a = b + 1;
-  return 0;
+}
+
+void B(){ //arg: b
+  b = a;
+}
+
+void A(){
+  a = 0;
 }
 
 void main(void){
