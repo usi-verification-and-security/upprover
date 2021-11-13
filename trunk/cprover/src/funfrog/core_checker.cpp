@@ -583,8 +583,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
             }
         }
     } // end of refinement loop
-  //had refinement but didn't hold, so remove
-  if (iteration_counter>0 && !assertion_holds) {
+  //main had refinement so any summaries were useless
+  if (iteration_counter>0) {
       for (auto const & refined_node : refined_functions ){
         if (refined_node->node_has_summary()) {
           const summary_idt smID = refined_node->get_node_sumID();
