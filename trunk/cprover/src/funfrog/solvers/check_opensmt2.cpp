@@ -82,19 +82,22 @@ if(!outFormula.fail()){
 void check_opensmt2t::close_partition() {
     assert(!last_partition_closed);
     if (!last_partition_closed) {
+#ifdef PARTITIONS_ITP
+        std::cout << ";;Closing partition (Count of the created partitions): " << partition_count << '\n';
+#endif
         // opensmt can handle special cases like 0 or 1 argument properly
         const PTRef pand = logic->mkAnd(current_partition);
+#ifdef PARTITIONS_ITP
+        std::cout << ";;Pushing to solver: "<< logic->pp(pand) << '\n' << std::endl;
+#endif
         top_level_formulas.push(pand);
         assert((unsigned)top_level_formulas.size() == partition_count);
         current_partition.clear();
         last_partition_closed = true;
-#ifdef DEBUG_SMT2SOLVER
+#ifdef PARTITIONS_ITP
         if(current_partition.size() == 1){
-          std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      }
-      char* s= logic->printTerm(pand);
-      std::cout << "; Pushing to solver: " << s << endl;
-      free(s);
+            std::cout << ";;Trivial partition (terms size = 1): " << partition_count << "\n";
+        }
 #endif
     }
 }
@@ -130,6 +133,9 @@ fle_part_idt check_opensmt2t::new_partition() {
 }
 
 void check_opensmt2t::insert_top_level_formulas() {
+#ifdef PARTITIONS_ITP
+  std::cout << ";;Inserting formulas to solver from pushed_formulas " << pushed_formulas << " to top_level " << top_level_formulas.size() << std::endl;
+#endif
     for(auto i = pushed_formulas; i < (unsigned)top_level_formulas.size(); ++i) {
         char *msg = nullptr;
         mainSolver->insertFormula(top_level_formulas[i], &msg); //in opensmt a new partition gets generated
@@ -140,8 +146,6 @@ void check_opensmt2t::insert_top_level_formulas() {
     pushed_formulas = top_level_formulas.size();
 }
 
-
-#ifdef PRODUCE_PROOF
 
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
                                                       std::vector<PTRef> & interpolants) const {
@@ -155,6 +159,11 @@ void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vec
         {
             setbit ( mask, configs[i][j]);
         }
+#ifdef PARTITIONS_ITP
+        std::cout << "\n\n;;Mask is " << mask << std::endl;
+        std::cout << logic->pp(mainSolver->getPartitionManager().getPartition(mask, PartitionManager::part::A)) << std::endl;
+        std::cout << ";;END OF PARTS" <<std::endl;
+#endif
         itpCtx->getSingleInterpolant(interpolants, mask);
     }
 }
@@ -164,4 +173,4 @@ PTRef check_opensmt2t::substitute(PTRef term, Logic::SubstMap const & subst) {
 }
 
 
-#endif
+

@@ -275,9 +275,12 @@ void partitioning_target_equationt::fill_partition_ids(
         return;
     }
     assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
-
+    
     // Current partition id
     for(auto curr_id : partition.get_fle_part_ids()){
+#ifdef PARTITIONS_ITP
+      std::cout << ";;Adding formula index " << curr_id << " for partition " << partition_id << std::endl;
+#endif
         part_ids.push_back(curr_id);
     }
 
@@ -686,7 +689,12 @@ void partitioning_target_equationt::convert_partition(
     }
 
     // Tell the interpolator about the new partition.
-    partition.add_fle_part_id(interpolator.new_partition());
+    auto new_part_id = interpolator.new_partition();
+#ifdef PARTITIONS_ITP
+    std::cout << ";;Adding new formula paritition " << new_part_id <<
+    " to program partition " << partition.get_iface().partition_id << "\n"<< std::endl;
+#endif
+    partition.add_fle_part_id(new_part_id);
 
     // If this is a summary partition, apply the summary
     if (partition.has_summary_representation() && !(partition.ignore) && partition.get_iface().call_tree_node.node_has_summary()) {
@@ -807,12 +815,16 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
           //  }
         }
 
-        if (!skip_partition(current_partition, store_summaries_with_assertion)){ //if has not abstract repr
-            valid_tasks++;
-//            std::cout << ";;create itp task for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
-//        } else{
-//            std::cout << ";;skiped itp task for partition " << current_partition.get_iface().function_id.c_str() <<"\n";
+        if (!skip_partition(current_partition, store_summaries_with_assertion)) { //if has not abstract repr
+          valid_tasks++;
+#ifdef PARTITIONS_ITP
+          std::cout << ";;create itp task for partition " << current_partition.get_iface().function_id.c_str() << "\n";
+        } else {
+          std::cout << ";;skiped itp task for partition " << current_partition.get_iface().function_id.c_str() << "\n";
         }
+#else
+      }
+#endif
     }
     // Only do the interpolation if there are some interpolation tasks
     if (valid_tasks == 0)

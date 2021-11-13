@@ -151,12 +151,19 @@ Function: smtcheck_opensmt2t::get_interpolant
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants) const
 {   
   assert(ready_to_interpolate);
-  
+#ifdef PARTITIONS_ITP
+  auto partitions = this->mainSolver->getPartitionManager().getPartitions();
+  std::cout << "\n;;See " << partitions.size() << " partitions sent to OpenSMT:\n\n";
+  for (PTRef par : partitions) {
+    std::cout << logic->pp(par)  << std::endl;
+    std::cout << "With index: " << mainSolver->getPartitionManager().getIPartitions(par) << "\n\n";
+  }
+  std::cout  << ";;END Debug partitions of size: " << partitions.size() << std::endl;
+#endif
   const char* msg2 = nullptr;
   config->setOption(SMTConfig::o_verbosity, verbosity, msg2);
   //if (msg2!=nullptr) { free((char *)msg2); msg2=nullptr; } // If there is an error consider printing the msg
   config->setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
-  //if (msg2!=nullptr) free((char *)msg2); // If there is an error consider printing the msg
   
   // Set labeling functions
   config->setBooleanInterpolationAlgorithm(itp_algorithm);
@@ -175,27 +182,23 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);
 
+#ifdef PARTITIONS_ITP
 //    int atoms;
-//    std::cout <<"###summary size: " << itp_ptrefs.size() <<endl;
+    std::cout <<";;summary size: " << itp_ptrefs.size() <<endl;
+#endif
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
-//      logic->printTerm(itp_ptrefs[i]);
-//      char *s = logic->printTerm(itp_ptrefs[i]);
-//      std::cout << "Interpolant " << i << " = " << s << '\n';
-//      free(s);
+#ifdef PARTITIONS_ITP
+      logic->printTerm(itp_ptrefs[i]);
+      char *s = logic->printTerm(itp_ptrefs[i]);
+      std::cout << ";;Interpolant " << i << " : " << s << '\n';
+      free(s);
 //      atoms = getAtoms(itp_ptrefs[i]);
 //      std::cout <<"# theory atoms for this sub-summary: " << atoms <<endl;
-      interpolants.push_back(new_itp);
-      
-
-#ifdef DEBUG_SMT_ITP
-    char *s = logic->printTerm(new_itp->getInterpolant());
-    std::cout << "Interpolant " << i << " = " << s << '\n';
-    free(s);
-    s=nullptr;
 #endif
+      interpolants.push_back(new_itp);
   }
 }
 
@@ -651,9 +654,12 @@ void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::v
     assert(!itp.is_trivial());
     assert(logic);
     auto const & smt_itp = static_cast<smt_itpt const &> (itp);
-//    for (int i = 0; i <symbols.size() ; ++i) {
-//        std::cout << symbols[i].get_identifier() <<"\n";
-//    }
+#ifdef PARTITIONS_ITP
+    std::cout << ";;Substitute and negate insert" << std::endl;
+    for (int i = 0; i <symbols.size() ; ++i) {
+        std::cout << symbols[i].get_identifier() <<"\n";
+    }
+#endif
     PTRef new_root = instantiate(smt_itp, symbols); //new root is summary body
     // the actual insertion
     this->set_to_true(logic->mkNot(new_root));

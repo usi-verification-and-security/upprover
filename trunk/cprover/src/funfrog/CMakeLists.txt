@@ -115,7 +115,7 @@ target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_GLOBALS
     #-DSMT_DEBUG  #DEBUG SMT encoding for UF/LA/CUF
     #-DDISABLE_OPTIMIZATIONS
-    #-DLATTICE_REF_ALGORITHM
+    #-DPARTITIONS_ITP 
     #-DPRINT_DEBUG_UPPROVER #Print debug info for summary IDs in UpProver
     )
 
