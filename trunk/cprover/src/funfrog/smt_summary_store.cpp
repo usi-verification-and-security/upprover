@@ -77,12 +77,12 @@ summary_idt smt_summary_storet::insert_summary(itpt_summaryt *summary_given, con
     // at this point, there should be just the name of the original function
     assert(!is_quoted(function_name));
     assert(!fun_name_contains_counter(function_name));
-    std::size_t next_idx = get_next_id(function_name);
+//    std::size_t next_idx = get_next_id(function_name);
     // as name of the summary, store the quoted version with counter from the store
-    const std::string fname_countered = quote(add_counter_to_fun_name(function_name, next_idx)); //|f#1|
-    sumTemplate.setName(fname_countered);
+//    const std::string fname_countered = quote(add_counter_to_fun_name(function_name, next_idx)); //|f#1|
+    sumTemplate.setName(function_name);
     
     // call the base functionality
     //Due to one-to-one mapping of fname and its ID, lets store fname with countered versions
-    return summary_storet::insert_summary(summary_given, fname_countered);
+    return summary_storet::insert_summary(summary_given, function_name);
 }
