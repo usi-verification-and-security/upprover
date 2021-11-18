@@ -121,7 +121,7 @@ target_compile_definitions(hifrog-lib PUBLIC
 
 #option(PRINT_DEBUG_UPPROVER "Print debug info of summary IDs in UpProver" ON)
 
-find_package(OPENSMT CONFIG REQUIRED PATHS ${OPENSMT_ROOT} ${OPENSMT_DIR})
+find_package(OpenSMT CONFIG REQUIRED PATHS ${OPENSMT_ROOT} ${OPENSMT_DIR})
 
 # Locating Z3 and setting related options
 if(USE_Z3)
