@@ -657,8 +657,9 @@ void smtcheck_opensmt2t::substitute_negate_insert(const itpt & itp, const std::v
 #ifdef PARTITIONS_ITP
     std::cout << ";;Substitute and negate insert" << std::endl;
     for (int i = 0; i <symbols.size() ; ++i) {
-        std::cout << symbols[i].get_identifier() <<"\n";
+        std::cout << symbols[i].get_identifier() <<" , ";
     }
+    std::cout << std::endl;
 #endif
     PTRef new_root = instantiate(smt_itp, symbols); //new root is summary body
     // the actual insertion

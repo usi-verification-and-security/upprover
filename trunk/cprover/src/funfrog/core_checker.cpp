@@ -584,22 +584,25 @@ bool core_checkert::assertion_holds_smt(const assertion_infot &assertion,
         }
     } // end of refinement loop
   //main had refinement so any summaries were useless
-  if (iteration_counter>0) {
-      for (auto const & refined_node : refined_functions ){
-        if (refined_node->node_has_summary()) {
-          const summary_idt smID = refined_node->get_node_sumID();
-          summary_store->remove_summary(smID);
-          refined_node->remove_node_sumID(smID);
-          //notify partitions about removal of summaries
-          //equation.refine_partition(entry_partition.get_iface().partition_id);
-          if(options.is_set("summary-validation")) {
-            //if function were already marked as repaired delete it
-            if (repaired_nodes.find(refined_node->get_function_id()) != repaired_nodes.end())
-              repaired_nodes.erase(refined_node->get_function_id());
-          }
-        }
-      }
-    }
+	if (iteration_counter>0) {
+		for (auto const & refined_node : refined_functions ) {
+			if (refined_node->node_has_summary()) {
+				const summary_idt smID = refined_node->get_node_sumID();
+				summary_store->remove_summary(smID);
+				refined_node->remove_node_sumID(smID);
+				//notify partitions about removal of summaries
+				//equation.refine_partition(entry_partition.get_iface().partition_id);
+				if(options.is_set("summary-validation")) {
+					//if function were already marked as repaired delete it
+					if (summary_store->repaired_func.find(refined_node->get_function_id()) != summary_store->repaired_func.end()) {
+						summary_store->repaired_func.erase(refined_node->get_function_id());
+						//delete weakened_sum from fname_to_weakenedSumID
+						summary_store->fname_to_weakenedSumID.erase(refined_node->get_function_id());
+					}
+				}
+			}
+		}
+	}
   
     ////////////////// 
     // Report Part: //

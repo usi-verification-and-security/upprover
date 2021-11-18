@@ -39,7 +39,7 @@ public:
     
   // Inserts a new summary, the given summary is invalidated
   virtual summary_idt insert_summary(itpt_summaryt *summary_given, const std::string & fname_countered);
-  
+    
   // Finds the representative of the given summary
   itpt_summaryt& find_summary(summary_idt new_id) const;
   
@@ -48,8 +48,7 @@ public:
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 1; repr_count = 0; fname_to_summaryIDs.clear();}
-
-
+  
   bool function_has_summaries(const std::string & function_name) const {
       auto it = fname_to_summaryIDs.find(function_name);
       //return if found & if the entry is not empty
@@ -109,6 +108,9 @@ public:
     std::unordered_set<summary_idt> generated_sumIDs;
     //[statistics] counts total number of deleted summaries in UpProver
     std::unordered_set<summary_idt> deleted_sumIDs;
+    std::unordered_map<irep_idt, summary_idt> fname_to_weakenedSumID;
+    std::unordered_set<irep_idt> repaired_func;
+
 protected:
 
   // Union find node

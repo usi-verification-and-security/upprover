@@ -15,9 +15,9 @@ class smtcheck_opensmt2t;
 class smt_summary_storet :public summary_storet 
 {
 public:
-   explicit smt_summary_storet(smtcheck_opensmt2t * decider):
-           summary_storet{},
-           decider{decider}
+   explicit smt_summary_storet(smtcheck_opensmt2t * _decider):
+           summary_storet(),
+           decider(_decider)
    {}
 
   smt_summary_storet() : smt_summary_storet(nullptr) {}
@@ -29,6 +29,7 @@ public:
   void set_decider(smtcheck_opensmt2t * _decider) {
       this->decider = _decider;
   }
+  summary_idt insert_conjoin_summaries(const std::string &function_name);
 
 private:
     smtcheck_opensmt2t * decider;

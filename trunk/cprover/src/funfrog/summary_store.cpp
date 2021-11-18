@@ -93,12 +93,13 @@ summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const 
     // Do not add summary if the same ID is already there
     if(function_has_summaries(fname_countered)) {
         const auto & summaries = get_summariesID(fname_countered);
-        auto it = std::find_if(summaries.begin(), summaries.end(), [this, summary_given](summary_idt id){
+        //for all possible id in summaries
+        auto it_id = std::find_if(summaries.begin(), summaries.end(), [this, summary_given](summary_idt id){
             return find_summary(id).equals(summary_given);
         });
-        if(it != summaries.end()){
-            summary_idt id = *it;
-            // the same summary for this function is already present in the store
+        if (it_id != summaries.end()) {
+            summary_idt id = *it_id;
+            // the given summary for this function is already present in the store
             // delete the summary;
             delete summary_given;
             return id;
@@ -110,7 +111,6 @@ summary_idt summary_storet::insert_summary(itpt_summaryt * summary_given, const 
     // this also creates the map entry if it is the first time we see this function_name
     fname_to_summaryIDs[fname_countered].push_back(new_id);
     id_to_summary[new_id] = summary_given;
-
 #ifdef PRINT_DEBUG_UPPROVER
     std::cout << "\n@@Added map/store ID: "  << new_id << " for " << fname_countered <<"\n";
 #endif

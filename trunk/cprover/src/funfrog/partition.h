@@ -19,7 +19,7 @@
 
 
 class partition_ifacet;
-
+//solver partition
 class partitiont {
 public:
   

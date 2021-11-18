@@ -118,8 +118,6 @@ protected:
     
     void delete_and_initialize_solver();
     
-    //counts total number of repaired summaries in UpProver
-    std::unordered_set<irep_idt> repaired_nodes;
 };
 
 #endif

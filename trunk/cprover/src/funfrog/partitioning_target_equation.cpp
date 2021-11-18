@@ -9,6 +9,7 @@
 #include "call_tree_node.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
+#include "smt_summary_store.h"
 #include "conversion_utils.h"
 #include "interface/solver/interpolating_solver.h"
 
@@ -689,12 +690,12 @@ void partitioning_target_equationt::convert_partition(
     }
 
     // Tell the interpolator about the new partition.
-    auto new_part_id = interpolator.new_partition();
+    auto new_solver_part_id = interpolator.new_partition();
 #ifdef PARTITIONS_ITP
-    std::cout << ";;Adding new formula paritition " << new_part_id <<
-    " to program partition " << partition.get_iface().partition_id << "\n"<< std::endl;
+    std::cout << ";;Adding new formula paritition " << new_solver_part_id <<
+			  " to program partition " << partition.get_iface().partition_id << "\n" << std::endl;
 #endif
-    partition.add_fle_part_id(new_part_id);
+    partition.add_fle_part_id(new_solver_part_id); //add formula to the top-level partition
 
     // If this is a summary partition, apply the summary
     if (partition.has_summary_representation() && !(partition.ignore) && partition.get_iface().call_tree_node.node_has_summary()) {
@@ -781,11 +782,6 @@ void partitioning_target_equationt::convert(convertort &convertor,
 }
 /*******************************************************************
  Function: partitioning_target_equationt::extract_interpolants()
-
- Inputs:
-
- Outputs:
-
  Purpose: Extract interpolants corresponding to the created partitions
 SA: inner method- called by extract_interpolants from core_checker;
  this method covers the required functionality for UpProver
@@ -892,9 +888,20 @@ void partitioning_target_equationt::extract_interpolants(interpolating_solvert &
             continue;
         }
         // Store the interpolant in summary_storet and asks a new ID for each summary
-        auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
+        auto new_id = summary_store.insert_summary(itp, id2string(partition.get_iface().function_id)); //virtual: first calls smt_summary_storet::insert_summary
+        
+		smt_summary_storet * smt_summary_store = dynamic_cast<smt_summary_storet *>(&summary_store);
+		if (smt_summary_store) {
+			if (summary_store.repaired_func.count(partition.get_iface().function_id)) {
+				std::cout << ";; " << id2string(partition.get_iface().function_id) << " with summary ID "
+						  << summary_store.fname_to_weakenedSumID[partition.get_iface().function_id]
+						  << " has already a weakened summary, so conjoin the weak summary with the itp one " << std::endl;
+				// conjoin itp with weaken summary (its sumID is in summary_store.) then get a new_id
+				new_id = smt_summary_store->insert_conjoin_summaries(id2string(partition.get_iface().function_id));
+			}
+		}
         partition.get_iface().call_tree_node.add_node_sumID(new_id);
-        //for stat
+        //for statistics
         summary_store.generated_sumIDs.insert(new_id);
         // Update the precision information for omega deserialization; which partition
         //is now summarized?

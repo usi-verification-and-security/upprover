@@ -77,12 +77,42 @@ summary_idt smt_summary_storet::insert_summary(itpt_summaryt *summary_given, con
     // at this point, there should be just the name of the original function
     assert(!is_quoted(function_name));
     assert(!fun_name_contains_counter(function_name));
-//    std::size_t next_idx = get_next_id(function_name);
+    //std::size_t next_idx = get_next_id(function_name);
     // as name of the summary, store the quoted version with counter from the store
-//    const std::string fname_countered = quote(add_counter_to_fun_name(function_name, next_idx)); //|f#1|
+    //const std::string fname_countered = quote(add_counter_to_fun_name(function_name, next_idx)); //|f#1|
     sumTemplate.setName(function_name);
     
     // call the base functionality
     //Due to one-to-one mapping of fname and its ID, lets store fname with countered versions
     return summary_storet::insert_summary(summary_given, function_name);
+}
+
+/*******************************************************************\
+Note: Assume by weakening we got a summary for f, while validating the caller of f,
+ imagine a new summary by itp is generated for f, this method conjoins them
+\*******************************************************************/
+summary_idt smt_summary_storet::insert_conjoin_summaries(const std::string &function_name) {
+	summary_ids_vect sumId_vec = get_summariesID(function_name);
+  	auto itp_conj = new smt_itpt();
+  	assert(decider);
+	itp_conj->setDecider(decider);
+	itp_conj->getTempl().setName(function_name);
+	assert(sumId_vec.size() >= 2);
+	std::vector<PTRef> sumsAllptref;
+	smt_itpt_summaryt *sumsingle;
+	std::vector<PTRef> sumArgs_common;
+	for (int i = 0; i < sumId_vec.size(); i++) {
+		summary_idt singleSumid = sumId_vec[i];
+		itpt_summaryt &onesum = find_summary(singleSumid);
+		sumsingle = dynamic_cast<smt_itpt_summaryt *>(&onesum);
+		sumsAllptref.push_back(sumsingle->getInterpolant());
+		sumArgs_common = sumsingle->getTempl().getArgs();
+		remove_summary(singleSumid);
+	}
+	PTRef sumFull_pref = decider->getLogic()->mkAnd(sumsAllptref);
+	smt_itpt * sumFull = decider->create_partial_summary
+					   (sumArgs_common, function_name, sumFull_pref);
+	//Ask for new ID and insert in summary store
+	summary_idt sumID_union = insert_summary(sumFull, function_name);
+	return sumID_union;
 }
