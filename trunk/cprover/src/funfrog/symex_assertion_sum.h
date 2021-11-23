@@ -325,8 +325,12 @@ protected:
     const goto_symex_statet::call_stackt &call_stack, // KE: changed to fit the override
     unsigned unwind) override
   {
-    // returns true if we should not continue unwinding
-    // for support of different bounds in different loops, see how it's done in symex_bmct
+    const irep_idt id=goto_programt::loop_id(*source.pc);
+    log.statistics() <<  "Unwinding loop " << id
+					 << " iteration " << unwind << " " << log.eom;
+	// log.statistics() << " " << source.pc->source_location
+	// returns true if we should not continue unwinding
+	// for support of different bounds in different loops, see how it's done in symex_bmct
     return unwind >= max_unwind;
   }
 
