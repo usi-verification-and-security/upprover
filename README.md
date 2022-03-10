@@ -12,7 +12,7 @@ Project page: http://verify.inf.usi.ch/upprover
 Installation
 =====
 
-First, compile [OpenSMT2](https://github.com/usi-verification-and-security/opensmt.git) as a library and 
+First, compile [OpenSMT2](https://github.com/usi-verification-and-security/opensmt.git) (branch master the tag `sri-summer-school`) as a library and 
 install it in your system by simply running
 ```
 $ mkdir build; cd build; cmake ..; make install
